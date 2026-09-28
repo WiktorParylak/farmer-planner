@@ -6,6 +6,7 @@ const path = require('path');
 const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave } = require('./savegame-soil');
 const animalImages = require('./animal-images');
+const modFiles = require('./mod-files');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -388,9 +389,46 @@ const TRANSLATIONS = {
         feedUse_feed: "Feed",
         feedUse_silage: "Silage (chaff)",
         feedUse_grain: "Grain for feed",
-        feedTmrRecipe: "TMR recipe",
-        feedTmrSumWarn: "TMR shares add up to {s}% — they should total 100%.",
-        feedTmrRangeWarn: "Outside the game's allowed range: {list}.",
+        mixerTitle: "Mixer wagon",
+        mixerClover: "clover",
+        mixerAlfalfa: "alfalfa",
+        mixerFromSave: "from savegame",
+        mixerOwn: "your own",
+        mixerNoCapacity: "capacity unknown",
+        mixerNewWagon: "New mixer wagon",
+        mixerWagonName: "Name",
+        mixerWagonNamePh: "e.g. Rino FXL 1000",
+        mixerCapacity: "Capacity",
+        mixerNoWagons: "No mixer wagon found in the savegame — add your own with its capacity.",
+        mixerEnterCapacity: "The game file for this wagon couldn't be read — enter its capacity:",
+        mixerLoad: "Load",
+        mixerLoadEmpty: "Nothing loaded yet — add bales and loose products, or fill the wagon automatically to the TMR recipe.",
+        mixerOnFarm: "{n} on the farm",
+        mixerPcs: "pcs",
+        mixerTooManyBales: "You only have {n} of these bales on the farm.",
+        mixerLoose: "loose",
+        mixerAddBale: "Bale",
+        mixerAddBulk: "Loose product",
+        mixerNewBale: "Own bale type",
+        mixerAuto: "Fill to recipe",
+        mixerClear: "Clear",
+        mixerNoBales: "No bales found in the savegame — add your own bale type with its litres.",
+        mixerBaleName: "Bale name",
+        mixerBaleNamePh: "e.g. Round 150 silage",
+        mixerBaleContent: "Content",
+        mixerBaleLitres: "Litres per bale",
+        mixerBale: "Bale",
+        mixerBaleRound: "Round {s}",
+        mixerBaleSquare: "Square {s}",
+        mixerResult: "Mix",
+        mixerOfCapacity: "of {c} l capacity",
+        mixerFill: "full",
+        mixerOver: "{l} l over the wagon's capacity.",
+        mixerRange: "allowed {a}–{b}%",
+        mixerTarget: "your recipe",
+        mixerValid: "Mix is within the TMR recipe — the wagon will make TMR.",
+        mixerInvalid: "Outside the TMR recipe: {list}",
+        mixerLasts: "Lasts about {d} days for this barn ({l} l/day).",
         feedCustomTitle: "Custom feeds",
         feedCustomGroup: "Custom feeds",
         feedCustomNew: "New feed",
@@ -787,9 +825,46 @@ const TRANSLATIONS = {
         feedUse_feed: "Pasza",
         feedUse_silage: "Kiszonka (sieczka)",
         feedUse_grain: "Ziarno na paszę",
-        feedTmrRecipe: "Receptura TMR",
-        feedTmrSumWarn: "Udziały TMR sumują się do {s}% — powinny dać 100%.",
-        feedTmrRangeWarn: "Poza zakresem dozwolonym w grze: {list}.",
+        mixerTitle: "Paszowóz",
+        mixerClover: "koniczyna",
+        mixerAlfalfa: "lucerna",
+        mixerFromSave: "z zapisu gry",
+        mixerOwn: "własny",
+        mixerNoCapacity: "pojemność nieznana",
+        mixerNewWagon: "Nowy paszowóz",
+        mixerWagonName: "Nazwa",
+        mixerWagonNamePh: "np. Rino FXL 1000",
+        mixerCapacity: "Pojemność",
+        mixerNoWagons: "W zapisie gry nie ma paszowozu — dodaj własny z jego pojemnością.",
+        mixerEnterCapacity: "Nie udało się odczytać pliku tego paszowozu — wpisz jego pojemność:",
+        mixerLoad: "Załadunek",
+        mixerLoadEmpty: "Nic jeszcze nie załadowano — dodaj bele i produkty sypkie albo dobierz załadunek automatycznie do receptury TMR.",
+        mixerOnFarm: "na farmie: {n}",
+        mixerPcs: "szt.",
+        mixerTooManyBales: "Masz na farmie tylko {n} takich bel.",
+        mixerLoose: "luzem",
+        mixerAddBale: "Bela",
+        mixerAddBulk: "Produkt sypki",
+        mixerNewBale: "Własny rodzaj beli",
+        mixerAuto: "Dobierz do receptury",
+        mixerClear: "Wyczyść",
+        mixerNoBales: "W zapisie gry nie ma bel — dodaj własny rodzaj beli z jej litrażem.",
+        mixerBaleName: "Nazwa beli",
+        mixerBaleNamePh: "np. Okrągła 150 kiszonka",
+        mixerBaleContent: "Zawartość",
+        mixerBaleLitres: "Litrów w beli",
+        mixerBale: "Bela",
+        mixerBaleRound: "Okrągła {s}",
+        mixerBaleSquare: "Kostka {s}",
+        mixerResult: "Mieszanka",
+        mixerOfCapacity: "z {c} l pojemności",
+        mixerFill: "pełny",
+        mixerOver: "{l} l ponad pojemność paszowozu.",
+        mixerRange: "dozwolone {a}–{b}%",
+        mixerTarget: "Twoja receptura",
+        mixerValid: "Mieszanka mieści się w recepturze TMR — paszowóz zrobi TMR.",
+        mixerInvalid: "Poza recepturą TMR: {list}",
+        mixerLasts: "Starczy na ok. {d} dni dla tej obory ({l} l/dzień).",
         feedCustomTitle: "Własne pasze",
         feedCustomGroup: "Własne pasze",
         feedCustomNew: "Nowa pasza",
@@ -864,11 +939,12 @@ Object.assign(TRANSLATIONS.en, {
     tut_ch_g: "Auto-sync",
     tut_ch_h: "Farm tools",
     tut_ch_k: "Animals",
+    tut_ch_m: "Feed planner & mixer wagon",
     tut_ch_i: "Farm settings",
     tut_ch_j: "App settings",
 
     tut_a1_t: "Welcome!",
-    tut_a1_x: "Farmer Planner helps you plan fields, seasons, fertilization and supplies for Farming Simulator 25. In this chapter you'll create a practice farm yourself.",
+    tut_a1_x: "Farmer Planner helps you plan fields, seasons, fertilization, supplies, animals and their feed for Farming Simulator 25. In this chapter you'll create a practice farm yourself.",
     tut_a2_t: "Add a farm",
     tut_a2_x: "Every savegame gets its own farm here. Click \"Add farm\".",
     tut_a3_t: "Farm name",
@@ -998,6 +1074,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_h6_x: "Click the field soil tool.",
     tut_h7_t: "Soil mix",
     tut_h7_x: "Enter the share of each soil type per field (from the PF soil map). Only the ratio matters. Type e.g. 60 in the first box of field 1 and press Tab. Soil affects the nitrogen target, seed rate, lime loss and yield.",
+    tut_h8_t: "Soils from the game",
+    tut_h8_x: "With a linked savegame this button reads the soil map straight from the game and fills in every field — the same % Precision Farming shows in-game. It overwrites the values in the table.",
     tut_h9_t: "Supplies",
     tut_h9_x: "Click \"Supplies\".",
     tut_h10_t: "Seeds",
@@ -1021,22 +1099,26 @@ Object.assign(TRANSLATIONS.en, {
     tut_h21_t: "Forecast",
     tut_h21_x: "Expected harvest per crop in litres = hectares × crop yield × soil factor, assuming ideal nitrogen, pH and no weeds.",
     tut_h24_t: "Back to the plan",
-    tut_h24_x: "Click \"Plan\" to return to the field table. Animals have a chapter of their own.",
+    tut_h24_x: "Click \"Plan\" to return to the field table. Animals and the feed planner have chapters of their own.",
 
     tut_k1_t: "Animals",
     tut_k1_x: "Click \"Animals\" in the sidebar.",
     tut_k3_t: "Head count",
-    tut_k3_x: "All your animals together, read from the savegame (placeables.xml), and one tile per barn with its feed level. Everything here refreshes whenever the game saves — with auto-sync even while you play.",
+    tut_k3_x: "All your animals together, read from the savegame (placeables.xml), and one tile per barn with a picture of its breed, feed level and how many animals are pregnant. Everything here refreshes whenever the game saves — with auto-sync even while you play.",
     tut_k4_t: "Barn details",
     tut_k4_x: "Clicking a tile opens that building's full card: cow barns, chicken coops, pastures, stables. The name comes from the building's file on the map — click the pencil to give it your own.",
     tut_k5_t: "Animals & health",
     tut_k5_x: "Each breed and age group as a separate row: breed × head count and health. Health drops when animals lack food, water or straw, or when the barn isn't cleaned — sick animals produce less and are worth less.",
+    tut_k19_t: "Breeding status",
+    tut_k19_x: "Every group also shows where it is with breeding: pregnant (with a progress bar), ready to breed, not inseminated or too young, plus how long ago it last gave birth.",
     tut_k6_t: "Feed bar",
     tut_k6_x: "What's in the feed trough right now. Mixed ingredients (e.g. grass + silage) are added together because they share one trough. Green = plenty, amber = below 35%, red = below 15%.",
     tut_k7_t: "Trough capacity",
     tut_k7_x: "The game's save doesn't record how big a trough is, so you enter it once (read it from the barn's info in the game). With a capacity the bar shows a real percentage.",
     tut_k8_t: "Days of feed left",
     tut_k8_x: "Feed in the trough ÷ what the herd eats per day. Amber below 7 days, red below 3 — time to restock.",
+    tut_k20_t: "Ration",
+    tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner — change it in either place.",
     tut_k9_t: "Low feed warning",
     tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the trough is below 15% of its capacity, below 80 L if you haven't entered a capacity, or when there's no feed at all.",
     tut_k10_t: "Enter the capacity",
@@ -1047,6 +1129,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_k12_x: "These sheep are only at 72% health, their trough is below 35% (amber) and the feed lasts less than a week. Check their water, straw and cleaning — and top up the feed.",
     tut_k13_t: "Daily need",
     tut_k13_x: "How much food, water and straw the whole barn uses per day. It's calculated for each animal's age from the game's growth curves — calves eat less than adult cows.",
+    tut_k21_t: "Reproduction",
+    tut_k21_x: "How many females are pregnant and when the next birth is due. The heifers here aren't inseminated — usually there's no male of the same breed in the building. Birth dates need the breed's pregnancy length from the animal definitions (Farm settings).",
     tut_k14_t: "Stored production",
     tut_k14_x: "What's waiting in the barn right now: milk in the tank, slurry, eggs, wool. Sell or collect it before the storage is full.",
     tut_k15_t: "Estimated output",
@@ -1058,12 +1142,37 @@ Object.assign(TRANSLATIONS.en, {
     tut_k18_t: "Back to the plan",
     tut_k18_x: "Click \"Plan\" to return to the field table.",
 
+    tut_m1_t: "Feed planner",
+    tut_m1_x: "Click \"Feed planner\" in the sidebar.",
+    tut_m2_t: "Pick a barn",
+    tut_m2_x: "One tile per barn with its animals and yearly food need. A red dot means some ingredient won't last the year.",
+    tut_m3_t: "Pick the feed",
+    tut_m3_x: "Rations from the game with their efficiency — cows only give full production on TMR. \"+\" creates your own feed with its own ingredients.",
+    tut_m5_t: "Mixer wagon",
+    tut_m5_x: "Mixer wagons you own are read from the savegame. \"New mixer wagon\" adds your own with its capacity.",
+    tut_m6_t: "Wagon capacity",
+    tut_m6_x: "For base-game wagons the capacity can't be read from the game files. Type it in once, e.g. 20000, and press Tab.",
+    tut_m7_t: "Fill to recipe",
+    tut_m7_x: "Click \"Fill to recipe\" — the app loads the wagon to your TMR recipe from the bales on your farm.",
+    tut_m8_t: "Load",
+    tut_m8_x: "Bales go in whole or in halves (− / +); anything without bales (e.g. mineral feed) goes in loose. You can pick a different bale in each row or add your own bale type — the litres turn red when you use more bales than you have.",
+    tut_m9_t: "The mix",
+    tut_m9_x: "How full the wagon is, and a bar per ingredient: the shaded band is the allowed range, the marker is your recipe. Green = the wagon will make TMR. Below: how many days the load feeds this barn.",
+    tut_m10_t: "Ingredients for a year",
+    tut_m10_x: "The barn's yearly need per ingredient compared with your storage and the planned harvest. Missing feed is shown in litres and roughly in hectares to sow.",
+    tut_m11_t: "Settings",
+    tut_m11_x: "Click the settings bar to expand it.",
+    tut_m12_t: "Feed fields & parameters",
+    tut_m12_x: "Choose which fields grow feed and what they become (sale, feed, silage), where you collect straw, grass cuts per year and yields. Your own feeds are listed here too.",
+    tut_m13_t: "Back to the plan",
+    tut_m13_x: "Click \"Plan\" to return to the field table.",
+
     tut_i1_t: "Farm settings",
     tut_i1_x: "Click the farm settings button.",
     tut_i2_t: "Map name",
     tut_i2_x: "Type the map name, e.g. \"Hutan Pantai\".",
     tut_i3_t: "Savegame",
-    tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment and animals.",
+    tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment, animals, feed stock, bales and mixer wagons.",
     tut_i4_t: "Auto-sync",
     tut_i4_x: "Turn on to update the planner automatically every time you save in the game.",
     tut_i5_t: "Map crops & animals",
@@ -1120,11 +1229,12 @@ Object.assign(TRANSLATIONS.pl, {
     tut_ch_g: "Automatyczna synchronizacja",
     tut_ch_h: "Narzędzia farmy",
     tut_ch_k: "Zwierzęta",
+    tut_ch_m: "Planer pasz i paszowóz",
     tut_ch_i: "Ustawienia farmy",
     tut_ch_j: "Ustawienia aplikacji",
 
     tut_a1_t: "Witaj!",
-    tut_a1_x: "Farmer Planner pomaga planować pola, sezony, nawożenie i zaopatrzenie w Farming Simulator 25. W tym rozdziale sam utworzysz farmę ćwiczeniową.",
+    tut_a1_x: "Farmer Planner pomaga planować pola, sezony, nawożenie, zaopatrzenie, zwierzęta i ich paszę w Farming Simulator 25. W tym rozdziale sam utworzysz farmę ćwiczeniową.",
     tut_a2_t: "Dodaj farmę",
     tut_a2_x: "Każdy zapis gry ma tu swoją farmę. Kliknij „Dodaj farmę”.",
     tut_a3_t: "Nazwa farmy",
@@ -1254,6 +1364,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_h6_x: "Kliknij narzędzie gleb pól.",
     tut_h7_t: "Mieszanka gleb",
     tut_h7_x: "Wpisz udział każdego typu gleby na polu (z mapy gleby PF). Liczy się tylko proporcja. Wpisz np. 60 w pierwszym polu dla pola 1 i naciśnij Tab. Gleba wpływa na zapotrzebowanie na azot, ilość siewu, spadek pH i plon.",
+    tut_h8_t: "Gleby z gry",
+    tut_h8_x: "Po podpięciu zapisu gry ten przycisk odczyta mapę gleb prosto z gry i uzupełni każde pole — te same % co Precision Farming w grze. Nadpisuje wartości w tabeli.",
     tut_h9_t: "Zaopatrzenie",
     tut_h9_x: "Kliknij „Zaopatrzenie”.",
     tut_h10_t: "Nasiona",
@@ -1277,22 +1389,26 @@ Object.assign(TRANSLATIONS.pl, {
     tut_h21_t: "Prognoza",
     tut_h21_x: "Spodziewany zbiór każdej uprawy w litrach = hektary × plon uprawy × współczynnik gleby, przy idealnym azocie, pH i braku chwastów.",
     tut_h24_t: "Powrót do planu",
-    tut_h24_x: "Kliknij „Plan”, żeby wrócić do tabeli pól. Zwierzęta mają osobny rozdział.",
+    tut_h24_x: "Kliknij „Plan”, żeby wrócić do tabeli pól. Zwierzęta i planer pasz mają osobne rozdziały.",
 
     tut_k1_t: "Zwierzęta",
     tut_k1_x: "Kliknij „Zwierzęta” w pasku bocznym.",
     tut_k3_t: "Liczba zwierząt",
-    tut_k3_x: "Wszystkie zwierzęta razem, odczytane z zapisu gry (placeables.xml), i kafelek dla każdego budynku z poziomem paszy. Wszystko odświeża się przy każdym zapisie gry — z automatyczną synchronizacją nawet w trakcie grania.",
+    tut_k3_x: "Wszystkie zwierzęta razem, odczytane z zapisu gry (placeables.xml), i kafelek dla każdego budynku ze zdjęciem rasy, poziomem paszy i liczbą ciężarnych zwierząt. Wszystko odświeża się przy każdym zapisie gry — z automatyczną synchronizacją nawet w trakcie grania.",
     tut_k4_t: "Szczegóły budynku",
     tut_k4_x: "Kliknięcie kafelka otwiera pełną kartę budynku: obory, kurniki, pastwiska, stajnie. Nazwa pochodzi z pliku budynku na mapie — kliknij ołówek, żeby nadać własną.",
     tut_k5_t: "Zwierzęta i zdrowie",
     tut_k5_x: "Każda rasa i grupa wiekowa w osobnym wierszu: rasa × liczba sztuk i zdrowie. Zdrowie spada, gdy brakuje paszy, wody lub słomy albo budynek nie jest sprzątany — chore zwierzęta mniej produkują i są mniej warte.",
+    tut_k19_t: "Stan rozrodu",
+    tut_k19_x: "Każda grupa pokazuje też, na jakim etapie rozrodu jest: ciężarne (z paskiem postępu), gotowe do rozrodu, niezapłodnione albo za młode, oraz ile miesięcy minęło od ostatniego porodu.",
     tut_k6_t: "Pasek paszy",
     tut_k6_x: "Ile paszy jest teraz w korycie. Składniki mieszanki (np. trawa + kiszonka) są sumowane, bo trafiają do jednego koryta. Zielony = dużo, bursztynowy = poniżej 35%, czerwony = poniżej 15%.",
     tut_k7_t: "Pojemność koryta",
     tut_k7_x: "Zapis gry nie zawiera wielkości koryta, więc wpisujesz ją raz (odczytasz ją w informacjach o budynku w grze). Z podaną pojemnością pasek pokazuje prawdziwy procent.",
     tut_k8_t: "Na ile dni wystarczy paszy",
     tut_k8_x: "Pasza w korycie ÷ ile stado zjada dziennie. Bursztynowy poniżej 7 dni, czerwony poniżej 3 — czas dosypać.",
+    tut_k20_t: "Dawka",
+    tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz — zmienisz go w dowolnym miejscu.",
     tut_k9_t: "Ostrzeżenie o paszy",
     tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy w korycie jest poniżej 15% pojemności, poniżej 80 L przy niepodanej pojemności albo gdy paszy nie ma wcale.",
     tut_k10_t: "Wpisz pojemność",
@@ -1303,6 +1419,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k12_x: "Te owce mają tylko 72% zdrowia, koryto jest poniżej 35% (bursztynowy pasek), a paszy starczy na mniej niż tydzień. Sprawdź wodę, słomę i sprzątanie — i dosyp paszy.",
     tut_k13_t: "Dzienne zapotrzebowanie",
     tut_k13_x: "Ile paszy, wody i słomy zużywa cały budynek dziennie. Liczone według wieku każdego zwierzęcia z krzywych wzrostu w grze — cielęta jedzą mniej niż dorosłe krowy.",
+    tut_k21_t: "Reprodukcja",
+    tut_k21_x: "Ile samic jest ciężarnych i kiedy następny poród. Jałówki są tu niezapłodnione — zwykle w budynku brakuje samca tej samej rasy. Termin porodu wymaga długości ciąży rasy z definicji zwierząt (Ustawienia farmy).",
     tut_k14_t: "Zgromadzona produkcja",
     tut_k14_x: "Co teraz czeka w budynku: mleko w zbiorniku, gnojowica, jajka, wełna. Sprzedaj lub odbierz, zanim magazyn się zapełni.",
     tut_k15_t: "Szacowana produkcja",
@@ -1314,12 +1432,37 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k18_t: "Powrót do planu",
     tut_k18_x: "Kliknij „Plan”, żeby wrócić do tabeli pól.",
 
+    tut_m1_t: "Planer pasz",
+    tut_m1_x: "Kliknij „Planer pasz” w pasku bocznym.",
+    tut_m2_t: "Wybierz oborę",
+    tut_m2_x: "Kafelek dla każdego budynku ze zwierzętami i rocznym zapotrzebowaniem na paszę. Czerwona kropka oznacza, że któregoś składnika nie starczy na rok.",
+    tut_m3_t: "Wybierz paszę",
+    tut_m3_x: "Dawki z gry z ich wydajnością — krowy dają pełną produkcję tylko na TMR. „+” tworzy własną paszę z własnymi składnikami.",
+    tut_m5_t: "Paszowóz",
+    tut_m5_x: "Paszowozy, które masz, są odczytywane z zapisu gry. „Nowy paszowóz” doda własny z jego pojemnością.",
+    tut_m6_t: "Pojemność paszowozu",
+    tut_m6_x: "Pojemności paszowozów z podstawowej gry nie da się odczytać z plików gry. Wpisz ją raz, np. 20000, i naciśnij Tab.",
+    tut_m7_t: "Dobierz do receptury",
+    tut_m7_x: "Kliknij „Dobierz do receptury” — aplikacja załaduje paszowóz według Twojej receptury TMR z bel, które masz na farmie.",
+    tut_m8_t: "Załadunek",
+    tut_m8_x: "Bele wchodzą w całości albo połówkami (− / +), a to, czego nie ma w belach (np. pasza mineralna), idzie luzem. W każdym wierszu wybierzesz inną belę albo dodasz własny rodzaj beli — litry robią się czerwone, gdy użyjesz więcej bel, niż masz.",
+    tut_m9_t: "Mieszanka",
+    tut_m9_x: "Jak pełny jest paszowóz i pasek dla każdego składnika: zacieniony pas to dozwolony zakres, znacznik to Twoja receptura. Zielony = paszowóz zrobi TMR. Niżej: na ile dni ten załadunek wykarmi oborę.",
+    tut_m10_t: "Składniki na rok",
+    tut_m10_x: "Roczne zapotrzebowanie obory na każdy składnik w porównaniu z magazynem i planowanym zbiorem. Brakująca pasza jest podana w litrach i w przybliżeniu w hektarach do obsiania.",
+    tut_m11_t: "Ustawienia",
+    tut_m11_x: "Kliknij pasek ustawień, żeby go rozwinąć.",
+    tut_m12_t: "Pola paszowe i parametry",
+    tut_m12_x: "Wybierz, które pola dają paszę i na co idą (sprzedaż, pasza, kiszonka), gdzie zbierasz słomę, ile pokosów trawy w roku i jakie plony. Tu są też Twoje własne pasze.",
+    tut_m13_t: "Powrót do planu",
+    tut_m13_x: "Kliknij „Plan”, żeby wrócić do tabeli pól.",
+
     tut_i1_t: "Ustawienia farmy",
     tut_i1_x: "Kliknij przycisk ustawień farmy.",
     tut_i2_t: "Nazwa mapy",
     tut_i2_x: "Wpisz nazwę mapy, np. „Hutan Pantai”.",
     tut_i3_t: "Zapis gry",
-    tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt i zwierzęta są pobierane z gry.",
+    tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt, zwierzęta, zapasy paszy, bele i paszowozy są pobierane z gry.",
     tut_i4_t: "Automatyczna synchronizacja",
     tut_i4_x: "Włącz, żeby planer aktualizował się sam po każdym zapisie gry.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
@@ -3185,12 +3328,29 @@ function getFeedPlan(farm) {
     return {
         rations: { ...(saved.rations || {}) },
         customFeeds: Array.isArray(saved.customFeeds) ? saved.customFeeds : [],
-        tmr: { ...TMR_DEFAULT, ...(saved.tmr || {}) },
+        // Fixed to the game's default recipe — it's no longer editable, so an
+        // older saved recipe is ignored.
+        tmr: { ...TMR_DEFAULT },
         fieldUse: { ...(saved.fieldUse || {}) },
         strawFields: { ...(saved.strawFields || {}) },
         grassCuts: parseFloat(saved.grassCuts) > 0 ? parseFloat(saved.grassCuts) : 3,
         chaffYield: parseFloat(saved.chaffYield) > 0 ? parseFloat(saved.chaffYield) : Math.round((CROP_YIELD_L_PER_HA.Maize || 9200) * 4),
-        strawYield: parseFloat(saved.strawYield) > 0 ? parseFloat(saved.strawYield) : null
+        strawYield: parseFloat(saved.strawYield) > 0 ? parseFloat(saved.strawYield) : null,
+        mixer: normalizeMixerPlan(saved.mixer)
+    };
+}
+
+// Mixer wagon ("paszowóz") settings kept in the feed plan: the chosen wagon,
+// wagons and bale types the player added by hand, capacities typed in for
+// wagons whose file we couldn't read, and the current load.
+function normalizeMixerPlan(m) {
+    m = (m && typeof m === 'object') ? m : {};
+    return {
+        selected: m.selected || null,
+        custom: Array.isArray(m.custom) ? m.custom : [],
+        capacity: { ...(m.capacity || {}) },
+        customBales: Array.isArray(m.customBales) ? m.customBales : [],
+        load: Array.isArray(m.load) ? m.load : []
     };
 }
 
@@ -3385,6 +3545,82 @@ function readFeedStockFromSave(saveFolder) {
     return stock;
 }
 
+// Bales on the farm, grouped into "types" (size + fillType + litres) with a
+// count — the building blocks for loading the mixer wagon. Wrapped grass
+// counts as silage, same as in the stock above.
+function readFeedBalesFromSave(saveFolder) {
+    const groups = {};
+    const add = (el) => {
+        const raw = el.getAttribute('fillType');
+        const wrapped = (parseFloat(el.getAttribute('wrappingState')) || 0) >= 1;
+        const fillType = wrapped && FEED_FILLTYPE_CATEGORY[raw] === 'GRASS' ? 'SILAGE' : raw;
+        const litres = Math.round(parseFloat(el.getAttribute('fillLevel')) || 0);
+        if (!FEED_FILLTYPE_CATEGORY[fillType] || litres <= 0) return;
+        const file = (el.getAttribute('filename') || '').replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, '');
+        const m = file.match(/(round|square)bale(\d+)/i);
+        const size = m ? `${m[1].toLowerCase()}${m[2]}` : (file || 'bale');
+        const key = `${size}|${fillType}|${litres}`;
+        const g = groups[key] || (groups[key] = { key, size, fillType, litres, count: 0 });
+        g.count++;
+    };
+    const parse = (name) => {
+        const p = path.join(saveFolder, name);
+        if (!fs.existsSync(p)) return null;
+        const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
+        return doc.querySelector('parsererror') ? null : doc;
+    };
+    const items = parse('items.xml');
+    if (items) items.querySelectorAll('item[className="Bale"][farmId="1"]').forEach(add);
+    const placeables = parse('placeables.xml');
+    if (placeables) {
+        placeables.querySelectorAll('placeable[farmId="1"] objectStorage > object[className="Bale"]').forEach(add);
+    }
+    return Object.values(groups).sort((a, b) => b.count - a.count);
+}
+
+// Mixer wagons the player owns (vehicles.xml entries with a <mixerWagon>),
+// with name and capacity looked up in the vehicle's own XML when it comes
+// from a mod. Base-game wagons live in the game's archives, so their
+// capacity stays unknown until the player types it in.
+function readMixerWagonsFromSave(saveFolder, modsDir) {
+    const p = path.join(saveFolder, 'vehicles.xml');
+    if (!fs.existsSync(p)) return [];
+    const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const wagons = [];
+    doc.querySelectorAll('vehicle[farmId="1"]').forEach(v => {
+        if (!v.querySelector(':scope > mixerWagon')) return;
+        const filename = v.getAttribute('filename') || '';
+        const wagon = {
+            id: 'save:' + (v.getAttribute('uniqueId') || filename),
+            name: filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
+            capacity: null,
+            source: 'save'
+        };
+        const bytes = modFiles.readModFile(modsDir, filename);
+        if (bytes) {
+            const vx = new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml');
+            if (!vx.querySelector('parsererror')) {
+                const name = vx.querySelector('storeData > name');
+                const nameText = name ? name.textContent.trim() : '';
+                if (nameText && !nameText.startsWith('$')) wagon.name = nameText;
+                const mw = vx.querySelector('mixerWagon');
+                const idx = Math.max(1, parseInt(mw && mw.getAttribute('fillUnitIndex')) || 1);
+                // Capacity can depend on the bought configuration (e.g. 12 000 vs 14 000 l).
+                const configs = vx.querySelectorAll('fillUnitConfigurations > fillUnitConfiguration');
+                const cfgEl = v.querySelector(':scope > configuration[name="fillUnit"]');
+                const cfgIdx = Math.max(1, parseInt(cfgEl && cfgEl.getAttribute('id')) || 1);
+                const scope = configs.length ? (configs[cfgIdx - 1] || configs[0]) : vx;
+                const unit = scope.querySelectorAll('fillUnits > fillUnit')[idx - 1];
+                const cap = unit ? parseFloat(unit.getAttribute('capacity')) : NaN;
+                if (cap > 0) wagon.capacity = cap;
+            }
+        }
+        wagons.push(wagon);
+    });
+    return wagons;
+}
+
 // Stock litres per feed category (sum over every source).
 function feedStockByCategory(stock) {
     const byCategory = {};
@@ -3533,6 +3769,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         feedEditorDraft = null;
         feedSelectedBuilding = null;
         feedSettingsOpen = false;
+        mixerFormOpen = null;
     }
 
     const farm = getCurrentFarm();
@@ -3588,25 +3825,13 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             });
             html += `<button type="button" class="feed-ration-tile feed-ration-tile--new feed-custom-new" data-type="${type}"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomNew')}</button></div>`;
 
-            if (ration && ration.tmr) {
-                const sum = Object.values(plan.tmr).reduce((a, v) => a + (parseFloat(v) || 0), 0);
-                const outOfRange = Object.keys(TMR_LIMITS).filter(c => {
-                    const v = parseFloat(plan.tmr[c]) || 0;
-                    return v < TMR_LIMITS[c][0] || v > TMR_LIMITS[c][1];
-                });
-                html += `<div class="feed-tmr"><span class="feed-tmr-title">${t('feedTmrRecipe')}</span>`;
-                Object.keys(TMR_LIMITS).forEach(c => {
-                    html += `<label>${feedCategoryLabel(c)}
-                        <span class="feed-pct"><input type="number" class="feed-input feed-tmr-input" data-cat="${c}" min="${TMR_LIMITS[c][0]}" max="${TMR_LIMITS[c][1]}" step="1" value="${plan.tmr[c]}"><span class="supply-unit">%</span></span>
-                        <span class="supply-sub">${TMR_LIMITS[c][0]}–${TMR_LIMITS[c][1]}%</span></label>`;
-                });
-                html += `</div>`;
-                if (Math.round(sum) !== 100) html += `<p class="hub-panel-note feed-warn">${t('feedTmrSumWarn').replace('{s}', Math.round(sum))}</p>`;
-                if (outOfRange.length) html += `<p class="hub-panel-note feed-warn">${t('feedTmrRangeWarn').replace('{list}', outOfRange.map(feedCategoryLabel).join(', '))}</p>`;
-            }
         });
 
         if (feedEditorDraft && !feedEditorDraft.id) html += renderFeedEditor(feedEditorDraft);
+
+        // --- 2b. Mixer wagon, for barns fed TMR (the only thing a mixer makes) ---
+        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan); return r && r.tmr; });
+        if (barnUsesTmr) html += renderMixerSection(farm, plan, barnNeed, num);
 
         // --- 3. Ingredient tiles ---
         const cats = FEED_CATEGORIES.filter(c => c !== 'STRAW' && barnNeed.byCategory[c] > 0);
@@ -3684,6 +3909,360 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
     bodyEl.innerHTML = html;
     wireFeedPlanPanel(bodyEl);
+    wireMixerSection(bodyEl);
+}
+
+// --- Mixer wagon (paszowóz) ------------------------------------------------
+// Load the wagon from bales (whole or halves) and loose products and check
+// the result against the TMR recipe the game's mixer needs.
+const MIXER_TMR_CATEGORIES = Object.keys(TMR_LIMITS);
+// Which inline form is open: null | 'wagon' | 'bale'.
+let mixerFormOpen = null;
+
+function mixerWagons(farm, plan) {
+    const fromSave = ((farm && farm.mixerWagons) || []).map(w => ({
+        ...w, capacity: parseFloat(plan.mixer.capacity[w.id]) > 0 ? parseFloat(plan.mixer.capacity[w.id]) : w.capacity
+    }));
+    return [...fromSave, ...plan.mixer.custom.map(w => ({ ...w, source: 'custom' }))];
+}
+
+// The chosen wagon, or the first one when nothing (valid) is chosen yet.
+function selectedMixerWagon(farm, plan) {
+    const wagons = mixerWagons(farm, plan);
+    return wagons.find(w => w.id === plan.mixer.selected) || wagons[0] || null;
+}
+
+// Bale types to pick from: what's on the farm (from the save) + the player's own.
+function mixerBaleTypes(farm, plan) {
+    const onFarm = ((farm && farm.feedBales) || []).map(b => ({
+        key: b.key, label: baleSizeLabel(b.size), fillType: b.fillType,
+        category: FEED_FILLTYPE_CATEGORY[b.fillType], litres: b.litres, count: b.count
+    }));
+    const own = plan.mixer.customBales.map(b => ({
+        key: 'custom:' + b.id, label: b.name, fillType: null,
+        category: b.category, litres: parseFloat(b.litres) || 0, count: null, custom: true
+    }));
+    return [...onFarm, ...own];
+}
+
+function baleSizeLabel(size) {
+    const m = String(size || '').match(/^(round|square)(\d+)$/);
+    if (!m) return t('mixerBale');
+    return t(m[1] === 'round' ? 'mixerBaleRound' : 'mixerBaleSquare').replace('{s}', m[2]);
+}
+
+// "Hay (clover)" etc. — the feed it counts as, plus the crop when the
+// savegame fillType says more than that (clover / alfalfa windrow).
+function baleContentLabel(b) {
+    let what = feedCategoryLabel(b.category);
+    const ft = String(b.fillType || '').toUpperCase();
+    if (ft.includes('CLOVER')) what += ' (' + t('mixerClover') + ')';
+    else if (ft.includes('ALFALFA')) what += ' (' + t('mixerAlfalfa') + ')';
+    return what;
+}
+
+function baleTypeLabel(b) {
+    const what = baleContentLabel(b);
+    return `${b.label} · ${what} · ${Math.round(b.litres).toLocaleString()} l`;
+}
+
+// Litres per feed category in the current load.
+function mixerLoadTotals(plan, baleTypes) {
+    const byCategory = {};
+    let total = 0;
+    plan.mixer.load.forEach(item => {
+        let cat = null, litres = 0;
+        if (item.kind === 'bale') {
+            const b = baleTypes.find(x => x.key === item.baleKey);
+            if (b) { cat = b.category; litres = b.litres * (parseFloat(item.count) || 0); }
+        } else {
+            cat = item.category;
+            litres = parseFloat(item.litres) || 0;
+        }
+        if (!cat || litres <= 0) return;
+        byCategory[cat] = (byCategory[cat] || 0) + litres;
+        total += litres;
+    });
+    return { byCategory, total };
+}
+
+// Fills the wagon to the TMR recipe. Ingredients you have bales of go in as
+// bales rounded to the nearest half (never more than the farm has); the
+// rest (e.g. mineral feed) goes in loose. If rounding overfills the wagon,
+// half bales come off wherever the load overshoots its target the most.
+function mixerAutoLoad(plan, wagon, baleTypes) {
+    const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
+    const target = {};
+    const baleLoads = [];   // { category, item, litres }
+    const load = [];
+    MIXER_TMR_CATEGORIES.forEach(c => {
+        target[c] = wagon.capacity * (parseFloat(plan.tmr[c]) || 0) / recipeSum;
+        if (target[c] <= 0) return;
+        let left = target[c];
+        const bales = baleTypes.filter(b => b.category === c && b.litres > 0)
+            .sort((a, b) => (b.count || 0) - (a.count || 0) || b.litres - a.litres);
+        for (const b of bales) {
+            let n = Math.round(left / b.litres * 2) / 2;
+            if (b.count !== null) n = Math.min(n, b.count);
+            if (n <= 0) continue;
+            const item = { kind: 'bale', baleKey: b.key, count: n };
+            load.push(item);
+            baleLoads.push({ category: c, item, litres: b.litres });
+            left -= n * b.litres;
+            if (left <= 0) break;
+        }
+        // Loose only when there are no (or not enough) bales of it.
+        if (left >= 50 && (!bales.length || bales.every(b => b.count !== null && load.some(i => i.baleKey === b.key && i.count >= b.count)))) {
+            load.push({ kind: 'bulk', category: c, litres: Math.round(left / 50) * 50 });
+        }
+    });
+
+    const litresOf = c => load.reduce((s, i) => {
+        if (i.kind === 'bulk') return s + (i.category === c ? i.litres : 0);
+        const bl = baleLoads.find(x => x.item === i);
+        return s + (bl && bl.category === c ? i.count * bl.litres : 0);
+    }, 0);
+    const total = () => MIXER_TMR_CATEGORIES.reduce((s, c) => s + litresOf(c), 0);
+    let guard = 50;
+    while (total() > wagon.capacity && guard-- > 0) {
+        const candidates = baleLoads.filter(x => x.item.count > 0);
+        if (!candidates.length) break;
+        candidates.sort((a, b) => (litresOf(b.category) - target[b.category]) - (litresOf(a.category) - target[a.category]));
+        candidates[0].item.count -= 0.5;
+    }
+    return load.filter(i => i.kind === 'bulk' || i.count > 0);
+}
+
+function renderMixerSection(farm, plan, barnNeed, num) {
+    const wagons = mixerWagons(farm, plan);
+    const wagon = selectedMixerWagon(farm, plan);
+    plan.mixer.selected = wagon ? wagon.id : null;
+    const baleTypes = mixerBaleTypes(farm, plan);
+
+    let html = `<div class="hub-panel-subtitle">${t('mixerTitle')}</div><div class="mixer">`;
+
+    // --- Wagon picker ---
+    html += `<div class="mixer-wagons">`;
+    wagons.forEach(w => {
+        html += `<div class="mixer-wagon-tile ${w.id === plan.mixer.selected ? 'mixer-wagon-tile--active' : ''}" role="button" tabindex="0" data-id="${escapeHtml(w.id)}">
+            <span class="mixer-wagon-icon" aria-hidden="true"><i class="fa-solid fa-truck-ramp-box" aria-hidden="true"></i></span>
+            <span class="mixer-wagon-text">
+                <span class="mixer-wagon-name">${escapeHtml(w.name)}</span>
+                <span class="mixer-wagon-meta">${w.capacity ? num(w.capacity) + ' l' : t('mixerNoCapacity')} · ${t(w.source === 'save' ? 'mixerFromSave' : 'mixerOwn')}</span>
+            </span>
+            ${w.source === 'custom' ? `<button type="button" class="note-card-action note-card-action--danger mixer-wagon-delete" data-id="${escapeHtml(w.id)}" title="${t('delete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>` : ''}
+        </div>`;
+    });
+    html += `<button type="button" class="mixer-add-btn mixer-new-wagon"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerNewWagon')}</button></div>`;
+
+    if (mixerFormOpen === 'wagon') {
+        html += `<div class="mixer-form">
+            <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}"></label>
+            <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000"><span class="supply-unit">l</span></span></label>
+            <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
+            <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+        </div>`;
+    }
+    if (!wagons.length && mixerFormOpen !== 'wagon') html += `<p class="hub-panel-note">${t('mixerNoWagons')}</p>`;
+
+    if (wagon) {
+        if (!wagon.capacity) {
+            html += `<label class="mixer-cap-missing">${t('mixerEnterCapacity')}
+                <span class="feed-pct"><input type="number" class="feed-input mixer-cap-input" data-id="${escapeHtml(wagon.id)}" min="100" step="100" placeholder="10000"><span class="supply-unit">l</span></span></label>`;
+        }
+
+        const totals = mixerLoadTotals(plan, baleTypes);
+        html += `<div class="mixer-body">`;
+
+        // --- Load list ---
+        html += `<div class="mixer-load"><div class="mixer-col-title">${t('mixerLoad')}</div>`;
+        if (!plan.mixer.load.length) html += `<p class="barn-empty">${t('mixerLoadEmpty')}</p>`;
+        plan.mixer.load.forEach((item, idx) => {
+            if (item.kind === 'bale') {
+                const b = baleTypes.find(x => x.key === item.baleKey);
+                const litres = b ? b.litres * (parseFloat(item.count) || 0) : 0;
+                const tooMany = b && b.count !== null && item.count > b.count;
+                html += `<div class="mixer-row">
+                    <span class="mixer-row-icon" aria-hidden="true"><i class="fa-solid fa-circle-dot" aria-hidden="true"></i></span>
+                    <select class="feed-input mixer-bale-select" data-idx="${idx}">
+                        ${baleTypes.map(x => `<option value="${escapeHtml(x.key)}" ${x.key === item.baleKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`).join('')}
+                    </select>
+                    <span class="mixer-qty">
+                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="-0.5" aria-label="-½">−</button>
+                        <input type="number" class="feed-input mixer-count" data-idx="${idx}" min="0" step="0.5" value="${item.count}">
+                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="0.5" aria-label="+½">+</button>
+                        <span class="supply-unit">${t('mixerPcs')}</span>
+                    </span>
+                    <span class="mixer-row-litres ${tooMany ? 'feed-warn' : ''}" ${tooMany ? `title="${t('mixerTooManyBales').replace('{n}', b.count)}"` : ''}>${num(litres)} l</span>
+                    <button type="button" class="note-edit-checklist-remove mixer-remove" data-idx="${idx}" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </div>`;
+            } else {
+                html += `<div class="mixer-row">
+                    <span class="mixer-row-icon mixer-row-icon--bulk" aria-hidden="true"><i class="fa-solid fa-mound" aria-hidden="true"></i></span>
+                    <select class="feed-input mixer-bulk-cat" data-idx="${idx}">
+                        ${MIXER_TMR_CATEGORIES.map(c => `<option value="${c}" ${c === item.category ? 'selected' : ''}>${feedCategoryLabel(c)} (${t('mixerLoose')})</option>`).join('')}
+                    </select>
+                    <span class="mixer-qty">
+                        <input type="number" class="feed-input mixer-bulk-litres" data-idx="${idx}" min="0" step="50" value="${Math.round(parseFloat(item.litres) || 0)}">
+                        <span class="supply-unit">l</span>
+                    </span>
+                    <span class="mixer-row-litres">${num(parseFloat(item.litres) || 0)} l</span>
+                    <button type="button" class="note-edit-checklist-remove mixer-remove" data-idx="${idx}" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </div>`;
+            }
+        });
+        html += `<div class="mixer-actions">
+            <button type="button" class="mixer-add-btn mixer-add-bale" ${baleTypes.length ? '' : 'disabled'}><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerAddBale')}</button>
+            <button type="button" class="mixer-add-btn mixer-add-bulk"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerAddBulk')}</button>
+            <button type="button" class="mixer-add-btn mixer-new-bale"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerNewBale')}</button>
+            <button type="button" class="supply-fillplan-btn mixer-auto" ${wagon.capacity ? '' : 'disabled'}><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> ${t('mixerAuto')}</button>
+            ${plan.mixer.load.length ? `<button type="button" class="supply-reset-btn mixer-clear">${t('mixerClear')}</button>` : ''}
+        </div>`;
+        if (!baleTypes.length) html += `<p class="barn-empty">${t('mixerNoBales')}</p>`;
+        if (mixerFormOpen === 'bale') {
+            html += `<div class="mixer-form">
+                <label>${t('mixerBaleName')}<input type="text" class="feed-input mixer-f-bname" placeholder="${t('mixerBaleNamePh')}"></label>
+                <label>${t('mixerBaleContent')}<select class="feed-input mixer-f-bcat">${MIXER_TMR_CATEGORIES.map(c => `<option value="${c}">${feedCategoryLabel(c)}</option>`).join('')}</select></label>
+                <label>${t('mixerBaleLitres')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-blitres" min="1" step="50" placeholder="4000"><span class="supply-unit">l</span></span></label>
+                <button type="button" class="supply-fillplan-btn mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
+                <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+            </div>`;
+        }
+        if (plan.mixer.customBales.length) {
+            html += `<div class="mixer-own-bales">${plan.mixer.customBales.map(b => `<span class="mixer-own-bale">${escapeHtml(b.name)} · ${feedCategoryLabel(b.category)} · ${num(parseFloat(b.litres) || 0)} l
+                <button type="button" class="mixer-own-bale-del" data-id="${escapeHtml(b.id)}" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></span>`).join('')}</div>`;
+        }
+        html += `</div>`;   // .mixer-load
+
+        // --- Summary: fill level, mix vs recipe, days it lasts ---
+        html += `<div class="mixer-summary"><div class="mixer-col-title">${t('mixerResult')}</div>`;
+        const cap = wagon.capacity || 0;
+        const fillPct = cap ? totals.total / cap * 100 : 0;
+        const over = cap && totals.total > cap;
+        html += `<div class="feed-headline">
+                <div class="feed-amount">
+                    <span class="feed-amount-value">${num(totals.total)} l</span>
+                    <span class="feed-amount-types">${cap ? t('mixerOfCapacity').replace('{c}', num(cap)) : t('mixerNoCapacity')}</span>
+                </div>
+                ${cap ? `<div class="feed-days ${over ? 'feed-days--critical' : (fillPct < 70 ? 'feed-days--warning' : 'feed-days--ok')}"><span class="feed-days-value">${Math.round(fillPct)}%</span><span class="feed-days-label">${t('mixerFill')}</span></div>` : ''}
+            </div>`;
+        if (cap) html += `<div class="feed-gauge"><div class="pen-bar-track"><div class="pen-bar-fill ${over ? 'pen-bar-fill--low' : 'pen-bar-fill--ok'}" style="width:${Math.max(2, Math.min(100, fillPct))}%"></div></div></div>`;
+        if (over) html += `<p class="barn-empty feed-warn">${t('mixerOver').replace('{l}', num(totals.total - cap))}</p>`;
+
+        if (totals.total > 0) {
+            const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
+            const problems = [];
+            html += `<div class="mixer-mix">`;
+            MIXER_TMR_CATEGORIES.forEach(c => {
+                const litres = totals.byCategory[c] || 0;
+                const pct = litres / totals.total * 100;
+                const [min, max] = TMR_LIMITS[c];
+                const target = (parseFloat(plan.tmr[c]) || 0) / recipeSum * 100;
+                const ok = pct >= min - 0.05 && pct <= max + 0.05;
+                if (!ok) problems.push(feedCategoryLabel(c));
+                html += `<div class="mixer-mix-row ${ok ? '' : 'mixer-mix-row--bad'}">
+                    <span class="mixer-mix-name">${feedCategoryLabel(c)}</span>
+                    <span class="mixer-mix-track" title="${t('mixerRange').replace('{a}', min).replace('{b}', max)}">
+                        <span class="mixer-mix-range" style="left:${min}%;width:${max - min}%"></span>
+                        <span class="mixer-mix-fill" style="width:${Math.min(100, pct)}%"></span>
+                        <span class="mixer-mix-target" style="left:${Math.min(100, target)}%" title="${t('mixerTarget')}: ${Math.round(target)}%"></span>
+                    </span>
+                    <span class="mixer-mix-pct">${pct.toFixed(1)}%</span>
+                    <span class="mixer-mix-l">${num(litres)} l</span>
+                </div>`;
+            });
+            html += `</div>`;
+            const foreign = Object.keys(totals.byCategory).filter(c => !MIXER_TMR_CATEGORIES.includes(c));
+            if (foreign.length) problems.push(...foreign.map(c => feedCategoryLabel(c) + ' ✕'));
+            html += problems.length
+                ? `<div class="mixer-status mixer-status--bad"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('mixerInvalid').replace('{list}', problems.join(', '))}</div>`
+                : `<div class="mixer-status mixer-status--ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${t('mixerValid')}</div>`;
+
+            const daily = barnNeed.food / feedDaysPerYear(farm);
+            if (daily > 0) html += `<p class="mixer-days">${t('mixerLasts').replace('{d}', (totals.total / daily).toFixed(1)).replace('{l}', num(daily))}</p>`;
+        }
+        html += `</div></div>`;   // .mixer-summary, .mixer-body
+    }
+    html += `</div>`;   // .mixer
+    return html;
+}
+
+function wireMixerSection(bodyEl) {
+    const root = bodyEl.querySelector('.mixer');
+    if (!root) return;
+    const update = (fn) => { const plan = getFeedPlan(getCurrentFarm()); fn(plan); saveFeedPlan(plan); rerenderFeedPlan(); };
+    const on = (sel, ev, fn) => root.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
+    const idx = el => parseInt(el.dataset.idx);
+
+    on('.mixer-wagon-tile', 'click', (el, e) => {
+        if (e.target.closest('.mixer-wagon-delete')) return;
+        update(plan => { plan.mixer.selected = el.dataset.id; });
+    });
+    on('.mixer-wagon-tile', 'keydown', (el, e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        update(plan => { plan.mixer.selected = el.dataset.id; });
+    });
+    on('.mixer-wagon-delete', 'click', (el, e) => {
+        e.stopPropagation();
+        update(plan => { plan.mixer.custom = plan.mixer.custom.filter(w => w.id !== el.dataset.id); });
+    });
+    on('.mixer-new-wagon', 'click', () => { mixerFormOpen = 'wagon'; rerenderFeedPlan(); });
+    on('.mixer-new-bale', 'click', () => { mixerFormOpen = 'bale'; rerenderFeedPlan(); });
+    on('.mixer-f-cancel', 'click', () => { mixerFormOpen = null; rerenderFeedPlan(); });
+    on('.mixer-f-save-wagon', 'click', () => {
+        const name = (root.querySelector('.mixer-f-name').value || '').trim();
+        const cap = parseFloat(root.querySelector('.mixer-f-cap').value);
+        if (!name || !(cap > 0)) return;
+        mixerFormOpen = null;
+        update(plan => {
+            const id = 'custom:' + Date.now().toString(36);
+            plan.mixer.custom.push({ id, name, capacity: cap });
+            plan.mixer.selected = id;
+        });
+    });
+    on('.mixer-f-save-bale', 'click', () => {
+        const name = (root.querySelector('.mixer-f-bname').value || '').trim();
+        const category = root.querySelector('.mixer-f-bcat').value;
+        const litres = parseFloat(root.querySelector('.mixer-f-blitres').value);
+        if (!name || !(litres > 0)) return;
+        mixerFormOpen = null;
+        update(plan => {
+            const id = Date.now().toString(36);
+            plan.mixer.customBales.push({ id, name, category, litres });
+            plan.mixer.load.push({ kind: 'bale', baleKey: 'custom:' + id, count: 1 });
+        });
+    });
+    on('.mixer-own-bale-del', 'click', (el) => update(plan => {
+        plan.mixer.customBales = plan.mixer.customBales.filter(b => b.id !== el.dataset.id);
+        plan.mixer.load = plan.mixer.load.filter(i => i.baleKey !== 'custom:' + el.dataset.id);
+    }));
+    on('.mixer-cap-input', 'change', (el) => {
+        const cap = parseFloat(el.value);
+        if (cap > 0) update(plan => { plan.mixer.capacity[el.dataset.id] = cap; });
+    });
+
+    on('.mixer-add-bale', 'click', () => update(plan => {
+        const types = mixerBaleTypes(getCurrentFarm(), plan);
+        if (types.length) plan.mixer.load.push({ kind: 'bale', baleKey: types[0].key, count: 1 });
+    }));
+    on('.mixer-add-bulk', 'click', () => update(plan => { plan.mixer.load.push({ kind: 'bulk', category: 'MINERAL', litres: 500 }); }));
+    on('.mixer-remove', 'click', (el) => update(plan => { plan.mixer.load.splice(idx(el), 1); }));
+    on('.mixer-clear', 'click', () => update(plan => { plan.mixer.load = []; }));
+    on('.mixer-bale-select', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].baleKey = el.value; }));
+    on('.mixer-bulk-cat', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].category = el.value; }));
+    on('.mixer-bulk-litres', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].litres = Math.max(0, parseFloat(el.value) || 0); }));
+    // Bales go in whole or in halves.
+    on('.mixer-count', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].count = Math.max(0, Math.round((parseFloat(el.value) || 0) * 2) / 2); }));
+    on('.mixer-step', 'click', (el) => update(plan => {
+        const item = plan.mixer.load[idx(el)];
+        item.count = Math.max(0, Math.round(((parseFloat(item.count) || 0) + parseFloat(el.dataset.step)) * 2) / 2);
+    }));
+    on('.mixer-auto', 'click', () => update(plan => {
+        const farm = getCurrentFarm();
+        const wagon = selectedMixerWagon(farm, plan);
+        if (wagon && wagon.capacity) plan.mixer.load = mixerAutoLoad(plan, wagon, mixerBaleTypes(farm, plan));
+    }));
 }
 
 function renderFeedEditor(d) {
@@ -3737,8 +4316,6 @@ function wireFeedPlanPanel(bodyEl) {
         update(p => { p.rations[el.dataset.type] = el.dataset.ration; })));
     const settings = bodyEl.querySelector('.feed-settings');
     if (settings) settings.addEventListener('toggle', () => { feedSettingsOpen = settings.open; });
-    bodyEl.querySelectorAll('.feed-tmr-input').forEach(el => el.addEventListener('change', () =>
-        update(p => { p.tmr[el.dataset.cat] = Math.max(0, parseFloat(el.value) || 0); })));
     bodyEl.querySelectorAll('.feed-use-select').forEach(el => el.addEventListener('change', () =>
         update(p => { p.fieldUse[el.dataset.key] = el.value; })));
     bodyEl.querySelectorAll('.feed-straw-check').forEach(el => el.addEventListener('change', () =>
@@ -4005,8 +4582,8 @@ function renderSettingsSupplyAdjust(rates, cropList) {
         const n = (o.n !== undefined && o.n !== '') ? o.n : '';
         cropRows += `<tr>
             <td>${translateCropName(c)}</td>
-            <td><input type="number" min="0" step="1" class="supply-rate-input" data-supply-crop="${c}" data-supply-field="seed" value="${seed}" placeholder="${seedDefault}"><span class="supply-unit">${t('suppliesSeedRateUnit')}</span></td>
-            <td><input type="number" min="0" step="1" class="supply-rate-input" data-supply-crop="${c}" data-supply-field="n" value="${n}" placeholder="${nDefault}"><span class="supply-unit">${t('suppliesNRateUnit')}</span></td>
+            <td><span class="supply-rate-cell"><input type="number" min="0" step="1" class="supply-rate-input" data-supply-crop="${c}" data-supply-field="seed" value="${seed}" placeholder="${seedDefault}"><span class="supply-unit">${t('suppliesSeedRateUnit')}</span></span></td>
+            <td><span class="supply-rate-cell"><input type="number" min="0" step="1" class="supply-rate-input" data-supply-crop="${c}" data-supply-field="n" value="${n}" placeholder="${nDefault}"><span class="supply-unit">${t('suppliesNRateUnit')}</span></span></td>
         </tr>`;
     });
 
@@ -5317,6 +5894,8 @@ function loadFarmConfigs(farm) {
         if (!fs.existsSync(animalsPath) && fs.existsSync(legacyAnimals)) fs.copyFileSync(legacyAnimals, animalsPath);
     } catch (e) { console.error('Per-farm config migration failed', e); }
 
+    refreshAnimalDefsFromSource(farm, animalsPath);
+
     try {
         if (fs.existsSync(cropsPath)) {
             const imported = JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {};
@@ -5341,6 +5920,64 @@ function clearFarmConfigs() {
     CROP_CALENDAR = {};
     AVAILABLE_CROPS = [];
     ANIMAL_NEEDS_DATA = {};
+}
+
+// XML files under a folder whose name mentions animals — the fallback for
+// farms imported before the source files were remembered. Depth-limited so
+// pointing it at a whole game install stays quick.
+function findAnimalXmlFiles(dir, depth = 0, out = []) {
+    if (depth > 6) return out;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+    entries.forEach(e => {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) findAnimalXmlFiles(full, depth + 1, out);
+        else if (/animal.*\.xml$/i.test(e.name)) out.push(full);
+    });
+    return out;
+}
+
+// Re-reads the animals.xml file(s) this farm's animal definitions were
+// imported from, so edits to them (a map/mod update, own tweaks) show up
+// on the next start without importing again. Missing files are skipped and
+// the last imported copy in animal_needs_config.json stays in use.
+function refreshAnimalDefsFromSource(farm, animalsPath) {
+    let files = Array.isArray(farm.animalDefsFiles) ? farm.animalDefsFiles : null;
+    try {
+        if (!files) {
+            const label = farm.animalDefsSourceLabel || '';
+            if (!label || !fs.existsSync(label) || !fs.statSync(label).isDirectory()) return;
+            files = findAnimalXmlFiles(label).filter(f => {
+                try { return !!parseAnimalNeedsXml(fs.readFileSync(f, 'utf-8')); } catch { return false; }
+            });
+            if (!files.length) return;
+            // Remember them without touching lastEdited (not a user edit).
+            farm.animalDefsFiles = files;
+            fs.writeFileSync(path.join(farmDir(farm), 'data.json'), JSON.stringify(farm, null, 2), 'utf-8');
+        }
+
+        const fresh = {};
+        files.forEach(f => {
+            if (!fs.existsSync(f)) return;
+            try {
+                const parsed = parseAnimalNeedsXml(fs.readFileSync(f, 'utf-8'));
+                if (parsed) Object.assign(fresh, parsed);
+            } catch (e) { console.warn('Animal definitions: could not re-read', f, e); }
+        });
+        if (!Object.keys(fresh).length) return;
+
+        let existing = {};
+        if (fs.existsSync(animalsPath)) {
+            try { existing = JSON.parse(fs.readFileSync(animalsPath, 'utf-8')) || {}; } catch { existing = {}; }
+        }
+        const merged = { ...existing, ...fresh };
+        if (JSON.stringify(merged) !== JSON.stringify(existing)) {
+            fs.writeFileSync(animalsPath, JSON.stringify(merged, null, 2), 'utf-8');
+            console.log('Animal definitions refreshed from', files.length, 'file(s)');
+        }
+    } catch (e) {
+        console.error('Could not refresh animal definitions for farm', farm.id, e);
+    }
 }
 
 // Turns a raw fruitType "name" attribute (e.g. "SUGAR_BEET", "canola")
@@ -5602,6 +6239,7 @@ function buildCropsCalendarFromFiles(fileList) {
     let xmlCount = 0;
     let cropsFound = 0;
     let animalDefsFound = 0;
+    const animalFiles = [];
     // Files that *should* have been readable XML but errored out (bad path
     // resolution, read/permission failure) — distinct from the majority of
     // XML files in a map folder that just aren't crop/animal definitions at
@@ -5634,6 +6272,7 @@ function buildCropsCalendarFromFiles(fileList) {
             if (parsedAnimals) {
                 Object.assign(animalNeeds, parsedAnimals);
                 animalDefsFound++;
+                animalFiles.push(absPath);
             }
         } catch (err) {
             readErrors.push({ name: file.name, reason: err.message || String(err) });
@@ -5641,11 +6280,11 @@ function buildCropsCalendarFromFiles(fileList) {
         }
     });
 
-    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, readErrors };
+    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors };
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, daysPerPeriod: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -5822,6 +6461,10 @@ function readGameSave(pathToFile) {
 
         try { result.feedStock = readFeedStockFromSave(saveFolder); }
         catch (e) { console.error('Could not read feed stock from savegame', e); }
+        try { result.feedBales = readFeedBalesFromSave(saveFolder); }
+        catch (e) { console.error('Could not read bales from savegame', e); }
+        try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDir(pathToFile)); }
+        catch (e) { console.error('Could not read mixer wagons from savegame', e); }
 
         const playTimeVal = findValueInRawText(careerText, 'playTime');
         if (playTimeVal) {
@@ -5897,6 +6540,8 @@ function applyGameSaveToFarm(farm) {
     if (gameData.animalProduction !== null) { farm.animalProduction = gameData.animalProduction; changed = true; }
     if (gameData.animalBuildings !== null) { farm.animalBuildings = gameData.animalBuildings; changed = true; }
     if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
+    if (gameData.feedBales !== null) { farm.feedBales = gameData.feedBales; changed = true; }
+    if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
@@ -7169,6 +7814,7 @@ if (saveSettingsBtn) {
             let xmlCount = 0;
             let cropsFound = 0;
             let animalDefsFound = 0;
+            let animalFiles = [];
             let readErrors = [];
 
             if (pendingCropFiles && pendingCropFiles.length > 0) {
@@ -7178,6 +7824,7 @@ if (saveSettingsBtn) {
                 xmlCount += r.xmlCount;
                 cropsFound += r.cropsFound;
                 animalDefsFound += r.animalDefsFound;
+                animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
             }
             if (pendingAnimalDefFiles && pendingAnimalDefFiles.length > 0) {
@@ -7187,6 +7834,7 @@ if (saveSettingsBtn) {
                 xmlCount += r.xmlCount;
                 cropsFound += r.cropsFound;
                 animalDefsFound += r.animalDefsFound;
+                animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
             }
 
@@ -7238,6 +7886,8 @@ if (saveSettingsBtn) {
                         const merged = { ...existing, ...animalNeeds };
                         fs.writeFileSync(generatedAnimalPath, JSON.stringify(merged, null, 2), 'utf-8');
                         importFarm.animalDefsSourceLabel = animalDefsFolderInput ? animalDefsFolderInput.value : "";
+                        // Remembered so they're re-read on every start (see refreshAnimalDefsFromSource).
+                        importFarm.animalDefsFiles = [...new Set([...(importFarm.animalDefsFiles || []), ...animalFiles])];
                         summaryParts.push(`${animalDefCount} animal breed(s) with feed/water/straw needs`);
                     } catch (err) {
                         summaryParts.push(`could not save animal needs config (${err.message || err})`);
@@ -7744,6 +8394,17 @@ function tutPenPart(n, sel) {
     return card ? card.querySelector(sel) : null;
 }
 
+// Feed planner: keeps the demo cow barn (the one fed TMR, so the mixer
+// wagon shows) selected and returns the matching part of the panel.
+function tutFeed(sel) {
+    if (!tutViewActive('feedplan')) return null;
+    if (feedSelectedBuilding !== 'demo-cowbarn' && getCurrentFarm() && (getCurrentFarm().animalBuildings || []).some(b => b.id === 'demo-cowbarn')) {
+        feedSelectedBuilding = 'demo-cowbarn';
+        rerenderFeedPlan();
+    }
+    return tq('#hub-panel-body ' + sel);
+}
+
 function tutNumValue(el) {
     return el ? (parseFloat(String(el.value).replace(',', '.')) || 0) : 0;
 }
@@ -7767,7 +8428,8 @@ function seedDemoFarm(farm) {
         // Three barns covering every animal-panel state: a healthy cow barn
         // with a capacity set, a chicken coop almost out of feed and with no
         // capacity yet (the tutorial asks the user to enter it), and a sheep
-        // pasture with a half-empty trough and lower health.
+        // pasture with a half-empty trough and lower health. Most cows are
+        // pregnant; the heifers aren't inseminated yet (reproduction panel).
         animals: 108,
         animalBreakdown: { COW_HOLSTEIN: 30, CHICKEN: 60, SHEEP_LANDRACE: 18 },
         animalProduction: { MILK: 6400, LIQUIDMANURE: 12000, EGG: 340, WOOL: 800 },
@@ -7775,8 +8437,8 @@ function seedDemoFarm(farm) {
             {
                 id: 'demo-cowbarn', name: 'data/placeables/cowBarnBig/cowBarnBig.xml',
                 clusters: [
-                    { subType: 'COW_HOLSTEIN', numAnimals: 24, age: 30, health: 96 },
-                    { subType: 'COW_HOLSTEIN', numAnimals: 6, age: 8, health: 88 }
+                    { subType: 'COW_HOLSTEIN', numAnimals: 24, age: 30, health: 96, reproduction: 55, hadABirth: true, monthsSinceLastBirth: 7 },
+                    { subType: 'COW_HOLSTEIN', numAnimals: 6, age: 20, health: 88, reproduction: 0, isInseminated: false }
                 ],
                 food: [{ fillType: 'GRASS_WINDROW', level: 50000 }, { fillType: 'SILAGE', level: 30000 }],
                 production: [{ fillType: 'MILK', level: 6400 }, { fillType: 'LIQUIDMANURE', level: 12000 }]
@@ -7798,6 +8460,23 @@ function seedDemoFarm(farm) {
             'demo-cowbarn': { [ANIMAL_FEED_CAPACITY_KEY]: 120000 },
             'demo-sheeppasture': { [ANIMAL_FEED_CAPACITY_KEY]: 20000 }
         },
+        // Feed on the farm, bales grouped by type and one mixer wagon whose
+        // capacity couldn't be read (the tutorial asks the user to enter it).
+        feedStock: {
+            DRYGRASS_WINDROW: { bale: 40000 },
+            SILAGE: { bunker: 180000, bale: 48000 },
+            STRAW: { bale: 24000 },
+            MINERAL_FEED: { pallet: 2000 },
+            WHEAT: { silo: 30000 }
+        },
+        feedBales: [
+            { key: 'round150|SILAGE|4000', size: 'round150', fillType: 'SILAGE', litres: 4000, count: 12 },
+            { key: 'round150|DRYGRASS_WINDROW|4000', size: 'round150', fillType: 'DRYGRASS_WINDROW', litres: 4000, count: 10 },
+            { key: 'square240|STRAW|4000', size: 'square240', fillType: 'STRAW', litres: 4000, count: 6 }
+        ],
+        mixerWagons: [
+            { id: 'save:demo-mixer', name: 'Siloking TruckLine Premium 2.0', capacity: null, source: 'save' }
+        ],
         month: "SEPTEMBER",
         currentSeason: 2,
         yearNumber: 2,
@@ -8133,6 +8812,7 @@ const TUTORIAL_CHAPTERS = [
                 const saved = getSupplyRates().fieldSoil['1'];
                 return tutNumValue(el) > 0 || !!saved;
             }, '60'),
+            tutInfo('h8', '#hub-panel-body .field-soil-import'),
             hubOpen('h9', 'supplies'),
             tutInfo('h10', () => tqa('#hub-panel-body table.supply-table')[0] || null),
             tutInfo('h11', () => tqa('#hub-panel-body table.supply-table')[1] || null),
@@ -8158,9 +8838,11 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k3', () => { tutAnimalsOverview(); return tqa('#hub-panel-body > .details-category, #hub-panel-body .barn-tile-grid'); }),
             tutInfo('k4', () => tutPen(0)),
             tutInfo('k5', () => tutPenPart(0, '.herd-grid')),
+            tutInfo('k19', () => { const card = tutPen(0); return card ? Array.from(card.querySelectorAll('.herd-repro, .herd-repro-bar, .herd-repro-last')) : null; }),
             tutInfo('k6', () => tutPenPart(0, '.feed-gauge')),
             tutInfo('k7', () => tutPenPart(0, '.feed-capacity')),
             tutInfo('k8', () => tutPenPart(0, '.feed-days')),
+            tutInfo('k20', () => { const card = tutPen(0); return card ? Array.from(card.querySelectorAll('.barn-ration-select, .ration-list')) : null; }),
             tutInfo('k9', () => tutPen(1)),
             tutInput('k10', () => tutPenPart(1, '.feed-capacity-input'), () => {
                 const f = getCurrentFarm();
@@ -8170,11 +8852,45 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k11', () => tutPenPart(1, '.feed-gauge')),
             tutInfo('k12', () => [tutPenPart(2, '.herd-card'), tutPenPart(2, '.feed-gauge'), tutPenPart(2, '.feed-days')].filter(Boolean)),
             tutInfo('k13', () => tutPenPart(0, '.barn-panel--need')),
+            tutInfo('k21', () => tutPenPart(0, '.barn-panel--repro')),
             tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
             tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
             tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts.slice(0, 3) : null; }),
             tutInfo('k17', null),
             hubOpen('k18', 'plan')
+        ]
+    },
+    {
+        // Feed planner + mixer wagon, on the demo cow barn (TMR). Starts from
+        // an empty wagon with no capacity so both can be done by hand.
+        id: 'm',
+        prepare() {
+            tutOpenDemoPlanner();
+            const farm = getCurrentFarm();
+            if (!farm) return;
+            const plan = getFeedPlan(farm);
+            plan.rations.COW = 'forage';
+            plan.mixer.load = [];
+            plan.mixer.capacity = {};
+            plan.mixer.selected = null;
+            saveFeedPlan(plan);
+        },
+        steps: [
+            hubOpen('m1', 'feedplan'),
+            tutInfo('m2', () => tutFeed('.feed-barn-grid')),
+            tutInfo('m3', () => tutFeed('.feed-ration-row')),
+            tutInfo('m5', () => tutFeed('.mixer-wagons')),
+            tutInput('m6', () => tutFeed('.mixer-cap-input'), () => {
+                const plan = getFeedPlan(getCurrentFarm());
+                return tutNumValue(tutFeed('.mixer-cap-input')) > 0 || parseFloat(plan.mixer.capacity['save:demo-mixer']) > 0;
+            }, '20000'),
+            tutClick('m7', () => tutFeed('.mixer-auto'), () => getFeedPlan(getCurrentFarm()).mixer.load.length > 0),
+            tutInfo('m8', () => tutFeed('.mixer-load')),
+            tutInfo('m9', () => tutFeed('.mixer-summary')),
+            tutInfo('m10', () => { if (!tutFeed('.feed-ing-grid')) return null; return tqa('#hub-panel-body .feed-need-summary, #hub-panel-body .feed-ing-grid'); }),
+            tutClick('m11', () => tutFeed('.feed-settings > summary'), () => { const d = tq('#hub-panel-body .feed-settings'); return !!d && d.open; }),
+            tutInfo('m12', () => tutFeed('.feed-settings')),
+            hubOpen('m13', 'plan')
         ]
     },
     {

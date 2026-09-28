@@ -3491,11 +3491,23 @@ select:focus-visible,
   border-bottom: 1px solid var(--color-border);
 }
 
-.supply-rate-table td:not(:first-child) {
-  display: flex;
+.supply-rate-table td {
+  vertical-align: middle;
+}
+
+/* Flex lives on an inner wrapper — display:flex on the <td> itself pulls
+   the cells out of the table layout and stacks them under each other. */
+.supply-rate-cell {
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+/* Same width for "l/ha" and "kg N/ha" so both input columns line up. */
+.supply-rate-cell .supply-unit {
+  min-width: 52px;
+  text-align: left;
 }
 
 /* .supply-adjust prefix beats the generic ".modal-content input" rule's
@@ -4276,28 +4288,6 @@ select:focus-visible,
   gap: 3px;
 }
 
-.feed-tmr {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px 18px;
-  margin: 10px 0 2px;
-  padding: 10px 12px;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-small);
-}
-
-.feed-tmr-title {
-  flex-basis: 100%;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-ink-soft);
-}
-
-.feed-tmr label,
 .feed-editor label {
   display: flex;
   flex-direction: column;
@@ -4742,4 +4732,347 @@ select:focus-visible,
   font-size: 10px;
   font-weight: 400;
   color: var(--color-ink-faint);
+}
+
+/* ========================================================= */
+/* 13. MIXER WAGON (feed planner)                             */
+/* ========================================================= */
+.mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.mixer-wagons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mixer-wagon-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 240px;
+  padding: 12px 14px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.mixer-wagon-tile:hover { border-color: var(--color-primary); }
+
+.mixer-wagon-tile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.mixer-wagon-tile--active {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.mixer-wagon-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  font-size: 17px;
+}
+
+.mixer-wagon-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mixer-wagon-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.mixer-wagon-meta {
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.mixer-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px dashed var(--color-border-strong);
+  background: transparent;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.mixer-add-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.mixer-add-btn:disabled,
+.mixer .supply-fillplan-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mixer-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-medium);
+  border: 1px dashed var(--color-border-strong);
+  background-color: var(--color-surface-soft);
+}
+
+.mixer-form label,
+.mixer-cap-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+.mixer-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.mixer-load,
+.mixer-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+}
+
+.mixer-col-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.mixer-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 80px 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.mixer-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+}
+
+.mixer-row-icon--bulk { background-color: var(--color-accent); }
+
+.feed-plan .mixer-row select.feed-input {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.mixer-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mixer-qty input {
+  width: 72px;
+  text-align: right;
+}
+
+.mixer-step {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.mixer-step:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.mixer-row-litres {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mixer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mixer-own-bales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mixer-own-bale {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-soft);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.mixer-own-bale-del {
+  border: none;
+  background: transparent;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+}
+
+.mixer-own-bale-del:hover { color: var(--color-rust); }
+
+.mixer-mix {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.mixer-mix-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 56px 80px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.mixer-mix-name { font-weight: 600; }
+
+.mixer-mix-track {
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+/* Allowed range from the game's TMR recipe, drawn behind the fill. */
+.mixer-mix-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: rgba(63, 107, 68, 0.22);
+}
+
+.mixer-mix-fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+}
+
+.mixer-mix-row--bad .mixer-mix-fill { background-color: var(--color-rust); }
+.mixer-mix-row--bad .mixer-mix-pct { color: var(--color-rust); }
+
+.mixer-mix-target {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background-color: var(--color-ink);
+}
+
+.mixer-mix-pct,
+.mixer-mix-l {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-align: right;
+}
+
+.mixer-mix-l {
+  font-weight: 500;
+  color: var(--color-ink-soft);
+}
+
+.mixer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-medium);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mixer-status--ok {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.mixer-status--bad {
+  background-color: var(--color-rust-soft);
+  color: var(--color-rust);
+}
+
+.mixer-days {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--color-ink-soft);
 }
