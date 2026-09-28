@@ -3,56 +3,56 @@
 </p>
 
 <p align="center">
-  Planer sezonu dla <b>Farming Simulator 25</b> — pola, uprawy, nawożenie, zwierzęta i pasze w jednym miejscu,<br>
-  zsynchronizowane z Twoim zapisem gry.
+  A season planner for <b>Farming Simulator 25</b> — fields, crops, fertilization, animals and feed in one place,<br>
+  kept in sync with your savegame.
 </p>
 
 <p align="center">
-  <a href="#english">English below</a>
+  <a href="#polski">Wersja polska poniżej</a>
 </p>
 
 ---
 
-![Widok planu](docs/screenshot-plan.png)
+![Plan view](docs/screenshot-plan.png)
 
-## Co potrafi
+## Features
 
-**Plan sezonu**
-- Tabela pól: numer pola (także kilka pól połączonych w jedno, np. `69-70-71`), hektary, uprawa, miesiąc siewu, stan (do siewu / siej teraz / obsiane), orka lub bezorka, typ gleby i plan nawożenia.
-- Sezony z historią — możesz cofać się do poprzednich i porównywać.
-- Lista wszystkich uprawianych roślin z sumą hektarów.
-- Ostrzeżenia o płodozmianie.
+**Season plan**
+- Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan.
+- Seasons with history — step back to previous seasons and compare.
+- List of every crop being farmed with total hectares.
+- Crop rotation warnings.
 
-**Synchronizacja z grą**
-- Import saldo, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml`.
-- Automatyczna synchronizacja w trakcie gry — planer odświeża się przy każdym zapisie (ręcznym lub autozapisie).
-- Kalendarz upraw z plików mapy (`fruitTypes` / `uprawaX.xml`) — działa też z mapami z modami.
-- Typ gleby pól z Precision Farming, odczytany prosto z zapisu gry.
+**Game sync**
+- Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml`.
+- Auto-sync while you play — the planner refreshes every time the game saves (manual save or autosave).
+- Crop calendar read from the map's files (`fruitTypes` / `uprawaX.xml`) — works with modded maps too.
+- Field soil types from Precision Farming, read straight from the savegame.
 
-**Narzędzia (pasek po lewej)**
-- **Finanse** — saldo i kredyt miesiąc po miesiącu oraz sezon po sezonie.
-- **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras prosto z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja, a także reprodukcja (ciąża, czas do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można nadawać własne nazwy.
-- **Zaopatrzenie** — ile nasion i nawozu kupić na sezon.
-- **Typ gleby pól** — gleby pól do planów nawożenia.
-- **Notatki** — przypięte do miesięcy, z tagami i listą kontrolną.
-- **Przewidywane plony**.
-- **Planer pasz** — co masz, czego brakuje i ile hektarów trzeba obsiać, żeby wykarmić stado.
+**Tools (left sidebar)**
+- **Finance** — balance and loan month by month and season by season.
+- **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed.
+- **Supplies** — how much seed and fertilizer to buy for the season.
+- **Field soil type** — field soils used by the fertilization plans.
+- **Notes** — pinned to months, with tags and a checklist.
+- **Predicted yields**.
+- **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd.
 
-**Inne**
-- Język polski i angielski.
-- Interaktywny samouczek (Ustawienia aplikacji → „Otwórz samouczek”).
-- Kopie zapasowe farm (eksport / import).
-- Discord Rich Presence — pokazuje aktualną farmę na Twoim profilu (można wyłączyć).
+**Other**
+- English and Polish.
+- Interactive tutorial (app settings → "Open tutorial").
+- Farm backups (export / import).
+- Discord Rich Presence — shows your current farm on your profile (can be turned off).
 
-![Zwierzęta](docs/screenshot-animals.png)
+![Animals](docs/screenshot-animals.png)
 
-## Instalacja
+## Installation
 
-Instalatory dla Windows są publikowane w zakładce [Releases](https://github.com/WiktorParylak/farmer-planner/releases). Możesz też uruchomić aplikację ze źródeł.
+Windows installers are published on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page. You can also run the app from source.
 
-### Uruchomienie ze źródeł
+### Running from source
 
-Wymagany [Node.js](https://nodejs.org/) (wersja 20 lub nowsza).
+Requires [Node.js](https://nodejs.org/) 20 or newer.
 
 ```bash
 git clone https://github.com/WiktorParylak/farmer-planner.git
@@ -61,48 +61,50 @@ npm install
 npm start
 ```
 
-Budowanie instalatora (`dist/`):
+Build the installer (into `dist/`):
 
 ```bash
 npm run build
 ```
 
-## Pierwsze kroki
+## Getting started
 
-1. Kliknij **DODAJ FARMĘ +** i podaj nazwę farmy oraz mapy.
-2. Otwórz farmę i wejdź w **Ustawienia** na pasku po lewej.
-3. Wskaż plik zapisu gry, np.
-   `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
-   i włącz automatyczną synchronizację.
-4. (Opcjonalnie) wskaż folder mapy, żeby wczytać jej kalendarz upraw, oraz folder z definicjami zwierząt, jeśli mapa lub mody dodają własne rasy.
-5. Kliknij **ZAPISZ I IMPORTUJ**.
+1. Click **ADD FARM +** and enter the farm and map name.
+2. Open the farm and click **Settings** in the left sidebar.
+3. Point it to your savegame, e.g.
+   `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
+   and turn on auto-sync.
+4. (Optional) pick the map folder to load its crop calendar, and the animal definitions folder if your map or mods add their own breeds.
+5. Click **SAVE & IMPORT**.
 
-Zdjęcia ras zwierząt są wczytywane automatycznie z folderu `mods` obok zapisu gry. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
+Breed pictures are loaded automatically from the `mods` folder next to your savegame. Base-game animals (packed inside the game's archives) are shown as icons.
 
-## Gdzie są dane
+## Where your data lives
 
-Farmy są zapisywane w `Dokumenty\Farmer Planner` — łatwo je znaleźć, skopiować albo zsynchronizować. Aplikacja tylko **czyta** pliki gry, nigdy ich nie zmienia.
+Farms are stored in `Documents\Farmer Planner`, so they're easy to find, copy or sync. The app only **reads** game files and never modifies them.
 
-## Technologie
+## Built with
 
-[Electron](https://www.electronjs.org/), czysty HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).
+[Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).
 
-## Autor
+## Author
 
 Wiktor Parylak
 
 ---
 
-## English
+## Polski
 
-**Farmer Planner** is a season planner for **Farming Simulator 25**: fields, crops, fertilization plans, animals and feed in one place, kept in sync with your savegame.
+**Farmer Planner** to planer sezonu dla **Farming Simulator 25**: pola, uprawy, plany nawożenia, zwierzęta i pasze w jednym miejscu, zsynchronizowane z Twoim zapisem gry.
 
-- Field table with crop, sowing month, state, tillage, soil type and a per-field fertilization plan; seasons with history.
-- Reads balance, loan, playtime, equipment and animals from `careerSavegame.xml`, with auto-sync while you play.
-- Crop calendar from the map's files (works with modded maps) and Precision Farming soil types from the save.
-- Sidebar tools: Finance charts, Animals (barn tiles, breed pictures from your mods, herd by breed and age, feed days left, daily needs, output and reproduction), Supplies, Field soil, Notes, Predicted yields and a Feed planner.
-- Polish and English, interactive tutorial, farm backups, optional Discord Rich Presence.
+- Tabela pól z uprawą, miesiącem siewu, stanem, orką lub bezorką, typem gleby i planem nawożenia dla każdego pola; sezony z historią i ostrzeżenia o płodozmianie.
+- Odczyt salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` oraz automatyczna synchronizacja w trakcie gry.
+- Kalendarz upraw z plików mapy (działa z mapami z modami) i typy gleby z Precision Farming.
+- Narzędzia na pasku bocznym: Finanse, Zwierzęta (kafelki budynków, zdjęcia ras z modów, stado według rasy i wieku, dni paszy, dzienne zapotrzebowanie, produkcja i reprodukcja), Zaopatrzenie, Typ gleby pól, Notatki, Przewidywane plony i Planer pasz.
+- Język polski i angielski, interaktywny samouczek, kopie zapasowe farm, opcjonalny Discord Rich Presence.
 
-**Install:** grab the Windows installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases), or run from source with Node.js 20+: `npm install` then `npm start` (`npm run build` builds the installer).
+**Instalacja:** instalator dla Windows w zakładce [Releases](https://github.com/WiktorParylak/farmer-planner/releases) albo uruchomienie ze źródeł (Node.js 20+): `npm install`, potem `npm start` (`npm run build` buduje instalator).
 
-Farm data is stored in `Documents\Farmer Planner`. The app only reads game files and never modifies them.
+**Pierwsze kroki:** **DODAJ FARMĘ +** → otwórz farmę → **Ustawienia** na pasku po lewej → wskaż `careerSavegame.xml` i włącz automatyczną synchronizację → **ZAPISZ I IMPORTUJ**.
+
+Dane farm są zapisywane w `Dokumenty\Farmer Planner`. Aplikacja tylko czyta pliki gry i nigdy ich nie zmienia.
