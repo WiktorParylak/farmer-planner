@@ -1,0 +1,1133 @@
+{
+  "COW_SWISS_BROWN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 40
+      },
+      {
+        "ageMonth": 18,
+        "value": 350
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 95
+      }
+    ],
+    "production": {
+      "MILK": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 150
+        }
+      ],
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "COW_HOLSTEIN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 40
+      },
+      {
+        "ageMonth": 18,
+        "value": 350
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 95
+      }
+    ],
+    "production": {
+      "MILK": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 150
+        }
+      ],
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "COW_ANGUS": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 80
+      },
+      {
+        "ageMonth": 18,
+        "value": 550
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 15
+      },
+      {
+        "ageMonth": 18,
+        "value": 130
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 25
+        },
+        {
+          "ageMonth": 18,
+          "value": 300
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "COW_LIMOUSIN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 80
+      },
+      {
+        "ageMonth": 18,
+        "value": 550
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 15
+      },
+      {
+        "ageMonth": 18,
+        "value": 130
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 25
+        },
+        {
+          "ageMonth": 18,
+          "value": 300
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "COW_WATERBUFFALO": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 40
+      },
+      {
+        "ageMonth": 18,
+        "value": 350
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 95
+      }
+    ],
+    "production": {
+      "BUFFALOMILK": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 0
+        },
+        {
+          "ageMonth": 12,
+          "value": 30
+        }
+      ],
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 25
+        },
+        {
+          "ageMonth": 18,
+          "value": 300
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "COW_HIGHLAND_CATTLE": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 80
+      },
+      {
+        "ageMonth": 18,
+        "value": 550
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 20
+      },
+      {
+        "ageMonth": 18,
+        "value": 140
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 15
+      },
+      {
+        "ageMonth": 18,
+        "value": 130
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 25
+        },
+        {
+          "ageMonth": 18,
+          "value": 300
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 40
+        },
+        {
+          "ageMonth": 18,
+          "value": 250
+        }
+      ]
+    }
+  },
+  "PIG_LANDRACE": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 60
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 6,
+        "value": 15
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 20
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 10
+        },
+        {
+          "ageMonth": 6,
+          "value": 35
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 65
+        }
+      ]
+    }
+  },
+  "PIG_BLACK_PIED": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 60
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 6,
+        "value": 15
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 20
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 10
+        },
+        {
+          "ageMonth": 6,
+          "value": 35
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 65
+        }
+      ]
+    }
+  },
+  "PIG_BERKSHIRE": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 60
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 6,
+        "value": 15
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 6,
+        "value": 20
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 10
+        },
+        {
+          "ageMonth": 6,
+          "value": 35
+        }
+      ],
+      "LIQUIDMANURE": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 65
+        }
+      ]
+    }
+  },
+  "SHEEP_LANDRACE": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 5,
+        "value": 50
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 5,
+        "value": 20
+      }
+    ],
+    "straw": [],
+    "production": {
+      "WOOL": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 10
+        },
+        {
+          "ageMonth": 18,
+          "value": 60
+        }
+      ]
+    }
+  },
+  "SHEEP_STEINSCHAF": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 5,
+        "value": 50
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 5,
+        "value": 20
+      }
+    ],
+    "straw": [],
+    "production": {
+      "WOOL": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 10
+        },
+        {
+          "ageMonth": 18,
+          "value": 60
+        }
+      ]
+    }
+  },
+  "SHEEP_SWISS_MOUNTAIN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 5,
+        "value": 50
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 5,
+        "value": 20
+      }
+    ],
+    "straw": [],
+    "production": {
+      "WOOL": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 10
+        },
+        {
+          "ageMonth": 18,
+          "value": 60
+        }
+      ]
+    }
+  },
+  "SHEEP_BLACK_WELSH": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 5,
+        "value": 50
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 5,
+        "value": 20
+      }
+    ],
+    "straw": [],
+    "production": {
+      "WOOL": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 10
+        },
+        {
+          "ageMonth": 18,
+          "value": 60
+        }
+      ]
+    }
+  },
+  "GOAT": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 5,
+        "value": 50
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 2
+      },
+      {
+        "ageMonth": 5,
+        "value": 20
+      }
+    ],
+    "straw": [],
+    "production": {
+      "GOATMILK": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 5
+        },
+        {
+          "ageMonth": 10,
+          "value": 25
+        }
+      ]
+    }
+  },
+  "HORSE_GRAY": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_PINTO": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_PALOMINO": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_CHESTNUT": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_BAY": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_BLACK": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_SEAL_BROWN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "HORSE_DUN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 50
+      },
+      {
+        "ageMonth": 18,
+        "value": 400
+      }
+    ],
+    "water": [
+      {
+        "ageMonth": 0,
+        "value": 10
+      },
+      {
+        "ageMonth": 18,
+        "value": 50
+      }
+    ],
+    "straw": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      },
+      {
+        "ageMonth": 18,
+        "value": 80
+      }
+    ],
+    "production": {
+      "MANURE": [
+        {
+          "ageMonth": 0,
+          "value": 20
+        },
+        {
+          "ageMonth": 18,
+          "value": 200
+        }
+      ]
+    }
+  },
+  "CHICKEN": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      }
+    ],
+    "water": [],
+    "straw": [],
+    "production": {
+      "EGG": [
+        {
+          "ageMonth": 0,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 0
+        },
+        {
+          "ageMonth": 6,
+          "value": 5
+        }
+      ]
+    }
+  },
+  "CHICKEN_ROOSTER": {
+    "food": [
+      {
+        "ageMonth": 0,
+        "value": 5
+      }
+    ],
+    "water": [],
+    "straw": []
+  }
+}

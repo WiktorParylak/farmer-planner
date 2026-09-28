@@ -1,0 +1,558 @@
+{
+  "Alfalfa": {
+    "key": "Alfalfa",
+    "rawName": "alfalfa",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.03,
+    "seedLitersPerHa": 300.0,
+    "harvestLitersPerSqm": 4.37,
+    "harvestLitersPerHa": 43700,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": false,
+    "startSprayLevel": 1,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY",
+      "AUGUST",
+      "SEPTEMBER",
+      "OCTOBER",
+      "NOVEMBER"
+    ]
+  },
+  "Barley": {
+    "key": "Barley",
+    "rawName": "barley",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0265,
+    "seedLitersPerHa": 265.0,
+    "harvestLitersPerSqm": 0.68,
+    "harvestLitersPerHa": 6800,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "SEPTEMBER",
+      "OCTOBER"
+    ]
+  },
+  "Beans": {
+    "key": "Beans",
+    "rawName": "beans",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0144,
+    "seedLitersPerHa": 144.0,
+    "harvestLitersPerSqm": 0.35,
+    "harvestLitersPerHa": 3500,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE"
+    ]
+  },
+  "Beetroot": {
+    "key": "Beetroot",
+    "rawName": "beetRoot",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.004,
+    "seedLitersPerHa": 40.0,
+    "harvestLitersPerSqm": 5.78,
+    "harvestLitersPerHa": 57800,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE"
+    ]
+  },
+  "Buckwheat": {
+    "key": "Buckwheat",
+    "rawName": "buckwheat",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.05,
+    "seedLitersPerHa": 500.0,
+    "harvestLitersPerSqm": 0.3,
+    "harvestLitersPerHa": 3000,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MAY",
+      "JUNE",
+      "JULY"
+    ]
+  },
+  "Canola": {
+    "key": "Canola",
+    "rawName": "canola",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.015,
+    "seedLitersPerHa": 150.0,
+    "harvestLitersPerSqm": 0.4,
+    "harvestLitersPerHa": 4000,
+    "windrowLitersPerSqm": 7.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "AUGUST",
+      "SEPTEMBER"
+    ]
+  },
+  "Carrot": {
+    "key": "Carrot",
+    "rawName": "carrot",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.001,
+    "seedLitersPerHa": 10.0,
+    "harvestLitersPerSqm": 7.7,
+    "harvestLitersPerHa": 77000,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY"
+    ]
+  },
+  "Clover": {
+    "key": "Clover",
+    "rawName": "clover",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.03,
+    "seedLitersPerHa": 300.0,
+    "harvestLitersPerSqm": 4.37,
+    "harvestLitersPerHa": 43700,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": false,
+    "startSprayLevel": 1,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY",
+      "AUGUST",
+      "SEPTEMBER",
+      "OCTOBER",
+      "NOVEMBER"
+    ]
+  },
+  "Cotton": {
+    "key": "Cotton",
+    "rawName": "cotton",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.005,
+    "seedLitersPerHa": 50.0,
+    "harvestLitersPerSqm": 0.497,
+    "harvestLitersPerHa": 4970,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "FEBRUARY"
+    ]
+  },
+  "Grass": {
+    "key": "Grass",
+    "rawName": "grass",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.012,
+    "seedLitersPerHa": 120.0,
+    "harvestLitersPerSqm": 4.37,
+    "harvestLitersPerHa": 43700,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": false,
+    "startSprayLevel": 1,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY",
+      "AUGUST",
+      "SEPTEMBER",
+      "OCTOBER",
+      "NOVEMBER"
+    ]
+  },
+  "Greenbean": {
+    "key": "Greenbean",
+    "rawName": "greenBean",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.028,
+    "seedLitersPerHa": 280.0,
+    "harvestLitersPerSqm": 0.6975,
+    "harvestLitersPerHa": 6975,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE"
+    ]
+  },
+  "Greenrye": {
+    "key": "Greenrye",
+    "rawName": "greenRye",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.03,
+    "seedLitersPerHa": 300.0,
+    "harvestLitersPerSqm": 0.89,
+    "harvestLitersPerHa": 8900,
+    "windrowLitersPerSqm": 2.7,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY",
+      "AUGUST",
+      "SEPTEMBER",
+      "OCTOBER",
+      "NOVEMBER"
+    ]
+  },
+  "Maize": {
+    "key": "Maize",
+    "rawName": "maize",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0053,
+    "seedLitersPerHa": 53.0,
+    "harvestLitersPerSqm": 0.92,
+    "harvestLitersPerHa": 9200,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY"
+    ]
+  },
+  "Millet": {
+    "key": "Millet",
+    "rawName": "millet",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.011,
+    "seedLitersPerHa": 110.0,
+    "harvestLitersPerSqm": 0.45,
+    "harvestLitersPerHa": 4500,
+    "windrowLitersPerSqm": 3.0,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL"
+    ]
+  },
+  "Oat": {
+    "key": "Oat",
+    "rawName": "oat",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.034,
+    "seedLitersPerHa": 340.0,
+    "harvestLitersPerSqm": 0.7,
+    "harvestLitersPerHa": 7000,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "SEPTEMBER",
+      "OCTOBER"
+    ]
+  },
+  "Oilseedradish": {
+    "key": "Oilseedradish",
+    "rawName": "oilseedRadish",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.004,
+    "seedLitersPerHa": 40.0,
+    "harvestLitersPerSqm": 0.99,
+    "harvestLitersPerHa": 9900,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY",
+      "AUGUST",
+      "SEPTEMBER",
+      "OCTOBER"
+    ]
+  },
+  "Parsnip": {
+    "key": "Parsnip",
+    "rawName": "parsnip",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.001,
+    "seedLitersPerHa": 10.0,
+    "harvestLitersPerSqm": 6.95,
+    "harvestLitersPerHa": 69500,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE"
+    ]
+  },
+  "Pea": {
+    "key": "Pea",
+    "rawName": "pea",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.025,
+    "seedLitersPerHa": 250.0,
+    "harvestLitersPerSqm": 0.96,
+    "harvestLitersPerHa": 9600,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL"
+    ]
+  },
+  "Potato": {
+    "key": "Potato",
+    "rawName": "potato",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.3733,
+    "seedLitersPerHa": 3733.0,
+    "harvestLitersPerSqm": 4.13,
+    "harvestLitersPerHa": 41300,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL"
+    ]
+  },
+  "Rye": {
+    "key": "Rye",
+    "rawName": "rye",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.01233,
+    "seedLitersPerHa": 123.3,
+    "harvestLitersPerSqm": 0.52,
+    "harvestLitersPerHa": 5200,
+    "windrowLitersPerSqm": 4.6,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "SEPTEMBER",
+      "OCTOBER"
+    ]
+  },
+  "Silagemaize": {
+    "key": "Silagemaize",
+    "rawName": "silageMaize",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.002571,
+    "seedLitersPerHa": 25.7,
+    "harvestLitersPerSqm": 0.92,
+    "harvestLitersPerHa": 9200,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY",
+      "JUNE",
+      "JULY"
+    ]
+  },
+  "Sorghum": {
+    "key": "Sorghum",
+    "rawName": "sorghum",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0035,
+    "seedLitersPerHa": 35.0,
+    "harvestLitersPerSqm": 0.82,
+    "harvestLitersPerHa": 8200,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY"
+    ]
+  },
+  "Soybean": {
+    "key": "Soybean",
+    "rawName": "soybean",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0214,
+    "seedLitersPerHa": 214.0,
+    "harvestLitersPerSqm": 0.45,
+    "harvestLitersPerHa": 4500,
+    "windrowLitersPerSqm": 3.68,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "APRIL",
+      "MAY"
+    ]
+  },
+  "Spinach": {
+    "key": "Spinach",
+    "rawName": "spinach",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.001,
+    "seedLitersPerHa": 10.0,
+    "harvestLitersPerSqm": 2.31,
+    "harvestLitersPerHa": 23100,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "MAY"
+    ]
+  },
+  "Sugarbeet": {
+    "key": "Sugarbeet",
+    "rawName": "sugarBeet",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0034,
+    "seedLitersPerHa": 34.0,
+    "harvestLitersPerSqm": 5.78,
+    "harvestLitersPerHa": 57800,
+    "windrowLitersPerSqm": null,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL"
+    ]
+  },
+  "Sunflower": {
+    "key": "Sunflower",
+    "rawName": "sunflower",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0143,
+    "seedLitersPerHa": 143.0,
+    "harvestLitersPerSqm": 0.52,
+    "harvestLitersPerHa": 5200,
+    "windrowLitersPerSqm": null,
+    "needsRolling": false,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL"
+    ]
+  },
+  "Triticale": {
+    "key": "Triticale",
+    "rawName": "triticale",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.01644,
+    "seedLitersPerHa": 164.4,
+    "harvestLitersPerSqm": 0.68,
+    "harvestLitersPerHa": 6800,
+    "windrowLitersPerSqm": 3.6,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "SEPTEMBER",
+      "OCTOBER"
+    ]
+  },
+  "Wheat": {
+    "key": "Wheat",
+    "rawName": "wheat",
+    "isAvailable": true,
+    "shownOnMap": true,
+    "seedLitersPerSqm": 0.0308,
+    "seedLitersPerHa": 308.0,
+    "harvestLitersPerSqm": 0.64,
+    "harvestLitersPerHa": 6400,
+    "windrowLitersPerSqm": 3.8,
+    "needsRolling": true,
+    "requiresLime": true,
+    "startSprayLevel": 0,
+    "plantingMonths": [
+      "MARCH",
+      "APRIL",
+      "SEPTEMBER",
+      "OCTOBER",
+      "NOVEMBER"
+    ]
+  }
+}

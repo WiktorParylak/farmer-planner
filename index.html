@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Farmer Planner</title>
+    <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="titlebar">
+        <div class="titlebar-drag">
+            <img src="Assets/Logo.svg" class="titlebar-icon" alt="">
+            <span class="titlebar-title">Farmer Planner</span>
+        </div>
+        <div class="titlebar-controls">
+            <button id="titlebar-min" class="titlebar-btn" title="Minimize"><i class="fa-solid fa-window-minimize" aria-hidden="true"></i></button>
+            <button id="titlebar-max" class="titlebar-btn" title="Maximize"><i class="fa-solid fa-window-maximize" aria-hidden="true"></i></button>
+            <button id="titlebar-close" class="titlebar-btn titlebar-btn--close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+    </div>
+    <div class="app-container">
+        <div id="dashboard-view" class="dashboard-view">
+            <button id="app-settings-btn" class="app-settings-btn" data-i18n-title="appSettings" title="Settings"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
+            <section class="brand-section">
+                <div class="logo-wrapper">
+                    <img src="Assets/Logo.svg" alt="Farmer Planner" class="logo">
+                    <p class="logo-author">BY WIKTOR PARYLAK</p>
+                </div>
+            </section>
+            <section class="menu-section">
+                <div class="white-card">
+                    <h1 class="card-title" data-i18n="myFarms">My Farms</h1>
+                    <div class="stripe-divider"></div>
+                    <div class="white-card-content">
+                        <div class="farm-list" data-empty-text="No farms yet. Add your first one below to start tracking a season.">
+                        </div>
+                    </div>
+                    <div class="dashboard-actions">
+                        <div class="buttons-container">
+                            <p class="add-farm-btn" data-i18n="addFarm">ADD FARM +</p>
+                            <p id="delete-mode-toggle" class="delete-farm-btn" data-i18n="deleteFarm">DELETE FARM</p>
+                        </div>
+                        <p id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div class="planner-view" id="planner-view">
+            <div class="planner-header">
+                <h1 id="planner-farm-name" class="save-name">Solek</h1>
+                <div class="header-info">
+                    <div class="balance">
+                        <h3 class="balance-label" data-i18n="balance">BALANCE</h3>
+                        <p id="planner-balance" class="balance-value">1000$</p>
+                    </div>
+                    <div class="month">
+                        <h3 class="month-label" data-i18n="month">MONTH</h3>
+                        <p id="planner-month" class="month-value">JANUARY</p>
+                    </div>
+                    <div class="year">
+                        <h3 class="year-label" data-i18n="yearLabel">YEAR</h3>
+                        <input type="number" id="planner-year" class="year-value-input" min="1" step="1" value="1">
+                    </div>
+                </div>
+                <span id="auto-sync-toast" class="auto-sync-toast" hidden></span>
+            </div>
+            <div class="planner-content">
+                <div class="planner-details">
+                    <div class="planner-main-table">
+                        <div class="main-table-header">
+                            <h1 class="season-number">Season 1</h1>
+                            <div class="main-table-header-btns">
+                                <p class="new-season-btn" data-i18n="newSeason">NEW SEASON</p>
+                                <p id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</p>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="fields-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="thFieldNo">Field No.</th>
+                                        <th data-i18n="thFieldHa">Field Ha</th>
+                                        <th data-i18n="thCrop">Crop</th>
+                                        <th data-i18n="thSowingMth">Sowing Mth</th>
+                                        <th data-i18n="thState">State</th>
+                                        <th data-i18n="thTillage">Tillage</th>
+                                        <th data-i18n="thSoil">Soil</th>
+                                        <th data-i18n="thFertPlan">Plan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fields-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-footer-controls">
+                            <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
+                            <span id="total-ha-sum">0.00 ha</span>
+                        </div>
+                    </div>
+                    <div class="details-container">
+                        <button id="farm-hub-btn" class="details-menu-btn" data-i18n-title="hubOpenMenu" title="More">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </button>
+                        <h1 data-i18n="farmDetails">Farm Details</h1>
+                        <div class="details-categories">
+                            <div class="details-categories-column">
+                                <p class="details-category"><span data-i18n="detailBalance">Balance</span><span id="details-balance"
+                                        class="details-category-value">0 €</span></p>
+                                <p class="details-category"><span data-i18n="detailCredit">Credit</span><span id="detail-loan"
+                                        class="details-category-value">0 €</span></p>
+                                <p class="details-category"><span data-i18n="detailHaAmount">Ha amount</span><span id="detail-ha"
+                                        class="details-category-value">0.00 ha</span></p>
+                                <p class="details-category"><span data-i18n="detailFarmAge">Farm age</span><span id="detail-age"
+                                        class="details-category-value">Season 1</span></p>
+                            </div>
+                            <div class="details-categories-column">
+                                <p class="details-category"><span data-i18n="detailFields">Fields</span><span id="detail-fields"
+                                        class="details-category-value">0</span></p>
+                                <p class="details-category"><span data-i18n="detailCrops">Crops</span><span id="detail-crops"
+                                        class="details-category-value">0</span></p>
+                                <p class="details-category"><span data-i18n="detailEquipment">Equipment</span><span id="detail-equipment"
+                                        class="details-category-value">-</span></p>
+                                <p class="details-category"><span data-i18n="detailAnimals">Animals</span><span id="detail-animals"
+                                        class="details-category-value">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="planner-crops">
+                    <div class="crops-container">
+                        <h1 data-i18n="cropsListTitle">List of all crops that are being farmed</h1>
+                        <div class="crops-list-container">
+                            <table id="crops-table">
+                                <thead class="crops-header">
+                                    <tr>
+                                        <th class="crops-header-cell" data-i18n="thCrop">Crop</th>
+                                        <th class="crops-header-cell" data-i18n="thHa">Ha</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="crops-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="crops-edit-btns">
+                            <p id="sidebar-add-btn" class="add-crop" data-i18n="addCrop">ADD CROP</p>
+                        </div>
+                    </div>
+                    <div class="utility-btns">
+                        <p id="reset-seasons-btn" class="settings-btn reset-btn" data-i18n="resetSeasons">RESET SEASONS</p>
+                        <p id="settings-btn" class="settings-btn" data-i18n="settings">SETTINGS</p>
+                        <p id="exit-btn" class="exit-btn" data-i18n="exit">EXIT</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <h3 data-i18n="settingsTitle">Settings</h3>
+
+                <p data-i18n="farmMapLabel">Map for this farm:</p>
+                <input type="text" id="settings-map-name" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+
+                <p data-i18n="gameSavePathLabel">Game Save Path (careerSavegame.xml):</p>
+                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                    <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml"
+                        style="margin: 0; flex-grow: 1;">
+                    <button id="browse-save-btn" class="settings-btn" type="button"
+                        style="min-width: 40px; cursor: pointer;">...</button>
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
+                    <input type="checkbox" id="auto-sync-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
+                </label>
+                <p id="auto-sync-hint" data-i18n="autoSyncHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
+                    The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.
+                </p>
+                <p data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</p>
+                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                    <input type="text" id="crops-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
+                        style="margin: 0; flex-grow: 1;">
+
+                    <button id="browse-crops-btn" class="settings-btn"
+                        style="min-width: 40px; cursor: pointer;">...</button>
+
+                    <input type="file" id="crops-folder-picker" webkitdirectory directory multiple
+                        style="display: none;">
+                </div>
+                <p id="crops-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
+                <p data-i18n="cropsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
+                    Pick the map's root folder (or any folder above the crop files) — subfolders are scanned
+                    automatically, so it doesn't matter whether the crop XML files sit together or scattered
+                    across separate folders.
+                </p>
+
+                <p data-i18n="animalDefsFolderLabel">Animal definitions folder (game's animals.xml):</p>
+                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                    <input type="text" id="animal-defs-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
+                        style="margin: 0; flex-grow: 1;">
+
+                    <button id="browse-animal-defs-btn" class="settings-btn"
+                        style="min-width: 40px; cursor: pointer;">...</button>
+
+                    <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple
+                        style="display: none;">
+                </div>
+                <p id="animal-defs-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
+                <p data-i18n="animalDefsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
+                    This is usually in the base game's install folder, not your map folder — separate from
+                    Crops above since they're often in completely different places.
+                </p>
+
+                <div id="settings-supply-adjust"></div>
+
+                <div class="modal-buttons">
+                    <button id="save-settings-btn" data-i18n="saveAndImport">SAVE & IMPORT</button>
+                    <button id="cancel-settings-btn" data-i18n="cancel">CANCEL</button>
+                </div>
+            </div>
+        </div>
+        <div id="app-settings-modal" class="modal">
+            <div class="modal-content">
+                <h3 data-i18n="appSettingsTitle">Settings</h3>
+                <p data-i18n="languageLabel">Language</p>
+                <div class="language-options">
+                    <button type="button" id="lang-btn-pl" class="lang-btn" data-lang="pl">Polski</button>
+                    <button type="button" id="lang-btn-en" class="lang-btn" data-lang="en">English</button>
+                </div>
+                <p data-i18n="discordSettingLabel" style="margin-bottom:4px;">Discord Rich Presence</p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="discord-rpc-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="discordSettingHint">Show your current farm on your Discord profile.</span>
+                </label>
+                <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
+                <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
+                <div class="modal-buttons">
+                    <button id="close-app-settings-btn" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="farm-hub-modal" class="modal">
+            <div class="modal-content">
+                <h3 data-i18n="hubTitle">More</h3>
+                <div class="hub-menu">
+                    <button type="button" class="hub-menu-item hub-menu-item--finance" onclick="openHubPanel('finance')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubFinance">Finance</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--animals" onclick="openHubPanel('animals')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubAnimals">Animals</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--supplies" onclick="openHubPanel('supplies')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubSupplies">Supplies</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--fieldsoil" onclick="openHubPanel('fieldsoil')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubFieldSoil">Field soil type</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--notes" onclick="openHubPanel('notes')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubNotes">Notes</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--yieldforecast" onclick="openHubPanel('yieldforecast')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubYieldForecast">Predicted yields</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                    <button type="button" class="hub-menu-item hub-menu-item--feedplan" onclick="openHubPanel('feedplan')">
+                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
+                        <span class="hub-menu-label" data-i18n="hubFeedPlan">Feed planner</span>
+                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </button>
+                </div>
+                <div class="modal-buttons">
+                    <button id="close-farm-hub-btn" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="hub-panel-modal" class="modal">
+            <div class="modal-content">
+                <h3 id="hub-panel-title">-</h3>
+                <div id="hub-panel-body" class="hub-panel-body"></div>
+                <div class="modal-buttons">
+                    <button id="back-to-hub-btn" data-i18n="hubBack">Back</button>
+                    <button id="close-hub-panel-btn" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="farm-modal" class="modal">
+            <div class="modal-content">
+                <h3 data-i18n="addNewFarmTitle">Add new farm</h3>
+                <input type="text" id="new-farm-name" data-i18n-placeholder="farmNamePlaceholder" placeholder="Farm name (e.g. Riverbend)">
+                <input type="text" id="new-farm-map" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                <div class="modal-buttons">
+                    <button id="cancel-btn" data-i18n="cancel">Cancel</button>
+                    <button id="confirm-btn" data-i18n="add">Add</button>
+                </div>
+            </div>
+        </div>
+        <div id="note-edit-modal" class="modal">
+            <div class="modal-content">
+                <h3 id="note-edit-modal-title" data-i18n="notesNewTitle">New note</h3>
+
+                <p data-i18n="notesTitleLabel">Title</p>
+                <input type="text" id="note-edit-title" data-i18n-placeholder="notesTitlePlaceholder" placeholder="e.g. Fertilize field 3">
+
+                <p data-i18n="notesBodyLabel">Details (optional)</p>
+                <textarea id="note-edit-body" data-i18n-placeholder="notesBodyPlaceholder" placeholder="Any extra detail..."></textarea>
+
+                <p data-i18n="notesMonthsLabel">Months</p>
+                <div id="note-edit-months" class="note-edit-months-grid"></div>
+
+                <p data-i18n="notesTagsLabel">Tags</p>
+                <input type="text" id="note-edit-tag-input" data-i18n-placeholder="notesTagsPlaceholder" placeholder="Type a tag and press Enter">
+                <div id="note-edit-tags" class="note-chip-row note-chip-row--editable"></div>
+
+                <p data-i18n="notesChecklistLabel">Checklist</p>
+                <div id="note-edit-checklist" class="note-edit-checklist"></div>
+                <button type="button" id="note-edit-add-item-btn" class="note-edit-add-item-btn" data-i18n="notesAddChecklistItem">+ Add item</button>
+
+                <div class="modal-buttons">
+                    <button id="note-edit-cancel-btn" data-i18n="notesCancel">Cancel</button>
+                    <button id="note-edit-save-btn" data-i18n="notesSave">Save note</button>
+                </div>
+            </div>
+        </div>
+        <div id="confirm-delete-modal" class="confirm-delete-modal modal">
+            <div class="modal-content">
+                <h3 data-i18n="areYouSure">Are you sure?</h3>
+                <p data-i18n="deleteFarmConfirm">Do you really want to delete this farm? This action cannot be undone.</p>
+                <div class="modal-buttons">
+                    <p id="cancel-delete-btn" data-i18n="cancel">CANCEL</p>
+                    <p id="confirm-delete-btn" class="danger-btn" data-i18n="delete">DELETE</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display:none;">
+        <div class="tutorial-blocker tutorial-blocker--top"></div>
+        <div class="tutorial-blocker tutorial-blocker--bottom"></div>
+        <div class="tutorial-blocker tutorial-blocker--left"></div>
+        <div class="tutorial-blocker tutorial-blocker--right"></div>
+        <div class="tutorial-blocker tutorial-hole-blocker"></div>
+        <div class="tutorial-spotlight"></div>
+        <div class="tutorial-bubble" role="dialog" aria-live="polite">
+            <div class="tutorial-step-view">
+                <div class="tutorial-step-count"></div>
+                <h4 class="tutorial-title"></h4>
+                <p class="tutorial-text"></p>
+                <p class="tutorial-hint"></p>
+                <div class="tutorial-buttons">
+                    <span class="tutorial-links">
+                        <button type="button" id="tutorial-menu-btn" class="tutorial-link-btn" data-i18n="tutMenu">Chapters</button>
+                        <button type="button" id="tutorial-showme-btn" class="tutorial-link-btn tutorial-link-btn--accent" data-i18n="tutShowMe">Show me</button>
+                    </span>
+                    <span class="tutorial-nav">
+                        <button type="button" id="tutorial-prev-btn" class="tutorial-prev-btn" data-i18n="tutBack">Back</button>
+                        <button type="button" id="tutorial-next-btn" class="tutorial-next-btn" data-i18n="tutNext">Next</button>
+                    </span>
+                </div>
+            </div>
+            <div class="tutorial-menu-view">
+                <h4 class="tutorial-title" data-i18n="tutMenuTitle">Farmer Planner tutorial</h4>
+                <p class="tutorial-text" data-i18n="tutMenuIntro"></p>
+                <button type="button" id="tutorial-run-all-btn" class="tutorial-next-btn tutorial-run-all-btn" data-i18n="tutRunAll">Start full tutorial</button>
+                <ol class="tutorial-chapter-list"></ol>
+                <button type="button" id="tutorial-close-btn" class="tutorial-link-btn" data-i18n="tutClose">Close tutorial</button>
+            </div>
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+
+</html>

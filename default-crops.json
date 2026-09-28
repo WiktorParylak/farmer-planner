@@ -1,0 +1,142 @@
+{
+  "Barley": {
+    "SEPTEMBER": "MAY",
+    "OCTOBER": "MAY"
+  },
+  "Beetroot": {
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE"
+  },
+  "Canola": {
+    "AUGUST": "JUNE",
+    "SEPTEMBER": "JUNE"
+  },
+  "Carrot": {
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE",
+    "JULY": "JULY"
+  },
+  "Cotton": {
+    "MARCH": "SEPTEMBER",
+    "FEBRUARY": "SEPTEMBER"
+  },
+  "Grape": {
+    "MARCH": "AUGUST",
+    "APRIL": "AUGUST",
+    "MAY": "AUGUST"
+  },
+  "Grass": {
+    "MARCH": "MARCH",
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE",
+    "JULY": "JULY",
+    "AUGUST": "AUGUST",
+    "SEPTEMBER": "SEPTEMBER",
+    "OCTOBER": "OCTOBER",
+    "NOVEMBER": "FEBRUARY"
+  },
+  "Greenbean": {
+    "APRIL": "JULY",
+    "MAY": "JULY",
+    "JUNE": "JULY"
+  },
+  "Maize": {
+    "APRIL": "SEPTEMBER",
+    "MAY": "SEPTEMBER"
+  },
+  "Meadow": {
+    "MARCH": "APRIL",
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE",
+    "JULY": "JULY",
+    "AUGUST": "AUGUST",
+    "SEPTEMBER": "SEPTEMBER",
+    "OCTOBER": "OCTOBER",
+    "NOVEMBER": "FEBRUARY"
+  },
+  "Oat": {
+    "MARCH": "JUNE",
+    "APRIL": "JUNE"
+  },
+  "Oilseedradish": {
+    "MARCH": "MARCH",
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE",
+    "JULY": "JULY",
+    "AUGUST": "AUGUST",
+    "SEPTEMBER": "SEPTEMBER",
+    "OCTOBER": "OCTOBER"
+  },
+  "Olive": {
+    "MARCH": "AUGUST",
+    "APRIL": "AUGUST",
+    "MAY": "AUGUST",
+    "JUNE": "AUGUST"
+  },
+  "Onion": {
+    "MARCH": "MARCH",
+    "APRIL": "APRIL"
+  },
+  "Parsnip": {
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE"
+  },
+  "Pea": {
+    "MARCH": "JUNE",
+    "APRIL": "JUNE"
+  },
+  "Poplar": {
+    "MARCH": "JUNE",
+    "APRIL": "JUNE",
+    "MAY": "JUNE",
+    "JUNE": "JUNE",
+    "JULY": "JUNE",
+    "AUGUST": "JUNE"
+  },
+  "Potato": {
+    "MARCH": "JULY",
+    "APRIL": "JULY"
+  },
+  "Rice": {
+    "APRIL": "JULY",
+    "MAY": "JULY"
+  },
+  "Ricelonggrain": {
+    "APRIL": "AUGUST"
+  },
+  "Sorghum": {
+    "APRIL": "JULY",
+    "MAY": "JULY"
+  },
+  "Soybean": {
+    "APRIL": "SEPTEMBER",
+    "MAY": "SEPTEMBER"
+  },
+  "Spinach": {
+    "MARCH": "MAY",
+    "APRIL": "MAY",
+    "MAY": "MAY"
+  },
+  "Sugarbeet": {
+    "MARCH": "SEPTEMBER",
+    "APRIL": "SEPTEMBER"
+  },
+  "Sugarcane": {
+    "MARCH": "SEPTEMBER",
+    "APRIL": "SEPTEMBER"
+  },
+  "Sunflower": {
+    "MARCH": "SEPTEMBER",
+    "APRIL": "SEPTEMBER"
+  },
+  "Wheat": {
+    "SEPTEMBER": "JUNE",
+    "OCTOBER": "JUNE"
+  }
+}

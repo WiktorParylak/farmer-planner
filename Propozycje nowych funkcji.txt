@@ -1,0 +1,166 @@
+FARMER PLANNER — 10 PROPOZYCJI NOWYCH FUNKCJI
+=============================================
+Data: 2026-09-28
+
+Propozycje uzupełniają to, co aplikacja już ma: farmy i sezony, tabelę pól
+(uprawa, miesiąc siewu, uprawa gleby, stan, plan nawożenia, gleba), ostrzeżenie
+o płodozmianie, finanse z wykresem salda, zwierzęta, zaopatrzenie, import gleb
+z zapisu gry, prognozę plonów, notatki, samouczek, Discord i kopie zapasowe.
+
+
+1. KALENDARZ PRAC POLOWYCH (OŚ CZASU / GANTT)
+---------------------------------------------
+Co to jest:
+  Widok 12 miesięcy z paskiem dla każdego pola: siew → wzrost → zbiór, do tego
+  znaczniki nawożenia, oprysków, wapnowania i uprawy gleby.
+Jak działa:
+  - Okresy siewu i zbioru bierze z definicji upraw (default-crops.json oraz
+    folder upraw z mapy lub modów).
+  - Kolorem pokazuje konflikty, np. dwa pola do zbioru w tym samym miesiącu
+    przy jednym kombajnie.
+  - Kliknięcie paska otwiera edycję pola w sezonie.
+Po co:
+  Od razu widać, co i kiedy trzeba zrobić, a także gdzie brakuje maszyn lub
+  czasu.
+
+
+2. KALKULATOR OPŁACALNOŚCI UPRAW (MARŻA NA HEKTAR)
+--------------------------------------------------
+Co to jest:
+  Zestawienie przychodów i kosztów dla każdej uprawy i każdego pola:
+  plon × cena - (nasiona + nawóz + środki ochrony + paliwo/praca).
+Jak działa:
+  - Plon bierze z „Prognozy plonów”, a ilość nasion i nawozu z „Zaopatrzenia”.
+  - Ceny wpisuje się ręcznie albo bierze średnie ceny z gry.
+  - Ranking „najbardziej opłacalna uprawa na tej glebie”.
+  - Symulacja „co jeśli”, np. zamiana pszenicy na rzepak na polu 5.
+Po co:
+  Łatwiej wybrać, co siać, na podstawie pieniędzy, a nie przyzwyczajenia.
+
+
+3. WIELOLETNI PLANER PŁODOZMIANU
+--------------------------------
+Co to jest:
+  Rozszerzenie obecnego ostrzeżenia ⟳: siatka „pole × sezon” na 3–5 sezonów
+  do przodu z automatycznymi podpowiedziami.
+Jak działa:
+  - Na podstawie historii sezonów proponuje kolejną uprawę, uwzględniając
+    bonus za płodozmian z FS25, poplony (np. rzodkiew oleista) i odłogowanie.
+  - Ocena punktowa planu dla każdego pola (zielony/żółty/czerwony).
+  - Przycisk „Zastosuj plan” przenosi propozycję do następnego sezonu.
+Po co:
+  Pozwala planować z wyprzedzeniem i wykorzystać bonus płodozmianu bez ręcznego
+  pilnowania historii.
+
+
+4. MAPA PÓL
+-----------
+Co to jest:
+  Graficzna mapa farmy z obrysami pól i działek, pokolorowana według wybranej
+  warstwy.
+Jak działa:
+  - Obrysy pól i działek czyta z plików mapy (GRLE działek), tak jak obecny
+    import gleb.
+  - Warstwy do wyboru: uprawa, stan pola, typ gleby, termin zbioru, marża/ha.
+  - Po najechaniu kursorem: numer pola, powierzchnia, uprawa. Po kliknięciu
+    przejście do pola.
+Po co:
+  Łatwiej się orientować na dużej farmie i widać zależności przestrzenne,
+  np. które pola są blisko siebie do obsłużenia jednym przejazdem.
+
+
+5. MAGAZYN I STANY SILOSÓW (SYNCHRONIZACJA Z ZAPISEM GRY)
+---------------------------------------------------------
+Co to jest:
+  Podgląd zawartości silosów, magazynów, palet i bel na farmie.
+Jak działa:
+  - Odczyt z plików zapisu (placeables/items) przy auto-synchronizacji.
+  - Porównanie z zapotrzebowaniem: nasiona i nawóz z „Zaopatrzenia” oraz pasze
+    z modułu „Zwierzęta”.
+  - Alerty typu „Nawozu wystarczy na 12 ha, potrzebujesz 40 ha” albo
+    „Siana wystarczy na 2 miesiące”.
+Po co:
+  Nie trzeba zaglądać do gry, żeby wiedzieć, czego brakuje przed sezonem.
+
+
+6. FLOTA MASZYN I KOSZTY UTRZYMANIA
+-----------------------------------
+Co to jest:
+  Lista maszyn z wiekiem, motogodzinami, stanem zużycia i kosztami.
+Jak działa:
+  - Import z pliku vehicles.xml z zapisu, z możliwością ręcznego uzupełnienia
+    danych.
+  - Przypomnienia o serwisie i naprawie przy wysokim zużyciu, a także
+    o kończącym się leasingu.
+  - Szacowanie wydajności: ile ha/h zrobi dany zestaw i czy zdąży obsłużyć pola
+    w oknie siewu (powiązanie z funkcją 1).
+  - Koszty maszyn trafiają do kalkulatora opłacalności (funkcja 2).
+Po co:
+  Pokazuje, czy park maszynowy pasuje do wielkości farmy i co się opłaca
+  kupić albo sprzedać.
+
+
+7. PLANER PASZ DLA ZWIERZĄT
+---------------------------
+Co to jest:
+  Moduł, który przelicza pogłowie na potrzebny areał pod pasze.
+Jak działa:
+  - Z modułu „Zwierzęta” bierze roczne zapotrzebowanie na siano, sianokiszonkę,
+    kiszonkę z kukurydzy, słomę i TMR.
+  - Wylicza, ile ha trawy, kukurydzy lub zboża trzeba przeznaczyć na paszę przy
+    danej glebie i prognozie plonu.
+  - Porównuje wynik z polami zaplanowanymi w sezonie i pokazuje nadwyżkę albo
+    niedobór.
+Po co:
+  Łączy produkcję roślinną ze zwierzęcą, żeby nie zabrakło paszy w zimie.
+
+
+8. PULPIT „CO DZIŚ ROBIĆ” (BIEŻĄCY MIESIĄC)
+------------------------------------------
+Co to jest:
+  Ekran startowy farmy z listą zadań na aktualny miesiąc w grze.
+Jak działa:
+  - Zbiera zadania ze wszystkich modułów: siew, zbiór, nawożenie z planu
+    nawozowego, notatki przypisane do miesiąca, braki w magazynie, serwis
+    maszyn.
+  - Zadania można odhaczać, a postęp zapisuje się w sezonie.
+  - Miesiąc może się ustawiać sam na podstawie aktualnej daty z zapisu gry.
+Po co:
+  Jeden widok zamiast przeskakiwania między zakładkami. Szczególnie przydatne
+  po dłuższej przerwie od gry.
+
+
+9. WAPNOWANIE, pH I PRECISION FARMING
+-------------------------------------
+Co to jest:
+  Rozszerzenie modułu gleb o odczyn pH i zasobność w azot z Precision Farming.
+Jak działa:
+  - Odczyt map pH i azotu z zapisu gry, analogicznie do obecnego importu gleb.
+  - Dla każdego pola: średnie pH, % powierzchni poniżej optimum i szacowana
+    ilość wapna do kupienia.
+  - Zalecane dawki azotu pod plan nawożenia na podstawie realnego stanu pola
+    zamiast wartości ręcznych.
+Po co:
+  Pełniej wykorzystuje dane PF, które aplikacja już częściowo czyta, i zwiększa
+  plony dzięki dokładniejszemu nawożeniu.
+
+
+10. RAPORT SEZONU (EKSPORT PDF / HTML)
+-------------------------------------
+Co to jest:
+  Automatyczne podsumowanie zakończonego sezonu w formie ładnego raportu.
+Jak działa:
+  - Zawartość raportu: struktura upraw, plony (prognoza vs rzeczywistość),
+    finanse z wykresem salda, zmiany pogłowia, zużycie nawozów i nasion
+    oraz notatki.
+  - Porównanie z poprzednim sezonem (strzałki wzrostu i spadku).
+  - Eksport do PDF przez wbudowany w Electron printToPDF albo do pliku HTML.
+Po co:
+  Pokazuje postępy farmy, pozwala pochwalić się na Discordzie lub forum
+  i ułatwia planowanie kolejnego sezonu.
+
+
+---------------------------------------------
+Sugerowana kolejność wdrożenia (od najmniejszego nakładu i największej
+wartości):
+  8 → 2 → 3 → 1 → 7 → 5 → 9 → 4 → 6 → 10

@@ -1,0 +1,859 @@
+{
+  "soilTypes": [
+    {
+      "name": "$l10n_ui_soilType_1",
+      "yieldPotential": 0.8
+    },
+    {
+      "name": "$l10n_ui_soilType_2",
+      "yieldPotential": 1.0
+    },
+    {
+      "name": "$l10n_ui_soilType_3",
+      "yieldPotential": 1.25
+    },
+    {
+      "name": "$l10n_ui_soilType_4",
+      "yieldPotential": 0.9
+    }
+  ],
+  "fruitRequirements": {
+    "WHEAT": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 140,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 180,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 200,
+          "reduction": 180,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 160,
+          "reduction": 160,
+          "reductionForage": null
+        }
+      }
+    },
+    "BARLEY": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 180,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "OAT": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 80,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        }
+      }
+    },
+    "CANOLA": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 140,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 180,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 200,
+          "reduction": 180,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 160,
+          "reduction": 160,
+          "reductionForage": null
+        }
+      }
+    },
+    "MAIZE": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 120,
+          "reduction": 80,
+          "reductionForage": 100
+        },
+        "2": {
+          "targetLevel": 160,
+          "reduction": 120,
+          "reductionForage": 140
+        },
+        "3": {
+          "targetLevel": 200,
+          "reduction": 150,
+          "reductionForage": 180
+        },
+        "4": {
+          "targetLevel": 180,
+          "reduction": 110,
+          "reductionForage": 140
+        }
+      }
+    },
+    "SORGHUM": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 160,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 140,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "GRASS": {
+      "flags": "alwaysAllowFertilization=\"true\" ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 50,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 55,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 65,
+          "reduction": 50,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 65,
+          "reduction": 55,
+          "reductionForage": null
+        }
+      }
+    },
+    "MEADOW": {
+      "flags": "alwaysAllowFertilization=\"true\" ignoreOverfertilization=\"true\" availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 55,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 60,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 65,
+          "reduction": 50,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 65,
+          "reduction": 55,
+          "reductionForage": null
+        }
+      }
+    },
+    "SUNFLOWER": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 60,
+          "reduction": 30,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 80,
+          "reduction": 50,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 120,
+          "reduction": 70,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 80,
+          "reduction": 50,
+          "reductionForage": null
+        }
+      }
+    },
+    "SOYBEAN": {
+      "flags": "ignoreOverfertilization=\"true\" alwaysAllowFertilization=\"true\" availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        }
+      }
+    },
+    "POTATO": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 160,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "SUGARBEET": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 180,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 160,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "CARROT": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 80,
+          "reduction": 70,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 90,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 110,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        }
+      }
+    },
+    "PARSNIP": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 140,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "BEETROOT": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 140,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "COTTON": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 80,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 100,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        }
+      }
+    },
+    "POPLAR": {
+      "flags": "alwaysAllowFertilization=\"true\" ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 160,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 180,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "SUGARCANE": {
+      "flags": "alwaysAllowFertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 160,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 200,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 180,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "PEA": {
+      "flags": "ignoreOverfertilization=\"true\" alwaysAllowFertilization=\"true\" availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 0,
+          "reduction": 10,
+          "reductionForage": null
+        }
+      }
+    },
+    "GREENBEAN": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 110,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 130,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "SPINACH": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 150,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 160,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 170,
+          "reduction": 150,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 160,
+          "reduction": 150,
+          "reductionForage": null
+        }
+      }
+    },
+    "RICE": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 130,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "RICELONGGRAIN": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 100,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 130,
+          "reduction": 120,
+          "reductionForage": null
+        }
+      }
+    },
+    "ONION": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 110,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 130,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 140,
+          "reduction": 120,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        }
+      }
+    },
+    "GRAPE": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 70,
+          "reduction": 65,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 80,
+          "reduction": 70,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 90,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 75,
+          "reduction": 60,
+          "reductionForage": null
+        }
+      }
+    },
+    "OLIVE": {
+      "flags": "ignoreOverfertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 80,
+          "reduction": 70,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 110,
+          "reduction": 90,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 120,
+          "reduction": 100,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 100,
+          "reduction": 80,
+          "reductionForage": null
+        }
+      }
+    },
+    "OILSEEDRADISH": {
+      "flags": "availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        }
+      }
+    },
+    "DRYGRASS": {
+      "flags": "availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        }
+      }
+    },
+    "WEED": {
+      "flags": "availableAsDefaultRate=\"false\"",
+      "soils": {
+        "1": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 0,
+          "reduction": 0,
+          "reductionForage": null
+        }
+      }
+    },
+    "alfalfa": {
+      "flags": "alwaysAllowFertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 20,
+          "reduction": 20,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 40,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 60,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 40,
+          "reduction": 40,
+          "reductionForage": null
+        }
+      }
+    },
+    "clover": {
+      "flags": "alwaysAllowFertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 40,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 60,
+          "reduction": 60,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 80,
+          "reduction": 80,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 40,
+          "reduction": 40,
+          "reductionForage": null
+        }
+      }
+    },
+    "incarase_grass": {
+      "flags": "alwaysAllowFertilization=\"true\"",
+      "soils": {
+        "1": {
+          "targetLevel": 160,
+          "reduction": 140,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 180,
+          "reduction": 160,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 200,
+          "reduction": 180,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 200,
+          "reduction": 180,
+          "reductionForage": null
+        }
+      }
+    },
+    "linseed": {
+      "flags": "",
+      "soils": {
+        "1": {
+          "targetLevel": 50,
+          "reduction": 40,
+          "reductionForage": null
+        },
+        "2": {
+          "targetLevel": 80,
+          "reduction": 70,
+          "reductionForage": null
+        },
+        "3": {
+          "targetLevel": 130,
+          "reduction": 110,
+          "reductionForage": null
+        },
+        "4": {
+          "targetLevel": 110,
+          "reduction": 90,
+          "reductionForage": null
+        }
+      }
+    }
+  },
+  "soilNamesPL": {
+    "ui_soilType_1": "Piasek ilasty",
+    "ui_soilType_2": "Piaszczysty ił",
+    "ui_soilType_3": "Ił",
+    "ui_soilType_4": "Ił pylasty"
+  },
+  "soilNamesEN": {
+    "ui_soilType_1": "Loamy Sand",
+    "ui_soilType_2": "Sandy Loam",
+    "ui_soilType_3": "Loam",
+    "ui_soilType_4": "Silty Clay"
+  }
+}

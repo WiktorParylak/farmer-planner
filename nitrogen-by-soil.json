@@ -1,0 +1,42 @@
+{
+  "_comment": "Nitrogen target (kg N/ha) per crop and Precision Farming soil type. Base crops = PF 'targetLevel' from FS25_precisionFarming/PrecisionFarming.xml <fruitRequirements>. The 9 crops Solek adds itself (Rye, Triticale, Alfalfa, Clover, Buckwheat, Greenrye, Silagemaize, Beans, Millet) are overridden by that map's own <precisionFarming><fruitRequirements> in FS25_Solek/map/mapUS.xml and use those values here. Note: on Solek the modder templated wheat's numbers (140/180/200/160) onto Rye/Triticale/Alfalfa/Clover/Buckwheat/Millet, so Alfalfa/Clover are NOT treated as N-fixing on this map and Beans needs 40-70. soilTypeIndex 1..4 = Piasek ilasty / Piaszczysty il / Il / Il pylasty. yieldPct = the base PF soil yieldPotential x100. Edit freely. Crop keys must match crops.json / field 'crop'; soil 'id' values are stable, 'pl'/'en' are the labels shown in the app.",
+  "source": "FS25 PrecisionFarming.xml + FS25_Solek/map/mapUS.xml <fruitRequirements> targetLevel",
+  "soilTypes": [
+    { "id": "loamySand", "pl": "Piasek ilasty",  "en": "Loamy Sand", "yieldPct": 80 },
+    { "id": "sandyLoam", "pl": "Piaszczysty ił", "en": "Sandy Loam", "yieldPct": 100 },
+    { "id": "loam",      "pl": "Ił",             "en": "Loam",       "yieldPct": 125 },
+    { "id": "siltyClay", "pl": "Ił pylasty",     "en": "Silty Clay", "yieldPct": 90 }
+  ],
+  "fallback": { "loamySand": 100, "sandyLoam": 120, "loam": 150, "siltyClay": 130 },
+  "crops": {
+    "Wheat":       { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Barley":      { "loamySand": 120, "sandyLoam": 140, "loam": 180, "siltyClay": 120 },
+    "Oat":         { "loamySand": 80,  "sandyLoam": 100, "loam": 140, "siltyClay": 100 },
+    "Canola":      { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Sunflower":   { "loamySand": 60,  "sandyLoam": 80,  "loam": 120, "siltyClay": 80 },
+    "Maize":       { "loamySand": 120, "sandyLoam": 160, "loam": 200, "siltyClay": 180 },
+    "Sorghum":     { "loamySand": 100, "sandyLoam": 120, "loam": 160, "siltyClay": 140 },
+    "Potato":      { "loamySand": 100, "sandyLoam": 120, "loam": 160, "siltyClay": 140 },
+    "Sugarbeet":   { "loamySand": 120, "sandyLoam": 140, "loam": 180, "siltyClay": 160 },
+    "Beetroot":    { "loamySand": 100, "sandyLoam": 120, "loam": 140, "siltyClay": 140 },
+    "Carrot":      { "loamySand": 80,  "sandyLoam": 90,  "loam": 110, "siltyClay": 100 },
+    "Parsnip":     { "loamySand": 100, "sandyLoam": 120, "loam": 140, "siltyClay": 140 },
+    "Spinach":     { "loamySand": 150, "sandyLoam": 160, "loam": 170, "siltyClay": 160 },
+    "Greenbean":   { "loamySand": 100, "sandyLoam": 110, "loam": 130, "siltyClay": 120 },
+    "Cotton":      { "loamySand": 80,  "sandyLoam": 100, "loam": 120, "siltyClay": 100 },
+    "Grass":       { "loamySand": 50,  "sandyLoam": 55,  "loam": 65,  "siltyClay": 65 },
+    "Pea":         { "loamySand": 0,   "sandyLoam": 0,   "loam": 0,   "siltyClay": 0 },
+    "Soybean":     { "loamySand": 0,   "sandyLoam": 0,   "loam": 0,   "siltyClay": 0 },
+    "Oilseedradish": { "loamySand": 0, "sandyLoam": 0,   "loam": 0,   "siltyClay": 0 },
+
+    "Rye":         { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Triticale":   { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Alfalfa":     { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Clover":      { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Buckwheat":   { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Millet":      { "loamySand": 140, "sandyLoam": 180, "loam": 200, "siltyClay": 160 },
+    "Greenrye":    { "loamySand": 80,  "sandyLoam": 90,  "loam": 100, "siltyClay": 110 },
+    "Silagemaize": { "loamySand": 120, "sandyLoam": 160, "loam": 200, "siltyClay": 180 },
+    "Beans":       { "loamySand": 40,  "sandyLoam": 50,  "loam": 70,  "siltyClay": 60 }
+  }
+}
