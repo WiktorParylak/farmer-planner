@@ -103,7 +103,7 @@ function createWindow() {
     minHeight: 600,
     frame: false,
     backgroundColor: '#16261D',
-    icon: path.join(__dirname, 'Assets', 'Logo.ico'),
+    icon: path.join(__dirname, '..', '..', 'Assets', 'Logo.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -113,7 +113,7 @@ function createWindow() {
 
   if (state.isMaximized) win.maximize();
 
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
   // Debounce saving while the user is actively dragging/resizing.
   let saveTimeout = null;

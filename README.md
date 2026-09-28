@@ -83,6 +83,18 @@ Breed pictures are loaded automatically from the `mods` folder next to your save
 
 Farms are stored in `Documents\Farmer Planner`, so they're easy to find, copy or sync. The app only **reads** game files and never modifies them.
 
+## Project structure
+
+```
+src/
+  main/        Electron main process (window, dialogs, Discord Rich Presence)
+  renderer/    UI: index.html, renderer.js, style.css, savegame & mod readers
+data/          Bundled base-game data (default crops, animals, nitrogen by soil)
+Assets/        Logo and app icon
+tools/         Dev scripts that regenerate the files in data/ from game files
+docs/          Screenshots and notes
+```
+
 ## Built with
 
 [Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).

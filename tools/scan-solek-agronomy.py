@@ -6,7 +6,7 @@ Farming derives it from yield potential), so it is left for the app's
 nitrogen-by-soil.json.
 
 Usage:
-    python scan_solek_agronomy.py "C:/path/to/FS25_Solek/map/foliage" [out.json]
+    python tools/scan-solek-agronomy.py "C:/path/to/FS25_Solek/map/foliage" [out.json]
 
 Defaults to the Solek copy on the Desktop and writes SOLEK_agronomy.json
 next to this script.

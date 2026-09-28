@@ -1,7 +1,0 @@
-<fertilizerUsage>
-            <nAmount fillType="FERTILIZER" amount="0.27"/> <!-- Granular Calcium Ammonium Nitrate, 27% N -->
-            <nAmount fillType="LIQUIDFERTILIZER" amount="0.39"/> <!-- Mixture of Ammonium Nitrate and Urea, 39% N -->
-            <nAmount fillType="MANURE" amount="0.007"/> <!-- 7kg N / to (Cows: 6.1kg, Pigs: 7.6kg) -->
-            <nAmount fillType="LIQUIDMANURE" amount="0.004"/> <!-- 4kg N / m³ (Cows: 3.6kg, Pigs: 4.7kg)-->
-            <nAmount fillType="DIGESTATE" amount="0.0055"/> <!-- 5.5kg N / m³ (between 2.4 and 9.1 in real) -->
-        </fertilizerUsage>

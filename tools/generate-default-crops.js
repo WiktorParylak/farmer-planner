@@ -4,7 +4,7 @@
 // refresh.
 //
 // Usage:
-//   node "crops module/generate_default_crops.js" "<path to FS25 install>\data\foliage"
+//   node tools/generate-default-crops.js "<path to FS25 install>\data\foliage"
 //
 // It mirrors parseCropGrowthXml/buildCropsCalendarFromFiles in renderer.js
 // (same fruitType/growth/seasonal/period/update/foliageState schema, same
@@ -147,7 +147,7 @@ function walkXmlFiles(dir) {
 function main() {
     const foliageDir = process.argv[2];
     if (!foliageDir || !fs.existsSync(foliageDir)) {
-        console.error('Usage: node generate_default_crops.js "<FS25 install>\\data\\foliage"');
+        console.error('Usage: node tools/generate-default-crops.js "<FS25 install>\\data\\foliage"');
         process.exit(1);
     }
 
@@ -168,7 +168,7 @@ function main() {
     found.sort().forEach(l => console.log(l));
     console.log(`\n${Object.keys(combined).length} crop(s) found out of ${files.length} XML file(s) scanned.`);
 
-    const outPath = path.join(__dirname, '..', 'default-crops.json');
+    const outPath = path.join(__dirname, '..', 'data', 'default-crops.json');
     fs.writeFileSync(outPath, JSON.stringify(combined, null, 2) + '\n', 'utf-8');
     console.log(`Written to ${outPath}`);
 }

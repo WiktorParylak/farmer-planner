@@ -1,7 +1,7 @@
 {
   "name": "farmer-planner",
   "version": "1.0.2",
-  "main": "main.js",
+  "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
@@ -14,7 +14,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "Logo.ico"
+      "icon": "Assets/Logo.ico"
     },
     "nsis": {
       "oneClick": false,

@@ -4,7 +4,7 @@
 // data needs a refresh.
 //
 // Usage:
-//   node "crops module/generate_default_animals.js" "<path to FS25 install>\sdk\xmlDoku\character\animals.xml"
+//   node tools/generate-default-animals.js "<path to FS25 install>\sdk\xmlDoku\character\animals.xml"
 //
 // Mirrors parseAnimalNeedsXml in renderer.js (same animals/animal/subType/
 // input/output/key schema, same generic fillType-attribute-first production
@@ -110,7 +110,7 @@ function parseAnimalNeedsXml(xmlText) {
 function main() {
     const xmlPath = process.argv[2];
     if (!xmlPath || !fs.existsSync(xmlPath)) {
-        console.error('Usage: node generate_default_animals.js "<FS25 install>\\sdk\\xmlDoku\\character\\animals.xml"');
+        console.error('Usage: node tools/generate-default-animals.js "<FS25 install>\\sdk\\xmlDoku\\character\\animals.xml"');
         process.exit(1);
     }
 
@@ -123,7 +123,7 @@ function main() {
     });
     console.log(`\n${Object.keys(needs).length} animal subType(s) found.`);
 
-    const outPath = path.join(__dirname, '..', 'default-animals.json');
+    const outPath = path.join(__dirname, '..', 'data', 'default-animals.json');
     fs.writeFileSync(outPath, JSON.stringify(needs, null, 2) + '\n', 'utf-8');
     console.log(`Written to ${outPath}`);
 }

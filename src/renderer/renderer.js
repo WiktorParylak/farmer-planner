@@ -8,6 +8,10 @@ const { readFieldSoilFromSave } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const { pathToFileURL } = require('url');
 
+// Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
+// __dirname here is the folder of index.html (src/renderer).
+const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+
 // Resolved by the main process — Documents\Farmer Planner, with a one-time
 // migration from the old %APPDATA%\FarmerPlanner location handled there. Falls
 // back to the legacy path if the IPC ever fails so the app still starts.
@@ -3138,7 +3142,7 @@ const FEED_CROP_USES = {
     Potato: { feed: 'EARTH' }, Sugarbeet: { feed: 'EARTH' }, Beetroot: { feed: 'EARTH' }, Carrot: { feed: 'EARTH' }, Parsnip: { feed: 'EARTH' }
 };
 // Straw windrow left behind by the combine, l/ha — the map's
-// windrowLitersPerSqm x 10000 (crops module/SOLEK_agronomy.json).
+// windrowLitersPerSqm x 10000 (tools/SOLEK_agronomy.json).
 const FEED_STRAW_L_PER_HA = { Wheat: 38000, Barley: 36800, Oat: 36800, Rye: 46000, Triticale: 36000 };
 // Reference crop used to turn a shortfall in litres into "about X ha missing".
 const FEED_REFERENCE_CROP = { PIG_BASE: 'Maize', GRAIN: 'Wheat', PROTEIN: 'Soybean', EARTH: 'Potato', OAT: 'Oat', STRAW: 'Wheat' };
@@ -4490,28 +4494,28 @@ let AVAILABLE_CROPS = [];
 
 // Base-game FS25 crop calendar (sow month -> harvest month), generated from
 // the vanilla data/foliage/*.xml growth definitions — see
-// "crops module/generate_default_crops.js". Loaded once so every farm has
+// tools/generate-default-crops.js. Loaded once so every farm has
 // the standard crops available even before/without importing a map's own
 // XML folder, since not every map ships XML overrides for crops it doesn't
 // customize. A farm's own crops_config.json (imported map data) is merged
 // on top of this in loadFarmConfigs(), overriding per-crop where present.
 let DEFAULT_CROPS = {};
 try {
-    DEFAULT_CROPS = JSON.parse(fs.readFileSync(path.join(__dirname, 'default-crops.json'), 'utf-8')) || {};
+    DEFAULT_CROPS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-crops.json'), 'utf-8')) || {};
 } catch (e) {
     console.error('Could not load default-crops.json — base crops will be unavailable until a map is imported', e);
 }
 
 // Base-game FS25 animal needs/production (food/water/straw + milk/egg/wool
 // curves by age), generated from the game's own animals.xml data — see
-// "crops module/generate_default_animals.js". Loaded once so every breed's
+// tools/generate-default-animals.js. Loaded once so every breed's
 // daily needs/production are known even before/without importing a map's
 // own animal-defs XML folder. A farm's own animal_needs_config.json
 // (imported map data) is merged on top of this in loadFarmConfigs(),
 // overriding per-subType where present.
 let DEFAULT_ANIMALS = {};
 try {
-    DEFAULT_ANIMALS = JSON.parse(fs.readFileSync(path.join(__dirname, 'default-animals.json'), 'utf-8')) || {};
+    DEFAULT_ANIMALS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-animals.json'), 'utf-8')) || {};
 } catch (e) {
     console.error('Could not load default-animals.json — base animal needs will be unavailable until a map is imported', e);
 }
@@ -4530,7 +4534,7 @@ const CONFIG_KEY_SUPPLY_RATES = 'farmer_planner_supply_rates';
 // Litres of seed per hectare, keyed by the crop keys used in crops.json /
 // field.crop. Anything unlisted falls back to SUPPLY_SEED_FALLBACK.
 // Values scanned from the FS25 Solek map's foliage XMLs (seeding/@litersPerSqm
-// x 10000) — see "crops module/scan_solek_agronomy.py" / SOLEK_agronomy.json.
+// x 10000) — see tools/scan-solek-agronomy.py / tools/SOLEK_agronomy.json.
 // A different map may use different rates; override per crop in the panel.
 // For crops in SUPPLY_SEED_RATES_PF below, Precision Farming replaces the
 // foliage rate in-game, so the value here is PF's "standard" rate — only
@@ -4609,7 +4613,7 @@ const SUPPLY_N_FALLBACK = 150;
 // Litres of harvest per hectare at 100%-yield-potential soil, full season —
 // used by the "Przewidywane plony" (Predicted yields) panel. Same source/
 // convention as SUPPLY_SEED_RATES above: scanned from the FS25 Solek map's
-// growth definitions (harvestLitersPerHa) — see "crops module/SOLEK_agronomy.json".
+// growth definitions (harvestLitersPerHa) — see tools/SOLEK_agronomy.json.
 // Deliberately no fallback constant for an unlisted crop (unlike the seed/N
 // tables) — there's no sane universal yield guess, so callers should show
 // "unknown" rather than a made-up number.
@@ -4647,7 +4651,7 @@ const NITROGEN_BY_SOIL_FALLBACK = {
 
 let NITROGEN_BY_SOIL = NITROGEN_BY_SOIL_FALLBACK;
 try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(__dirname, 'nitrogen-by-soil.json'), 'utf-8'));
+    const parsed = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'nitrogen-by-soil.json'), 'utf-8'));
     NITROGEN_BY_SOIL = {
         soilTypes: (parsed.soilTypes && parsed.soilTypes.length) ? parsed.soilTypes : NITROGEN_BY_SOIL_FALLBACK.soilTypes,
         fallback: parsed.fallback || NITROGEN_BY_SOIL_FALLBACK.fallback,
