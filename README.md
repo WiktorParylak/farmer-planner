@@ -36,7 +36,7 @@
 - **Field soil type** — field soils used by the fertilization plans.
 - **Notes** — pinned to months, with tags and a checklist.
 - **Predicted yields**.
-- **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd.
+- **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd, plus a **mixer wagon** calculator: load it from the bales on your farm and check the mix against the game's TMR recipe.
 
 **Other**
 - English and Polish.
@@ -99,6 +99,21 @@ docs/          Screenshots and notes
 
 [Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).
 
+## Changelog
+
+### 0.9.0.5 — 2026-09-28
+
+**New**
+- **Mixer wagon** in the Feed planner: mixer wagons and bales are read from the savegame (capacity from the wagon's mod file, or typed in once), the wagon is loaded from whole or half bales plus loose products, **Fill to recipe** loads it automatically, and the mix is checked against the game's allowed TMR ranges — with how many days the load feeds the barn.
+- Animal definitions are re-read from the imported `animals.xml` file(s) every time a farm is opened, so changes to them show up without importing again.
+
+**Changed**
+- The TMR recipe is no longer editable — the game's default (40% hay, 40% silage, 15% straw, 5% mineral feed) is always used.
+- Tutorial updated for the new UI: a new *Feed planner & mixer wagon* chapter, reproduction and ration steps in *Animals*, and the soil import in *Farm tools*.
+
+**Fixed**
+- Settings → Adjust rates: the per-crop rates table no longer splits each crop over two rows.
+
 ## Author
 
 Wiktor Parylak
@@ -114,6 +129,13 @@ Wiktor Parylak
 - Kalendarz upraw z plików mapy (działa z mapami z modami) i typy gleby z Precision Farming.
 - Narzędzia na pasku bocznym: Finanse, Zwierzęta (kafelki budynków, zdjęcia ras z modów, stado według rasy i wieku, dni paszy, dzienne zapotrzebowanie, produkcja i reprodukcja), Zaopatrzenie, Typ gleby pól, Notatki, Przewidywane plony i Planer pasz.
 - Język polski i angielski, interaktywny samouczek, kopie zapasowe farm, opcjonalny Discord Rich Presence.
+
+**Zmiany w 0.9.0.5:**
+- Nowość: **paszowóz** w Planerze pasz — paszowozy i bele z zapisu gry, załadunek z całych lub połówek bel i produktów sypkich, automatyczne dobranie do receptury i sprawdzenie mieszanki z zakresami TMR z gry.
+- Definicje zwierząt (`animals.xml`) są wczytywane na nowo przy każdym otwarciu farmy.
+- Receptura TMR nie jest już edytowalna — zawsze używana jest domyślna z gry (40/40/15/5).
+- Samouczek zaktualizowany do nowego interfejsu (nowy rozdział o planerze pasz i paszowozie).
+- Poprawka: tabela stawek per uprawa w ustawieniach nie rozbija już upraw na dwa wiersze.
 
 **Instalacja:** instalator dla Windows w zakładce [Releases](https://github.com/WiktorParylak/farmer-planner/releases) albo uruchomienie ze źródeł (Node.js 20+): `npm install`, potem `npm start` (`npm run build` buduje instalator).
 

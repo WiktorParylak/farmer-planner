@@ -1,6 +1,6 @@
 {
   "name": "farmer-planner",
-  "version": "1.0.2",
+  "version": "0.9.5",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
