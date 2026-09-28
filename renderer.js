@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave } = require('./savegame-soil');
+const animalImages = require('./animal-images');
+const { pathToFileURL } = require('url');
 
 // Resolved by the main process — Documents\Farmer Planner, with a one-time
 // migration from the old %APPDATA%\FarmerPlanner location handled there. Falls
@@ -119,12 +121,35 @@ const TRANSLATIONS = {
         limeLetter: "L",
         manureLetter: "M",
         fertilizerLetter: "F",
-        hubOpenMenu: "More",
-        hubTitle: "More",
+        navPlan: "Plan",
+        barnAllBuildings: "All buildings",
+        barnOpenDetails: "Details",
+        barnRename: "Rename",
+        barnHeads: "animals",
+        barnHerd: "Herd",
+        barnAge: "{m} months old",
+        barnDaysLeft: "days of feed",
+        barnTroughCapacity: "Trough capacity",
+        barnHowCalculated: "Where do these numbers come from?",
+        barnReproduction: "Reproduction",
+        reproProgress: "Pregnancy",
+        reproPregnant: "Pregnant",
+        reproPregnantOf: "females pregnant",
+        reproMonthsToBirth: "months to birth",
+        reproDue: "birth in ~{m} mo.",
+        reproDueNow: "birth this month",
+        reproYoung: "Too young to breed — from {m} mo.",
+        reproTooYoung: "Too young",
+        reproLowHealth: "Health too low to breed (min. {h}%)",
+        repro_waiting: "Not inseminated",
+        repro_ready: "Ready to breed",
+        repro_male: "Male",
+        reproLastBirth: "Last birth {m} mo. ago",
+        reproWaitingHint: "Old and healthy enough, but the game hasn't marked them inseminated — check there's a male of the same breed in this building.",
+        barnNeedsUnknown: "No food/water/straw data for some breeds in this building. If they come from a mod, import its animal definitions in Farm settings.",
         hubFinance: "Finance",
         hubAnimals: "Animals",
         hubEquipment: "Equipment",
-        hubBack: "Back",
         hubComingSoon: "Fuller tracking for this is coming in a future update.",
         hubChartNeedsMoreSeasons: "Finish at least one more season to see a trend chart here.",
         hubChartNeedsMoreMonths: "Play through at least one more in-game month (with auto-sync on, or by reopening the farm) to see a trend chart here.",
@@ -200,7 +225,7 @@ const TRANSLATIONS = {
         fieldSoilImportArea: "Area differs from the map outline: {list}.",
         fieldSoilImportFail: "Couldn't read soils from the game ({reason}).",
         fieldSoilImportReasons: { nosave: "savegame file not found", nomapid: "no map in careerSavegame.xml", nomod: "map mod {mod} not found in the mods folder", nomap: "map file not found in {mod}", nofields: "map has no field outlines / farmland layer", nosoil: "no soil map (is Precision Farming enabled?)", parse: "file read error" },
-        suppliesSoilHint: "Set each field's soil type in More → Field soil type.",
+        suppliesSoilHint: "Set each field's soil type in the sidebar → Field soil type.",
         suppliesTitle: "Season supplies",
         suppliesIntro: "How much to buy for Season {n} so you don't run short mid-season — one row per field, with the crop taken from that field in the season table. Seed is in litres; fertilizer is shown in litres and kilograms of nitrogen (Precision Farming's model), sourced from each field's own fertilization plan.",
         suppliesNoCrops: "No crops planned for this season yet. Assign crops to fields in EDIT SEASON, then come back here.",
@@ -385,7 +410,7 @@ const TRANSLATIONS = {
         feedStrawYield: "Straw yield (l/ha)",
         feedStrawYieldAuto: "from map data",
         feedUnknownAnimals: "{n} animal group(s) skipped — no feed data for their breed.",
-        feedPlanNote: "Need = the animals' current-age feed curve × 12 in-game months. Grassland harvest can become grass, hay or silage litre for litre, so it is counted where it is missing first. The maize chaff yield is an estimate — correct it after your first chopping. Efficiency shows how well a ration supports production (game productionWeight); it does not change how much the animals eat.",
+        feedPlanNote: "Need = the animals' current-age daily feed curve × days per month (from the game save) × 12 months. Grassland harvest can become grass, hay or silage litre for litre, so it is counted where it is missing first. The maize chaff yield is an estimate — correct it after your first chopping. Efficiency shows how well a ration supports production (game productionWeight); it does not change how much the animals eat.",
         feedIntroShort: "Pick a barn, pick its feed — the tiles show what you have for a year (storage + planned harvest) and what's missing.",
         feedPickBarn: "Barn",
         feedPickRation: "Feed",
@@ -401,6 +426,7 @@ const TRANSLATIONS = {
         feedFoodPerYear: "feed / year",
         feedYearNeedFood: "Feed needed per year",
         feedYearNeedMonth: "Per in-game month",
+        feedDaysPerMonth: "{d} days per month (game save)",
         feedSettings: "Settings — feed fields, parameters, custom feeds"
     },
     pl: {
@@ -494,12 +520,35 @@ const TRANSLATIONS = {
         limeLetter: "W",
         manureLetter: "O",
         fertilizerLetter: "N",
-        hubOpenMenu: "Więcej",
-        hubTitle: "Więcej",
+        navPlan: "Plan",
+        barnAllBuildings: "Wszystkie budynki",
+        barnOpenDetails: "Szczegóły",
+        barnRename: "Zmień nazwę",
+        barnHeads: "zwierząt",
+        barnHerd: "Stado",
+        barnAge: "Wiek: {m} mies.",
+        barnDaysLeft: "dni paszy",
+        barnTroughCapacity: "Pojemność koryta",
+        barnHowCalculated: "Skąd te liczby?",
+        barnReproduction: "Reprodukcja",
+        reproProgress: "Ciąża",
+        reproPregnant: "Ciężarne",
+        reproPregnantOf: "samic w ciąży",
+        reproMonthsToBirth: "mies. do porodu",
+        reproDue: "poród za ~{m} mies.",
+        reproDueNow: "poród w tym miesiącu",
+        reproYoung: "Za młode do rozrodu — od {m} mies.",
+        reproTooYoung: "Za młode",
+        reproLowHealth: "Za słabe zdrowie do rozrodu (min. {h}%)",
+        repro_waiting: "Niezapłodnione",
+        repro_ready: "Gotowe do rozrodu",
+        repro_male: "Samiec",
+        reproLastBirth: "Ostatni poród {m} mies. temu",
+        reproWaitingHint: "Mają odpowiedni wiek i zdrowie, ale gra nie oznaczyła ich jako zapłodnione — sprawdź, czy w budynku jest samiec tej samej rasy.",
+        barnNeedsUnknown: "Brak danych o paszy, wodzie i słomie dla części ras w tym budynku. Jeśli pochodzą z moda, zaimportuj jego definicje zwierząt w Ustawieniach farmy.",
         hubFinance: "Finanse",
         hubAnimals: "Zwierzęta",
         hubEquipment: "Sprzęt",
-        hubBack: "Wstecz",
         hubComingSoon: "Pełniejsze śledzenie tego pojawi się w przyszłej aktualizacji.",
         hubChartNeedsMoreSeasons: "Zakończ jeszcze co najmniej jeden sezon, żeby zobaczyć tu wykres trendu.",
         hubChartNeedsMoreMonths: "Rozegraj jeszcze co najmniej jeden miesiąc w grze (z włączoną auto-synchronizacją albo otwierając farmę ponownie), żeby zobaczyć tu wykres trendu.",
@@ -575,7 +624,7 @@ const TRANSLATIONS = {
         fieldSoilImportArea: "Powierzchnia różni się od obrysu na mapie: {list}.",
         fieldSoilImportFail: "Nie udało się wczytać gleb z gry ({reason}).",
         fieldSoilImportReasons: { nosave: "nie znaleziono pliku zapisu", nomapid: "brak mapy w careerSavegame.xml", nomod: "nie znaleziono moda mapy {mod} w folderze mods", nomap: "brak pliku mapy w {mod}", nofields: "mapa nie ma obrysów pól / warstwy działek", nosoil: "brak mapy gleb (czy Precision Farming jest włączony?)", parse: "błąd odczytu plików" },
-        suppliesSoilHint: "Typ gleby pól ustawisz w: Więcej → Typ gleby pól.",
+        suppliesSoilHint: "Typ gleby pól ustawisz w pasku bocznym → Typ gleby pól.",
         suppliesTitle: "Zaopatrzenie na sezon",
         suppliesIntro: "Ile kupić na sezon {n}, żeby nie zabrakło w trakcie — jeden wiersz na pole, uprawa pobierana z tego pola w tabeli sezonu. Nasiona w litrach; nawóz podany w litrach i kilogramach azotu (model Precision Farming), pobrany z planu nawożenia każdego pola.",
         suppliesNoCrops: "Brak zaplanowanych upraw w tym sezonie. Przypisz uprawy do pól w EDYTUJ SEZON i wróć tutaj.",
@@ -760,7 +809,7 @@ const TRANSLATIONS = {
         feedStrawYield: "Plon słomy (l/ha)",
         feedStrawYieldAuto: "z danych mapy",
         feedUnknownAnimals: "Pominięto {n} grup(y) zwierząt — brak danych o paszy dla tej rasy.",
-        feedPlanNote: "Potrzeba = krzywa paszy dla obecnego wieku zwierząt × 12 miesięcy gry. Zbiór z łąk może stać się trawą, sianem lub kiszonką litr za litr, więc najpierw liczy się tam, gdzie czegoś brakuje. Plon sieczki z kukurydzy to szacunek — popraw go po pierwszym zbiorze. Efektywność pokazuje, jak dawka wspiera produkcję (productionWeight z gry); nie zmienia ilości zjadanej paszy.",
+        feedPlanNote: "Potrzeba = dzienna krzywa paszy dla obecnego wieku zwierząt × dni w miesiącu (z zapisu gry) × 12 miesięcy. Zbiór z łąk może stać się trawą, sianem lub kiszonką litr za litr, więc najpierw liczy się tam, gdzie czegoś brakuje. Plon sieczki z kukurydzy to szacunek — popraw go po pierwszym zbiorze. Efektywność pokazuje, jak dawka wspiera produkcję (productionWeight z gry); nie zmienia ilości zjadanej paszy.",
         feedIntroShort: "Wybierz oborę i paszę — kafelki pokażą, ile masz na rok (magazyn + planowany zbiór) i ile brakuje.",
         feedPickBarn: "Obora",
         feedPickRation: "Pasza",
@@ -776,6 +825,7 @@ const TRANSLATIONS = {
         feedFoodPerYear: "paszy / rok",
         feedYearNeedFood: "Pasza potrzebna na rok",
         feedYearNeedMonth: "Na miesiąc gry",
+        feedDaysPerMonth: "{d} dni w miesiącu (z zapisu gry)",
         feedSettings: "Ustawienia — pola paszowe, parametry, własne pasze"
     }
 };
@@ -807,8 +857,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_ch_d: "Editing a season",
     tut_ch_e: "Fertilization plan",
     tut_ch_f: "Crops sidebar",
-    tut_ch_g: "Farm details & sync",
-    tut_ch_h: "Tools hub",
+    tut_ch_g: "Auto-sync",
+    tut_ch_h: "Farm tools",
     tut_ch_k: "Animals",
     tut_ch_i: "Farm settings",
     tut_ch_j: "App settings",
@@ -931,35 +981,25 @@ Object.assign(TRANSLATIONS.en, {
     tut_f5_t: "Save",
     tut_f5_x: "Click \"Save changes\". Tracked crops are what you can pick when editing fields.",
 
-    tut_g1_t: "Farm details",
-    tut_g1_x: "Balance and credit come from the savegame (Enhanced Loan System is supported), hectares and field count from the table, playtime, equipment and animals from the game files.",
     tut_g2_t: "Auto-sync",
     tut_g2_x: "With auto-sync enabled, the app checks the savegame every 10 seconds and updates the planner after you save in the game. This badge appears when it does.",
 
-    tut_h1_t: "Tools hub",
-    tut_h1_x: "Click the three dots to open more tools.",
-    tut_h2_t: "Six tools",
-    tut_h2_x: "Finance, animals, supplies, field soils, notes and yield forecast.",
+    tut_h1_t: "Sidebar",
+    tut_h1_x: "The bar on the left switches between the field plan and the farm's tools: finance, animals, supplies, field soils, notes, yield forecast and feed planner.",
     tut_h3_t: "Finance",
     tut_h3_x: "Click \"Finance\".",
     tut_h4_t: "Charts",
     tut_h4_x: "Balance (solid line) and credit (dashed) month by month, recorded automatically from the savegame, plus a chart per season.",
-    tut_h5_t: "Back",
-    tut_h5_x: "Click the back button to return to the tools menu.",
     tut_h6_t: "Field soils",
     tut_h6_x: "Click the field soil tool.",
     tut_h7_t: "Soil mix",
     tut_h7_x: "Enter the share of each soil type per field (from the PF soil map). Only the ratio matters. Type e.g. 60 in the first box of field 1 and press Tab. Soil affects the nitrogen target, seed rate, lime loss and yield.",
-    tut_h8_t: "Back",
-    tut_h8_x: "Return to the tools menu.",
     tut_h9_t: "Supplies",
     tut_h9_x: "Click \"Supplies\".",
     tut_h10_t: "Seeds",
     tut_h10_x: "Seed needed for every field that's not sown yet: rate in l/ha and total including the buffer. \"?\" means the rate is unknown.",
     tut_h11_t: "Fertilizer",
     tut_h11_x: "Fertilizer per field from the fertilization plans: target N, what's already covered, and litres of mineral fertilizer to buy. Fields without a plan get a button to fill one in.",
-    tut_h12_t: "Back",
-    tut_h12_x: "Return to the tools menu.",
     tut_h13_t: "Notes",
     tut_h13_x: "Click \"Notes\".",
     tut_h14_t: "A note",
@@ -972,25 +1012,19 @@ Object.assign(TRANSLATIONS.en, {
     tut_h17_x: "Pick the months the note applies to — it will be highlighted when that month comes. Below you can add tags and a checklist.",
     tut_h18_t: "Save the note",
     tut_h18_x: "Click Save.",
-    tut_h19_t: "Back",
-    tut_h19_x: "Return to the tools menu.",
     tut_h20_t: "Yield forecast",
     tut_h20_x: "Click the yield forecast tool.",
     tut_h21_t: "Forecast",
     tut_h21_x: "Expected harvest per crop in litres = hectares × crop yield × soil factor, assuming ideal nitrogen, pH and no weeds.",
-    tut_h22_t: "Back",
-    tut_h22_x: "Return to the tools menu.",
-    tut_h24_t: "Close",
-    tut_h24_x: "Close the tools menu. Animals have a chapter of their own.",
+    tut_h24_t: "Back to the plan",
+    tut_h24_x: "Click \"Plan\" to return to the field table. Animals have a chapter of their own.",
 
-    tut_k1_t: "Tools hub",
-    tut_k1_x: "Animals live in the tools hub. Click the three dots.",
-    tut_k2_t: "Animals",
-    tut_k2_x: "Click \"Animals\".",
+    tut_k1_t: "Animals",
+    tut_k1_x: "Click \"Animals\" in the sidebar.",
     tut_k3_t: "Head count",
-    tut_k3_x: "All your animals together, read from the savegame (placeables.xml). Everything in this panel refreshes whenever the game saves — with auto-sync even while you play.",
-    tut_k4_t: "One card per barn",
-    tut_k4_x: "Every animal building on your farm gets its own card: cow barns, chicken coops, pastures, stables. The name comes from the building's file on the map.",
+    tut_k3_x: "All your animals together, read from the savegame (placeables.xml), and one tile per barn with its feed level. Everything here refreshes whenever the game saves — with auto-sync even while you play.",
+    tut_k4_t: "Barn details",
+    tut_k4_x: "Clicking a tile opens that building's full card: cow barns, chicken coops, pastures, stables. The name comes from the building's file on the map — click the pencil to give it your own.",
     tut_k5_t: "Animals & health",
     tut_k5_x: "Each breed and age group as a separate row: breed × head count and health. Health drops when animals lack food, water or straw, or when the barn isn't cleaned — sick animals produce less and are worth less.",
     tut_k6_t: "Feed bar",
@@ -1017,8 +1051,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_k16_x: "Month by month: head count, average health and milk produced. The app records a point every in-game month from the savegame.",
     tut_k17_t: "Modded maps",
     tut_k17_x: "Food, water and production rates come from the base game. If your map or mods add their own animals, import their definitions in Farm settings → animal definitions folder.",
-    tut_k18_t: "Close",
-    tut_k18_x: "Close the animals panel.",
+    tut_k18_t: "Back to the plan",
+    tut_k18_x: "Click \"Plan\" to return to the field table.",
 
     tut_i1_t: "Farm settings",
     tut_i1_x: "Click the farm settings button.",
@@ -1079,8 +1113,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_ch_d: "Edycja sezonu",
     tut_ch_e: "Plan nawożenia",
     tut_ch_f: "Uprawy",
-    tut_ch_g: "Szczegóły farmy i synchronizacja",
-    tut_ch_h: "Centrum narzędzi",
+    tut_ch_g: "Automatyczna synchronizacja",
+    tut_ch_h: "Narzędzia farmy",
     tut_ch_k: "Zwierzęta",
     tut_ch_i: "Ustawienia farmy",
     tut_ch_j: "Ustawienia aplikacji",
@@ -1203,35 +1237,25 @@ Object.assign(TRANSLATIONS.pl, {
     tut_f5_t: "Zapisz",
     tut_f5_x: "Kliknij „Zapisz zmiany”. Śledzone uprawy to te, które wybierasz przy edycji pól.",
 
-    tut_g1_t: "Szczegóły farmy",
-    tut_g1_x: "Saldo i kredyt pochodzą z zapisu gry (obsługiwany jest Enhanced Loan System), hektary i liczba pól z tabeli, a czas gry, sprzęt i zwierzęta z plików gry.",
     tut_g2_t: "Automatyczna synchronizacja",
     tut_g2_x: "Gdy jest włączona, aplikacja co 10 sekund sprawdza zapis gry i aktualizuje planer po zapisaniu gry. Wtedy pojawia się ten znaczek.",
 
-    tut_h1_t: "Centrum narzędzi",
-    tut_h1_x: "Kliknij trzy kropki, żeby otworzyć więcej narzędzi.",
-    tut_h2_t: "Sześć narzędzi",
-    tut_h2_x: "Finanse, zwierzęta, zaopatrzenie, gleby pól, notatki i prognoza plonów.",
+    tut_h1_t: "Pasek boczny",
+    tut_h1_x: "Pasek po lewej przełącza między planem pól a narzędziami farmy: finanse, zwierzęta, zaopatrzenie, gleby pól, notatki, prognoza plonów i planer pasz.",
     tut_h3_t: "Finanse",
     tut_h3_x: "Kliknij „Finanse”.",
     tut_h4_t: "Wykresy",
     tut_h4_x: "Saldo (linia ciągła) i kredyt (przerywana) miesiąc po miesiącu, zapisywane automatycznie z zapisu gry, oraz wykres według sezonów.",
-    tut_h5_t: "Wstecz",
-    tut_h5_x: "Kliknij przycisk powrotu do menu narzędzi.",
     tut_h6_t: "Gleby pól",
     tut_h6_x: "Kliknij narzędzie gleb pól.",
     tut_h7_t: "Mieszanka gleb",
     tut_h7_x: "Wpisz udział każdego typu gleby na polu (z mapy gleby PF). Liczy się tylko proporcja. Wpisz np. 60 w pierwszym polu dla pola 1 i naciśnij Tab. Gleba wpływa na zapotrzebowanie na azot, ilość siewu, spadek pH i plon.",
-    tut_h8_t: "Wstecz",
-    tut_h8_x: "Wróć do menu narzędzi.",
     tut_h9_t: "Zaopatrzenie",
     tut_h9_x: "Kliknij „Zaopatrzenie”.",
     tut_h10_t: "Nasiona",
     tut_h10_x: "Ilość nasion dla każdego nieobsianego pola: dawka w l/ha i łącznie z buforem. „?” oznacza nieznaną dawkę.",
     tut_h11_t: "Nawozy",
     tut_h11_x: "Nawożenie pól według planów nawożenia: docelowy azot, co już pokryto i ile litrów nawozu mineralnego kupić. Pola bez planu mają przycisk do jego uzupełnienia.",
-    tut_h12_t: "Wstecz",
-    tut_h12_x: "Wróć do menu narzędzi.",
     tut_h13_t: "Notatki",
     tut_h13_x: "Kliknij „Notatki”.",
     tut_h14_t: "Notatka",
@@ -1244,25 +1268,19 @@ Object.assign(TRANSLATIONS.pl, {
     tut_h17_x: "Wybierz miesiące, których dotyczy notatka — zostanie wyróżniona, gdy nadejdą. Niżej dodasz tagi i listę kontrolną.",
     tut_h18_t: "Zapisz notatkę",
     tut_h18_x: "Kliknij Zapisz.",
-    tut_h19_t: "Wstecz",
-    tut_h19_x: "Wróć do menu narzędzi.",
     tut_h20_t: "Prognoza plonów",
     tut_h20_x: "Kliknij narzędzie prognozy plonów.",
     tut_h21_t: "Prognoza",
     tut_h21_x: "Spodziewany zbiór każdej uprawy w litrach = hektary × plon uprawy × współczynnik gleby, przy idealnym azocie, pH i braku chwastów.",
-    tut_h22_t: "Wstecz",
-    tut_h22_x: "Wróć do menu narzędzi.",
-    tut_h24_t: "Zamknij",
-    tut_h24_x: "Zamknij menu narzędzi. Zwierzęta mają osobny rozdział.",
+    tut_h24_t: "Powrót do planu",
+    tut_h24_x: "Kliknij „Plan”, żeby wrócić do tabeli pól. Zwierzęta mają osobny rozdział.",
 
-    tut_k1_t: "Centrum narzędzi",
-    tut_k1_x: "Zwierzęta są w centrum narzędzi. Kliknij trzy kropki.",
-    tut_k2_t: "Zwierzęta",
-    tut_k2_x: "Kliknij „Zwierzęta”.",
+    tut_k1_t: "Zwierzęta",
+    tut_k1_x: "Kliknij „Zwierzęta” w pasku bocznym.",
     tut_k3_t: "Liczba zwierząt",
-    tut_k3_x: "Wszystkie zwierzęta razem, odczytane z zapisu gry (placeables.xml). Cały panel odświeża się przy każdym zapisie gry — z automatyczną synchronizacją nawet w trakcie grania.",
-    tut_k4_t: "Karta dla każdego budynku",
-    tut_k4_x: "Każdy budynek ze zwierzętami ma swoją kartę: obory, kurniki, pastwiska, stajnie. Nazwa pochodzi z pliku budynku na mapie.",
+    tut_k3_x: "Wszystkie zwierzęta razem, odczytane z zapisu gry (placeables.xml), i kafelek dla każdego budynku z poziomem paszy. Wszystko odświeża się przy każdym zapisie gry — z automatyczną synchronizacją nawet w trakcie grania.",
+    tut_k4_t: "Szczegóły budynku",
+    tut_k4_x: "Kliknięcie kafelka otwiera pełną kartę budynku: obory, kurniki, pastwiska, stajnie. Nazwa pochodzi z pliku budynku na mapie — kliknij ołówek, żeby nadać własną.",
     tut_k5_t: "Zwierzęta i zdrowie",
     tut_k5_x: "Każda rasa i grupa wiekowa w osobnym wierszu: rasa × liczba sztuk i zdrowie. Zdrowie spada, gdy brakuje paszy, wody lub słomy albo budynek nie jest sprzątany — chore zwierzęta mniej produkują i są mniej warte.",
     tut_k6_t: "Pasek paszy",
@@ -1289,8 +1307,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k16_x: "Miesiąc po miesiącu: liczba zwierząt, średnie zdrowie i wyprodukowane mleko. Aplikacja zapisuje punkt co miesiąc gry z zapisu gry.",
     tut_k17_t: "Mapy z modami",
     tut_k17_x: "Zapotrzebowanie i produkcja pochodzą z podstawowej gry. Jeśli mapa lub mody dodają własne zwierzęta, zaimportuj ich definicje w Ustawieniach farmy → folder definicji zwierząt.",
-    tut_k18_t: "Zamknij",
-    tut_k18_x: "Zamknij panel zwierząt.",
+    tut_k18_t: "Powrót do planu",
+    tut_k18_x: "Kliknij „Plan”, żeby wrócić do tabeli pól.",
 
     tut_i1_t: "Ustawienia farmy",
     tut_i1_x: "Kliknij przycisk ustawień farmy.",
@@ -1645,27 +1663,43 @@ if (discordRpcToggle) {
     });
 }
 
-// --- Farm Details hub menu (Finance / Animals / Equipment panels) ---
-const farmHubBtn = document.getElementById('farm-hub-btn');
-const farmHubModal = document.getElementById('farm-hub-modal');
-const closeFarmHubBtn = document.getElementById('close-farm-hub-btn');
+// --- Planner sidebar: switches between the field plan and the tool views
+// (Finance / Animals / Supplies / ...), which render into #hub-view in place
+// of the planner content. #hub-panel-modal is only the per-field fert plan.
+const plannerContentEl = document.querySelector('#planner-view .planner-content');
+const hubView = document.getElementById('hub-view');
 const hubPanelModal = document.getElementById('hub-panel-modal');
 const closeHubPanelBtn = document.getElementById('close-hub-panel-btn');
-const backToHubBtn = document.getElementById('back-to-hub-btn');
+let currentPlannerView = 'plan';
 
-if (farmHubBtn && farmHubModal) {
-    farmHubBtn.addEventListener('click', () => { farmHubModal.style.display = 'flex'; });
+function setActiveSidebarItem(view) {
+    currentPlannerView = view;
+    document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(el => {
+        el.classList.toggle('is-active', el.dataset.view === view);
+    });
 }
-if (closeFarmHubBtn && farmHubModal) {
-    closeFarmHubBtn.addEventListener('click', () => { farmHubModal.style.display = 'none'; });
-}
+
+window.showPlannerView = function (view) {
+    if (!view || view === 'plan') {
+        setActiveSidebarItem('plan');
+        if (hubView) hubView.hidden = true;
+        if (plannerContentEl) plannerContentEl.style.display = '';
+        return;
+    }
+    if (view === 'animals') animalSelectedBuilding = null;   // sidebar always opens the barn overview
+    openHubPanel(view);
+    if (hubView) hubView.scrollTop = 0;
+};
+
+document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(el => {
+    el.addEventListener('click', () => showPlannerView(el.dataset.view));
+});
+
 if (closeHubPanelBtn && hubPanelModal) {
-    closeHubPanelBtn.addEventListener('click', () => { hubPanelModal.style.display = 'none'; });
-}
-if (backToHubBtn && hubPanelModal && farmHubModal) {
-    backToHubBtn.addEventListener('click', () => {
+    closeHubPanelBtn.addEventListener('click', () => {
         hubPanelModal.style.display = 'none';
-        farmHubModal.style.display = 'flex';
+        // Supplies lists "fill in the plan" per field — refresh it after editing one.
+        if (currentPlannerView === 'supplies') openHubPanel('supplies');
     });
 }
 
@@ -2016,6 +2050,250 @@ window.updateBuildingCapacity = function (input) {
     openHubPanel('animals');
 };
 
+// --- Animals panel: barn tiles, one-barn detail and custom barn names ---
+// Barn opened from the tile grid (building id), null = the overview. Kept
+// across re-renders (capacity/ration edits), reset when the sidebar opens
+// the Animals view.
+let animalSelectedBuilding = null;
+
+// Custom name the player gave a barn (saved per farm, keyed like the
+// capacities), falling back to the cleaned-up file name from the save.
+function buildingDisplayName(farm, building) {
+    const custom = farm && farm.animalBuildingNames && farm.animalBuildingNames[building.id];
+    return custom || formatBuildingName(building.name);
+}
+
+function barnNameHtml(farm, building, cls) {
+    return `<span class="barn-name-wrap">
+        <span class="${cls} barn-name">${escapeHtml(buildingDisplayName(farm, building))}</span>
+        <button type="button" class="barn-rename-btn" data-building="${escapeHtml(String(building.id))}" title="${t('barnRename')}" aria-label="${t('barnRename')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+    </span>`;
+}
+
+// --- Breed pictures (see animal-images.js) ---
+// Pictures are looked up in the mods folder next to the farm's savegame and
+// cached as PNGs; anything missing (base-game breeds, no save path) falls
+// back to a species icon. Loading runs just after a render and re-renders
+// the Animals view once when new pictures are ready.
+const ANIMAL_PICTURE_DIR = path.join(appDataDir, 'animal-pictures');
+const animalPictures = { modsDir: null, index: null, timer: null, failed: new Set() };
+
+function animalPictureUrl(subType, age) {
+    const farm = getCurrentFarm();
+    const modsDir = animalImages.findModsDir(farm && farm.saveGamePath);
+    if (!modsDir) return null;
+    if (animalPictures.modsDir !== modsDir) { animalPictures.modsDir = modsDir; animalPictures.index = null; }
+    if (!animalPictures.index) { queueAnimalPictures(); return null; }
+    const visual = animalImages.pickVisual(animalPictures.index, subType, age);
+    if (!visual) return null;
+    const file = animalImages.cacheFileFor(ANIMAL_PICTURE_DIR, visual);
+    if (fs.existsSync(file)) return pathToFileURL(file).href;
+    if (!animalPictures.failed.has(file)) queueAnimalPictures();
+    return null;
+}
+
+function queueAnimalPictures() {
+    if (animalPictures.timer) return;
+    animalPictures.timer = setTimeout(() => {
+        animalPictures.timer = null;
+        const farm = getCurrentFarm();
+        if (!farm || !animalPictures.modsDir) return;
+        let changed = false;
+        if (!animalPictures.index) {
+            try { animalPictures.index = animalImages.loadIndex(animalPictures.modsDir, ANIMAL_PICTURE_DIR); }
+            catch (e) { console.warn('Could not index animal pictures', e); animalPictures.index = {}; }
+            changed = true;
+        }
+        (farm.animalBuildings || []).forEach(b => (b.clusters || []).forEach(c => {
+            const visual = animalImages.pickVisual(animalPictures.index, c.subType, c.age);
+            if (!visual) return;
+            const file = animalImages.cacheFileFor(ANIMAL_PICTURE_DIR, visual);
+            if (fs.existsSync(file) || animalPictures.failed.has(file)) return;
+            try {
+                if (animalImages.ensurePicture(ANIMAL_PICTURE_DIR, visual)) changed = true;
+                else animalPictures.failed.add(file);
+            } catch (e) {
+                console.warn('Could not decode animal picture', visual.image, e);
+                animalPictures.failed.add(file);
+            }
+        }));
+        if (changed && currentPlannerView === 'animals') rerenderAnimalsKeepScroll();
+    }, 30);
+}
+
+function animalPictureHtml(cluster, cls) {
+    const type = cluster ? animalTypeOf(cluster.subType) : null;
+    const url = cluster ? animalPictureUrl(cluster.subType, cluster.age) : null;
+    if (url) return `<span class="animal-pic ${cls}"><img src="${escapeHtml(url)}" alt="" draggable="false"></span>`;
+    return `<span class="animal-pic animal-pic--icon ${cls}" aria-hidden="true"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i></span>`;
+}
+
+// --- Reproduction ---
+// Settings (min. age, pregnancy length, min. health) come from an imported
+// animals.xml or, failing that, the animal definitions found in the mods.
+function getReproductionDef(subType) {
+    const key = String(subType || '').toUpperCase();
+    const own = ANIMAL_NEEDS_DATA[key] && ANIMAL_NEEDS_DATA[key].reproduction;
+    if (own) return own;
+    const fromMods = animalPictures.index && animalPictures.index.reproduction && animalPictures.index.reproduction[key];
+    return fromMods || null;
+}
+
+// What a group of animals is doing reproduction-wise, from the savegame
+// state + the breed's settings. The game raises `reproduction` by
+// 100 / durationMonth each month and gives birth at 100 %.
+function reproductionStatus(c) {
+    const def = getReproductionDef(c.subType);
+    const isMale = def ? def.supported === false : /^(BULL|ROOSTER|BOAR|RAM|BUCK|STALLION)_/i.test(c.subType);
+    if (isMale) return { kind: 'male' };
+    if (c.reproduction === undefined && !def) return null;   // old save data, nothing known
+    const progress = c.reproduction || 0;
+    if (progress > 0) {
+        const monthsLeft = def && def.durationMonth ? Math.max(0, Math.ceil(def.durationMonth * (1 - progress / 100))) : null;
+        return { kind: 'pregnant', progress, monthsLeft };
+    }
+    if (def && def.minAgeMonth && c.age < def.minAgeMonth) return { kind: 'young', months: def.minAgeMonth - c.age, minAge: def.minAgeMonth };
+    if (def && def.minHealthFactor && c.health < def.minHealthFactor * 100) return { kind: 'lowHealth', minHealth: Math.round(def.minHealthFactor * 100) };
+    if (c.isInseminated === false) return { kind: 'waiting' };
+    return { kind: 'ready' };
+}
+
+function reproDueText(monthsLeft) {
+    if (monthsLeft === null || monthsLeft === undefined) return '';
+    return monthsLeft <= 0 ? t('reproDueNow') : t('reproDue').replace('{m}', monthsLeft);
+}
+
+function reproStatusHtml(c, st) {
+    if (!st) return '';
+    const icons = { pregnant: 'fa-baby-carriage', young: 'fa-hourglass-half', lowHealth: 'fa-heart-crack', waiting: 'fa-circle-pause', ready: 'fa-circle-check', male: 'fa-mars' };
+    let label;
+    if (st.kind === 'pregnant') label = `${t('reproProgress')} ${Math.round(st.progress)}%${st.monthsLeft !== null ? ' · ' + reproDueText(st.monthsLeft) : ''}`;
+    else if (st.kind === 'young') label = t('reproYoung').replace('{m}', st.minAge);
+    else if (st.kind === 'lowHealth') label = t('reproLowHealth').replace('{h}', st.minHealth);
+    else label = t('repro_' + st.kind);
+    let html = `<div class="herd-repro herd-repro--${st.kind}"><i class="fa-solid ${icons[st.kind]}" aria-hidden="true"></i><span>${label}</span></div>`;
+    if (st.kind === 'pregnant') html += `<div class="herd-repro-bar"><div class="pen-bar-track"><div class="pen-bar-fill repro-bar-fill" style="width:${Math.max(3, Math.min(100, st.progress))}%"></div></div></div>`;
+    if (c.hadABirth && c.monthsSinceLastBirth !== undefined) html += `<div class="herd-repro-last">${t('reproLastBirth').replace('{m}', c.monthsSinceLastBirth)}</div>`;
+    return html;
+}
+
+// Barn-level summary: how many females are pregnant and when the next birth is.
+function barnReproSummary(building) {
+    let pregnant = 0, females = 0, ready = 0, waiting = 0, young = 0, nextBirth = null, known = false;
+    (building.clusters || []).forEach(c => {
+        const st = reproductionStatus(c);
+        if (!st || st.kind === 'male') return;
+        known = true;
+        females += c.numAnimals;
+        if (st.kind === 'pregnant') {
+            pregnant += c.numAnimals;
+            if (st.monthsLeft !== null && (nextBirth === null || st.monthsLeft < nextBirth)) nextBirth = st.monthsLeft;
+        } else if (st.kind === 'ready') ready += c.numAnimals;
+        else if (st.kind === 'waiting') waiting += c.numAnimals;
+        else if (st.kind === 'young') young += c.numAnimals;
+    });
+    return known ? { pregnant, females, ready, waiting, young, nextBirth } : null;
+}
+
+// Icons (and colour tone) for the fill types shown in the barn detail.
+function fillIcon(fillType) {
+    const ft = String(fillType || '').toUpperCase();
+    if (ft === 'FOOD') return 'fa-bowl-food';
+    if (ft === 'WATER') return 'fa-droplet';
+    if (ft === 'STRAW') return 'fa-wheat-awn';
+    if (ft === 'LIQUIDMANURE' || ft === 'DIGESTATE') return 'fa-water';
+    if (ft === 'MANURE') return 'fa-poop';
+    if (ft.includes('MILK')) return 'fa-bottle-droplet';
+    if (ft.includes('EGG')) return 'fa-egg';
+    if (ft.includes('WOOL')) return 'fa-socks';
+    if (ft.includes('HONEY')) return 'fa-jar';
+    return 'fa-box';
+}
+
+function fillIconTone(fillType) {
+    const ft = String(fillType || '').toUpperCase();
+    if (ft === 'WATER') return 'water';
+    if (ft === 'STRAW' || ft === 'FOOD') return 'feed';
+    if (ft === 'MANURE' || ft === 'LIQUIDMANURE' || ft === 'DIGESTATE') return 'manure';
+    return 'product';
+}
+
+function rerenderAnimalsKeepScroll() {
+    const scroll = hubView ? hubView.scrollTop : 0;
+    openHubPanel('animals');
+    if (hubView) hubView.scrollTop = scroll;
+}
+
+function openAnimalBuilding(id) {
+    animalSelectedBuilding = id;
+    openHubPanel('animals');
+    if (hubView) hubView.scrollTop = 0;
+}
+
+function startBarnRename(btn) {
+    const wrap = btn.closest('.barn-name-wrap');
+    const nameEl = wrap && wrap.querySelector('.barn-name');
+    if (!wrap || !nameEl) return;
+    const buildingId = btn.dataset.building;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'barn-name-input';
+    input.value = nameEl.textContent;
+    input.setAttribute('aria-label', t('barnRename'));
+    wrap.replaceChildren(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = (save) => {
+        if (done) return;
+        done = true;
+        const farm = getAllFarms().find(f => f.id === currentFarmId);
+        const building = farm && (farm.animalBuildings || []).find(b => String(b.id) === buildingId);
+        if (save && farm && building) {
+            const value = input.value.trim();
+            if (!farm.animalBuildingNames) farm.animalBuildingNames = {};
+            // Empty (or the default name) restores the name from the save.
+            if (value && value !== formatBuildingName(building.name)) farm.animalBuildingNames[building.id] = value;
+            else delete farm.animalBuildingNames[building.id];
+            saveFarmData(farm);
+        }
+        rerenderAnimalsKeepScroll();
+    };
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+}
+
+function wireBarnPanel(bodyEl) {
+    bodyEl.querySelectorAll('.barn-rename-btn').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        startBarnRename(btn);
+    }));
+    bodyEl.querySelectorAll('.barn-tile').forEach(tile => {
+        const buildingId = tile.dataset.building;
+        const building = ((getCurrentFarm() || {}).animalBuildings || []).find(b => String(b.id) === buildingId);
+        if (!building) return;
+        tile.addEventListener('click', () => openAnimalBuilding(building.id));
+        tile.addEventListener('keydown', e => {
+            if (e.target !== tile || (e.key !== 'Enter' && e.key !== ' ')) return;
+            e.preventDefault();
+            openAnimalBuilding(building.id);
+        });
+    });
+    const back = bodyEl.querySelector('.barn-back-btn');
+    if (back) back.addEventListener('click', () => {
+        animalSelectedBuilding = null;
+        openHubPanel('animals');
+        if (hubView) hubView.scrollTop = 0;
+    });
+}
+
 function getDetailValue(id) {
     const el = document.getElementById(id);
     return el ? el.textContent : '-';
@@ -2024,11 +2302,9 @@ function getDetailValue(id) {
 window.openHubPanel = function (type) {
     const titleEl = document.getElementById('hub-panel-title');
     const bodyEl = document.getElementById('hub-panel-body');
-    const modalEl = hubPanelModal ? hubPanelModal.querySelector('.modal-content') : null;
+    // The scrolling view container — panels use it to keep scroll position on re-render.
+    const modalEl = hubView;
     if (!titleEl || !bodyEl) return;
-
-    if (modalEl) modalEl.classList.remove('modal-content--wide');
-    if (backToHubBtn) backToHubBtn.style.display = '';   // may have been hidden by a per-field plan
 
     if (type === 'finance') {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
@@ -2078,7 +2354,6 @@ window.openHubPanel = function (type) {
         const capacities = (farm && farm.animalBuildingCapacities) || {};
 
         titleEl.textContent = t('hubAnimals');
-        modalEl.classList.add('modal-content--wide');
 
         // Shared by both branches below (a farm can have herd history from
         // past seasons even if every animal has since been sold, so this
@@ -2168,11 +2443,14 @@ window.openHubPanel = function (type) {
             }));
             let anyProductionFound = false;
 
-            let html = `<p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>`;
-            html += `<div class="pen-grid">`;
+            // One full card per barn (shown when a tile is opened) plus a
+            // short summary for its tile in the overview grid.
+            const cards = {};
+            const summaries = {};
 
             buildings.forEach(building => {
                 const buildingCaps = capacities[building.id] || {};
+                let card = '';
 
                 // Daily requirement, summed across every cluster in this
                 // building, using each animal's own age to interpolate the
@@ -2216,26 +2494,64 @@ window.openHubPanel = function (type) {
                     : combinedFoodLevel < 80);
                 const noFeedAtAll = building.food.length === 0;
 
-                html += `<div class="pen-card ${lowFeed || noFeedAtAll ? 'pen-card--warning' : ''}">`;
-                html += `<div class="pen-card-header">
-                    <span class="pen-card-title">${formatBuildingName(building.name)}</span>
-                    ${(lowFeed || noFeedAtAll) ? `<span class="pen-warning-badge">${t('hubFeedLow')}</span>` : ''}
-                </div>`;
+                const warn = lowFeed || noFeedAtAll;
+                const heads = building.clusters.reduce((s, c) => s + c.numAnimals, 0);
+                const avgHealth = heads ? building.clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : 0;
+                const num = n => Math.round(n).toLocaleString();
+                const statRow = (fillType, label, value) => `
+                    <div class="barn-stat">
+                        <span class="barn-stat-icon barn-stat-icon--${fillIconTone(fillType)}" aria-hidden="true"><i class="fa-solid ${fillIcon(fillType)}" aria-hidden="true"></i></span>
+                        <span class="barn-stat-label">${label}</span>
+                        <span class="barn-stat-value">${value}</span>
+                    </div>`;
 
-                html += `<div class="pen-clusters">`;
-                building.clusters.forEach(c => {
-                    html += `<div class="pen-cluster-row">
-                        <span>${formatAnimalName(c.subType)} &times; ${c.numAnimals}</span>
-                        <span class="pen-cluster-meta">${t('hubHealth')}: ${Math.round(c.health)}%</span>
+                card += `<div class="pen-card barn-detail ${warn ? 'barn-detail--warning' : ''}">`;
+
+                // --- Hero: picture of the main breed, name, head count, health ---
+                const mainCluster = building.clusters.slice().sort((a, b) => b.numAnimals - a.numAnimals)[0];
+                card += `<header class="barn-hero">
+                    ${animalPictureHtml(mainCluster, 'barn-hero-pic')}
+                    <div class="barn-hero-text">
+                        <div class="barn-hero-name">${barnNameHtml(farm, building, 'barn-hero-title')}</div>
+                        <div class="barn-hero-meta">
+                            <span><strong>${num(heads)}</strong> ${t('barnHeads')}</span>
+                            <span>${t('hubHealth')}: <strong>${Math.round(avgHealth)}%</strong></span>
+                        </div>
+                    </div>
+                    ${warn ? `<span class="pen-warning-badge barn-hero-badge"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('hubFeedLow')}</span>` : ''}
+                </header>`;
+
+                // --- Herd: one card per group (breed + age), with its picture ---
+                card += `<section class="barn-section">
+                    <h4 class="barn-section-title">${t('barnHerd')}</h4>
+                    <div class="herd-grid">`;
+                building.clusters.slice().sort((a, b) => b.age - a.age).forEach(c => {
+                    const h = Math.round(c.health || 0);
+                    const hClass = h < 50 ? 'pen-bar-fill--low' : (h < 80 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
+                    card += `<div class="herd-card">
+                        ${animalPictureHtml(c, 'herd-pic')}
+                        <div class="herd-info">
+                            <div class="herd-name">${escapeHtml(formatAnimalName(c.subType))}</div>
+                            <div class="herd-count">× ${num(c.numAnimals)}</div>
+                            <div class="herd-age">${t('barnAge').replace('{m}', c.age)}</div>
+                            <div class="herd-health" title="${t('hubHealth')}: ${h}%">
+                                <div class="pen-bar-track"><div class="pen-bar-fill ${hClass}" style="width:${Math.max(2, h)}%"></div></div>
+                                <span>${h}%</span>
+                            </div>
+                            ${reproStatusHtml(c, reproductionStatus(c))}
+                        </div>
                     </div>`;
                 });
-                html += `</div>`;
+                card += `</div></section>`;
 
+                card += `<div class="barn-columns">`;
+
+                // --- Feed trough: level, capacity, days left, ration ---
+                card += `<section class="barn-panel barn-panel--feed">
+                    <h4 class="barn-section-title">${t('hubFeedLevel')}</h4>`;
                 if (building.food.length > 0) {
                     // Multiple feed ingredients (e.g. grass windrow + forage)
-                    // are combined into one bar — the trough is one shared
-                    // capacity regardless of how many ingredient types are
-                    // mixed into it.
+                    // share one trough, so they're combined into one gauge.
                     const feedTypesLabel = building.food.map(f => formatFillType(f.fillType)).join(' + ');
                     let pct;
                     if (combinedCap && combinedCap > 0) {
@@ -2246,36 +2562,29 @@ window.openHubPanel = function (type) {
                         pct = Math.max(3, Math.min(100, (combinedFoodLevel / ref) * 100));
                     }
                     const barClass = (combinedCap ? pct < 15 : combinedFoodLevel < 80) ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
+                    const daysLeft = needsKnownForAll && dailyNeed.food > 0 ? combinedFoodLevel / dailyNeed.food : null;
+                    const daysClass = daysLeft === null ? '' : (daysLeft < 3 ? 'feed-days--critical' : (daysLeft < 7 ? 'feed-days--warning' : 'feed-days--ok'));
 
-                    html += `<div class="pen-section-label">${t('hubFeedLevel')}</div>`;
-                    html += `<div class="pen-bar-row">
-                        <span class="pen-bar-label">${feedTypesLabel}</span>
-                        <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
-                        <span class="pen-bar-value">${Math.round(combinedFoodLevel).toLocaleString()} L</span>
-                    </div>
-                    <div class="pen-capacity-row">
-                        <span class="pen-capacity-label">${t('capacityLabel')}:</span>
-                        <input type="text" class="pen-capacity-input" value="${combinedCap || ''}" placeholder="?"
-                            data-building="${building.id}" data-filltype="${ANIMAL_FEED_CAPACITY_KEY}"
-                            onchange="updateBuildingCapacity(this)">
-                        <span class="pen-capacity-label">L</span>
-                    </div>`;
-
-                    if (needsKnownForAll && dailyNeed.food > 0) {
-                        const daysLeft = combinedFoodLevel / dailyNeed.food;
-                        const daysLeftClass = daysLeft < 3 ? 'pen-days-left--critical' : (daysLeft < 7 ? 'pen-days-left--warning' : '');
-                        html += `<p class="pen-days-left ${daysLeftClass}">${Math.max(0, Math.floor(daysLeft))} ${t('hubDaysRemaining')}</p>`;
-                    }
+                    card += `<div class="feed-headline">
+                            <div class="feed-amount">
+                                <span class="feed-amount-value">${num(combinedFoodLevel)} L</span>
+                                <span class="feed-amount-types">${escapeHtml(feedTypesLabel)}</span>
+                            </div>
+                            ${daysLeft !== null ? `<div class="feed-days ${daysClass}"><span class="feed-days-value">${Math.max(0, Math.floor(daysLeft))}</span><span class="feed-days-label">${t('barnDaysLeft')}</span></div>` : ''}
+                        </div>
+                        <div class="feed-gauge">
+                            <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
+                            ${combinedCap ? `<span class="feed-gauge-pct">${Math.round((combinedFoodLevel / combinedCap) * 100)}%</span>` : ''}
+                        </div>
+                        <label class="feed-capacity">
+                            <span>${t('barnTroughCapacity')}</span>
+                            <input type="text" class="feed-capacity-input" value="${combinedCap || ''}" placeholder="?"
+                                data-building="${building.id}" data-filltype="${ANIMAL_FEED_CAPACITY_KEY}"
+                                onchange="updateBuildingCapacity(this)">
+                            <span>L</span>
+                        </label>`;
                 } else {
-                    html += `<div class="pen-section-label">${t('hubFeedLevel')}</div><p class="hub-panel-note">${t('hubNoFeedTracked')}</p>`;
-                }
-
-                if (needsKnownForAll && (dailyNeed.food > 0 || dailyNeed.water > 0 || dailyNeed.straw > 0)) {
-                    html += `<div class="pen-section-label">${t('hubDailyNeed')}</div><div class="pen-production-row">`;
-                    if (dailyNeed.food > 0) html += `<span class="pen-production-chip pen-production-chip--need">${formatFillType('FOOD')}: <strong>${Math.round(dailyNeed.food).toLocaleString()} L</strong></span>`;
-                    if (dailyNeed.water > 0) html += `<span class="pen-production-chip pen-production-chip--need">${formatFillType('WATER')}: <strong>${Math.round(dailyNeed.water).toLocaleString()} L</strong></span>`;
-                    if (dailyNeed.straw > 0) html += `<span class="pen-production-chip pen-production-chip--need">${formatFillType('STRAW')}: <strong>${Math.round(dailyNeed.straw).toLocaleString()} L</strong></span>`;
-                    html += `</div>`;
+                    card += `<p class="barn-empty">${t('hubNoFeedTracked')}</p>`;
                 }
 
                 // Chosen ration per species in this building: picker + the
@@ -2286,57 +2595,182 @@ window.openHubPanel = function (type) {
                     if (!ration) return;
                     const parts = {};
                     splitByRecipe(foodByType[animalType], ration, parts);
-                    html += `<div class="pen-section-label">${t('hubRation')}${Object.keys(foodByType).length > 1 ? ' · ' + t('feedAnimal_' + animalType) : ''}</div>
-                        <div class="pen-ration-row">
-                            <select class="pen-ration-select" data-type="${animalType}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
-                        </div>
-                        <div class="pen-production-row">`;
+                    card += `<div class="barn-subtitle">${t('hubRation')}${Object.keys(foodByType).length > 1 ? ' · ' + t('feedAnimal_' + animalType) : ''}</div>
+                        <select class="pen-ration-select barn-ration-select" data-type="${animalType}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
+                        <div class="ration-list">`;
                     Object.keys(parts).filter(cat => parts[cat] > 0).forEach(cat => {
                         const stockL = feedStockCat[cat] || 0;
                         const days = farmDailyByCat[cat] > 0 ? stockL / farmDailyByCat[cat] : 0;
-                        const cls = days < 3 ? 'pen-days-left--critical' : (days < 7 ? 'pen-days-left--warning' : '');
+                        const cls = days < 3 ? 'feed-days--critical' : (days < 7 ? 'feed-days--warning' : 'feed-days--ok');
                         const stockNote = farm.feedStock
-                            ? `<span class="pen-chip-sub ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString()) : t('hubRationNoStock')}</span>`
+                            ? `<span class="ration-stock ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString()) : t('hubRationNoStock')}</span>`
                             : '';
-                        html += `<span class="pen-production-chip pen-production-chip--need">${feedCategoryLabel(cat)}: <strong>${Math.round(parts[cat]).toLocaleString()} L${t('perDayShort')}</strong>${stockNote}</span>`;
+                        card += `<div class="ration-item">
+                            <span class="ration-name">${feedCategoryLabel(cat)}</span>
+                            <span class="ration-rate">${num(parts[cat])} L${t('perDayShort')}</span>
+                            ${stockNote}
+                        </div>`;
                     });
-                    html += `</div>`;
+                    card += `</div>`;
                 });
+                card += `</section>`;
 
-                if (building.production.length > 0) {
-                    html += `<div class="pen-section-label">${t('hubStoredProduction')}</div><div class="pen-production-row">`;
-                    building.production.forEach(p => {
-                        html += `<span class="pen-production-chip">${formatFillType(p.fillType)}: <strong>${Math.round(p.level).toLocaleString()} L</strong></span>`;
-                    });
-                    html += `</div>`;
+                // --- Daily need ---
+                card += `<section class="barn-panel barn-panel--need">
+                    <h4 class="barn-section-title">${t('hubDailyNeed')}</h4>`;
+                if (needsKnownForAll && (dailyNeed.food > 0 || dailyNeed.water > 0 || dailyNeed.straw > 0)) {
+                    card += `<div class="barn-stat-list">`;
+                    if (dailyNeed.food > 0) card += statRow('FOOD', formatFillType('FOOD'), `${num(dailyNeed.food)} L${t('perDayShort')}`);
+                    if (dailyNeed.water > 0) card += statRow('WATER', formatFillType('WATER'), `${num(dailyNeed.water)} L${t('perDayShort')}`);
+                    if (dailyNeed.straw > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(dailyNeed.straw)} L${t('perDayShort')}`);
+                    card += `</div>`;
+                } else {
+                    card += `<p class="barn-empty">${t('barnNeedsUnknown')}</p>`;
+                }
+                card += `</section>`;
+
+                // --- Reproduction: pregnant / ready / too young, next birth ---
+                const repro = barnReproSummary(building);
+                if (repro) {
+                    const reproRow = (icon, tone, label, value) => `
+                        <div class="barn-stat">
+                            <span class="barn-stat-icon barn-stat-icon--${tone}" aria-hidden="true"><i class="fa-solid ${icon}" aria-hidden="true"></i></span>
+                            <span class="barn-stat-label">${label}</span>
+                            <span class="barn-stat-value">${value}</span>
+                        </div>`;
+                    card += `<section class="barn-panel barn-panel--repro">
+                        <h4 class="barn-section-title">${t('barnReproduction')}</h4>`;
+                    if (repro.pregnant > 0) {
+                        card += `<div class="repro-headline">
+                            <div class="feed-amount">
+                                <span class="feed-amount-value">${num(repro.pregnant)} / ${num(repro.females)}</span>
+                                <span class="feed-amount-types">${t('reproPregnantOf')}</span>
+                            </div>
+                            ${repro.nextBirth !== null ? `<div class="feed-days repro-due"><span class="feed-days-value">${repro.nextBirth <= 0 ? '0' : '~' + repro.nextBirth}</span><span class="feed-days-label">${t('reproMonthsToBirth')}</span></div>` : ''}
+                        </div>`;
+                    }
+                    card += `<div class="barn-stat-list">`;
+                    card += reproRow('fa-baby-carriage', 'repro', t('reproPregnant'), num(repro.pregnant));
+                    if (repro.ready) card += reproRow('fa-circle-check', 'product', t('repro_ready'), num(repro.ready));
+                    if (repro.waiting) card += reproRow('fa-circle-pause', 'feed', t('repro_waiting'), num(repro.waiting));
+                    if (repro.young) card += reproRow('fa-hourglass-half', 'water', t('reproTooYoung'), num(repro.young));
+                    card += `</div>`;
+                    if (repro.waiting) card += `<p class="barn-empty">${t('reproWaitingHint')}</p>`;
+                    card += `</section>`;
                 }
 
+                // --- Estimated daily output ---
                 if (Object.keys(dailyOutput).length > 0) {
-                    html += `<div class="pen-section-label">${t('hubEstDailyOutput')}</div><div class="pen-production-row">`;
+                    card += `<section class="barn-panel barn-panel--output">
+                        <h4 class="barn-section-title">${t('hubEstDailyOutput')}</h4>
+                        <div class="barn-stat-list">`;
                     Object.keys(dailyOutput).forEach(fillType => {
-                        html += `<span class="pen-production-chip pen-production-chip--output">${formatFillType(fillType)}: <strong>${Math.round(dailyOutput[fillType]).toLocaleString()} L${t('perDayShort')}</strong></span>`;
+                        card += statRow(fillType, formatFillType(fillType), `${num(dailyOutput[fillType])} L${t('perDayShort')}`);
                     });
-                    html += `</div>`;
+                    card += `</div></section>`;
                 }
 
-                html += `</div>`; // .pen-card
+                // --- Stored in the building right now ---
+                if (building.production.length > 0) {
+                    card += `<section class="barn-panel barn-panel--stored">
+                        <h4 class="barn-section-title">${t('hubStoredProduction')}</h4>
+                        <div class="barn-stat-list">`;
+                    building.production.forEach(p => {
+                        card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} L`);
+                    });
+                    card += `</div></section>`;
+                }
+
+                card += `</div>`; // .barn-columns
+                card += `</div>`; // .pen-card
+                cards[building.id] = card;
+                summaries[building.id] = { lowFeed, noFeedAtAll, combinedFoodLevel, combinedCap,
+                    dailyFood: needsKnownForAll ? dailyNeed.food : 0, maxCombinedFood };
             });
 
-            html += `</div>`; // .pen-grid
+            if (!buildings.some(b => b.id === animalSelectedBuilding)) animalSelectedBuilding = null;
+            const selected = buildings.find(b => b.id === animalSelectedBuilding);
+            let html = '';
 
-            if (anyMissingCapacity) html += `<p class="hub-panel-note">${t('hubApproxLevelsNote')}</p>`;
-            if (!hasAnyNeedsData) {
-                html += `<p class="hub-panel-note">${t('hubDailyRateNote')}</p>`;
-            } else if (!anyProductionFound) {
-                html += `<p class="hub-panel-note">${t('hubNoProductionCurves')}</p>`;
+            if (selected) {
+                // --- One barn, full detail ---
+                html += `<div class="barn-detail-bar">
+                    <button type="button" class="barn-back-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> ${t('barnAllBuildings')}</button>
+                </div>`;
+                html += cards[selected.id];
+
+                // How the numbers are worked out — folded away so the card stays readable.
+                const notes = [];
+                if (anyMissingCapacity) notes.push(t('hubApproxLevelsNote'));
+                if (hasAnyNeedsData) notes.push(t(anyProductionFound ? 'hubProductionEstNote' : 'hubNoProductionCurves'));
+                notes.push(t('hubRationNote'));
+                html += `<details class="barn-notes">
+                    <summary><i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${t('barnHowCalculated')}</summary>
+                    <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>
+                </details>`;
             } else {
-                html += `<p class="hub-panel-note">${t('hubProductionEstNote')}</p>`;
-            }
-            html += `<p class="hub-panel-note">${t('hubRationNote')}</p>`;
+                // --- Overview: one clickable tile per barn ---
+                html += `<p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>`;
+                html += `<div class="barn-tile-grid">`;
+                buildings.forEach(building => {
+                    const sum = summaries[building.id];
+                    const warn = sum.lowFeed || sum.noFeedAtAll;
 
-            html += historySectionHtml;
+                    // Head count per species, with the same icons as the Feed planner.
+                    const heads = {};
+                    let healthSum = 0, headTotal = 0;
+                    building.clusters.forEach(c => {
+                        const type = animalTypeOf(c.subType) || '';
+                        heads[type] = (heads[type] || 0) + c.numAnimals;
+                        healthSum += (c.health || 0) * c.numAnimals;
+                        headTotal += c.numAnimals;
+                    });
+                    const speciesHtml = Object.keys(heads).map(type =>
+                        `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString()}</span>`).join('');
+
+                    let feedHtml;
+                    if (sum.noFeedAtAll) {
+                        feedHtml = `<span class="barn-tile-feed-note">${t('hubNoFeedTracked')}</span>`;
+                    } else {
+                        const ref = sum.combinedCap || sum.maxCombinedFood || sum.combinedFoodLevel || 1;
+                        const pct = Math.max(3, Math.min(100, (sum.combinedFoodLevel / ref) * 100));
+                        const barClass = sum.lowFeed ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
+                        const days = sum.dailyFood > 0 ? Math.max(0, Math.floor(sum.combinedFoodLevel / sum.dailyFood)) : null;
+                        const daysClass = days === null ? '' : (days < 3 ? 'pen-days-left--critical' : (days < 7 ? 'pen-days-left--warning' : ''));
+                        feedHtml = `<div class="barn-tile-feed">
+                                <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
+                                <span class="barn-tile-feed-meta">
+                                    <span>${Math.round(sum.combinedFoodLevel).toLocaleString()} L${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString()} L` : ''}</span>
+                                    ${days !== null ? `<span class="${daysClass}">${days} ${t('hubDaysRemaining')}</span>` : ''}
+                                </span>
+                            </div>`;
+                    }
+
+                    html += `<div class="barn-tile ${warn ? 'barn-tile--warning' : ''}" role="button" tabindex="0" data-building="${escapeHtml(String(building.id))}">
+                        <div class="barn-tile-head">
+                            ${animalPictureHtml(building.clusters.slice().sort((a, b) => b.numAnimals - a.numAnimals)[0], 'barn-tile-pic')}
+                            ${barnNameHtml(farm, building, 'barn-tile-title')}
+                        </div>
+                        <div class="barn-tile-body">
+                            ${speciesHtml}
+                            ${headTotal ? `<span class="barn-tile-health">${t('hubHealth')}: ${Math.round(healthSum / headTotal)}%</span>` : ''}
+                            ${(() => {
+                                const r = barnReproSummary(building);
+                                if (!r || !r.pregnant) return '';
+                                return `<span class="barn-tile-repro"><i class="fa-solid fa-baby-carriage" aria-hidden="true"></i> ${t('reproPregnant')}: ${r.pregnant.toLocaleString()}${r.nextBirth !== null ? ' · ' + reproDueText(r.nextBirth) : ''}</span>`;
+                            })()}
+                        </div>
+                        <div class="barn-tile-section-label">${t('hubFeedLevel')}${warn ? `<span class="pen-warning-badge">${t('hubFeedLow')}</span>` : ''}</div>
+                        ${feedHtml}
+                        <span class="barn-tile-open">${t('barnOpenDetails')} <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </div>`;
+                });
+                html += `</div>`; // .barn-tile-grid
+                html += historySectionHtml;
+            }
 
             bodyEl.innerHTML = html;
+            wireBarnPanel(bodyEl, farm);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
                 const plan = getFeedPlan(getCurrentFarm());
@@ -2361,8 +2795,9 @@ window.openHubPanel = function (type) {
         return;
     }
 
-    if (farmHubModal) farmHubModal.style.display = 'none';
-    if (hubPanelModal) hubPanelModal.style.display = 'flex';
+    setActiveSidebarItem(type);
+    if (plannerContentEl) plannerContentEl.style.display = 'none';
+    if (hubView) hubView.hidden = false;
 };
 
 // Zaopatrzenie: exactly two tables, both read farm.fields[] directly (no
@@ -2374,7 +2809,6 @@ window.openHubPanel = function (type) {
 // in Farm Settings now (see renderSettingsSupplyAdjust) — not rendered here.
 function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('suppliesTitle');
-    if (modalEl) modalEl.classList.add('modal-content--wide');
 
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) { bodyEl.innerHTML = `<p class="hub-panel-note">${t('suppliesNoCrops')}</p>`; return; }
@@ -2486,7 +2920,6 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
 // Supplies panel picks the mix up straight away.
 function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('suppliesSoilPerField');
-    if (modalEl) modalEl.classList.add('modal-content--wide');
 
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     const rates = getSupplyRates();
@@ -2612,7 +3045,6 @@ function importFieldSoilFromGame(farm) {
 // pH and no weeds. Read-only — no wiring needed.
 function renderYieldForecastPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('yieldForecastTitle');
-    if (modalEl) modalEl.classList.add('modal-content--wide');
 
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) { bodyEl.innerHTML = `<p class="hub-panel-note">${t('suppliesNoCrops')}</p>`; return; }
@@ -2710,10 +3142,17 @@ const FEED_CROP_USES = {
 const FEED_STRAW_L_PER_HA = { Wheat: 38000, Barley: 36800, Oat: 36800, Rye: 46000, Triticale: 36000 };
 // Reference crop used to turn a shortfall in litres into "about X ha missing".
 const FEED_REFERENCE_CROP = { PIG_BASE: 'Maize', GRAIN: 'Wheat', PROTEIN: 'Soybean', EARTH: 'Potato', OAT: 'Oat', STRAW: 'Wheat' };
-// animals.xml food/straw curves are consumed once per in-game month: the game
-// scales consumption by 1/daysPerPeriod, so the month total doesn't depend on
-// the days-per-month setting. One year = 12 of them.
+// animals.xml food/straw curves are litres per in-game day, so a month eats
+// them daysPerPeriod times (the save's "days per month" setting, read at sync
+// into farm.daysPerPeriod) and a year 12 months of that.
 const FEED_PERIODS_PER_YEAR = 12;
+function feedDaysPerPeriod(farm) {
+    const d = parseInt(farm && farm.daysPerPeriod);
+    return d > 0 ? d : 1;
+}
+function feedDaysPerYear(farm) {
+    return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
+}
 
 // Map/mod animals.xml files name breeds freely (BULL_HOLSTEIN, HEN_LEGHORN,
 // ROOSTER_...), so the parent <animal type="..."> recorded at import wins;
@@ -2802,13 +3241,14 @@ function buildFeedDemand(farm, plan) {
     const byCategory = {};
     const bySpecies = {};
     let unknownSubTypes = 0;
+    const days = feedDaysPerYear(farm);
     ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
         s.head += c.numAnimals;
-        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * FEED_PERIODS_PER_YEAR;
-        s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * FEED_PERIODS_PER_YEAR;
+        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * days;
+        s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * days;
     }));
     Object.keys(bySpecies).forEach(type => {
         const s = bySpecies[type];
@@ -2998,7 +3438,7 @@ let feedEditorDraft = null;
 let feedPlanRerendering = false;
 
 function rerenderFeedPlan() {
-    const modalEl = hubPanelModal ? hubPanelModal.querySelector('.modal-content') : null;
+    const modalEl = hubView;
     const scroll = modalEl ? modalEl.scrollTop : 0;
     feedPlanRerendering = true;
     openHubPanel('feedplan');
@@ -3026,7 +3466,8 @@ function feedBalanceFor(category, balanceRows) {
 
 // Yearly litres per feed category eaten in one building (ration split + straw
 // bedding), plus head count per species.
-function buildBarnFeedNeed(building, plan) {
+function buildBarnFeedNeed(building, plan, farm) {
+    const days = feedDaysPerYear(farm);
     const byCategory = {};
     const heads = {};
     let food = 0, bedding = 0;
@@ -3036,8 +3477,8 @@ function buildBarnFeedNeed(building, plan) {
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
         const ration = resolveRation(type, plan);
-        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * FEED_PERIODS_PER_YEAR;
-        const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * FEED_PERIODS_PER_YEAR;
+        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * days;
+        const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * days;
         food += f;
         bedding += b;
         if (ration) splitByRecipe(f, ration, byCategory);
@@ -3089,7 +3530,6 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         feedSelectedBuilding = null;
         feedSettingsOpen = false;
     }
-    if (modalEl) modalEl.classList.add('modal-content--wide');
 
     const farm = getCurrentFarm();
     const rates = getSupplyRates();
@@ -3108,7 +3548,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     } else {
         if (!buildings.some(b => b.id === feedSelectedBuilding)) feedSelectedBuilding = buildings[0].id;
         const barnNeeds = {};
-        buildings.forEach(b => { barnNeeds[b.id] = buildBarnFeedNeed(b, plan); });
+        buildings.forEach(b => { barnNeeds[b.id] = buildBarnFeedNeed(b, plan, farm); });
 
         // --- 1. Barns ---
         html += `<div class="hub-panel-subtitle">${t('feedPickBarn')}</div><div class="feed-barn-grid">`;
@@ -3118,7 +3558,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             const animals = Object.keys(need.heads).map(type =>
                 `<span class="feed-barn-animal"><i class="fa-solid ${FEED_ANIMAL_ICONS[type]}" aria-hidden="true"></i> ${t('feedAnimal_' + type)} × ${num(need.heads[type])}</span>`).join('');
             html += `<button type="button" class="feed-barn-tile ${b.id === feedSelectedBuilding ? 'feed-barn-tile--active' : ''}" data-building="${escapeHtml(String(b.id))}">
-                <span class="feed-barn-title">${formatBuildingName(b.name)}<span class="feed-barn-dot ${short ? 'feed-barn-dot--short' : ''}" title="${short ? t('feedMissing') : t('feedEnough')}"></span></span>
+                <span class="feed-barn-title">${escapeHtml(buildingDisplayName(farm, b))}<span class="feed-barn-dot ${short ? 'feed-barn-dot--short' : ''}" title="${short ? t('feedMissing') : t('feedEnough')}"></span></span>
                 ${animals}
                 ${need.food > 0 ? `<span class="feed-barn-need">${num(need.food)} l ${t('feedFoodPerYear')}</span>` : ''}
             </button>`;
@@ -3172,7 +3612,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             html += `<div class="feed-need-summary">
                 <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedFood')}</span><span class="feed-need-value">${num(barnNeed.food)} l</span></div>
                 ${barnNeed.bedding > 0 ? `<div class="feed-need-item"><span class="feed-need-label">${t('feedStrawBedding')}</span><span class="feed-need-value">${num(barnNeed.bedding)} l</span></div>` : ''}
-                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span></div>
+                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span><span class="feed-need-label">${t('feedDaysPerMonth').replace('{d}', feedDaysPerPeriod(farm))}</span></div>
             </div>`;
         }
         if (!cats.length) {
@@ -3438,17 +3878,12 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
 }
 
 window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, area) {
-    const titleEl = document.getElementById('hub-panel-title');
-    const bodyEl = document.getElementById('hub-panel-body');
-    const modalEl = hubPanelModal ? hubPanelModal.querySelector('.modal-content') : null;
+    const titleEl = document.getElementById('fertplan-modal-title');
+    const bodyEl = document.getElementById('fertplan-modal-body');
     if (!titleEl || !bodyEl || !hubPanelModal) return;
-
-    if (modalEl) modalEl.classList.remove('modal-content--wide');
-    if (backToHubBtn) backToHubBtn.style.display = 'none';   // opened from a field, not the hub menu
 
     renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, parseFloat(area) || 0);
 
-    if (farmHubModal) farmHubModal.style.display = 'none';
     hubPanelModal.style.display = 'flex';
 };
 
@@ -3807,7 +4242,6 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
 // inline checklist. Add/Edit opens the separate #note-edit-modal.
 function renderNotesPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('notesTitle');
-    if (modalEl) modalEl.classList.remove('modal-content--wide');
 
     const farm = getCurrentFarm();
     if (!farm) { bodyEl.innerHTML = `<p class="hub-panel-note">${t('notesEmpty')}</p>`; return; }
@@ -3950,7 +4384,6 @@ window.openNoteEditModal = function (noteId) {
     renderNoteEditTags();
     renderNoteEditChecklist();
 
-    if (hubPanelModal) hubPanelModal.style.display = 'none';
     const modal = document.getElementById('note-edit-modal');
     if (modal) modal.style.display = 'flex';
 };
@@ -5118,6 +5551,8 @@ function parseAnimalNeedsXml(xmlText) {
         if (animalType) entry.animalType = animalType.toUpperCase();
         const production = readProductionCurves(subTypeEl);
         if (Object.keys(production).length > 0) entry.production = production;
+        const reproEl = subTypeEl.querySelector(':scope > reproduction');
+        if (reproEl) entry.reproduction = animalImages.parseReproduction(reproEl.outerHTML);
         needs[subType] = entry;
     });
 
@@ -5206,7 +5641,7 @@ function buildCropsCalendarFromFiles(fileList) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, daysPerPeriod: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -5269,7 +5704,8 @@ function readGameSave(pathToFile) {
         if (loanVal !== null && loanVal !== undefined && loanVal !== "") result.loan = Math.round(parseFloat(loanVal));
 
         const currentDayStr = findValueInRawText(envText, 'currentDay');
-        const daysPerPeriodStr = findValueInRawText(envText, 'daysPerPeriod') || "1";
+        const daysPerPeriodStr = findValueInRawText(envText, 'daysPerPeriod') || findValueInRawText(careerText, 'plannedDaysPerPeriod') || "1";
+        if (parseInt(daysPerPeriodStr) > 0) result.daysPerPeriod = parseInt(daysPerPeriodStr);
 
         if (currentDayStr) {
             const currentDay = parseInt(currentDayStr);
@@ -5331,7 +5767,14 @@ function readGameSave(pathToFile) {
 
                     totalAnimals += num;
                     bySpecies[subType] = (bySpecies[subType] || 0) + num;
-                    building.clusters.push({ subType, numAnimals: num, age, health });
+                    const cluster = { subType, numAnimals: num, age, health };
+                    // Reproduction state: progress % of the current pregnancy,
+                    // whether the group is inseminated, months since the last birth.
+                    if (animal.hasAttribute('reproduction')) cluster.reproduction = parseFloat(animal.getAttribute('reproduction')) || 0;
+                    if (animal.hasAttribute('isInseminated')) cluster.isInseminated = animal.getAttribute('isInseminated') === 'true';
+                    if (animal.hasAttribute('monthsSinceLastBirth')) cluster.monthsSinceLastBirth = parseInt(animal.getAttribute('monthsSinceLastBirth')) || 0;
+                    if (animal.hasAttribute('hadABirth')) cluster.hadABirth = animal.getAttribute('hadABirth') === 'true';
+                    building.clusters.push(cluster);
                     buildingHasAnimals = true;
                 });
 
@@ -5414,6 +5857,7 @@ window.openPlanner = function (id) {
 
         viewedSeason = farm.currentSeason || 1;
         renderSeasonView();
+        showPlannerView('plan');
 
         if (dashboardView) dashboardView.style.display = 'none';
         if (plannerView) plannerView.style.display = 'flex';
@@ -5449,6 +5893,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.animalProduction !== null) { farm.animalProduction = gameData.animalProduction; changed = true; }
     if (gameData.animalBuildings !== null) { farm.animalBuildings = gameData.animalBuildings; changed = true; }
     if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
+    if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
     if (changed) saveFarmData(farm);
@@ -7271,9 +7716,23 @@ function tutInCard(sel) {
     return () => { const card = tutLastEditCard(); return card ? card.querySelector(sel) : null; };
 }
 
-// Animal panel: the n-th barn card, or a part of it.
+// Animal panel: opens the n-th barn from the tile grid (only re-rendering
+// when a different barn is showing, so typed input survives) and returns
+// its card.
 function tutPen(n) {
-    return tqa('#hub-panel-body .pen-card')[n] || null;
+    const farm = getCurrentFarm();
+    const building = farm && (farm.animalBuildings || [])[n];
+    if (!building) return null;
+    if (animalSelectedBuilding !== building.id || !tq('#hub-panel-body .pen-card')) openAnimalBuilding(building.id);
+    return tq('#hub-panel-body .pen-card');
+}
+
+// Animal panel: back to the tile overview (head count, tiles, history).
+function tutAnimalsOverview() {
+    if (animalSelectedBuilding !== null || !tq('#hub-panel-body .barn-tile-grid')) {
+        animalSelectedBuilding = null;
+        openHubPanel('animals');
+    }
 }
 
 function tutPenPart(n, sel) {
@@ -7469,8 +7928,6 @@ function removeDemoFarm() {
 // ---------- app state helpers ----------
 function tutCloseModals() {
     document.querySelectorAll('.modal').forEach(m => { m.style.display = 'none'; });
-    const backToHub = document.getElementById('back-to-hub-btn');
-    if (backToHub) backToHub.style.display = '';
 }
 
 // Same teardown as the planner's exit button.
@@ -7497,8 +7954,7 @@ function tutOpenDemoPlanner() {
 
 function tutOpenHubPanel(type) {
     tutOpenDemoPlanner();
-    if (farmHubModal) farmHubModal.style.display = 'flex';
-    if (type) openHubPanel(type);
+    if (type) showPlannerView(type);
 }
 
 // ---------- step builders ----------
@@ -7515,8 +7971,8 @@ function tutInput(id, target, check, autoValue, extra) {
     };
 }
 
-const hubBack = (id) => tutClick(id, '#back-to-hub-btn', () => tutModalOpen('farm-hub-modal') && !tutModalOpen('hub-panel-modal'));
-const hubOpen = (id, type) => tutClick(id, `.hub-menu-item--${type}`, () => tutModalOpen('hub-panel-modal'));
+const tutViewActive = (view) => currentPlannerView === view;
+const hubOpen = (id, type) => tutClick(id, `#planner-sidebar .sidebar-item[data-view="${type}"]`, () => tutViewActive(type));
 
 const TUTORIAL_CHAPTERS = [
     {
@@ -7615,11 +8071,11 @@ const TUTORIAL_CHAPTERS = [
         steps: [
             tutClick('e1', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.fertplan-open-btn') : null; },
                 () => tutModalOpen('hub-panel-modal')),
-            tutInfo('e2', () => tqa('#hub-panel-body .details-category').slice(0, 3)),
-            tutInput('e3', '#hub-panel-body .fertplan-existing-input', () => tutNumValue(tq('#hub-panel-body .fertplan-existing-input')) > 0, '40'),
-            tutInput('e4', '#hub-panel-body .fertplan-org-input', () => tutNumValue(tq('#hub-panel-body .fertplan-org-input')) > 0, '30'),
-            tutInfo('e5', () => tqa('#hub-panel-body .details-category').slice(3).concat(tqa('#hub-panel-body .fertplan-status'))),
-            tutClick('e6', '#hub-panel-body .fertplan-fertilizer-check', () => { const el = tq('#hub-panel-body .fertplan-fertilizer-check'); return !!el && el.checked; }),
+            tutInfo('e2', () => tqa('#fertplan-modal-body .details-category').slice(0, 3)),
+            tutInput('e3', '#fertplan-modal-body .fertplan-existing-input', () => tutNumValue(tq('#fertplan-modal-body .fertplan-existing-input')) > 0, '40'),
+            tutInput('e4', '#fertplan-modal-body .fertplan-org-input', () => tutNumValue(tq('#fertplan-modal-body .fertplan-org-input')) > 0, '30'),
+            tutInfo('e5', () => tqa('#fertplan-modal-body .details-category').slice(3).concat(tqa('#fertplan-modal-body .fertplan-status'))),
+            tutClick('e6', '#fertplan-modal-body .fertplan-fertilizer-check', () => { const el = tq('#fertplan-modal-body .fertplan-fertilizer-check'); return !!el && el.checked; }),
             tutClick('e7', '#close-hub-panel-btn', () => !tutModalOpen('hub-panel-modal')),
             tutInfo('e8', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.fertplan-open-btn') : null; })
         ]
@@ -7642,7 +8098,6 @@ const TUTORIAL_CHAPTERS = [
         id: 'g',
         prepare: tutOpenDemoPlanner,
         steps: [
-            tutInfo('g1', '.details-container'),
             // Pinned open for the step instead of the usual 2.5 s flash.
             tutInfo('g2', '#auto-sync-toast', {
                 enter: () => {
@@ -7665,34 +8120,28 @@ const TUTORIAL_CHAPTERS = [
         id: 'h',
         prepare: tutOpenDemoPlanner,
         steps: [
-            tutClick('h1', '#farm-hub-btn', () => tutModalOpen('farm-hub-modal')),
-            tutInfo('h2', '#farm-hub-modal .hub-menu'),
+            tutInfo('h1', '#planner-sidebar'),
             hubOpen('h3', 'finance'),
             tutInfo('h4', () => { const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts : tq('#hub-panel-body'); }),
-            hubBack('h5'),
             hubOpen('h6', 'fieldsoil'),
             tutInput('h7', '#hub-panel-body .supply-soil-input[data-soil-field="1"]', () => {
                 const el = tq('#hub-panel-body .supply-soil-input[data-soil-field="1"]');
                 const saved = getSupplyRates().fieldSoil['1'];
                 return tutNumValue(el) > 0 || !!saved;
             }, '60'),
-            hubBack('h8'),
             hubOpen('h9', 'supplies'),
             tutInfo('h10', () => tqa('#hub-panel-body table.supply-table')[0] || null),
             tutInfo('h11', () => tqa('#hub-panel-body table.supply-table')[1] || null),
-            hubBack('h12'),
             hubOpen('h13', 'notes'),
             tutInfo('h14', '#hub-panel-body .note-card'),
             tutClick('h15', '#hub-panel-body .notes-add-btn', () => tutModalOpen('note-edit-modal')),
             tutInput('h16', '#note-edit-title', () => { const el = tq('#note-edit-title'); return !!el && el.value.trim() !== ''; },
                 () => (currentLang === 'pl' ? 'Kupić wapno' : 'Buy lime')),
             tutInfo('h17', '#note-edit-months'),
-            tutClick('h18', '#note-edit-save-btn', () => !tutModalOpen('note-edit-modal') && tutModalOpen('hub-panel-modal')),
-            hubBack('h19'),
+            tutClick('h18', '#note-edit-save-btn', () => !tutModalOpen('note-edit-modal') && tutViewActive('notes')),
             hubOpen('h20', 'yieldforecast'),
             tutInfo('h21', () => tq('#hub-panel-body table.supply-table') || tq('#hub-panel-body')),
-            hubBack('h22'),
-            tutClick('h24', '#close-farm-hub-btn', () => !tutModalOpen('farm-hub-modal'))
+            hubOpen('h24', 'plan')
         ]
     },
     {
@@ -7701,31 +8150,27 @@ const TUTORIAL_CHAPTERS = [
         id: 'k',
         prepare: tutOpenDemoPlanner,
         steps: [
-            tutClick('k1', '#farm-hub-btn', () => tutModalOpen('farm-hub-modal')),
-            tutClick('k2', '.hub-menu-item--animals', () => tutModalOpen('hub-panel-modal')),
-            tutInfo('k3', '#hub-panel-body > .details-category'),
+            hubOpen('k1', 'animals'),
+            tutInfo('k3', () => { tutAnimalsOverview(); return tqa('#hub-panel-body > .details-category, #hub-panel-body .barn-tile-grid'); }),
             tutInfo('k4', () => tutPen(0)),
-            tutInfo('k5', () => tutPenPart(0, '.pen-clusters')),
-            tutInfo('k6', () => tutPenPart(0, '.pen-bar-row')),
-            tutInfo('k7', () => tutPenPart(0, '.pen-capacity-row')),
-            tutInfo('k8', () => tutPenPart(0, '.pen-days-left')),
+            tutInfo('k5', () => tutPenPart(0, '.herd-grid')),
+            tutInfo('k6', () => tutPenPart(0, '.feed-gauge')),
+            tutInfo('k7', () => tutPenPart(0, '.feed-capacity')),
+            tutInfo('k8', () => tutPenPart(0, '.feed-days')),
             tutInfo('k9', () => tutPen(1)),
-            tutInput('k10', () => tutPenPart(1, '.pen-capacity-input'), () => {
+            tutInput('k10', () => tutPenPart(1, '.feed-capacity-input'), () => {
                 const f = getCurrentFarm();
                 const saved = f && f.animalBuildingCapacities && f.animalBuildingCapacities['demo-chickencoop'];
-                return tutNumValue(tutPenPart(1, '.pen-capacity-input')) > 0 || !!(saved && saved[ANIMAL_FEED_CAPACITY_KEY]);
+                return tutNumValue(tutPenPart(1, '.feed-capacity-input')) > 0 || !!(saved && saved[ANIMAL_FEED_CAPACITY_KEY]);
             }, '1000'),
-            tutInfo('k11', () => tutPenPart(1, '.pen-bar-row')),
-            tutInfo('k12', () => [tutPenPart(2, '.pen-cluster-row'), tutPenPart(2, '.pen-bar-row'), tutPenPart(2, '.pen-days-left')].filter(Boolean)),
-            tutInfo('k13', () => { const chip = tutPenPart(0, '.pen-production-chip--need'); return chip ? chip.closest('.pen-production-row') : null; }),
-            tutInfo('k14', () => {
-                const chip = tutPenPart(0, '.pen-production-chip:not(.pen-production-chip--need):not(.pen-production-chip--output)');
-                return chip ? chip.closest('.pen-production-row') : null;
-            }),
-            tutInfo('k15', () => { const chip = tutPenPart(0, '.pen-production-chip--output'); return chip ? chip.closest('.pen-production-row') : null; }),
-            tutInfo('k16', () => { const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts.slice(0, 3) : null; }),
+            tutInfo('k11', () => tutPenPart(1, '.feed-gauge')),
+            tutInfo('k12', () => [tutPenPart(2, '.herd-card'), tutPenPart(2, '.feed-gauge'), tutPenPart(2, '.feed-days')].filter(Boolean)),
+            tutInfo('k13', () => tutPenPart(0, '.barn-panel--need')),
+            tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
+            tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
+            tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts.slice(0, 3) : null; }),
             tutInfo('k17', null),
-            tutClick('k18', '#close-hub-panel-btn', () => !tutModalOpen('hub-panel-modal'))
+            hubOpen('k18', 'plan')
         ]
     },
     {

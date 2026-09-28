@@ -66,6 +66,57 @@
                 </div>
                 <span id="auto-sync-toast" class="auto-sync-toast" hidden></span>
             </div>
+            <div class="planner-body">
+            <nav id="planner-sidebar" class="planner-sidebar">
+                <div class="sidebar-nav">
+                    <button type="button" class="sidebar-item sidebar-item--plan is-active" data-view="plan">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-table-cells" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="navPlan">Plan</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--finance" data-view="finance">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubFinance">Finance</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--animals" data-view="animals">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubAnimals">Animals</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--supplies" data-view="supplies">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubSupplies">Supplies</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--fieldsoil" data-view="fieldsoil">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubFieldSoil">Field soil type</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubNotes">Notes</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--yieldforecast" data-view="yieldforecast">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubYieldForecast">Predicted yields</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--feedplan" data-view="feedplan">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubFeedPlan">Feed planner</span>
+                    </button>
+                </div>
+                <div class="sidebar-footer">
+                    <button type="button" id="settings-btn" class="sidebar-item sidebar-item--util">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="settings">SETTINGS</span>
+                    </button>
+                    <button type="button" id="reset-seasons-btn" class="sidebar-item sidebar-item--util sidebar-item--danger">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="resetSeasons">RESET SEASONS</span>
+                    </button>
+                    <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="exit">EXIT</span>
+                    </button>
+                </div>
+            </nav>
             <div class="planner-content">
                 <div class="planner-details">
                     <div class="planner-main-table">
@@ -99,10 +150,8 @@
                             <span id="total-ha-sum">0.00 ha</span>
                         </div>
                     </div>
-                    <div class="details-container">
-                        <button id="farm-hub-btn" class="details-menu-btn" data-i18n-title="hubOpenMenu" title="More">
-                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                        </button>
+                    <!-- Not shown any more; its values are still filled in and read by the Finance / Animals views. -->
+                    <div class="details-container" hidden>
                         <h1 data-i18n="farmDetails">Farm Details</h1>
                         <div class="details-categories">
                             <div class="details-categories-column">
@@ -147,12 +196,12 @@
                             <p id="sidebar-add-btn" class="add-crop" data-i18n="addCrop">ADD CROP</p>
                         </div>
                     </div>
-                    <div class="utility-btns">
-                        <p id="reset-seasons-btn" class="settings-btn reset-btn" data-i18n="resetSeasons">RESET SEASONS</p>
-                        <p id="settings-btn" class="settings-btn" data-i18n="settings">SETTINGS</p>
-                        <p id="exit-btn" class="exit-btn" data-i18n="exit">EXIT</p>
-                    </div>
                 </div>
+            </div>
+            <section id="hub-view" class="hub-view" hidden>
+                <h2 id="hub-panel-title" class="hub-view-title">-</h2>
+                <div id="hub-panel-body" class="hub-panel-body"></div>
+            </section>
             </div>
         </div>
         <div id="settings-modal" class="modal">
@@ -239,57 +288,11 @@
                 </div>
             </div>
         </div>
-        <div id="farm-hub-modal" class="modal">
-            <div class="modal-content">
-                <h3 data-i18n="hubTitle">More</h3>
-                <div class="hub-menu">
-                    <button type="button" class="hub-menu-item hub-menu-item--finance" onclick="openHubPanel('finance')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubFinance">Finance</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--animals" onclick="openHubPanel('animals')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubAnimals">Animals</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--supplies" onclick="openHubPanel('supplies')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubSupplies">Supplies</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--fieldsoil" onclick="openHubPanel('fieldsoil')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubFieldSoil">Field soil type</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--notes" onclick="openHubPanel('notes')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubNotes">Notes</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--yieldforecast" onclick="openHubPanel('yieldforecast')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubYieldForecast">Predicted yields</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                    <button type="button" class="hub-menu-item hub-menu-item--feedplan" onclick="openHubPanel('feedplan')">
-                        <span class="hub-menu-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
-                        <span class="hub-menu-label" data-i18n="hubFeedPlan">Feed planner</span>
-                        <span class="hub-menu-arrow"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </button>
-                </div>
-                <div class="modal-buttons">
-                    <button id="close-farm-hub-btn" data-i18n="close">Close</button>
-                </div>
-            </div>
-        </div>
         <div id="hub-panel-modal" class="modal">
             <div class="modal-content">
-                <h3 id="hub-panel-title">-</h3>
-                <div id="hub-panel-body" class="hub-panel-body"></div>
+                <h3 id="fertplan-modal-title">-</h3>
+                <div id="fertplan-modal-body" class="hub-panel-body"></div>
                 <div class="modal-buttons">
-                    <button id="back-to-hub-btn" data-i18n="hubBack">Back</button>
                     <button id="close-hub-panel-btn" data-i18n="close">Close</button>
                 </div>
             </div>
