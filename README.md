@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="#polski">Wersja polska poniżej</a>
+  <b>English</b> | <a href="README.pl.md">Polski</a>
 </p>
 
 ---
@@ -48,11 +48,11 @@
 
 ## Installation
 
-Windows installers are published on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page. You can also run the app from source.
+Download the Windows installer from the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page and run it — nothing else needs to be installed.
 
-### Running from source
+### Running from source (developers only)
 
-Requires [Node.js](https://nodejs.org/) 20 or newer.
+Only needed if you want to change the code or build the installer yourself. Requires [Node.js](https://nodejs.org/) 20 or newer.
 
 ```bash
 git clone https://github.com/WiktorParylak/farmer-planner.git
@@ -101,44 +101,8 @@ docs/          Screenshots and notes
 
 ## Changelog
 
-### 0.9.0.5 — 2026-09-28
-
-**New**
-- **Mixer wagon** in the Feed planner: mixer wagons and bales are read from the savegame (capacity from the wagon's mod file, or typed in once), the wagon is loaded from whole or half bales plus loose products, **Fill to recipe** loads it automatically, and the mix is checked against the game's allowed TMR ranges — with how many days the load feeds the barn.
-- Animal definitions are re-read from the imported `animals.xml` file(s) every time a farm is opened, so changes to them show up without importing again.
-
-**Changed**
-- The TMR recipe is no longer editable — the game's default (40% hay, 40% silage, 15% straw, 5% mineral feed) is always used.
-- Tutorial updated for the new UI: a new *Feed planner & mixer wagon* chapter, reproduction and ration steps in *Animals*, and the soil import in *Farm tools*.
-
-**Fixed**
-- Settings → Adjust rates: the per-crop rates table no longer splits each crop over two rows.
+See [CHANGELOG.md](CHANGELOG.md) or the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
 ## Author
 
 Wiktor Parylak
-
----
-
-## Polski
-
-**Farmer Planner** to planer sezonu dla **Farming Simulator 25**: pola, uprawy, plany nawożenia, zwierzęta i pasze w jednym miejscu, zsynchronizowane z Twoim zapisem gry.
-
-- Tabela pól z uprawą, miesiącem siewu, stanem, orką lub bezorką, typem gleby i planem nawożenia dla każdego pola; sezony z historią i ostrzeżenia o płodozmianie.
-- Odczyt salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` oraz automatyczna synchronizacja w trakcie gry.
-- Kalendarz upraw z plików mapy (działa z mapami z modami) i typy gleby z Precision Farming.
-- Narzędzia na pasku bocznym: Finanse, Zwierzęta (kafelki budynków, zdjęcia ras z modów, stado według rasy i wieku, dni paszy, dzienne zapotrzebowanie, produkcja i reprodukcja), Zaopatrzenie, Typ gleby pól, Notatki, Przewidywane plony i Planer pasz.
-- Język polski i angielski, interaktywny samouczek, kopie zapasowe farm, opcjonalny Discord Rich Presence.
-
-**Zmiany w 0.9.0.5:**
-- Nowość: **paszowóz** w Planerze pasz — paszowozy i bele z zapisu gry, załadunek z całych lub połówek bel i produktów sypkich, automatyczne dobranie do receptury i sprawdzenie mieszanki z zakresami TMR z gry.
-- Definicje zwierząt (`animals.xml`) są wczytywane na nowo przy każdym otwarciu farmy.
-- Receptura TMR nie jest już edytowalna — zawsze używana jest domyślna z gry (40/40/15/5).
-- Samouczek zaktualizowany do nowego interfejsu (nowy rozdział o planerze pasz i paszowozie).
-- Poprawka: tabela stawek per uprawa w ustawieniach nie rozbija już upraw na dwa wiersze.
-
-**Instalacja:** instalator dla Windows w zakładce [Releases](https://github.com/WiktorParylak/farmer-planner/releases) albo uruchomienie ze źródeł (Node.js 20+): `npm install`, potem `npm start` (`npm run build` buduje instalator).
-
-**Pierwsze kroki:** **DODAJ FARMĘ +** → otwórz farmę → **Ustawienia** na pasku po lewej → wskaż `careerSavegame.xml` i włącz automatyczną synchronizację → **ZAPISZ I IMPORTUJ**.
-
-Dane farm są zapisywane w `Dokumenty\Farmer Planner`. Aplikacja tylko czyta pliki gry i nigdy ich nie zmienia.
