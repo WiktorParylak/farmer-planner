@@ -18,15 +18,18 @@
 ## Funkcje
 
 **Plan sezonu**
-- Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, stan (do posadzenia / sadzić teraz / posadzone), orka lub bezorka, typ gleby i plan nawożenia dla każdego pola.
+- Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, stan (do posadzenia / sadzić teraz / posadzone), orka lub bezorka, typ gleby i plan nawożenia dla każdego pola. Kliknięcie nagłówka kolumny sortuje tabelę.
+- Międzyplony (zielone żyto, poplon…) na tym samym polu, przed lub po uprawie głównej.
 - Sezony z historią — możesz wrócić do poprzednich sezonów i je porównać.
-- Lista wszystkich uprawianych roślin z łączną liczbą hektarów.
+- Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
+- Opcjonalnie areał całej działki (farmland) obok areału pola.
 - Ostrzeżenia o płodozmianie.
 
 **Synchronizacja z grą**
-- Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml`.
+- Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` — łącznie z kredytami z modów Enhanced Loan System i Bank And Credit.
 - Automatyczna synchronizacja w trakcie gry — planer odświeża się przy każdym zapisie gry (ręcznym lub autozapisie).
-- Kalendarz upraw odczytywany z plików mapy (`fruitTypes` / `uprawaX.xml`) — działa też z mapami z modami.
+- Uprawy mapy, ich kolejność i kalendarz siewu odczytywane automatycznie z moda mapy, której używa zapis gry — bez importu folderu (folder mapy można nadal wskazać dla map, których aplikacja nie odczyta).
+- Wykrywanie modów zwierząt zmieniających zużycie paszy: **AnimalFoodCalculator** (tryb, mnożnik, dni w miesiącu, krzywe referencyjne) i **EnhancedAnimalSystem** (współczynnik paszy w laktacji).
 - Typy gleby pól z Precision Farming, odczytywane bezpośrednio z zapisu gry.
 
 **Narzędzia (pasek po lewej)**
@@ -74,7 +77,7 @@ npm run build
 3. Wskaż swój zapis gry, np.
    `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
    i włącz automatyczną synchronizację.
-4. (Opcjonalnie) wybierz folder mapy, żeby wczytać jej kalendarz upraw, oraz folder definicji zwierząt, jeśli Twoja mapa lub mody dodają własne rasy.
+4. (Opcjonalnie) wybierz folder definicji zwierząt, jeśli Twoja mapa lub mody dodają własne rasy. Uprawy mapy wczytują się automatycznie z zapisu gry; folder mapy wskaż tylko, gdy się nie wczytały (mapa podstawowa, brak moda).
 5. Kliknij **ZAPISZ I IMPORTUJ**.
 
 Zdjęcia ras są wczytywane automatycznie z folderu `mods` obok zapisu gry. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.

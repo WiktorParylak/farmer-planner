@@ -131,11 +131,11 @@
                             <table id="fields-table">
                                 <thead>
                                     <tr>
-                                        <th data-i18n="thFieldNo">Field No.</th>
-                                        <th data-i18n="thFieldHa">Field Ha</th>
-                                        <th data-i18n="thCrop">Crop</th>
-                                        <th data-i18n="thSowingMth">Sowing Mth</th>
-                                        <th data-i18n="thState">State</th>
+                                        <th class="is-sortable" data-sort="number" data-i18n="thFieldNo">Field No.</th>
+                                        <th class="is-sortable" data-sort="ha" data-i18n="thFieldHa">Field Ha</th>
+                                        <th class="is-sortable" data-sort="crop" data-i18n="thCrop">Crop</th>
+                                        <th class="is-sortable" data-sort="sow" data-i18n="thSowingMth">Sowing Mth</th>
+                                        <th class="is-sortable" data-sort="state" data-i18n="thState">State</th>
                                         <th data-i18n="thTillage">Tillage</th>
                                         <th data-i18n="thSoil">Soil</th>
                                         <th data-i18n="thFertPlan">Plan</th>
@@ -148,6 +148,7 @@
                         <div class="table-footer-controls">
                             <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
                             <span id="total-ha-sum">0.00 ha</span>
+                            <span id="farmland-ha-sum" class="farmland-ha-sum" hidden></span>
                         </div>
                     </div>
                     <!-- Not shown any more; its values are still filled in and read by the Finance / Animals views. -->
@@ -184,17 +185,15 @@
                             <table id="crops-table">
                                 <thead class="crops-header">
                                     <tr>
-                                        <th class="crops-header-cell" data-i18n="thCrop">Crop</th>
-                                        <th class="crops-header-cell" data-i18n="thHa">Ha</th>
+                                        <th class="crops-header-cell is-sortable" data-sort="name" data-i18n="thCrop">Crop</th>
+                                        <th class="crops-header-cell is-sortable" data-sort="ha" data-i18n="thHa">Ha</th>
                                     </tr>
                                 </thead>
                                 <tbody id="crops-body">
                                 </tbody>
                             </table>
                         </div>
-                        <div class="crops-edit-btns">
-                            <p id="sidebar-add-btn" class="add-crop" data-i18n="addCrop">ADD CROP</p>
-                        </div>
+                        <p id="crops-sort-hint" class="crops-sort-hint"></p>
                     </div>
                 </div>
             </div>
@@ -224,6 +223,13 @@
                 </label>
                 <p id="auto-sync-hint" data-i18n="autoSyncHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
                     The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.
+                </p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
+                    <input type="checkbox" id="farmland-area-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
+                </label>
+                <p data-i18n="farmlandAreaHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
+                    Counted from the map like the game does (field plus margins); needs the savegame and the map mod.
                 </p>
                 <p data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</p>
                 <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
@@ -259,6 +265,9 @@
                     This is usually in the base game's install folder, not your map folder — separate from
                     Crops above since they're often in completely different places.
                 </p>
+
+                <p data-i18n="animalModsLabel">Animal mods in this savegame:</p>
+                <div id="animal-mods-info" class="animal-mods-info"></div>
 
                 <div id="settings-supply-adjust"></div>
 
@@ -300,7 +309,9 @@
         <div id="farm-modal" class="modal">
             <div class="modal-content">
                 <h3 data-i18n="addNewFarmTitle">Add new farm</h3>
+                <label for="new-farm-name" class="modal-field-label" data-i18n="farmNameLabel">Farm name:</label>
                 <input type="text" id="new-farm-name" data-i18n-placeholder="farmNamePlaceholder" placeholder="Farm name (e.g. Riverbend)">
+                <label for="new-farm-map" class="modal-field-label" data-i18n="farmMapLabel">Map for this farm:</label>
                 <input type="text" id="new-farm-map" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
                 <div class="modal-buttons">
                     <button id="cancel-btn" data-i18n="cancel">Cancel</button>

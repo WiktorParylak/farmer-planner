@@ -682,6 +682,14 @@ body {
   margin: 0;
 }
 
+.modal-field-label {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-ink-soft);
+}
+
 .modal-content p,
 .hub-view p {
   font-weight: 400;
@@ -1683,6 +1691,7 @@ tbody tr:hover {
 
 .ha-value {
   text-align: right;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--color-ink);
@@ -1719,14 +1728,56 @@ tbody tr:hover {
   background: var(--color-primary-soft);
 }
 
-.crops-edit-btns {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  gap: 12px;
-  margin-top: 16px;
+/* Click-to-sort column headers (crops summary + fields table). */
+th.is-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+th.is-sortable:hover {
+  color: var(--color-primary-dark);
+}
+
+th.is-sortable::after {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  margin-left: 4px;
+  opacity: 0.35;
+}
+
+th.is-sortable:hover::after {
+  content: "\2195";
+}
+
+th.is-sortable[aria-sort="ascending"]::after {
+  content: "\25B2";
+  opacity: 1;
+}
+
+th.is-sortable[aria-sort="descending"]::after {
+  content: "\25BC";
+  opacity: 1;
+}
+
+.crops-sort-hint {
+  margin: 8px 0 0;
+  min-height: 1.2em;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+  text-align: center;
+}
+
+#crops-body .crops-section-row td {
+  padding-top: 16px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  border-top: 1px solid var(--color-border-strong);
 }
 
 /* ========================================================= */
@@ -2945,6 +2996,59 @@ span.tillage-switch-option {
   font-weight: 600;
 }
 
+.ha-caption--farmland,
+.catch-crop-caption {
+  color: var(--color-ink-soft);
+}
+
+.table-footer-controls #total-ha-sum {
+  margin-left: auto;
+}
+
+.farmland-ha-sum {
+  margin-left: 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+/* Catch-crop row in the field edit card: lighter, it's optional. */
+/* auto-fill (not auto-fit) keeps the columns lined up with the row above. */
+.field-card-row.field-card-row--catch {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.animal-mods-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.animal-mod-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.modal-content .animal-mod-row input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: auto;
+  margin: 3px 0 0;
+  flex: 0 0 auto;
+}
+
+.animal-mods-note {
+  font-size: 12px;
+  opacity: 0.75;
+  margin: 0;
+}
+
 tr.field-split-row {
   box-shadow: inset 3px 0 0 var(--color-sky);
 }
@@ -3255,6 +3359,135 @@ select:focus-visible,
 /* ========================================================= */
 /* 10. RESPONSIVE FALLBACK (narrow window)                    */
 /* ========================================================= */
+/* Compact planner — a maximized Full HD window with Windows display scaling
+   at 125–150% only leaves ~1536×820 / 1280×680 CSS px. Tighter spacing and
+   narrower side panels so the fields table fits without a horizontal
+   scrollbar and the menu without a vertical one. */
+@media (max-width: 1680px), (max-height: 900px) {
+  .app-container {
+    padding: 0 16px;
+  }
+
+  .planner-view {
+    height: 97%;
+    gap: 10px;
+    padding: 16px 22px 18px;
+  }
+
+  .planner-content {
+    gap: 16px;
+  }
+
+  .planner-header h1 {
+    font-size: 34px;
+  }
+
+  .balance,
+  .month,
+  .year {
+    padding: 5px 12px;
+  }
+
+  .planner-sidebar {
+    width: 176px;
+    padding: 10px 8px;
+  }
+
+  .sidebar-item {
+    gap: 9px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+
+  .sidebar-item-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .planner-crops {
+    width: 290px;
+  }
+
+  .crops-container {
+    padding: 18px 16px;
+  }
+
+  .table-container {
+    margin-bottom: 10px;
+  }
+
+  thead th {
+    padding: 10px 10px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  tbody td {
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .tillage-switch-option {
+    padding: 5px 10px;
+  }
+
+  .fertplan-open-btn {
+    padding: 8px 14px;
+  }
+}
+
+/* Full HD at 150% (~1280 px wide): squeeze a bit more out of the side panels
+   and the table's widest controls. */
+@media (max-width: 1400px) {
+  .planner-sidebar {
+    width: 158px;
+  }
+
+  .sidebar-item {
+    gap: 7px;
+    padding: 4px 6px;
+    font-size: 12.5px;
+  }
+
+  .planner-crops {
+    width: 240px;
+  }
+
+  .crops-container h1 {
+    font-size: 17px;
+  }
+
+  #crops-body td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  thead th {
+    padding: 9px 7px;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+  }
+
+  tbody td {
+    padding: 8px 7px;
+    font-size: 13px;
+  }
+
+  .tillage-switch-option {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  .fertplan-open-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .badge {
+    font-size: 10px;
+  }
+}
+
 @media (max-width: 1180px) {
   .planner-content {
     flex-direction: column;
@@ -4426,7 +4659,13 @@ select:focus-visible,
   margin-top: 4px;
 }
 
-.feed-plan .feed-params .feed-input {
+/* input[type="number"] in the selector so this outranks the 64px
+   ".feed-plan input[type=number].feed-input" rule above. */
+.feed-plan .feed-params label {
+  text-align: left;
+}
+
+.feed-plan .feed-params input[type="number"].feed-input {
   width: 100%;
   text-align: left;
 }
