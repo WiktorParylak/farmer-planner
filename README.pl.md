@@ -26,7 +26,7 @@
 - Ostrzeżenia o płodozmianie.
 
 **Synchronizacja z grą**
-- Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml`.
+- Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` — łącznie z kredytami z modów Enhanced Loan System i Bank And Credit.
 - Automatyczna synchronizacja w trakcie gry — planer odświeża się przy każdym zapisie gry (ręcznym lub autozapisie).
 - Uprawy mapy, ich kolejność i kalendarz siewu odczytywane automatycznie z moda mapy, której używa zapis gry — bez importu folderu (folder mapy można nadal wskazać dla map, których aplikacja nie odczyta).
 - Wykrywanie modów zwierząt zmieniających zużycie paszy: **AnimalFoodCalculator** (tryb, mnożnik, dni w miesiącu, krzywe referencyjne) i **EnhancedAnimalSystem** (współczynnik paszy w laktacji).

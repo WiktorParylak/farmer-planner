@@ -78,6 +78,9 @@ const TRANSLATIONS = {
         farmDetails: "Farm Details",
         detailBalance: "Balance",
         detailCredit: "Credit",
+        bankCreditLabel: "Bank And Credit (mod)",
+        bankCreditValue: "{n} active loan(s) · {m} € / month",
+        bankCreditNone: "no active loans",
         detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
         detailFields: "Fields",
@@ -538,6 +541,9 @@ const TRANSLATIONS = {
         farmDetails: "Szczegóły Farmy",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
+        bankCreditLabel: "Bank And Credit (mod)",
+        bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
+        bankCreditNone: "brak aktywnych kredytów",
         detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
         detailFields: "Pola",
@@ -2487,6 +2493,16 @@ function wireBarnPanel(bodyEl) {
     });
 }
 
+// Finance: Bank And Credit (FS25_BankCredit) contracts behind the loan total.
+function bankCreditLine(farm) {
+    const bc = farm && farm.bankCredit;
+    if (!bc) return '';
+    const value = bc.count
+        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString())
+        : t('bankCreditNone');
+    return `<p class="details-category"><span>${t('bankCreditLabel')}</span><span class="details-category-value">${value}</span></p>`;
+}
+
 function getDetailValue(id) {
     const el = document.getElementById(id);
     return el ? el.textContent : '-';
@@ -2536,6 +2552,7 @@ window.openHubPanel = function (type) {
         bodyEl.innerHTML = `
             <p class="details-category"><span>${t('detailBalance')}</span><span class="details-category-value">${getDetailValue('details-balance')}</span></p>
             <p class="details-category"><span>${t('detailCredit')}</span><span class="details-category-value">${getDetailValue('detail-loan')}</span></p>
+            ${bankCreditLine(getCurrentFarm())}
             <p class="details-category"><span>${t('detailFarmAge')}</span><span class="details-category-value">${getDetailValue('detail-age')}</span></p>
             ${(monthlyChartHtml || seasonChartHtml)
                 ? monthlyChartHtml + seasonChartHtml
@@ -6537,6 +6554,30 @@ function readGameSave(pathToFile) {
             }
             if (!loanVal) loanVal = findValueInRawText(careerText, 'loan');
         }
+
+        // Bank And Credit (FS25_BankCredit) replaces the base-game loan with
+        // its own contracts in bankCredit.xml (it pays off and zeroes the
+        // vanilla loan on load) — add whatever is still outstanding for the
+        // farm. Only while the mod is active, so a stale file doesn't count.
+        const bankCreditPath = path.join(saveFolder, 'bankCredit.xml');
+        if (/<mod\b[^>]*modName="FS25_BankCredit"/.test(careerText) && fs.existsSync(bankCreditPath)) {
+            try {
+                const bcDoc = new DOMParser().parseFromString(fs.readFileSync(bankCreditPath, 'utf-8'), "text/xml");
+                let bcTotal = 0, bcMonthly = 0, bcCount = 0;
+                bcDoc.querySelectorAll('bankcredit > loan').forEach(loanEl => {
+                    if (loanEl.getAttribute('farmId') !== '1' || loanEl.getAttribute('paidOff') === 'true') return;
+                    const rest = parseFloat(loanEl.getAttribute('restAmount'));
+                    if (isNaN(rest) || rest <= 0) return;
+                    bcTotal += rest;
+                    bcMonthly += parseFloat(loanEl.getAttribute('monthlyPayment')) || 0;
+                    bcCount++;
+                });
+                loanVal = (parseFloat(loanVal) || 0) + bcTotal;
+                result.bankCredit = { count: bcCount, total: Math.round(bcTotal), monthly: Math.round(bcMonthly) };
+            } catch (err) {
+                console.warn('Could not read bankCredit.xml', err);
+            }
+        }
         if (loanVal !== null && loanVal !== undefined && loanVal !== "") result.loan = Math.round(parseFloat(loanVal));
 
         const currentDayStr = findValueInRawText(envText, 'currentDay');
@@ -6726,6 +6767,8 @@ function applyGameSaveToFarm(farm) {
         changed = true;
     }
     if (gameData.loan !== null && gameData.loan !== farm.loan) { farm.loan = gameData.loan; changed = true; }
+    const bankCredit = gameData.bankCredit || null;
+    if (JSON.stringify(bankCredit) !== JSON.stringify(farm.bankCredit || null)) { farm.bankCredit = bankCredit; changed = true; }
     if (gameData.equipment !== null && gameData.equipment !== farm.equipment) { farm.equipment = gameData.equipment; changed = true; }
     if (gameData.animals !== null && gameData.animals !== farm.animals) { farm.animals = gameData.animals; changed = true; }
     if (gameData.animalBreakdown !== null) { farm.animalBreakdown = gameData.animalBreakdown; changed = true; }
@@ -6776,7 +6819,7 @@ function refreshPlannerHeader(farm) {
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
     'careerSavegame.xml', 'environment.xml', 'farms.xml',
-    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml'
+    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml'
 ];
 
 let autoSyncTimer = null;

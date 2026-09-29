@@ -26,7 +26,7 @@
 - Crop rotation warnings.
 
 **Game sync**
-- Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml`.
+- Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml` — loans from the Enhanced Loan System and Bank And Credit mods included.
 - Auto-sync while you play — the planner refreshes every time the game saves (manual save or autosave).
 - The map's crops, their order and sowing calendar read automatically from the map mod the savegame uses — no folder import needed (a map folder can still be picked for maps the app can't read).
 - Animal mods that change feed consumption are detected: **AnimalFoodCalculator** (mode, multiplier, days per month, reference curves) and **EnhancedAnimalSystem** (lactation food factor).
