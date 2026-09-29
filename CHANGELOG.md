@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.6 — unreleased
+## 0.9.6 — 2026-09-29
 
 **New**
 - **Crops from the map mod, automatically**: when a farm is linked to a savegame, the map's crop list, calendar and in-game menu order are read straight from the map mod (unpacked folder or .zip) — e.g. rye, green rye and triticale on Krajów, clover and alfalfa on Solek. Importing a crops folder is now only a fallback.
