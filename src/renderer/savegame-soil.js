@@ -46,6 +46,11 @@ function openZip(zipPath) {
             const data = readAt(e.local + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28), e.csize);
             return e.method === 0 ? data : zlib.inflateRawSync(data);
         },
+        // Entry paths (lower-cased) directly inside folder `prefix` ("xmls/").
+        list(prefix) {
+            const p = prefix.toLowerCase();
+            return Object.keys(entries).filter(n => n.startsWith(p) && n.length > p.length && !n.slice(p.length).includes('/'));
+        },
         close() { fs.closeSync(fd); }
     };
 }
@@ -53,7 +58,16 @@ function openZip(zipPath) {
 function openMod(modsDir, modName) {
     const dir = path.join(modsDir, modName);
     if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
-        return { read: rel => { const f = path.join(dir, rel); return fs.existsSync(f) ? fs.readFileSync(f) : null; }, close() {} };
+        return {
+            read: rel => { const f = path.join(dir, rel); return fs.existsSync(f) ? fs.readFileSync(f) : null; },
+            list: prefix => {
+                try {
+                    return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
+                        .filter(e => e.isFile()).map(e => (prefix + e.name).toLowerCase());
+                } catch { return []; }
+            },
+            close() {}
+        };
     }
     const zip = dir + '.zip';
     if (fs.existsSync(zip)) return openZip(zip);
@@ -272,4 +286,58 @@ function readFieldSoilFromSave(careerSavegamePath) {
     }
 }
 
-module.exports = { readFieldSoilFromSave };
+// Whole-farmland (land plot) area — what the game shows when buying land:
+// field plus margins, meadows, yards. Not stored anywhere; counted from the
+// map's "farmlands" info layer like the game does. Owned plots come from the
+// savegame's farmland.xml (farmId 1).
+// Returns { ok:true, mapId, areas: { "<farmlandId>": ha }, owned: [ids] } or
+// { ok:false, reason } (same reasons as readFieldSoilFromSave).
+function readFarmlandAreas(careerSavegamePath) {
+    let mod = null;
+    try {
+        if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return { ok: false, reason: 'nosave' };
+        const saveDir = path.dirname(careerSavegamePath);
+        const career = fs.readFileSync(careerSavegamePath, 'utf-8');
+        const mapId = (career.match(/<mapId>([^<]+)<\/mapId>/) || [])[1];
+        if (!mapId || mapId.indexOf('.') < 0) return { ok: false, reason: 'nomapid' };
+
+        const modName = mapId.split('.')[0];
+        mod = openMod(findModsDir(path.dirname(saveDir)), modName);
+        if (!mod) return { ok: false, reason: 'nomod', modName };
+
+        const modDesc = (mod.read('modDesc.xml') || '').toString('utf-8');
+        const cfgRel = (modDesc.match(/<map\b[^>]*configFilename="([^"]+)"/) || [])[1];
+        const cfg = cfgRel ? (mod.read(cfgRel) || '').toString('utf-8') : '';
+        const i3dRel = (cfg.match(/<filename>\s*([^<\s]+)\s*<\/filename>/) || [])[1];
+        const i3dBuf = i3dRel ? mod.read(i3dRel) : null;
+        if (!i3dBuf) return { ok: false, reason: 'nomap', modName };
+        const i3d = i3dBuf.toString('utf-8');
+        const mapSize = parseFloat((cfg.match(/<map\b[^>]*\swidth="([\d.]+)"/) || [])[1]) || 2048;
+        const i3dDir = path.posix.dirname(i3dRel.replace(/\\/g, '/'));
+
+        const flFile = infoLayerFile(i3d, 'farmlands');
+        const farmlands = flFile ? readLayer(mod, path.posix.join(i3dDir, flFile)) : null;
+        if (!farmlands) return { ok: false, reason: 'nofields', modName };
+
+        const counts = {};
+        const d = farmlands.data;
+        for (let i = 0; i < d.length; i++) if (d[i]) counts[d[i]] = (counts[d[i]] || 0) + 1;
+        const pxHa = (mapSize / farmlands.w) * (mapSize / farmlands.h) / 10000;
+        const areas = {};
+        Object.keys(counts).forEach(id => { areas[id] = counts[id] * pxHa; });
+
+        const owned = [];
+        try {
+            const fl = fs.readFileSync(path.join(saveDir, 'farmland.xml'), 'utf-8');
+            for (const m of fl.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) if (m[2] === '1') owned.push(m[1]);
+        } catch { /* no farmland.xml yet */ }
+        return { ok: true, mapId, modName, areas, owned };
+    } catch (e) {
+        console.error('readFarmlandAreas failed', e);
+        return { ok: false, reason: 'parse', error: String(e && e.message || e) };
+    } finally {
+        if (mod) mod.close();
+    }
+}
+
+module.exports = { readFieldSoilFromSave, readFarmlandAreas, openMod, findModsDir };

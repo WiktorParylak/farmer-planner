@@ -4,9 +4,11 @@
 const fs = require('fs');
 const path = require('path');
 const { webUtils, ipcRenderer } = require('electron');
-const { readFieldSoilFromSave } = require('./savegame-soil');
+const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
+const { readMapCrops } = require('./map-crops');
+const { readAnimalMods, easFoodFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -83,8 +85,6 @@ const TRANSLATIONS = {
         detailEquipment: "Equipment",
         detailAnimals: "Animals",
         cropsListTitle: "List of all crops that are being farmed",
-        addCrop: "ADD CROP",
-        editCrops: "EDIT CROPS",
         resetSeasons: "RESET SEASONS",
         settings: "SETTINGS",
         exit: "EXIT",
@@ -92,8 +92,8 @@ const TRANSLATIONS = {
         gameSavePathLabel: "Game Save Path (careerSavegame.xml):",
         gameSavePathPlaceholder: "Path to careerSavegame.xml",
         cropsFolderLabel: "Crops folder (map's uprawaX.xml / fruitType files):",
+        cropsFolderHint: "Usually not needed — when the farm is linked to a savegame, the map mod's crops (and their order in the game menu) are read automatically. Pick a folder only for a map the app can't read (base-game map, missing mod) or to override a crop's calendar; subfolders are scanned automatically.",
         noFolderSelected: "No folder selected",
-        cropsFolderHint: "Optional — the base FS25 crops already work out of the box, no import needed. Pick the map's root folder (or any folder above the crop files) only if the map adds or changes crops; subfolders are scanned automatically, so it doesn't matter whether the crop XML files sit together or scattered across separate folders.",
         autoSyncLabel: "Auto-sync with the savegame while playing",
         autoSyncHint: "The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously. Lower the autosave interval in-game for fresher data.",
         autoSyncedToast: "Synced from savegame",
@@ -104,6 +104,7 @@ const TRANSLATIONS = {
         close: "Close",
         addNewFarmTitle: "Add new farm",
         farmNamePlaceholder: "Farm name (e.g. Riverbend)",
+        farmNameLabel: "Farm name:",
         farmMapLabel: "Map for this farm:",
         farmMapPlaceholder: "e.g. Solek, Zielonka, Riverbend",
         add: "Add",
@@ -189,13 +190,19 @@ const TRANSLATIONS = {
         combineNumbersHint: "Combine several field numbers into one row, e.g. 69-70-71",
         fieldSizeLabel: "Field size (ha)",
         addNewField: "+ ADD NEW FIELD",
-        addCropRow: "+ ADD CROP",
-        noTrackedCrops: "No tracked crops.",
-        clickEditCrops: "Click EDIT CROPS to add.",
         usedByOthersHere: "Used by other crop(s) here",
         stillFree: "ha still free",
         overFieldSizeBy: "over field size by",
         currentlyLoaded: "Currently loaded",
+        noPlannedCrops: "No crops planned yet. Assign crops to fields in EDIT SEASON — this list fills in by itself.",
+        cropsSortGame: "Game order · click a header to sort",
+        catchCropsTitle: "Catch crops",
+        catchCropNone: "-- None --",
+        thCatchCrop: "Catch crop",
+        thCatchSowingMth: "Catch crop sowing",
+        catchCropHint: "A crop grown on the same field before or after the main crop (green rye, oilseed radish…). Listed separately in the crops summary so its area isn't counted twice.",
+        catchCropShort: "catch crop",
+        cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
         cropsLoaded: "crop(s).",
         noCropsLoadedYet: "No crops loaded yet.",
         readyToScan: "Ready to scan",
@@ -203,7 +210,6 @@ const TRANSLATIONS = {
         selectCropFirst: "-- Select Crop First --",
         selectMonth: "-- Select Month --",
         selectPlaceholder: "-- Select --",
-        autoHa: "Auto Ha",
         of: "of",
         totalHa: "ha total",
         discordSettingLabel: "Discord Rich Presence",
@@ -468,7 +474,27 @@ const TRANSLATIONS = {
         feedFoodPerYear: "feed / year",
         feedYearNeedFood: "Feed needed per year",
         feedYearNeedMonth: "Per in-game month",
-        feedDaysPerMonth: "{d} days per month (game save)",
+        feedScaleBase: "base game: monthly need doesn't depend on days/month ({d})",
+        feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} days/month)",
+        feedScaleEas: "EAS: more food after calving",
+        animalModsLabel: "Animal mods in this savegame:",
+        animalModsNoSave: "Link the savegame above to detect animal mods (AnimalFoodCalculator, EnhancedAnimalSystem).",
+        animalModsNone: "No feed-changing animal mods active — base game rules ({d} days/month doesn't change monthly feed).",
+        afcModeLine: "mode {mode}: feed ×{x}; curves: {src}",
+        afcMode_vanilla: "Basegame (off)",
+        afcMode_auto: "Auto (× days/month)",
+        afcMode_manual: "Manual (× multiplier)",
+        afcMode_hybrid: "Hybrid (× days × multiplier)",
+        afcSource_custom: "AFC's own animals.xml",
+        afcSource_animalpackage: "Animal Package",
+        afcSource_basegame: "base game",
+        afcSource_map: "map",
+        afcSource_effective: "as loaded in game",
+        easLine: "lactation food factor after calving for: {list}",
+        farmlandAreaLabel: "Also show whole land plot area (farmland), not just the field",
+        farmlandAreaHint: "Counted from the map like the game does (field plus margins); needs the savegame and the map mod.",
+        farmlandPlot: "plot",
+        farmlandTotal: "· land owned: {ha} ha ({n} plots)",
         feedSettings: "Settings — feed fields, parameters, custom feeds"
     },
     pl: {
@@ -519,8 +545,6 @@ const TRANSLATIONS = {
         detailEquipment: "Sprzęt",
         detailAnimals: "Zwierzęta",
         cropsListTitle: "Lista wszystkich uprawianych roślin",
-        addCrop: "DODAJ UPRAWĘ",
-        editCrops: "EDYTUJ UPRAWY",
         resetSeasons: "RESETUJ SEZONY",
         settings: "USTAWIENIA",
         exit: "WYJŚCIE",
@@ -528,8 +552,8 @@ const TRANSLATIONS = {
         gameSavePathLabel: "Ścieżka zapisu gry (careerSavegame.xml):",
         gameSavePathPlaceholder: "Ścieżka do careerSavegame.xml",
         cropsFolderLabel: "Folder upraw (pliki uprawaX.xml / fruitType mapy):",
+        cropsFolderHint: "Zwykle niepotrzebne — gdy farma jest połączona z zapisem gry, uprawy z moda mapy (i ich kolejność z menu gry) wczytują się automatycznie. Wybierz folder tylko dla mapy, której aplikacja nie odczyta (mapa podstawowa, brak moda), albo żeby nadpisać kalendarz uprawy; podfoldery są skanowane automatycznie.",
         noFolderSelected: "Nie wybrano folderu",
-        cropsFolderHint: "Opcjonalne — podstawowe uprawy z FS25 działają od razu, bez importu. Wybierz folder główny mapy (lub dowolny folder nadrzędny) tylko jeśli mapa dodaje własne uprawy lub zmienia istniejące; podfoldery są skanowane automatycznie, więc nie ma znaczenia, czy pliki XML upraw są razem, czy rozrzucone po osobnych folderach.",
         autoSyncLabel: "Automatyczna synchronizacja z zapisem gry podczas grania",
         autoSyncHint: "Gra zapisuje stan na dysk tylko przy ręcznym zapisie / autozapisie, więc planer odświeża się przy każdym (auto)zapisie — nie na bieżąco. Skróć interwał autozapisu w grze, aby dane były świeższe.",
         autoSyncedToast: "Zsynchronizowano z zapisem gry",
@@ -540,6 +564,7 @@ const TRANSLATIONS = {
         close: "Zamknij",
         addNewFarmTitle: "Dodaj nową farmę",
         farmNamePlaceholder: "Nazwa farmy (np. Solek)",
+        farmNameLabel: "Nazwa farmy:",
         farmMapLabel: "Mapa tej farmy:",
         farmMapPlaceholder: "np. Solek, Zielonka, Riverbend",
         add: "Dodaj",
@@ -625,13 +650,19 @@ const TRANSLATIONS = {
         combineNumbersHint: "Połącz kilka numerów pól w jednym wierszu, np. 69-70-71",
         fieldSizeLabel: "Wielkość pola (ha)",
         addNewField: "+ DODAJ POLE",
-        addCropRow: "+ DODAJ UPRAWĘ",
-        noTrackedCrops: "Brak śledzonych upraw.",
-        clickEditCrops: "Kliknij EDYTUJ UPRAWY, żeby dodać.",
         usedByOthersHere: "Zajęte przez inne uprawy na tym polu",
         stillFree: "ha jeszcze wolne",
         overFieldSizeBy: "przekroczono rozmiar pola o",
         currentlyLoaded: "Aktualnie wczytano",
+        noPlannedCrops: "Brak zaplanowanych upraw. Przypisz uprawy do pól w EDYTUJ SEZON — ta lista uzupełni się sama.",
+        cropsSortGame: "Kolejność z gry · kliknij nagłówek, żeby sortować",
+        catchCropsTitle: "Międzyplony",
+        catchCropNone: "-- Brak --",
+        thCatchCrop: "Międzyplon",
+        thCatchSowingMth: "Siew międzyplonu",
+        catchCropHint: "Uprawa na tym samym polu przed lub po uprawie głównej (zielone żyto, poplon…). W podsumowaniu upraw liczona osobno, żeby areał nie liczył się podwójnie.",
+        catchCropShort: "międzyplon",
+        cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
         cropsLoaded: "uprawa(-y).",
         noCropsLoadedYet: "Nie wczytano jeszcze żadnych upraw.",
         readyToScan: "Gotowe do przeskanowania",
@@ -639,7 +670,6 @@ const TRANSLATIONS = {
         selectCropFirst: "-- Najpierw wybierz uprawę --",
         selectMonth: "-- Wybierz miesiąc --",
         selectPlaceholder: "-- Wybierz --",
-        autoHa: "Auto Ha",
         of: "z",
         totalHa: "ha całości",
         discordSettingLabel: "Discord Rich Presence",
@@ -904,7 +934,27 @@ const TRANSLATIONS = {
         feedFoodPerYear: "paszy / rok",
         feedYearNeedFood: "Pasza potrzebna na rok",
         feedYearNeedMonth: "Na miesiąc gry",
-        feedDaysPerMonth: "{d} dni w miesiącu (z zapisu gry)",
+        feedScaleBase: "gra podstawowa: zapotrzebowanie miesięczne nie zależy od dni w miesiącu ({d})",
+        feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} dni w miesiącu)",
+        feedScaleEas: "EAS: więcej paszy po porodzie",
+        animalModsLabel: "Mody zwierząt w tym zapisie gry:",
+        animalModsNoSave: "Podaj wyżej ścieżkę zapisu gry, żeby wykryć mody zwierząt (AnimalFoodCalculator, EnhancedAnimalSystem).",
+        animalModsNone: "Brak aktywnych modów zmieniających paszę — zasady gry podstawowej ({d} dni w miesiącu nie zmienia paszy na miesiąc).",
+        afcModeLine: "tryb {mode}: pasza ×{x}; krzywe: {src}",
+        afcMode_vanilla: "Basegame (wyłączony)",
+        afcMode_auto: "Auto (× dni w miesiącu)",
+        afcMode_manual: "Manual (× mnożnik)",
+        afcMode_hybrid: "Hybrid (× dni × mnożnik)",
+        afcSource_custom: "własny animals.xml AFC",
+        afcSource_animalpackage: "Animal Package",
+        afcSource_basegame: "gra podstawowa",
+        afcSource_map: "mapa",
+        afcSource_effective: "jak w grze",
+        easLine: "współczynnik paszy w laktacji po porodzie dla: {list}",
+        farmlandAreaLabel: "Pokazuj też areał całej działki (farmland), nie tylko pola",
+        farmlandAreaHint: "Liczone z mapy tak jak w grze (pole plus miedze i obrzeża); wymaga zapisu gry i moda mapy.",
+        farmlandPlot: "działka",
+        farmlandTotal: "· posiadana ziemia: {ha} ha ({n} działek)",
         feedSettings: "Ustawienia — pola paszowe, parametry, własne pasze"
     }
 };
@@ -1019,7 +1069,6 @@ Object.assign(TRANSLATIONS.en, {
     tut_d5_t: "Area",
     tut_d5_x: "Type the area in hectares, e.g. 3.5 (a comma works too).",
     tut_d6_t: "Crop",
-    tut_d6_x: "Choose a crop. The list contains only crops tracked in the sidebar.",
     tut_d7_t: "Sowing month",
     tut_d7_x: "Choose the sowing month. Only months valid for the chosen crop on this map are offered.",
     tut_d8_t: "Tillage",
@@ -1051,15 +1100,14 @@ Object.assign(TRANSLATIONS.en, {
     tut_e8_x: "Field 1's button is now green — mineral fertilizer applied.",
 
     tut_f1_t: "Crops",
-    tut_f1_x: "Every tracked crop with its total area. Crops with 0 ha are listed first in red — tracked but not assigned to any field (barley here).",
-    tut_f2_t: "Edit crops",
-    tut_f2_x: "Click \"Edit crops\".",
-    tut_f3_t: "Add a crop",
-    tut_f3_x: "Click \"+ Add crop\".",
-    tut_f4_t: "Choose a crop",
-    tut_f4_x: "Choose a crop, e.g. Oat. The list includes base crops and those imported from the map.",
-    tut_f5_t: "Save",
-    tut_f5_x: "Click \"Save changes\". Tracked crops are what you can pick when editing fields.",
+    tut_f1_x: "Every crop planted this season with its total area — filled in automatically from the fields, nothing to type here. Starts in the game's own crop order.",
+    tut_f2_t: "Sort by area",
+    tut_f2_x: "Click \"Ha\" to put the biggest crops first. Click again to reverse; a third click goes back to game order.",
+    tut_f3_t: "Sort by name",
+    tut_f3_x: "Click \"Crop\" to sort alphabetically. The fields table headers sort the same way.",
+    tut_f4_t: "Catch crops",
+    tut_f4_x: "Catch crops (oilseed radish, green rye…) set in a field's edit card get their own section with a separate total, so the same hectares aren't counted twice.",
+    tut_d6_x: "Choose a crop. The list has every crop of this farm's map, in the game's order.",
 
     tut_g2_t: "Auto-sync",
     tut_g2_x: "With auto-sync enabled, the app checks the savegame every 10 seconds and updates the planner after you save in the game. This badge appears when it does.",
@@ -1309,7 +1357,6 @@ Object.assign(TRANSLATIONS.pl, {
     tut_d5_t: "Powierzchnia",
     tut_d5_x: "Wpisz powierzchnię w hektarach, np. 3,5.",
     tut_d6_t: "Uprawa",
-    tut_d6_x: "Wybierz uprawę. Lista zawiera tylko uprawy śledzone w panelu bocznym.",
     tut_d7_t: "Miesiąc siewu",
     tut_d7_x: "Wybierz miesiąc siewu. Dostępne są tylko miesiące właściwe dla wybranej uprawy na tej mapie.",
     tut_d8_t: "Uprawa gleby",
@@ -1341,15 +1388,14 @@ Object.assign(TRANSLATIONS.pl, {
     tut_e8_x: "Przycisk pola 1 jest teraz zielony — zastosowano nawóz mineralny.",
 
     tut_f1_t: "Uprawy",
-    tut_f1_x: "Każda śledzona uprawa z łączną powierzchnią. Uprawy z 0 ha są na górze na czerwono — śledzone, ale nieprzypisane do żadnego pola (tu jęczmień).",
-    tut_f2_t: "Edytuj uprawy",
-    tut_f2_x: "Kliknij „Edytuj uprawy”.",
-    tut_f3_t: "Dodaj uprawę",
-    tut_f3_x: "Kliknij „+ Dodaj uprawę”.",
-    tut_f4_t: "Wybierz uprawę",
-    tut_f4_x: "Wybierz uprawę, np. owies. Lista zawiera uprawy podstawowe i zaimportowane z mapy.",
-    tut_f5_t: "Zapisz",
-    tut_f5_x: "Kliknij „Zapisz zmiany”. Śledzone uprawy to te, które wybierasz przy edycji pól.",
+    tut_f1_x: "Każda uprawa zasiana w tym sezonie z łączną powierzchnią — liczona automatycznie z pól, nic tu nie wpisujesz. Domyślnie w kolejności upraw z gry.",
+    tut_f2_t: "Sortuj po areale",
+    tut_f2_x: "Kliknij „Ha”, żeby największe uprawy były na górze. Drugi klik odwraca kolejność, trzeci wraca do kolejności z gry.",
+    tut_f3_t: "Sortuj po nazwie",
+    tut_f3_x: "Kliknij „Uprawa”, żeby posortować alfabetycznie. Nagłówki tabeli pól sortują tak samo.",
+    tut_f4_t: "Międzyplony",
+    tut_f4_x: "Międzyplony (poplon, zielone żyto…) ustawione w karcie pola mają osobną sekcję z własną sumą, żeby te same hektary nie liczyły się dwa razy.",
+    tut_d6_x: "Wybierz uprawę. Lista zawiera wszystkie uprawy z mapy tej farmy, w kolejności z gry.",
 
     tut_g2_t: "Automatyczna synchronizacja",
     tut_g2_x: "Gdy jest włączona, aplikacja co 10 sekund sprawdza zapis gry i aktualizuje planer po zapisaniu gry. Wtedy pojawia się ten znaczek.",
@@ -2991,7 +3037,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
             <th>${t('suppliesColRate')}</th><th>${t('suppliesColNeed')}</th></tr></thead><tbody>`;
         seed.rows.forEach(r => {
             const flag = r.known ? '' : ` <span class="supply-flag" title="${t('suppliesUnknownRate').replace('{v}', r.rate)}">?</span>`;
-            html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}${flag}</td>
+            html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}${flag}${catchTag(r)}</td>
                 <td>${r.area.toFixed(2)} ha</td>
                 <td>${num(r.rate)} ${t('suppliesSeedRateUnit')}</td>
                 <td>${fmtL(r.buffered)}</td></tr>`;
@@ -3277,9 +3323,13 @@ const TMR_DEFAULT = { HAY: 40, SILAGE: 40, STRAW: 15, MINERAL: 5 };
 // 'sale' is always offered on top of these. Grassland crops are cut several
 // times a year, so their yield is multiplied by plan.grassCuts.
 const FEED_GRASSLAND_CROPS = ['Grass', 'Meadow', 'Alfalfa', 'Clover'];
+// Chopped whole for silage at their own harvest yield (the maize chaff-yield
+// setting doesn't apply to them).
+const FEED_SILAGE_OWN_YIELD = ['Greenrye'];
 const FEED_CROP_USES = {
     Grass: { feed: 'ROUGHAGE' }, Meadow: { feed: 'ROUGHAGE' }, Alfalfa: { feed: 'ROUGHAGE' }, Clover: { feed: 'ROUGHAGE' },
     Maize: { silage: 'SILAGE', grain: 'PIG_BASE' }, Silagemaize: { silage: 'SILAGE' }, Sorghum: { silage: 'SILAGE', grain: 'PIG_BASE' },
+    Greenrye: { silage: 'SILAGE' },
     Wheat: { feed: 'GRAIN' }, Barley: { feed: 'GRAIN' }, Oat: { feed: 'OAT' },
     Soybean: { feed: 'PROTEIN' }, Canola: { feed: 'PROTEIN' }, Sunflower: { feed: 'PROTEIN' },
     Potato: { feed: 'EARTH' }, Sugarbeet: { feed: 'EARTH' }, Beetroot: { feed: 'EARTH' }, Carrot: { feed: 'EARTH' }, Parsnip: { feed: 'EARTH' }
@@ -3289,16 +3339,49 @@ const FEED_CROP_USES = {
 const FEED_STRAW_L_PER_HA = { Wheat: 38000, Barley: 36800, Oat: 36800, Rye: 46000, Triticale: 36000 };
 // Reference crop used to turn a shortfall in litres into "about X ha missing".
 const FEED_REFERENCE_CROP = { PIG_BASE: 'Maize', GRAIN: 'Wheat', PROTEIN: 'Soybean', EARTH: 'Potato', OAT: 'Oat', STRAW: 'Wheat' };
-// animals.xml food/straw curves are litres per in-game day, so a month eats
-// them daysPerPeriod times (the save's "days per month" setting, read at sync
-// into farm.daysPerPeriod) and a year 12 months of that.
+// animals.xml food/straw curves are litres per in-game *month* — the game
+// spreads them over however many days a month has (environment.timeAdjustment),
+// so the base game eats the same per month at 1 or 28 days/month. Animal mods
+// change that: AnimalFoodCalculator can scale by days/month and/or a
+// multiplier, EnhancedAnimalSystem raises food for cows/sheep after calving
+// (see animal-mods.js). farm.daysPerPeriod = the save's days/month (synced).
 const FEED_PERIODS_PER_YEAR = 12;
 function feedDaysPerPeriod(farm) {
     const d = parseInt(farm && farm.daysPerPeriod);
     return d > 0 ? d : 1;
 }
+// Calendar days in an in-game year — for "how many days does this last".
 function feedDaysPerYear(farm) {
     return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
+}
+function afcActive(farm) {
+    return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !(farm && farm.ignoreAfc));
+}
+function easActive(farm) {
+    return !!(ANIMAL_MODS && ANIMAL_MODS.eas && !(farm && farm.ignoreEas));
+}
+// AFCConsumptionScaling:getScaleFactor — food, water and straw.
+function feedConsumptionScale(farm) {
+    if (!afcActive(farm)) return 1;
+    const afc = ANIMAL_MODS.afc;
+    if (!afc.enabled) return 1;
+    return (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier;
+}
+// Multiplier from a monthly curve value to a year's worth.
+function feedYearFactor(farm) {
+    return FEED_PERIODS_PER_YEAR * feedConsumptionScale(farm);
+}
+function clusterFoodFactor(farm, type, cluster) {
+    return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
+}
+// One line under the monthly need: what scales it, so the number is explainable.
+function feedScaleNote(farm) {
+    const d = feedDaysPerPeriod(farm);
+    let note = afcActive(farm)
+        ? t('feedScaleAfc').replace('{x}', feedConsumptionScale(farm).toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{d}', d)
+        : t('feedScaleBase').replace('{d}', d);
+    if (easActive(farm)) note += ' · ' + t('feedScaleEas');
+    return note;
 }
 
 // Map/mod animals.xml files name breeds freely (BULL_HOLSTEIN, HEN_LEGHORN,
@@ -3405,14 +3488,14 @@ function buildFeedDemand(farm, plan) {
     const byCategory = {};
     const bySpecies = {};
     let unknownSubTypes = 0;
-    const days = feedDaysPerYear(farm);
+    const yearFactor = feedYearFactor(farm);
     ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
         s.head += c.numAnimals;
-        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * days;
-        s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * days;
+        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
     }));
     Object.keys(bySpecies).forEach(type => {
         const s = bySpecies[type];
@@ -3421,6 +3504,10 @@ function buildFeedDemand(farm, plan) {
         byCategory.STRAW = (byCategory.STRAW || 0) + s.straw;   // bedding, whatever the ration
     });
     return { byCategory, bySpecies, unknownSubTypes };
+}
+
+function catchTag(row) {
+    return row && row.isCatch ? ` <span class="supply-sub">${t('catchCropShort')}</span>` : '';
 }
 
 function defaultFieldUse(crop) {
@@ -3432,14 +3519,20 @@ function defaultFieldUse(crop) {
 function buildFeedSupply(farm, plan, rates) {
     const rows = [];
     const byCategory = {};
+    // A catch crop (green rye for silage…) is its own row with its own use.
+    const entries = [];
     ((farm && farm.fields) || []).forEach((f, i) => {
-        const crop = f.crop || '';
+        entries.push({ f, i, crop: f.crop || '', isCatch: false });
+        if (f.catchCrop) entries.push({ f, i, crop: f.catchCrop, isCatch: true });
+    });
+    entries.forEach(({ f, i, crop, isCatch }) => {
         const area = parseFloat(f.area) || 0;
         const uses = FEED_CROP_USES[crop];
         if (!uses || area <= 0) return;
 
-        const key = fertPlanKey(f, i);
-        let use = plan.fieldUse[key] || defaultFieldUse(crop);
+        const key = fertPlanKey(f, i) + (isCatch ? ':catch' : '');
+        // A catch crop grown for forage (green rye) defaults to silage.
+        let use = plan.fieldUse[key] || (isCatch && uses.silage ? 'silage' : defaultFieldUse(crop));
         if (use !== 'sale' && !uses[use]) use = Object.keys(uses)[0];
         const factor = fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(f, i), rates));
 
@@ -3448,7 +3541,7 @@ function buildFeedSupply(farm, plan, rates) {
         if (category) {
             let rate;
             if (category === 'ROUGHAGE') rate = (getCropYieldRate(crop) || 0) * plan.grassCuts;
-            else if (use === 'silage') rate = plan.chaffYield;
+            else if (use === 'silage') rate = FEED_SILAGE_OWN_YIELD.includes(crop) ? (getCropYieldRate(crop) || 0) : plan.chaffYield;
             else rate = getCropYieldRate(crop) || 0;
             litres = area * rate * factor;
             byCategory[category] = (byCategory[category] || 0) + litres;
@@ -3459,7 +3552,7 @@ function buildFeedSupply(farm, plan, rates) {
         const straw = strawPossible && plan.strawFields[key] ? area * strawRate * factor : 0;
         if (straw > 0) byCategory.STRAW = (byCategory.STRAW || 0) + straw;
 
-        rows.push({ key, number: (f.number || '').toString().trim() || ('#' + (i + 1)), crop, area, use, uses: Object.keys(uses), litres, strawPossible, straw });
+        rows.push({ key, number: (f.number || '').toString().trim() || ('#' + (i + 1)), crop, isCatch, area, use, uses: Object.keys(uses), litres, strawPossible, straw });
     });
     return { rows, byCategory };
 }
@@ -3707,7 +3800,7 @@ function feedBalanceFor(category, balanceRows) {
 // Yearly litres per feed category eaten in one building (ration split + straw
 // bedding), plus head count per species.
 function buildBarnFeedNeed(building, plan, farm) {
-    const days = feedDaysPerYear(farm);
+    const yearFactor = feedYearFactor(farm);
     const byCategory = {};
     const heads = {};
     let food = 0, bedding = 0;
@@ -3717,8 +3810,8 @@ function buildBarnFeedNeed(building, plan, farm) {
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
         const ration = resolveRation(type, plan);
-        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * days;
-        const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * days;
+        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
         food += f;
         bedding += b;
         if (ration) splitByRecipe(f, ration, byCategory);
@@ -3841,7 +3934,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             html += `<div class="feed-need-summary">
                 <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedFood')}</span><span class="feed-need-value">${num(barnNeed.food)} l</span></div>
                 ${barnNeed.bedding > 0 ? `<div class="feed-need-item"><span class="feed-need-label">${t('feedStrawBedding')}</span><span class="feed-need-value">${num(barnNeed.bedding)} l</span></div>` : ''}
-                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span><span class="feed-need-label">${t('feedDaysPerMonth').replace('{d}', feedDaysPerPeriod(farm))}</span></div>
+                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span><span class="feed-need-label">${feedScaleNote(farm)}</span></div>
             </div>`;
         }
         if (!cats.length) {
@@ -3868,7 +3961,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             <th>${t('feedColUse')}</th><th>${t('feedColStraw')}</th><th>${t('feedColYield')}</th></tr></thead><tbody>`;
         supply.rows.forEach(r => {
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
-            html += `<tr><td>${escapeHtml(r.number)}</td><td>${translateCropName(r.crop)}</td><td>${r.area.toFixed(2)} ha</td>
+            html += `<tr><td>${escapeHtml(r.number)}</td><td>${translateCropName(r.crop)}${catchTag(r)}</td><td>${r.area.toFixed(2)} ha</td>
                 <td><select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select></td>
                 <td>${r.strawPossible ? `<input type="checkbox" class="feed-straw-check" data-key="${escapeHtml(r.key)}" ${plan.strawFields[r.key] ? 'checked' : ''}>` : '–'}</td>
                 <td>${r.litres > 0 ? num(r.litres) + ' l' : '–'}${r.straw > 0 ? `<span class="supply-sub">${feedCategoryLabel('STRAW')}: ${num(r.straw)} l</span>` : ''}</td></tr>`;
@@ -4676,7 +4769,6 @@ const detailEquipment = document.getElementById('detail-equipment');
 const detailAnimals = document.getElementById('detail-animals');
 
 const cropsBody = document.getElementById('crops-body');
-const sidebarActionBtn = document.querySelector('.add-crop');
 
 // =============================================================
 // SECTION 2B: NOTES (reminders per month, tags, checklist)
@@ -5061,13 +5153,42 @@ let currentFarmId = null;
 let farmIdToDelete = null;
 let deleteMode = false;
 let isEditMode = false;
-let isSidebarEditMode = false;
 let viewedSeason = 1;
 
 // Active farm's map data (a different FS25 map per farm). Populated by
 // loadFarmConfigs() on openPlanner, emptied by clearFarmConfigs() on exit.
 let CROP_CALENDAR = {};
 let AVAILABLE_CROPS = [];
+// The game's crop menu order: the map's own fruitTypes list when the map mod
+// ships one (read by map-crops.js), else the base game's.
+let CROP_ORDER = [];
+// Last readMapCrops() result for the open farm (shown in Settings).
+let mapCropsInfo = null;
+// Animal mods active in the open farm's savegame (readAnimalMods), or null.
+let ANIMAL_MODS = null;
+// Land plot areas for the open farm (Settings toggle) — see readFarmlandAreas.
+let FARMLAND_INFO = null;
+
+// data/maps/maps_fruitTypes.xml order (base FS25), crop keys as formatCropName
+// produces them — the crops every map has unless it replaces the base list.
+// (Meadow is added per map, e.g. by the base US map's own list.)
+const BASE_CROP_ORDER = [
+    "Wheat", "Barley", "Canola", "Oat", "Maize", "Sunflower", "Soybean", "Potato",
+    "Rice", "Ricelonggrain", "Sugarbeet", "Sugarcane", "Cotton", "Sorghum", "Grape",
+    "Olive", "Poplar", "Beetroot", "Carrot", "Parsnip", "Greenbean", "Pea", "Spinach",
+    "Grass", "Oilseedradish"
+];
+
+function cropOrderKey(name) {
+    return String(name || '').replace(/[_\s]+/g, '').toUpperCase();
+}
+
+function compareCropsGameOrder(a, b) {
+    const keys = CROP_ORDER.map(cropOrderKey);
+    const ia = keys.indexOf(cropOrderKey(a)), ib = keys.indexOf(cropOrderKey(b));
+    if (ia !== ib) return (ia < 0 ? Infinity : ia) - (ib < 0 ? Infinity : ib) || 0;
+    return String(a).localeCompare(String(b));
+}
 
 // Base-game FS25 crop calendar (sow month -> harvest month), generated from
 // the vanilla data/foliage/*.xml growth definitions — see
@@ -5490,12 +5611,19 @@ function buildSuppliesSeedRows(farm, rates) {
         const crop = f.crop || '';
         const area = parseFloat(f.area) || 0;
         const number = (f.number || '').toString().trim() || ('#' + (i + 1));
-        if (!crop || area <= 0 || f.state === 'Planted') return;
-        const rate = fieldSeedRate(crop, getFieldSoilMix(fertPlanSoilKey(f, i), rates), rates);
-        const known = rate !== null;
-        const r = known ? rate : SUPPLY_SEED_FALLBACK;
-        const need = area * r;
-        rows.push({ number, crop, area, rate: r, known, need, buffered: need * buffer });
+        if (area <= 0) return;
+        const soilMix = getFieldSoilMix(fertPlanSoilKey(f, i), rates);
+        const addRow = (c, isCatch) => {
+            const rate = fieldSeedRate(c, soilMix, rates);
+            const known = rate !== null;
+            const r = known ? rate : SUPPLY_SEED_FALLBACK;
+            const need = area * r;
+            rows.push({ number, crop: c, isCatch, area, rate: r, known, need, buffered: need * buffer });
+        };
+        if (crop && f.state !== 'Planted') addRow(crop, false);
+        // Catch crop: sown separately (before/after the main crop), so its
+        // seed is still needed even once the main crop is in the ground.
+        if (f.catchCrop) addRow(f.catchCrop, true);
     });
     return { rows, total: rows.reduce((s, r) => s + r.buffered, 0) };
 }
@@ -5573,20 +5701,21 @@ function buildYieldForecastRows(farm, rates) {
     const fields = (farm && farm.fields) || [];
     const byCrop = new Map();
     fields.forEach((f, i) => {
-        const crop = f.crop || '';
         const area = parseFloat(f.area) || 0;
-        if (!crop || area <= 0) return;
-
+        if (area <= 0) return;
         const soilMix = getFieldSoilMix(fertPlanSoilKey(f, i), rates);
-        const rate = getCropYieldRate(crop);
-        const known = rate !== null;
-        const litres = known ? area * rate * fieldYieldFactor(soilMix) : 0;
+        // Main crop and catch crop are two harvests off the same hectares.
+        [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
+            const rate = getCropYieldRate(crop);
+            const known = rate !== null;
+            const litres = known ? area * rate * fieldYieldFactor(soilMix) : 0;
 
-        const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true };
-        entry.area += area;
-        entry.litres += litres;
-        if (!known) entry.known = false;
-        byCrop.set(crop, entry);
+            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true };
+            entry.area += area;
+            entry.litres += litres;
+            if (!known) entry.known = false;
+            byCrop.set(crop, entry);
+        });
     });
     const rows = [...byCrop.values()].sort((a, b) => b.litres - a.litres);
     return {
@@ -5874,12 +6003,35 @@ function loadFarmConfigs(farm) {
     // (if any) is merged on top below, per-crop, so it extends/overrides the
     // defaults instead of replacing the whole list.
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
-    AVAILABLE_CROPS = Object.keys(CROP_CALENDAR).sort();
+    CROP_ORDER = [...BASE_CROP_ORDER];
+    mapCropsInfo = null;
+    ANIMAL_MODS = null;
     // Same pattern as crops: base FS25 animal needs/production are always
     // available; a farm's own imported animal-defs data is merged on top
     // below, per subType.
     ANIMAL_NEEDS_DATA = JSON.parse(JSON.stringify(DEFAULT_ANIMALS));
-    if (!farm) return;
+    if (!farm) { AVAILABLE_CROPS = sortedAvailableCrops(null); return; }
+
+    // The map mod's own crop list (if the savegame points at a mod map):
+    // decides which crops exist on this farm and their menu order.
+    let mapCropNames = null;
+    if (farm.saveGamePath) {
+        const res = readMapCrops(farm.saveGamePath, parseCropGrowthXml, formatCropName);
+        mapCropsInfo = res;
+        if (res.ok) {
+            // Base crops first (a re-declared base crop keeps its slot), then
+            // the map's new ones in its own order — the game's menu order.
+            const mapNames = res.crops.map(c => c.name);
+            const baseKeys = BASE_CROP_ORDER.map(cropOrderKey);
+            mapCropNames = res.replacesBase
+                ? mapNames
+                : [...BASE_CROP_ORDER, ...mapNames.filter(n => !baseKeys.includes(cropOrderKey(n)))];
+            CROP_ORDER = [...mapCropNames];
+            res.crops.forEach(c => {
+                if (c.calendar) CROP_CALENDAR[c.name] = { ...(CROP_CALENDAR[c.name] || {}), ...c.calendar };
+            });
+        }
+    }
 
     const dir = farmDir(farm);
     const cropsPath = path.join(dir, 'crops_config.json');
@@ -5901,10 +6053,13 @@ function loadFarmConfigs(farm) {
             const imported = JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {};
             Object.keys(imported).forEach(cropName => {
                 CROP_CALENDAR[cropName] = { ...(CROP_CALENDAR[cropName] || {}), ...imported[cropName] };
+                // A manually imported crop is on the map even if the mod's
+                // list couldn't be read or doesn't name it.
+                if (mapCropNames && !mapCropNames.some(n => cropOrderKey(n) === cropOrderKey(cropName))) mapCropNames.push(cropName);
             });
-            AVAILABLE_CROPS = Object.keys(CROP_CALENDAR).sort();
         }
     } catch (e) { console.error('Bad crops_config.json for farm', farm.id, e); }
+    AVAILABLE_CROPS = sortedAvailableCrops(mapCropNames);
 
     try {
         if (fs.existsSync(animalsPath)) {
@@ -5914,11 +6069,49 @@ function loadFarmConfigs(farm) {
             });
         }
     } catch (e) { console.error('Bad animal_needs_config.json for farm', farm.id, e); }
+
+    // AnimalFoodCalculator's reference source decides whose food/water/straw
+    // curves the barns actually follow.
+    ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath) : null;
+    if (afcActive(farm)) {
+        const INPUTS = ['food', 'water', 'straw'];
+        const applyInputs = (subType, src) => {
+            if (!ANIMAL_NEEDS_DATA[subType] && !src) return;
+            const next = { ...(ANIMAL_NEEDS_DATA[subType] || {}) };
+            INPUTS.forEach(k => { if (src && src[k] && src[k].length) next[k] = src[k]; });
+            ANIMAL_NEEDS_DATA[subType] = next;
+        };
+        const afc = ANIMAL_MODS.afc;
+        if (afc.referenceSource === 'basegame') {
+            Object.keys(DEFAULT_ANIMALS).forEach(st => applyInputs(st, DEFAULT_ANIMALS[st]));
+        }
+        afc.referenceXml.forEach(xml => {
+            const parsed = parseAnimalNeedsXml(xml);
+            if (parsed) Object.keys(parsed).forEach(st => applyInputs(st, parsed[st]));
+        });
+    }
+}
+
+// Crop keys the planner offers: the map's list when known (only those with a
+// sowing calendar — a crop you can't sow isn't plannable), else every crop in
+// the calendar. Always in game order.
+function sortedAvailableCrops(mapCropNames) {
+    const calendarKey = new Map(Object.keys(CROP_CALENDAR).map(k => [cropOrderKey(k), k]));
+    let names;
+    if (mapCropNames) {
+        names = mapCropNames.map(n => calendarKey.get(cropOrderKey(n))).filter(Boolean);
+    } else {
+        names = Object.keys(CROP_CALENDAR);
+    }
+    return [...new Set(names)].sort(compareCropsGameOrder);
 }
 
 function clearFarmConfigs() {
     CROP_CALENDAR = {};
     AVAILABLE_CROPS = [];
+    CROP_ORDER = [];
+    mapCropsInfo = null;
+    ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
 }
 
@@ -6491,6 +6684,7 @@ window.openPlanner = function (id) {
         loadFarmConfigs(farm);
 
         if (farm.saveGamePath) applyGameSaveToFarm(farm);
+        refreshFarmlandInfo(farm);
 
         if (plannerTitle) plannerTitle.innerText = farm.mapName ? `${farm.name} · ${farm.mapName}` : farm.name;
         refreshPlannerHeader(farm);
@@ -6498,9 +6692,7 @@ window.openPlanner = function (id) {
         if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason || 1}`;
 
         isEditMode = false;
-        isSidebarEditMode = false;
         if (editSeasonBtn) { editSeasonBtn.innerText = t('edit'); editSeasonBtn.style.backgroundColor = ""; editSeasonBtn.style.color = ""; }
-        if (sidebarActionBtn) { sidebarActionBtn.innerText = t('editCrops'); sidebarActionBtn.style.backgroundColor = ""; sidebarActionBtn.style.color = ""; }
 
         viewedSeason = farm.currentSeason || 1;
         renderSeasonView();
@@ -6650,7 +6842,7 @@ function runAutoSyncTick() {
 
     // Don't yank the user out of an active edit — leave the signature pending and
     // try again on the next tick once they're done.
-    if (isEditMode || isSidebarEditMode) return;
+    if (isEditMode) return;
 
     const farm = getAllFarms().find(f => f.id === autoSyncFarmId);
     if (!farm || !farm.saveGamePath) { stopAutoSync(); return; }
@@ -6660,6 +6852,7 @@ function runAutoSyncTick() {
 
     const changed = applyGameSaveToFarm(farm);
     if (changed) {
+        refreshFarmlandInfo(farm);   // bought/sold land shows up in farmland.xml
         refreshPlannerHeader(farm);
         renderSeasonView();
         showAutoSyncToast();
@@ -6689,7 +6882,6 @@ window.renderSeasonView = function () {
 
     const currentActiveSeason = farm.currentSeason || 1;
     let fieldsToDisplay = [];
-    let trackedCropsToDisplay = [];
     let isPastSeason = viewedSeason < currentActiveSeason;
 
     if (isPastSeason) {
@@ -6698,25 +6890,14 @@ window.renderSeasonView = function () {
             try {
                 const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
                 fieldsToDisplay = archiveData.fields || [];
-
-                if (archiveData.trackedCrops) {
-                    trackedCropsToDisplay = archiveData.trackedCrops;
-                } else {
-                    const uniqueArchivedCrops = new Set();
-                    fieldsToDisplay.forEach(f => {
-                        if (f.crop) uniqueArchivedCrops.add(f.crop);
-                    });
-                    trackedCropsToDisplay = [...uniqueArchivedCrops];
-                }
             } catch (e) { console.error(e); }
         }
     } else {
         fieldsToDisplay = farm.fields || [];
-        trackedCropsToDisplay = farm.trackedCrops || [];
     }
 
     renderFieldsTable(fieldsToDisplay);
-    updateCropsSummary(fieldsToDisplay, trackedCropsToDisplay);
+    updateCropsSummary(fieldsToDisplay);
 
     if (seasonNumberEl) {
         const leftArrow = viewedSeason > 1
@@ -6733,13 +6914,13 @@ window.renderSeasonView = function () {
         const nextBtn = document.getElementById('next-season-btn');
 
         if (prevBtn) prevBtn.addEventListener('click', () => {
-            if (isEditMode || isSidebarEditMode) return;
+            if (isEditMode) return;
             viewedSeason--;
             renderSeasonView();
         });
 
         if (nextBtn) nextBtn.addEventListener('click', () => {
-            if (isEditMode || isSidebarEditMode) return;
+            if (isEditMode) return;
             viewedSeason++;
             renderSeasonView();
         });
@@ -6748,7 +6929,6 @@ window.renderSeasonView = function () {
     const displayStyle = isPastSeason ? 'none' : 'inline-block';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (newSeasonBtn) newSeasonBtn.style.display = displayStyle;
-    if (sidebarActionBtn) sidebarActionBtn.style.display = displayStyle;
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
     updateDiscordPresence();
@@ -6858,7 +7038,75 @@ function getPreviousSeasonCropMap(farm, seasonNum) {
     return map;
 }
 
+// Fields table order, shared by the read-only table and the edit cards.
+// Default is by field number (numeric-aware: 2 < 10, "12-13" after "12");
+// the column headers switch it (again = reverse, third click = back to default).
+let fieldsSort = { key: 'number', dir: 1 };
+try {
+    const saved = JSON.parse(localStorage.getItem('fieldsSort') || 'null');
+    if (saved && ['number', 'ha', 'crop', 'sow', 'state'].includes(saved.key)) fieldsSort = saved;
+} catch (e) { /* storage unavailable — keep the default */ }
+
+function compareFieldNumbers(a, b) {
+    const na = String(a.number || '').trim(), nb = String(b.number || '').trim();
+    if (!na !== !nb) return na ? -1 : 1;   // unnumbered rows last
+    return na.localeCompare(nb, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortFieldsForDisplay(fields, currentFarmMonth) {
+    const curIdx = ALL_MONTHS.indexOf(currentFarmMonth);
+    // Months counted from the current in-game month, so "next up" sorts first.
+    const monthRank = f => {
+        const i = ALL_MONTHS.indexOf((f.sowingMonth || '').toUpperCase());
+        return i < 0 ? 99 : (curIdx < 0 ? i : (i - curIdx + 12) % 12);
+    };
+    const stateRank = f => {
+        if (f.state === 'Planted') return 2;
+        return (f.sowingMonth && f.sowingMonth.toUpperCase() === currentFarmMonth) ? 0 : 1;
+    };
+    const { key, dir } = fieldsSort;
+    return [...fields].sort((a, b) => {
+        let d = 0;
+        if (key === 'ha') d = (parseFloat(a.area) || 0) - (parseFloat(b.area) || 0);
+        else if (key === 'crop') {
+            if (!a.crop !== !b.crop) return a.crop ? -1 : 1;
+            d = compareCropsGameOrder(a.crop || '', b.crop || '');
+        }
+        else if (key === 'sow') d = monthRank(a) - monthRank(b);
+        else if (key === 'state') d = stateRank(a) - stateRank(b);
+        else d = compareFieldNumbers(a, b);
+        return d * dir || compareFieldNumbers(a, b);
+    });
+}
+
+function updateFieldsSortHeaders() {
+    document.querySelectorAll('#fields-table thead [data-sort]').forEach(th => {
+        const active = fieldsSort.key === th.dataset.sort;
+        th.setAttribute('aria-sort', active ? (fieldsSort.dir > 0 ? 'ascending' : 'descending') : 'none');
+    });
+}
+
+document.querySelectorAll('#fields-table thead [data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        if (isEditMode) return;   // don't reshuffle cards mid-edit
+        const key = th.dataset.sort;
+        const firstDir = key === 'ha' ? -1 : 1;
+        if (fieldsSort.key !== key) fieldsSort = { key, dir: firstDir };
+        else if (fieldsSort.dir === firstDir) fieldsSort = { key, dir: -firstDir };
+        else fieldsSort = { key: 'number', dir: 1 };
+        try { localStorage.setItem('fieldsSort', JSON.stringify(fieldsSort)); } catch (e) { /* ignore */ }
+        renderSeasonView();
+    });
+});
+
+function catchCropCaption(field) {
+    if (!field.catchCrop) return '';
+    const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
+    return `<span class="ha-caption catch-crop-caption">+ ${t('catchCropShort')}: ${translateCropName(field.catchCrop)}${month}</span>`;
+}
+
 function renderFieldsTable(fields) {
+    updateFieldsSortHeaders();
     if (!fieldsBody) return;
     if (fieldsTable) fieldsTable.classList.remove('is-edit-cards');
 
@@ -6873,17 +7121,7 @@ function renderFieldsTable(fields) {
 
     if (fields && fields.length > 0) {
         const numberTotals = getFieldNumberTotals(fields);
-        const sortedFields = [...fields].sort((a, b) => {
-            const isAPlantNow = a.state !== 'Planted' && a.sowingMonth && a.sowingMonth.toUpperCase() === currentFarmMonth;
-            const isBPlantNow = b.state !== 'Planted' && b.sowingMonth && b.sowingMonth.toUpperCase() === currentFarmMonth;
-
-            if (isAPlantNow && !isBPlantNow) return -1;
-            if (!isAPlantNow && isBPlantNow) return 1;
-
-            const numA = parseFloat(a.number) || 0;
-            const numB = parseFloat(b.number) || 0;
-            return numA - numB;
-        });
+        const sortedFields = sortFieldsForDisplay(fields, currentFarmMonth);
 
         sortedFields.forEach(field => {
             const area = parseFloat(field.area || 0);
@@ -6914,6 +7152,8 @@ function renderFieldsTable(fields) {
                 }
                 areaCell = `${area.toFixed(2)} ha<span class="ha-caption">${extra}</span>`;
             }
+            const plotHa = farmlandAreaForKey(key);
+            if (plotHa !== null) areaCell += `<span class="ha-caption ha-caption--farmland">${t('farmlandPlot')}: ${plotHa.toFixed(2)} ha</span>`;
 
             let stateDisplay;
 
@@ -6961,7 +7201,7 @@ function renderFieldsTable(fields) {
                 <tr class="${isSplit ? 'field-split-row' : ''}">
                     <td class="field-number-cell"${numberCellTitle}><span class="field-number-chips">${numberChipsHtml}</span></td>
                     <td>${areaCell}</td>
-                    <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}</td>
+                    <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
                     <td>${stateDisplay}</td>
                     <td>
@@ -6984,6 +7224,15 @@ function renderFieldsTable(fields) {
     fieldsBody.innerHTML = htmlString;
 
     if (totalSumEl) totalSumEl.innerText = totalArea.toFixed(2) + " ha";
+    const farmlandSumEl = document.getElementById('farmland-ha-sum');
+    if (farmlandSumEl) {
+        const owned = (FARMLAND_INFO && FARMLAND_INFO.ok) ? FARMLAND_INFO.owned.filter(id => FARMLAND_INFO.areas[id] !== undefined) : [];
+        farmlandSumEl.hidden = !owned.length;
+        if (owned.length) {
+            const plotsHa = owned.reduce((s, id) => s + FARMLAND_INFO.areas[id], 0);
+            farmlandSumEl.textContent = t('farmlandTotal').replace('{ha}', plotsHa.toFixed(2)).replace('{n}', owned.length);
+        }
+    }
     if (detailHa) detailHa.innerText = totalArea.toFixed(2) + " ha";
     if (detailFields) detailFields.innerText = fields ? fields.length : 0;
 }
@@ -6999,6 +7248,18 @@ function generateMonthOptionsHtml(cropName, selectedMonth) {
     return html;
 }
 
+// Every crop the farm's map offers, in the game's own menu order — plus the
+// currently selected one, so a field keeps a crop the map no longer lists.
+function cropOptionsHtml(selected, emptyLabel) {
+    const crops = [...AVAILABLE_CROPS];
+    if (selected && !crops.includes(selected)) crops.push(selected);
+    let html = `<option value="">${emptyLabel}</option>`;
+    crops.forEach(c => {
+        html += `<option value="${escapeHtml(c)}" ${selected === c ? 'selected' : ''}>${translateCropName(c)}</option>`;
+    });
+    return html;
+}
+
 // Builds one editable field as a self-contained "tile" — a <tr> holding a
 // single full-width <td> with a card inside. Keeping it inside a <tr> means all
 // the existing save / split-hint logic (which walks `#fields-body tr` and
@@ -7010,17 +7271,13 @@ function buildFieldEditCard(field, opts) {
     const isNew = !!opts.isNew;
     const isSplit = !!opts.isSplit;
 
-    const trackedCrops = (farm && farm.trackedCrops) ? farm.trackedCrops : [];
-    let cropOptions = `<option value="">${t('selectPlaceholder')}</option>`;
-    const cropsToShow = new Set([...trackedCrops]);
-    if (field.crop) cropsToShow.add(field.crop);
-    cropsToShow.forEach(c => {
-        cropOptions += `<option value="${c}" ${field.crop === c ? 'selected' : ''}>${translateCropName(c)}</option>`;
-    });
+    const cropOptions = cropOptionsHtml(field.crop, t('selectPlaceholder'));
+    const catchCropOptions = cropOptionsHtml(field.catchCrop, t('catchCropNone'));
 
     const monthOptions = isNew
         ? `<option value="">${t('selectCropFirst')}</option>`
         : generateMonthOptionsHtml(field.crop, field.sowingMonth);
+    const catchMonthOptions = generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth);
 
     const isChecked = field.state === 'Planted' ? 'checked' : '';
     const key = (field.number || '').toString().trim();
@@ -7087,6 +7344,16 @@ function buildFieldEditCard(field, opts) {
                             </div>
                         </div>
                     </div>
+                    <div class="field-card-row field-card-row--grid field-card-row--catch">
+                        <div class="fc-cell">
+                            <span class="fc-label" title="${t('catchCropHint')}">${t('thCatchCrop')}</span>
+                            <select class="edit-input field-catch-crop" onchange="onCatchCropChange(this)">${catchCropOptions}</select>
+                        </div>
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('thCatchSowingMth')}</span>
+                            <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
+                        </div>
+                    </div>
                     <div class="field-card-foot">
                         <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="Total ha of this physical field — lets the app tell you how much is left to sow" style="display:none;">
                         <span class="split-hint"></span>
@@ -7106,17 +7373,7 @@ function renderEditTableWithDropdowns(fields) {
 
     const numberTotals = getFieldNumberTotals(fields);
 
-    const sortedFields = [...fields].sort((a, b) => {
-        const isAPlantNow = a.state !== 'Planted' && a.sowingMonth && a.sowingMonth.toUpperCase() === currentFarmMonth;
-        const isBPlantNow = b.state !== 'Planted' && b.sowingMonth && b.sowingMonth.toUpperCase() === currentFarmMonth;
-
-        if (isAPlantNow && !isBPlantNow) return -1;
-        if (!isAPlantNow && isBPlantNow) return 1;
-
-        const numA = parseFloat(a.number) || 0;
-        const numB = parseFloat(b.number) || 0;
-        return numA - numB;
-    });
+    const sortedFields = sortFieldsForDisplay(fields, currentFarmMonth);
 
     let htmlString = "";
     sortedFields.forEach((field) => {
@@ -7140,6 +7397,11 @@ function renderEditTableWithDropdowns(fields) {
 window.onCropChange = function (selectEl) {
     const row = selectEl.closest('tr');
     row.querySelector('.field-sow').innerHTML = generateMonthOptionsHtml(selectEl.value, null);
+};
+
+window.onCatchCropChange = function (selectEl) {
+    const row = selectEl.closest('tr');
+    row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(selectEl.value, null);
 };
 
 // Toggles between "Plowed" and "No-till" for a field — mutually exclusive,
@@ -7259,7 +7521,6 @@ window.addNewFieldRow = function () {
 if (editSeasonBtn) {
     editSeasonBtn.addEventListener('click', () => {
         if (!currentFarmId) return;
-        if (isSidebarEditMode) return;
 
         const allFarms = getAllFarms();
         const idx = allFarms.findIndex(f => f.id === currentFarmId);
@@ -7343,11 +7604,16 @@ if (editSeasonBtn) {
                         limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
                     }
 
+                    const catchCropSelect = row.querySelector('.field-catch-crop');
+                    const catchCrop = catchCropSelect ? catchCropSelect.value : '';
+
                     newFields.push({
                         number: numInput.value,
                         area: rawArea,
                         crop: row.querySelector('.field-crop').value,
                         sowingMonth: row.querySelector('.field-sow').value,
+                        catchCrop: catchCrop,
+                        catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
                         state: stateValue,
                         tillage: tillage,
                         limeAppliedSeason: limeAppliedSeason,
@@ -7383,11 +7649,6 @@ if (editSeasonBtn) {
             editSeasonBtn.style.backgroundColor = "transparent";
             editSeasonBtn.style.color = "var(--color-black)";
 
-            if (sidebarActionBtn) {
-                sidebarActionBtn.style.opacity = "1";
-                sidebarActionBtn.style.pointerEvents = "auto";
-            }
-
         } else {
             // >>> WEJŚCIE W TRYB EDYCJI <<<
 
@@ -7401,165 +7662,104 @@ if (editSeasonBtn) {
             editSeasonBtn.innerText = t('saveChanges');
             editSeasonBtn.style.backgroundColor = "var(--color-black)";
             editSeasonBtn.style.color = "var(--color-white)";
-
-            if (sidebarActionBtn) {
-                sidebarActionBtn.style.opacity = "0.5";
-                sidebarActionBtn.style.pointerEvents = "none";
-            }
         }
     });
 }
 
 // =============================================================
-// SECTION 7: SIDEBAR LOGIC (ONE BUTTON TOGGLE)
+// SECTION 7: CROPS SUMMARY SIDEBAR
 // =============================================================
-function updateCropsSummary(fields, customTrackedCrops = null) {
-    if (isSidebarEditMode || !cropsBody) return;
+// Read-only: every crop planted on a field this season with its total area,
+// plus catch crops (green rye, oilseed radish…) in their own section — they
+// share hectares with the main crop, so adding them to one total would count
+// the same land twice. Sorted in the game's own crop order by default; the
+// column headers switch to name / area (click again to reverse, a third time
+// to go back to game order).
+let cropsSort = { key: 'game', dir: 1 };
+try {
+    const saved = JSON.parse(localStorage.getItem('cropsSort') || 'null');
+    if (saved && ['game', 'name', 'ha'].includes(saved.key)) cropsSort = saved;
+} catch (e) { /* storage unavailable — keep the default */ }
 
-    const farm = getAllFarms().find(f => f.id === currentFarmId);
-    if (!farm) return;
+function saveCropsSort() {
+    try { localStorage.setItem('cropsSort', JSON.stringify(cropsSort)); } catch (e) { /* ignore */ }
+}
 
-    const trackedCrops = customTrackedCrops !== null ? customTrackedCrops : (farm.trackedCrops || []);
-    let htmlString = "";
+function sumCropArea(fields, cropKey) {
+    const byCrop = new Map();
+    fields.forEach(f => {
+        const crop = f[cropKey];
+        if (!crop) return;
+        byCrop.set(crop, (byCrop.get(crop) || 0) + (parseFloat(f.area) || 0));
+    });
+    return [...byCrop.entries()].map(([name, totalHa]) => ({ name, totalHa }));
+}
 
-    if (detailCrops) {
-        detailCrops.innerText = trackedCrops.length;
-    }
+function sortCropRows(rows) {
+    const { key, dir } = cropsSort;
+    return rows.sort((a, b) => {
+        let d = 0;
+        if (key === 'ha') d = a.totalHa - b.totalHa;
+        else if (key === 'name') d = translateCropName(a.name).localeCompare(translateCropName(b.name));
+        else d = compareCropsGameOrder(a.name, b.name);
+        return d * dir || compareCropsGameOrder(a.name, b.name);
+    });
+}
 
-    if (trackedCrops.length === 0) {
-        cropsBody.innerHTML = `<tr><td colspan="2" class="empty-row-message">${t('noTrackedCrops')}<br>${t('clickEditCrops')}</td></tr>`;
-        if (sidebarActionBtn) sidebarActionBtn.innerText = t('editCrops');
+function cropSummaryRowsHtml(rows) {
+    return sortCropRows(rows).map(crop => `
+            <tr>
+                <td>${translateCropName(crop.name)}</td>
+                <td class="ha-value">${crop.totalHa.toFixed(2)} ha</td>
+            </tr>`).join('');
+}
+
+function updateCropsSortHeaders() {
+    document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
+        const active = cropsSort.key === th.dataset.sort;
+        th.classList.toggle('is-sorted', active);
+        th.setAttribute('aria-sort', active ? (cropsSort.dir > 0 ? 'ascending' : 'descending') : 'none');
+    });
+    const hint = document.getElementById('crops-sort-hint');
+    if (hint) hint.textContent = cropsSort.key === 'game' ? t('cropsSortGame') : '';
+}
+
+function updateCropsSummary(fields) {
+    if (!cropsBody) return;
+    fields = fields || [];
+
+    const mainRows = sumCropArea(fields, 'crop');
+    const catchRows = sumCropArea(fields, 'catchCrop');
+
+    if (detailCrops) detailCrops.innerText = mainRows.length;
+    updateCropsSortHeaders();
+
+    if (mainRows.length === 0 && catchRows.length === 0) {
+        cropsBody.innerHTML = `<tr><td colspan="2" class="empty-row-message">${t('noPlannedCrops')}</td></tr>`;
         return;
     }
 
-    const cropData = trackedCrops.map(cropName => {
-        const totalHa = fields
-            .filter(f => f.crop === cropName)
-            .reduce((sum, f) => sum + (parseFloat(f.area) || 0), 0);
-        return { name: cropName, totalHa: totalHa };
-    });
-
-    cropData.sort((a, b) => {
-        if (a.totalHa === 0 && b.totalHa !== 0) return -1;
-        if (a.totalHa !== 0 && b.totalHa === 0) return 1;
-        return a.name.localeCompare(b.name);
-    });
-
-    cropData.forEach(crop => {
-        const haClass = crop.totalHa === 0 ? "ha-value ha-value--zero" : "ha-value";
-
-        htmlString += `
-            <tr>
-                <td>${translateCropName(crop.name)}</td>
-                <td class="${haClass}">${crop.totalHa.toFixed(2)} ha</td>
-            </tr>
-        `;
-    });
-
-    cropsBody.innerHTML = htmlString;
+    let html = cropSummaryRowsHtml(mainRows);
+    if (catchRows.length) {
+        const catchTotal = catchRows.reduce((s, r) => s + r.totalHa, 0);
+        html += `<tr class="crops-section-row"><td>${t('catchCropsTitle')}</td><td class="ha-value">${catchTotal.toFixed(2)} ha</td></tr>`;
+        html += cropSummaryRowsHtml(catchRows);
+    }
+    cropsBody.innerHTML = html;
 }
 
-function renderSidebarEditTable() {
-    const farm = getAllFarms().find(f => f.id === currentFarmId);
-    if (!farm) return;
-
-    const trackedCrops = farm.trackedCrops || [];
-    let htmlString = "";
-
-    trackedCrops.forEach(cropName => {
-        let opts = `<option value="">${t('selectPlaceholder')}</option>`;
-        AVAILABLE_CROPS.forEach(c => {
-            opts += `<option value="${c}" ${c === cropName ? 'selected' : ''}>${translateCropName(c)}</option>`;
-        });
-
-        htmlString += `
-            <tr>
-                <td style="display: flex; align-items: center; padding: 5px;">
-                    <span class="delete-row-btn" onclick="this.closest('tr').remove()" style="cursor: pointer; margin-right: 10px;"><i class="fa-solid fa-xmark" aria-hidden="true"></i></span>
-                    <select class="sidebar-crop-select edit-input" style="width: 100%;">${opts}</select>
-                </td>
-                <td style="padding: 5px; text-align: right; color: #ccc;">${t('autoHa')}</td>
-            </tr>
-        `;
+document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        // ha starts biggest-first; name A→Z; the third click returns to game order.
+        const firstDir = key === 'ha' ? -1 : 1;
+        if (cropsSort.key !== key) cropsSort = { key, dir: firstDir };
+        else if (cropsSort.dir === firstDir) cropsSort = { key, dir: -firstDir };
+        else cropsSort = { key: 'game', dir: 1 };
+        saveCropsSort();
+        renderSeasonView();
     });
-
-    htmlString += `
-        <tr id="sidebar-add-row-btn">
-            <td colspan="2" class="add-row-trigger" onclick="window.addEmptySidebarRow()">
-                ${t('addCropRow')}
-            </td>
-        </tr>
-    `;
-    cropsBody.innerHTML = htmlString;
-}
-
-window.addEmptySidebarRow = function () {
-    let opts = `<option value="">${t('selectPlaceholder')}</option>`;
-    AVAILABLE_CROPS.forEach(c => opts += `<option value="${c}">${translateCropName(c)}</option>`);
-
-    const newRow = document.createElement('tr');
-    newRow.innerHTML = `
-        <td style="display: flex; align-items: center; padding: 5px;">
-            <span class="delete-row-btn" onclick="this.closest('tr').remove()" style="cursor: pointer; margin-right: 10px;"><i class="fa-solid fa-xmark" aria-hidden="true"></i></span>
-            <select class="sidebar-crop-select edit-input" style="width: 100%;">${opts}</select>
-        </td>
-        <td style="padding: 5px; text-align: right; color: #ccc;">${t('autoHa')}</td>
-    `;
-
-    const addBtnRow = document.getElementById('sidebar-add-row-btn');
-    if (addBtnRow) cropsBody.insertBefore(newRow, addBtnRow);
-};
-
-if (sidebarActionBtn) {
-    sidebarActionBtn.addEventListener('click', () => {
-        if (!currentFarmId) return;
-        if (isEditMode) return;
-
-        const allFarms = getAllFarms();
-        const farmIndex = allFarms.findIndex(f => f.id === currentFarmId);
-        if (farmIndex === -1) return;
-
-        if (isSidebarEditMode) {
-            const selects = document.querySelectorAll('.sidebar-crop-select');
-            const newTrackedList = [];
-
-            selects.forEach(select => {
-                if (select.value) newTrackedList.push(select.value);
-            });
-
-            allFarms[farmIndex].trackedCrops = [...new Set(newTrackedList)];
-            saveFarmData(allFarms[farmIndex]);
-
-            isSidebarEditMode = false;
-            sidebarActionBtn.innerText = t('editCrops');
-            sidebarActionBtn.style.backgroundColor = "transparent";
-            sidebarActionBtn.style.color = "var(--color-black)";
-
-            if (editSeasonBtn) {
-                editSeasonBtn.style.opacity = "1";
-                editSeasonBtn.style.pointerEvents = "auto";
-            }
-
-            renderSeasonView();
-        } else {
-            isSidebarEditMode = true;
-            renderSidebarEditTable();
-
-            if (!allFarms[farmIndex].trackedCrops || allFarms[farmIndex].trackedCrops.length === 0) {
-                window.addEmptySidebarRow();
-            }
-
-            sidebarActionBtn.innerText = t('saveChanges');
-            sidebarActionBtn.style.backgroundColor = "var(--color-black)";
-            sidebarActionBtn.style.color = "var(--color-white)";
-
-            if (editSeasonBtn) {
-                editSeasonBtn.style.opacity = "0.5";
-                editSeasonBtn.style.pointerEvents = "none";
-            }
-        }
-    });
-}
+});
 
 // =============================================================
 // SECTION 8: NEW SEASON LOGIC
@@ -7597,7 +7797,6 @@ if (newSeasonBtn) {
                 season: currentSeasonNum,
                 dateArchived: new Date().toISOString(),
                 fields: JSON.parse(JSON.stringify(farm.fields)),
-                trackedCrops: farm.trackedCrops ? [...farm.trackedCrops] : [],
                 balance: farm.balance,
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
@@ -7609,6 +7808,8 @@ if (newSeasonBtn) {
             farm.fields.forEach((field, i) => {
                 field.crop = "";
                 field.sowingMonth = "";
+                field.catchCrop = "";
+                field.catchSowingMonth = "";
                 field.state = "To Plant";
                 field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
@@ -7696,18 +7897,59 @@ if (resetSeasonsBtn) {
 let pendingCropFiles = null;
 let pendingAnimalDefFiles = null;
 
+// Settings → animal mods found in the savegame, each with an on/off switch
+// (on = the feed planner follows what the mod does in game).
+function renderAnimalModsInfo(farm) {
+    const box = document.getElementById('animal-mods-info');
+    if (!box) return;
+    if (!farm || !farm.saveGamePath) { box.innerHTML = `<p class="animal-mods-note">${t('animalModsNoSave')}</p>`; return; }
+    const mods = ANIMAL_MODS || {};
+    let html = '';
+    if (mods.afc) {
+        const afc = mods.afc;
+        const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
+        const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
+        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-afc-toggle" ${farm.ignoreAfc ? '' : 'checked'}>
+            <span><strong>AnimalFoodCalculator</strong> — ${t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src)}</span></label>`;
+    }
+    if (mods.eas) {
+        const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
+        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-eas-toggle" ${farm.ignoreEas ? '' : 'checked'}>
+            <span><strong>EnhancedAnimalSystem</strong> — ${t('easLine').replace('{list}', escapeHtml(species))}</span></label>`;
+    }
+    if (!html) html = `<p class="animal-mods-note">${t('animalModsNone').replace('{d}', feedDaysPerPeriod(farm))}</p>`;
+    box.innerHTML = html;
+}
+
+function refreshFarmlandInfo(farm) {
+    FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath) : null;
+}
+
+// Land plot area behind a field key ("12" or combined "12-13"), or null.
+function farmlandAreaForKey(key) {
+    if (!FARMLAND_INFO || !FARMLAND_INFO.ok || !key) return null;
+    const ids = String(key).split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+    if (!ids.length || ids.some(id => FARMLAND_INFO.areas[id] === undefined)) return null;
+    return ids.reduce((s, id) => s + FARMLAND_INFO.areas[id], 0);
+}
+
 if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
         if (gameSavePathInput) gameSavePathInput.value = farm ? (farm.saveGamePath || "") : "";
         if (settingsMapNameInput) settingsMapNameInput.value = farm ? (farm.mapName || "") : "";
         if (autoSyncToggle) autoSyncToggle.checked = isAutoSyncEnabled();
+        const flToggle = document.getElementById('farmland-area-toggle');
+        if (flToggle) flToggle.checked = !!(farm && farm.showFarmlandArea);
+        renderAnimalModsInfo(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         if (cropsLoadedInfo) {
-            cropsLoadedInfo.innerText = AVAILABLE_CROPS.length > 0
+            let info = AVAILABLE_CROPS.length > 0
                 ? `${t('currentlyLoaded')}: ${AVAILABLE_CROPS.length} ${t('cropsLoaded')}`
                 : t('noCropsLoadedYet');
+            if (mapCropsInfo && mapCropsInfo.ok) info += ' ' + t('cropsFromMapMod').replace('{mod}', mapCropsInfo.modName);
+            cropsLoadedInfo.innerText = info;
         }
         if (animalDefsLoadedInfo) {
             const animalCount = Object.keys(ANIMAL_NEEDS_DATA).length;
@@ -7898,7 +8140,7 @@ if (saveSettingsBtn) {
                 saveFarmData(importFarm);
                 loadFarmConfigs(importFarm);
                 // Reflect the fresh crop list in the planner behind the modal.
-                if (currentFarmId && plannerView && plannerView.style.display !== 'none' && !isEditMode && !isSidebarEditMode) {
+                if (currentFarmId && plannerView && plannerView.style.display !== 'none' && !isEditMode) {
                     renderSeasonView();
                 }
             }
@@ -7928,6 +8170,29 @@ if (saveSettingsBtn) {
                     farm.mapName = newMap;
                     saveFarmData(farm);
                     if (plannerTitle) plannerTitle.innerText = newMap ? `${farm.name} · ${newMap}` : farm.name;
+                }
+            }
+        }
+
+        // Per-farm toggles: whole-farmland area, and whether detected animal
+        // mods count in the feed planner.
+        {
+            const farm = getCurrentFarm();
+            if (farm) {
+                const flToggle = document.getElementById('farmland-area-toggle');
+                const afcToggle = document.getElementById('animal-mod-afc-toggle');
+                const easToggle = document.getElementById('animal-mod-eas-toggle');
+                const next = {
+                    showFarmlandArea: flToggle ? flToggle.checked : !!farm.showFarmlandArea,
+                    ignoreAfc: afcToggle ? !afcToggle.checked : !!farm.ignoreAfc,
+                    ignoreEas: easToggle ? !easToggle.checked : !!farm.ignoreEas
+                };
+                if (Object.keys(next).some(k => !!farm[k] !== next[k])) {
+                    Object.assign(farm, next);
+                    saveFarmData(farm);
+                    loadFarmConfigs(farm);
+                    refreshFarmlandInfo(farm);
+                    if (plannerView && plannerView.style.display !== 'none' && !isEditMode) renderSeasonView();
                 }
             }
         }
@@ -8185,7 +8450,6 @@ if (confirmAddBtn) {
                 balance: "0 €",
                 currentSeason: 1,
                 yearNumber: 1,
-                trackedCrops: [],
                 fields: [],
                 fieldSizes: {}
             };
@@ -8480,13 +8744,12 @@ function seedDemoFarm(farm) {
         month: "SEPTEMBER",
         currentSeason: 2,
         yearNumber: 2,
-        trackedCrops: ["Wheat", "Canola", "Soybean", "Maize", "Barley"],
         fieldSizes: { "4": 5 },
         fields: [
             field("1", 4.2, "Wheat", "SEPTEMBER", "To Plant", "plowed", lime(0.9, 2)),
             field("2", 2.6, "Canola", "AUGUST", "Planted", "noTill", { ...lime(0.45, 1), fertilizer: true }),
             field("3", 3.1, "Wheat", "OCTOBER", "To Plant", "plowed", lime(0.7, 1)),
-            field("4", 2.0, "Soybean", "APRIL", "To Plant", "noTill", lime(1.0, 2)),
+            field("4", 2.0, "Soybean", "APRIL", "To Plant", "noTill", { ...lime(1.0, 2), catchCrop: "Oilseedradish", catchSowingMonth: "SEPTEMBER" }),
             field("4", 2.5, "Maize", "APRIL", "To Plant", "plowed", lime(1.0, 2)),
             field("5-6", 6.8, "Canola", "AUGUST", "Planted", "plowed", { ...lime(0.2, 1), manure: true })
         ],
@@ -8516,7 +8779,6 @@ function seedDemoFarm(farm) {
                 field("4", 4.5, "Maize", "APRIL", "Planted", "plowed"),
                 field("5-6", 6.8, "Wheat", "OCTOBER", "Planted", "plowed")
             ],
-            trackedCrops: ["Wheat", "Canola", "Barley", "Maize"],
             balance: "142 000 €",
             loan: 90000,
             animals: 84,
@@ -8768,13 +9030,11 @@ const TUTORIAL_CHAPTERS = [
         prepare: tutOpenDemoPlanner,
         steps: [
             tutInfo('f1', '#crops-table'),
-            tutClick('f2', '#sidebar-add-btn', () => isSidebarEditMode === true),
-            tutClick('f3', '#sidebar-add-row-btn .add-row-trigger', () => tqa('.sidebar-crop-select').length > tut.rowsBefore, {
-                enter: () => { tut.rowsBefore = tqa('.sidebar-crop-select').length; }
+            tutClick('f2', '#crops-table th[data-sort="ha"]', () => cropsSort.key === 'ha', {
+                enter: () => { cropsSort = { key: 'game', dir: 1 }; saveCropsSort(); renderSeasonView(); }
             }),
-            tutInput('f4', () => { const all = tqa('.sidebar-crop-select'); return all[all.length - 1] || null; },
-                () => { const all = tqa('.sidebar-crop-select'); const el = all[all.length - 1]; return !!el && el.value !== ''; }, 'Oat'),
-            tutClick('f5', '#sidebar-add-btn', () => isSidebarEditMode === false)
+            tutClick('f3', '#crops-table th[data-sort="name"]', () => cropsSort.key === 'name'),
+            tutInfo('f4', () => tq('#crops-body .crops-section-row') || tq('#crops-table'))
         ]
     },
     {

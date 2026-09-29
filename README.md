@@ -18,15 +18,18 @@
 ## Features
 
 **Season plan**
-- Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan.
+- Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan. Click a column header to sort.
+- Catch crops (green rye, oilseed radish…) on the same field, before or after the main crop.
 - Seasons with history — step back to previous seasons and compare.
-- List of every crop being farmed with total hectares.
+- Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
+- Optional whole land plot (farmland) area next to each field's area.
 - Crop rotation warnings.
 
 **Game sync**
 - Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml`.
 - Auto-sync while you play — the planner refreshes every time the game saves (manual save or autosave).
-- Crop calendar read from the map's files (`fruitTypes` / `uprawaX.xml`) — works with modded maps too.
+- The map's crops, their order and sowing calendar read automatically from the map mod the savegame uses — no folder import needed (a map folder can still be picked for maps the app can't read).
+- Animal mods that change feed consumption are detected: **AnimalFoodCalculator** (mode, multiplier, days per month, reference curves) and **EnhancedAnimalSystem** (lactation food factor).
 - Field soil types from Precision Farming, read straight from the savegame.
 
 **Tools (left sidebar)**
@@ -74,7 +77,7 @@ npm run build
 3. Point it to your savegame, e.g.
    `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
    and turn on auto-sync.
-4. (Optional) pick the map folder to load its crop calendar, and the animal definitions folder if your map or mods add their own breeds.
+4. (Optional) pick the animal definitions folder if your map or mods add their own breeds. The map's crops are read automatically from the savegame; pick a map folder only if they aren't (base-game map, mod not found).
 5. Click **SAVE & IMPORT**.
 
 Breed pictures are loaded automatically from the `mods` folder next to your savegame. Base-game animals (packed inside the game's archives) are shown as icons.
