@@ -5857,3 +5857,173 @@ button.table-chip-toggle:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Cuts (Pokosy) timeline — sowing -> cut 1 -> cut 2 -> add cut. */
+.cuts-modal .modal-content.cuts-content {
+  max-width: min(1100px, 94vw);
+  width: min(1100px, 94vw);
+  align-items: stretch;
+  text-align: left;
+  gap: 14px;
+}
+
+.cuts-content h3 {
+  text-align: center;
+}
+
+.cuts-intro {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+.cuts-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 26px 8px 12px;
+  overflow-x: auto;
+}
+
+.cuts-node {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 190px;
+}
+
+.cuts-node-label {
+  position: absolute;
+  top: -22px;
+  left: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cuts-node select.feed-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface-soft);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.cuts-node select.cuts-use {
+  width: auto;
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.cuts-node.is-done select.cuts-month {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+.cuts-remove {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  color: var(--color-ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cuts-remove:hover {
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.cuts-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.cuts-checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cuts-checks input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+/* Connector between nodes, level with the month pills. */
+.cuts-link {
+  flex: 1 0 40px;
+  max-width: 120px;
+  height: 0;
+  margin-top: 18px;
+  border-top: 2px solid var(--color-border-strong);
+}
+
+.cuts-add {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-primary-dark);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cuts-add:hover {
+  background-color: var(--color-primary-soft);
+}
+
+/* Fields table: "Cuts" button in the state column. */
+.cuts-open {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+
+.cuts-open:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.badge--cuts {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+.badge--cuts.is-complete {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.feed-use-cuts {
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}

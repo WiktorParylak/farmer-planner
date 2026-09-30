@@ -220,6 +220,25 @@ const TRANSLATIONS = {
         rollingWant: "I want to roll",
         rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
         rollingPlanned: "Rolling planned",
+        cutsTitle: "Cuts · field {field}",
+        cutsIntro: "Plan each cut: month, what it's for and what's done. About {l} l per cut on this field — the feed planner counts every cut into its use.",
+        cutsIntroNoYield: "Plan each cut: month, what it's for and what's done.",
+        cutsSowing: "Sowing",
+        cutsCutN: "Cut {n}",
+        cutsRemove: "Remove cut",
+        cutsAdd: "Add cut",
+        cutUse_grass: "for grass",
+        cutUse_hay: "for hay",
+        cutUse_silage: "for silage",
+        cutUse_sale: "for sale",
+        cutHarvested: "harvested",
+        cutFertilized: "fertilized",
+        cutLimed: "limed",
+        cutRolled: "rolled",
+        cutsBadge: "Cuts {done}/{n}",
+        cutsBadgeEmpty: "Cuts",
+        cutsOpenHint: "Open the cuts plan",
+        feedUseCuts: "by cuts ({n})",
         rollingOff: "No rolling planned",
         rollingClickHint: "click to switch",
         limeClickHint: "click to lime / undo",
@@ -731,6 +750,25 @@ const TRANSLATIONS = {
         rollingWant: "chcę wałować",
         rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
         rollingPlanned: "Wałowanie zaplanowane",
+        cutsTitle: "Pokosy · pole {field}",
+        cutsIntro: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione. Z tego pola ok. {l} l z pokosu — planer pasz liczy każdy pokos do jego przeznaczenia.",
+        cutsIntroNoYield: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione.",
+        cutsSowing: "Siew",
+        cutsCutN: "{n}. pokos",
+        cutsRemove: "Usuń pokos",
+        cutsAdd: "Dodaj pokos",
+        cutUse_grass: "na trawę",
+        cutUse_hay: "na siano",
+        cutUse_silage: "na kiszonkę",
+        cutUse_sale: "na sprzedaż",
+        cutHarvested: "zebrane",
+        cutFertilized: "nawiezione",
+        cutLimed: "zwapnowane",
+        cutRolled: "zwałowane",
+        cutsBadge: "Pokosy {done}/{n}",
+        cutsBadgeEmpty: "Pokosy",
+        cutsOpenHint: "Otwórz plan pokosów",
+        feedUseCuts: "wg pokosów ({n})",
         rollingOff: "Wałowanie niezaplanowane",
         rollingClickHint: "kliknij, żeby przełączyć",
         limeClickHint: "kliknij, żeby wapnować / cofnąć",
@@ -3607,6 +3645,15 @@ const TMR_DEFAULT = { HAY: 40, SILAGE: 40, STRAW: 15, MINERAL: 5 };
 // 'sale' is always offered on top of these. Grassland crops are cut several
 // times a year, so their yield is multiplied by plan.grassCuts.
 const FEED_GRASSLAND_CROPS = ['Grass', 'Meadow', 'Alfalfa', 'Clover'];
+// Crops cut several times a season — the fields table shows "Cuts" (Pokosy)
+// for them instead of the sown badge. Teff / field grass come from mod maps.
+const CUT_CROPS = [...FEED_GRASSLAND_CROPS, 'Teffgrass', 'Fieldgrass'];
+function isCutCrop(crop) {
+    return CUT_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+// What a cut is for -> feed category (sale = none).
+const CUT_USES = ['grass', 'hay', 'silage', 'sale'];
+const CUT_USE_CATEGORY = { grass: 'GRASS', hay: 'HAY', silage: 'SILAGE' };
 // Chopped whole for silage at their own harvest yield (the maize chaff-yield
 // setting doesn't apply to them).
 const FEED_SILAGE_OWN_YIELD = ['Greenrye'];
@@ -3886,6 +3933,23 @@ function buildFeedSupply(farm, plan, rates) {
         if (!uses || area <= 0) return;
 
         const key = fertPlanKey(f, i) + (isCatch ? ':catch' : '');
+
+        // Grassland with its cuts planned (Pokosy): each cut goes to its own
+        // use — fresh grass, hay or silage — instead of the global cuts/year.
+        const cuts = !isCatch && Array.isArray(f.cuts) ? f.cuts : [];
+        if (cuts.length && uses.feed === 'ROUGHAGE') {
+            const perCut = area * (getCropYieldRate(crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(f, i), rates));
+            let litres = 0;
+            cuts.forEach(c => {
+                const cat = CUT_USE_CATEGORY[c.use];
+                if (!cat) return;
+                byCategory[cat] = (byCategory[cat] || 0) + perCut;
+                litres += perCut;
+            });
+            rows.push({ key, number: (f.number || '').toString().trim() || ('#' + (i + 1)), crop, isCatch, area, use: 'cuts', uses: [], cuts: cuts.length, litres, strawPossible: false, straw: 0 });
+            return;
+        }
+
         // A catch crop grown for forage (green rye) defaults to silage.
         let use = plan.fieldUse[key] || (isCatch && uses.silage ? 'silage' : defaultFieldUse(crop));
         if (use !== 'sale' && !uses[use]) use = Object.keys(uses)[0];
@@ -4222,7 +4286,10 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
     const d = demand.byCategory, s = supply.byCategory, st = stockByCategory;
     const rows = [];
     const grassPerHa = (getCropYieldRate('Grass') || 0) * plan.grassCuts * avgFactor;
-    const own = c => (st[c] || 0) + (c === 'SILAGE' ? (s.SILAGE || 0) : 0);
+    // s.GRASS / s.HAY / s.SILAGE = harvest already assigned to that category
+    // (maize chaff, grass cuts planned per field); s.ROUGHAGE is handed out below.
+    const direct = c => s[c] || 0;
+    const own = c => (st[c] || 0) + direct(c);
     const deficit = {};
     FEED_ROUGHAGE.forEach(c => { deficit[c] = Math.max(0, (d[c] || 0) - own(c)); });
     const totalDeficit = FEED_ROUGHAGE.reduce((sum, c) => sum + deficit[c], 0);
@@ -4234,7 +4301,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         let meadow = totalDeficit > 0 ? covered * deficit[c] / totalDeficit : 0;
         meadow += totalNeed > 0 ? surplus * (d[c] || 0) / totalNeed : (c === 'HAY' ? surplus : 0);
         const need = d[c] || 0, stock = st[c] || 0;
-        const have = meadow + (c === 'SILAGE' ? (s.SILAGE || 0) : 0);
+        const have = meadow + direct(c);
         if (need <= 0 && have <= 0 && stock <= 0) return;
         rows.push({ id: c, need, have, stock, perHa: grassPerHa });
     });
@@ -4549,7 +4616,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         supply.rows.forEach(r => {
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
             html += `<tr><td>${escapeHtml(r.number)}</td><td>${translateCropName(r.crop)}${catchTag(r)}</td><td>${r.area.toFixed(2)} ha</td>
-                <td><select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select></td>
+                <td>${r.use === 'cuts' ? `<span class="feed-use-cuts">${t('feedUseCuts').replace('{n}', r.cuts)}</span>` : `<select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select>`}</td>
                 <td>${r.strawPossible ? `<input type="checkbox" class="feed-straw-check" data-key="${escapeHtml(r.key)}" ${plan.strawFields[r.key] ? 'checked' : ''}>` : '–'}</td>
                 <td>${r.litres > 0 ? num(r.litres) + ' l' : '–'}${r.straw > 0 ? `<span class="supply-sub">${feedCategoryLabel('STRAW')}: ${num(r.straw)} l</span>` : ''}</td></tr>`;
         });
@@ -7793,6 +7860,124 @@ function catchCropCaption(field) {
     return `<span class="ha-caption catch-crop-caption">+ ${t('catchCropShort')}: ${translateCropName(field.catchCrop)}${month}</span>`;
 }
 
+// --- Cuts (Pokosy) for grassland fields ---------------------------------------
+// A timeline: sowing month -> cut 1 -> cut 2 -> … -> "add cut". Each cut has a
+// month, a use (grass / hay / silage / sale) and done-checks (harvested,
+// fertilized, limed, rolled). Saved on every change to field.cuts; the feed
+// planner counts each cut into its use's category.
+let cutsFieldIdx = null;
+
+function cutsMonthOptions(selected) {
+    let html = `<option value="">${t('selectMonth')}</option>`;
+    ALL_MONTHS.forEach(m => { html += `<option value="${m}" ${selected === m ? 'selected' : ''}>${translateMonth(m)}</option>`; });
+    return html;
+}
+
+function renderCutsModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[cutsFieldIdx];
+    const body = document.getElementById('cuts-body');
+    if (!field || !body) return;
+    const label = [(field.number || '').toString().trim(), translateCropName(field.crop)].filter(Boolean).join(' · ');
+    document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
+    const area = parseFloat(field.area) || 0;
+    const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
+    document.getElementById('cuts-intro').textContent = perCut > 0
+        ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))
+        : t('cutsIntroNoYield');
+
+    const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
+    let html = `<div class="cuts-node cuts-node--sow">
+        <span class="cuts-node-label">${t('cutsSowing')}</span>
+        <select class="feed-input cuts-month" data-cut="sow">${cutsMonthOptions((field.sowingMonth || '').toUpperCase())}</select>
+    </div>`;
+    cuts.forEach((c, i) => {
+        html += `<span class="cuts-link" aria-hidden="true"></span>
+        <div class="cuts-node${c.harvested ? ' is-done' : ''}">
+            <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
+            <button type="button" class="cuts-remove" data-cut="${i}" title="${t('cutsRemove')}" aria-label="${t('cutsRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <select class="feed-input cuts-month" data-cut="${i}">${cutsMonthOptions(c.month)}</select>
+            <select class="feed-input cuts-use" data-cut="${i}">${CUT_USES.map(u => `<option value="${u}" ${c.use === u ? 'selected' : ''}>${t('cutUse_' + u)}</option>`).join('')}</select>
+            <div class="cuts-checks">${checks.map(([k, lbl]) => `<label><input type="checkbox" class="cuts-check" data-cut="${i}" data-key="${k}" ${c[k] ? 'checked' : ''}> ${t(lbl)}</label>`).join('')}</div>
+        </div>`;
+    });
+    html += `<span class="cuts-link" aria-hidden="true"></span>
+        <button type="button" class="cuts-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('cutsAdd')}</button>`;
+    body.innerHTML = html;
+    const add = body.querySelector('.cuts-add');
+    if (add) add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function updateCutsField(fn) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[cutsFieldIdx];
+    if (!field) return;
+    if (!Array.isArray(field.cuts)) field.cuts = [];
+    fn(field);
+    saveFarmData(farm);
+    renderCutsModal();
+}
+
+window.openCutsModal = function (idx) {
+    cutsFieldIdx = idx;
+    renderCutsModal();
+    document.getElementById('cuts-modal').style.display = 'flex';
+};
+
+(function wireCutsModal() {
+    const modal = document.getElementById('cuts-modal');
+    const body = document.getElementById('cuts-body');
+    if (!modal || !body) return;
+    const close = () => { modal.style.display = 'none'; cutsFieldIdx = null; renderSeasonView(); };
+    document.getElementById('cuts-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    body.addEventListener('change', e => {
+        const el = e.target;
+        const i = el.dataset.cut;
+        if (el.classList.contains('cuts-month')) {
+            updateCutsField(f => { if (i === 'sow') f.sowingMonth = el.value; else f.cuts[+i].month = el.value; });
+        } else if (el.classList.contains('cuts-use')) {
+            updateCutsField(f => { f.cuts[+i].use = el.value; });
+        } else if (el.classList.contains('cuts-check')) {
+            updateCutsField(f => { f.cuts[+i][el.dataset.key] = el.checked; });
+        }
+    });
+    body.addEventListener('click', e => {
+        if (e.target.closest('.cuts-add')) {
+            updateCutsField(f => {
+                const last = f.cuts[f.cuts.length - 1];
+                const from = last ? last.month : (f.sowingMonth || '').toUpperCase();
+                const idx = ALL_MONTHS.indexOf(from);
+                const month = idx >= 0 ? ALL_MONTHS[(idx + 1) % 12] : '';
+                f.cuts.push({ month, use: last ? last.use : 'hay', harvested: false, fertilized: false, limed: false, rolled: false });
+                // Grass you cut is in the ground — no seed needed for it any more.
+                f.state = 'Planted';
+            });
+        }
+        const rm = e.target.closest('.cuts-remove');
+        if (rm) updateCutsField(f => { f.cuts.splice(+rm.dataset.cut, 1); });
+    });
+})();
+
+// State column: grassland gets a "Cuts" button (done / planned) that opens
+// the cuts timeline; everything else the sown / not sown badge (a toggle in
+// the current season).
+function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+    if (isCutCrop(field.crop)) {
+        const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+        const done = cuts.filter(c => c.harvested).length;
+        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
+        return isPastSeason
+            ? `<span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
+            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${t('cutsOpenHint')}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+    }
+    return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
+}
+
 // Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
 // cancels, Enter confirms.
 function showSmallConfirm({ title, text, ok, icon, danger }) {
@@ -7837,6 +8022,8 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 // dialog — lime a field, lime it again when it's running low, or take a
 // mistaken liming back.
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
+    const cutsBtn = e.target.closest('.cuts-open');
+    if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
@@ -7972,7 +8159,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${origIdx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>
                         <div class="tillage-switch tillage-switch--readonly">
                             <span class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}">${t('tillagePlowed')}</span>
@@ -8075,7 +8262,7 @@ function buildFieldEditCard(field, opts) {
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -8405,6 +8592,7 @@ if (editSeasonBtn) {
                         // plan; the edit card no longer shows them, so just carry
                         // through whatever was already on the field when edit mode
                         // opened (stamped onto the row as data attributes).
+                        cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
                         manure: row.dataset.manure === '1',
                         fertilizer: row.dataset.fertilizer === '1'
                     });
@@ -8594,6 +8782,7 @@ if (newSeasonBtn) {
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
                 field.rolling = false;
+                field.cuts = [];
                 field.state = "To Plant";
                 field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
