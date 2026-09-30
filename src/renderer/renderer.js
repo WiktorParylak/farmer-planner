@@ -209,9 +209,17 @@ const TRANSLATIONS = {
         rollingWant: "I want to roll",
         rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
         rollingPlanned: "Rolling planned",
+        rollingOff: "No rolling planned",
+        rollingClickHint: "click to switch",
+        limeClickHint: "click to lime / undo",
+        limeConfirmTitle: "Lime field {field}?",
+        limeConfirmOn: "Mark the field as limed this season — pH goes to 100%.",
+        limeConfirmAgain: "pH is down to {pct}%. Lime again this season — back to 100%?",
+        limeConfirmOff: "The field is limed ({pct}% pH). Remove the liming (e.g. marked by mistake)?",
+        limeConfirmOnBtn: "Lime",
+        limeConfirmOffBtn: "Remove",
+        confirm: "Confirm",
         stateToggleHint: "Click to mark as sown / not sown",
-        stateConfirmPlanted: "Mark field {field} as sown?",
-        stateConfirmToPlant: "Mark field {field} as not sown yet?",
         cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
         cropsLoaded: "crop(s).",
         noCropsLoadedYet: "No crops loaded yet.",
@@ -701,9 +709,17 @@ const TRANSLATIONS = {
         rollingWant: "chcę wałować",
         rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
         rollingPlanned: "Wałowanie zaplanowane",
+        rollingOff: "Wałowanie niezaplanowane",
+        rollingClickHint: "kliknij, żeby przełączyć",
+        limeClickHint: "kliknij, żeby wapnować / cofnąć",
+        limeConfirmTitle: "Wapnowanie pola {field}",
+        limeConfirmOn: "Oznaczyć pole jako wapnowane w tym sezonie? pH wróci do 100%.",
+        limeConfirmAgain: "pH spadło do {pct}%. Wapnować ponownie w tym sezonie — z powrotem do 100%?",
+        limeConfirmOff: "Pole jest wapnowane ({pct}% pH). Usunąć wapnowanie (np. zaznaczone przez pomyłkę)?",
+        limeConfirmOnBtn: "Wapnuj",
+        limeConfirmOffBtn: "Usuń",
+        confirm: "Potwierdź",
         stateToggleHint: "Kliknij, żeby oznaczyć jako obsiane / nieobsiane",
-        stateConfirmPlanted: "Oznaczyć pole {field} jako obsiane?",
-        stateConfirmToPlant: "Oznaczyć pole {field} jako jeszcze nieobsiane?",
         cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
         cropsLoaded: "uprawa(-y).",
         noCropsLoadedYet: "Nie wczytano jeszcze żadnych upraw.",
@@ -7454,7 +7470,7 @@ function getLimeStatus(field, i, seasonNum, rates) {
 }
 
 // Fill color for the lime chip, interpolated across 3 stops as pH drops from
-// ideal (beige — the old "active" color) through amber to --color-rust (the
+// ideal (field green) through amber to --color-rust (the
 // old "warning" color). Returns null when never limed (chip stays empty).
 const LIME_COLOR_STOPS = [
     [0, [166, 69, 43]],     // 0.0 -> --color-rust (#A6452B)
@@ -7602,20 +7618,83 @@ function catchCropCaption(field) {
     return `<span class="ha-caption catch-crop-caption">+ ${t('catchCropShort')}: ${translateCropName(field.catchCrop)}${month}</span>`;
 }
 
-// Main table: click a field's state badge to mark it sown / not sown without
-// opening Edit season (asks first). Current season only — past seasons render
-// a plain badge.
-if (fieldsBody) fieldsBody.addEventListener('click', e => {
-    const btn = e.target.closest('.state-toggle');
+// Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
+// cancels, Enter confirms.
+function showSmallConfirm({ title, text, ok, icon, danger }) {
+    const modal = document.getElementById('small-confirm-modal');
+    if (!modal) return Promise.resolve(confirm(text));
+    document.getElementById('small-confirm-title').textContent = title;
+    document.getElementById('small-confirm-text').textContent = text;
+    document.getElementById('small-confirm-icon').className = 'fa-solid ' + (icon || 'fa-circle-question');
+    const okBtn = document.getElementById('small-confirm-ok');
+    const cancelBtn = document.getElementById('small-confirm-cancel');
+    okBtn.textContent = ok || t('confirm');
+    okBtn.classList.toggle('danger-btn', !!danger);
+    cancelBtn.textContent = t('cancel');
+    modal.style.display = 'flex';
+    okBtn.focus();
+    return new Promise(resolve => {
+        const done = (value) => {
+            modal.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve(value);
+        };
+        const onOk = () => done(true);
+        const onCancel = () => done(false);
+        const onBackdrop = (e) => { if (e.target === modal) done(false); };
+        const onKey = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+            else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
+        };
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+    });
+}
+
+// Main table quick edits, current season only (past seasons render plain
+// badges/chips): the state badge toggles sown / not sown and the rolling chip
+// toggles "I want to roll" straight away; the lime chip asks first in a small
+// dialog — lime a field, lime it again when it's running low, or take a
+// mistaken liming back.
+if (fieldsBody) fieldsBody.addEventListener('click', async e => {
+    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
     const farm = allFarms.find(f => f.id === currentFarmId);
-    const field = farm && (farm.fields || [])[parseInt(btn.dataset.idx, 10)];
+    const idx = parseInt(btn.dataset.idx, 10);
+    const field = farm && (farm.fields || [])[idx];
     if (!field) return;
-    const toPlanted = field.state !== 'Planted';
-    const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
-    if (!confirm(t(toPlanted ? 'stateConfirmPlanted' : 'stateConfirmToPlant').replace('{field}', label))) return;
-    field.state = toPlanted ? 'Planted' : 'To Plant';
+
+    if (btn.classList.contains('state-toggle')) {
+        field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
+    } else if (btn.classList.contains('rolling-toggle')) {
+        field.rolling = !field.rolling;
+    } else {
+        const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
+        const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
+        const remove = status === 'active';
+        const key = status === 'off' ? 'limeConfirmOn' : (status === 'warning' ? 'limeConfirmAgain' : 'limeConfirmOff');
+        const ok = await showSmallConfirm({
+            title: t('limeConfirmTitle').replace('{field}', label),
+            text: t(key).replace('{pct}', ph != null ? Math.round(ph * 100) : 0),
+            ok: t(remove ? 'limeConfirmOffBtn' : 'limeConfirmOnBtn'),
+            icon: remove ? 'fa-rotate-left' : 'fa-flask',
+            danger: remove
+        });
+        if (!ok) return;
+        if (remove) {
+            field.limeAppliedSeason = null;
+            field.limePh = null;
+        } else {
+            field.limeAppliedSeason = farm.currentSeason || 1;
+            field.limePh = LIME_PH_IDEAL;
+        }
+    }
     saveFarmData(farm);
     renderSeasonView();
 });
@@ -7726,11 +7805,19 @@ function renderFieldsTable(fields) {
                         </div>
                     </td>
                     <td class="treatments-cell">
-                        <span class="treatment-chip treatment-chip--lime${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}">
-                            <span class="lime-fill"></span>
-                            <span class="lime-letter">${t('limeLetter')}</span>
-                        </span>
-                        ${field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : ''}
+                        ${(() => {
+                            // Current season: chips are buttons (lime asks first, rolling toggles).
+                            const tag = isPastSeason ? 'span' : 'button';
+                            const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
+                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
+                                <span class="lime-fill"></span>
+                                <span class="lime-letter">${t('limeLetter')}</span>
+                            </${tag}>`;
+                            const rollingHtml = isPastSeason
+                                ? (field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : '')
+                                : `<button${btnAttrs} class="treatment-chip treatment-chip--rolling table-chip-toggle rolling-toggle${field.rolling ? ' is-active' : ''}" title="${t(field.rolling ? 'rollingPlanned' : 'rollingOff')} · ${t('rollingClickHint')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>`;
+                            return limeHtml + rollingHtml;
+                        })()}
                     </td>
                     ${fertPlanCell}
                 </tr>

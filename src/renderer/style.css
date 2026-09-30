@@ -5500,3 +5500,61 @@ button.treatment-chip--lime.is-warning {
 .fc-check input[type="checkbox"] {
   accent-color: var(--color-primary);
 }
+
+/* Small confirm dialog (e.g. liming a field from the table). */
+.small-confirm-modal .modal-content.small-confirm {
+  max-width: 340px;
+  padding: 24px 26px 22px;
+  gap: 10px;
+}
+
+.small-confirm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-size: 20px;
+}
+
+.small-confirm h3 {
+  font-size: 22px;
+}
+
+.small-confirm p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.small-confirm .modal-buttons button {
+  min-width: 96px;
+  padding: 9px 18px;
+}
+
+.small-confirm .modal-buttons .small-confirm-cancel {
+  background-color: transparent;
+  color: var(--color-ink-soft);
+  border-color: var(--color-border-strong);
+}
+
+.small-confirm .modal-buttons .small-confirm-cancel:hover {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* Table chips you can click (lime, rolling). */
+button.table-chip-toggle {
+  cursor: pointer;
+}
+
+button.table-chip-toggle:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+.treatment-chip--rolling {
+  font-size: 12px;
+}
