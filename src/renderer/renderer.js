@@ -1588,7 +1588,9 @@ const CROP_NAME_TRANSLATIONS = {
         "Onion": "Cebula", "Onions": "Cebula", "Sorghum": "Sorgo", "Alfalfa": "Lucerna",
         "Semolina": "Kasza Manna", "Grass": "Trawa", "Hay": "Siano", "Silage": "Kiszonka", "Straw": "Słoma",
         "Chaff": "Sieczka", "Wood Chips": "Zrębki", "Manure": "Obornik", "Slurry": "Gnojowica", "Digestate": "Poferment",
-        "Fallow": "Ugór"
+        "Fallow": "Ugór",
+        "Spelt": "Orkisz", "Mustard": "Gorczyca", "Flax": "Len", "Vetch": "Wyka", "Vetchrye": "Wyka z żytem",
+        "Mustardcover": "Gorczyca na międzyplon", "Fieldgrass": "Trawa polowa"
     }
 };
 
