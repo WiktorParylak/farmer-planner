@@ -10,7 +10,8 @@
 // data lives in the game archives, so the caller fills them from the bundled
 // default calendar instead.
 const path = require('path');
-const { openMod, findModsDir } = require('./savegame-soil');
+const { openMod } = require('./savegame-soil');
+const { locateMod } = require('./mod-locator');
 
 function attr(tag, name) {
     const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"'));
@@ -36,8 +37,8 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
         if (!mapId || mapId.indexOf('.') < 0) return { ok: false, reason: 'basemap' };
 
         const modName = mapId.split('.')[0];
-        const saveDir = path.dirname(careerSavegamePath);
-        mod = openMod(findModsDir(path.dirname(saveDir)), modName);
+        const modsDir = locateMod(careerSavegamePath, modName);
+        mod = modsDir ? openMod(modsDir, modName) : null;
         if (!mod) return { ok: false, reason: 'nomod', modName };
 
         const read = rel => { const b = mod.read(rel.replace(/^\/+/, '')); return b ? b.toString('utf-8') : null; };

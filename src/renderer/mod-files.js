@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { modsDirsForSave, primaryModsDir } = require('./mod-locator');
 
 // --- Minimal ZIP reader (central directory + stored/deflated entries) ---
 function readZipDirectory(zipPath) {
@@ -63,21 +64,30 @@ function readZipEntry(zipPath, entry) {
     }
 }
 
-// Where the player's mods are: <FarmingSimulator2025>/<savegameN>/careerSavegame.xml -> <FarmingSimulator2025>/mods
+// The mods folder holding most of this savegame's mods (override folder, the
+// default <FarmingSimulator2025>/mods, or a Mod Assistant collection) — see
+// mod-locator.js.
 function findModsDir(saveGamePath) {
-    if (!saveGamePath) return null;
-    const dir = path.join(path.dirname(path.dirname(saveGamePath)), 'mods');
-    try { return fs.statSync(dir).isDirectory() ? dir : null; } catch (e) { return null; }
+    return primaryModsDir(saveGamePath);
+}
+
+// Every candidate mods folder for this savegame, best match first.
+function findModsDirs(saveGamePath) {
+    return modsDirsForSave(saveGamePath);
 }
 
 // Reads a file the savegame points at as "$moddir$FS25_Mod/some/file.xml"
-// (from mods/FS25_Mod/ or mods/FS25_Mod.zip). Null for base-game files
-// ("data/...") or anything missing.
-function readModFile(modsDir, gamePath) {
-    if (!modsDir || !gamePath) return null;
+// (from <mods>/FS25_Mod/ or <mods>/FS25_Mod.zip). `modsDirs` is one folder or
+// a list tried in order. Null for base-game files ("data/...") or anything
+// missing.
+function readModFile(modsDirs, gamePath) {
+    if (!modsDirs || !gamePath) return null;
     const m = String(gamePath).replace(/\\/g, '/').match(/^\$moddir\$([^/]+)\/(.+)$/i);
     if (!m) return null;
     const [, modName, rel] = m;
+    const modsDir = (Array.isArray(modsDirs) ? modsDirs : [modsDirs])
+        .find(d => fs.existsSync(path.join(d, modName)) || fs.existsSync(path.join(d, modName + '.zip')));
+    if (!modsDir) return null;
     try {
         const folderFile = path.join(modsDir, modName, rel);
         if (fs.existsSync(folderFile)) return fs.readFileSync(folderFile);
@@ -91,4 +101,4 @@ function readModFile(modsDir, gamePath) {
     }
 }
 
-module.exports = { readZipDirectory, readZipEntry, findModsDir, readModFile };
+module.exports = { readZipDirectory, readZipEntry, findModsDir, findModsDirs, readModFile };

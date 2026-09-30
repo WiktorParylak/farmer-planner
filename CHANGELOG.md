@@ -2,6 +2,15 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.7 — unreleased
+
+**New**
+- **Mods outside the default folder are found**: the app now looks in the folder set in the game's `gameSettings.xml` (*modsDirectoryOverride*) and in every **FSG Mod Assistant** collection, not only in `FarmingSimulator2025\mods`. The folder holding most of the savegame's mods is used first, so a savegame from a collection that isn't active right now still works. This applies to the map's crops, field soils and land plots, animal mods (AnimalFoodCalculator, EnhancedAnimalSystem), mixer wagon capacities and breed pictures.
+- Settings shows which mods folder the farm uses (hover to see all searched folders).
+
+**Fixed**
+- Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
+
 ## 0.9.6 — 2026-09-29
 
 **New**

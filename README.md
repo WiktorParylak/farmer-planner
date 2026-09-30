@@ -80,7 +80,7 @@ npm run build
 4. (Optional) pick the animal definitions folder if your map or mods add their own breeds. The map's crops are read automatically from the savegame; pick a map folder only if they aren't (base-game map, mod not found).
 5. Click **SAVE & IMPORT**.
 
-Breed pictures are loaded automatically from the `mods` folder next to your savegame. Base-game animals (packed inside the game's archives) are shown as icons.
+Mods are looked up in the `mods` folder next to your savegame, in the folder set in the game's `gameSettings.xml`, and in your FSG Mod Assistant collections. Breed pictures are loaded automatically from there. Base-game animals (packed inside the game's archives) are shown as icons.
 
 ## Where your data lives
 

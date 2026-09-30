@@ -238,7 +238,7 @@ const TRANSLATIONS = {
         fieldSoilImportMissing: "Not found on the map (left unchanged): {list}.",
         fieldSoilImportArea: "Area differs from the map outline: {list}.",
         fieldSoilImportFail: "Couldn't read soils from the game ({reason}).",
-        fieldSoilImportReasons: { nosave: "savegame file not found", nomapid: "no map in careerSavegame.xml", nomod: "map mod {mod} not found in the mods folder", nomap: "map file not found in {mod}", nofields: "map has no field outlines / farmland layer", nosoil: "no soil map (is Precision Farming enabled?)", parse: "file read error" },
+        fieldSoilImportReasons: { nosave: "savegame file not found", nomapid: "no map in careerSavegame.xml", nomod: "map mod {mod} not found in any mods folder (default, gameSettings override or Mod Assistant collections)", nomap: "map file not found in {mod}", nofields: "map has no field outlines / farmland layer", nosoil: "no soil map (is Precision Farming enabled?)", parse: "file read error" },
         suppliesSoilHint: "Set each field's soil type in the sidebar → Field soil type.",
         suppliesTitle: "Season supplies",
         suppliesIntro: "How much to buy for Season {n} so you don't run short mid-season — one row per field, with the crop taken from that field in the season table. Seed is in litres; fertilizer is shown in litres and kilograms of nitrogen (Precision Farming's model), sourced from each field's own fertilization plan.",
@@ -498,6 +498,8 @@ const TRANSLATIONS = {
         farmlandAreaHint: "Counted from the map like the game does (field plus margins); needs the savegame and the map mod.",
         farmlandPlot: "plot",
         farmlandTotal: "· land owned: {ha} ha ({n} plots)",
+        modsDirInfo: "Mods folder: {dir}",
+        modsDirInfoMore: "(+{n} more searched: gameSettings override / Mod Assistant collections)",
         feedSettings: "Settings — feed fields, parameters, custom feeds"
     },
     pl: {
@@ -701,7 +703,7 @@ const TRANSLATIONS = {
         fieldSoilImportMissing: "Nie znaleziono na mapie (bez zmian): {list}.",
         fieldSoilImportArea: "Powierzchnia różni się od obrysu na mapie: {list}.",
         fieldSoilImportFail: "Nie udało się wczytać gleb z gry ({reason}).",
-        fieldSoilImportReasons: { nosave: "nie znaleziono pliku zapisu", nomapid: "brak mapy w careerSavegame.xml", nomod: "nie znaleziono moda mapy {mod} w folderze mods", nomap: "brak pliku mapy w {mod}", nofields: "mapa nie ma obrysów pól / warstwy działek", nosoil: "brak mapy gleb (czy Precision Farming jest włączony?)", parse: "błąd odczytu plików" },
+        fieldSoilImportReasons: { nosave: "nie znaleziono pliku zapisu", nomapid: "brak mapy w careerSavegame.xml", nomod: "nie znaleziono moda mapy {mod} w żadnym folderze modów (domyślnym, z gameSettings ani w kolekcjach Mod Assistanta)", nomap: "brak pliku mapy w {mod}", nofields: "mapa nie ma obrysów pól / warstwy działek", nosoil: "brak mapy gleb (czy Precision Farming jest włączony?)", parse: "błąd odczytu plików" },
         suppliesSoilHint: "Typ gleby pól ustawisz w pasku bocznym → Typ gleby pól.",
         suppliesTitle: "Zaopatrzenie na sezon",
         suppliesIntro: "Ile kupić na sezon {n}, żeby nie zabrakło w trakcie — jeden wiersz na pole, uprawa pobierana z tego pola w tabeli sezonu. Nasiona w litrach; nawóz podany w litrach i kilogramach azotu (model Precision Farming), pobrany z planu nawożenia każdego pola.",
@@ -961,6 +963,8 @@ const TRANSLATIONS = {
         farmlandAreaHint: "Liczone z mapy tak jak w grze (pole plus miedze i obrzeża); wymaga zapisu gry i moda mapy.",
         farmlandPlot: "działka",
         farmlandTotal: "· posiadana ziemia: {ha} ha ({n} działek)",
+        modsDirInfo: "Folder modów: {dir}",
+        modsDirInfoMore: "(+{n} przeszukiwanych dodatkowo: z gameSettings / kolekcje Mod Assistanta)",
         feedSettings: "Ustawienia — pola paszowe, parametry, własne pasze"
     }
 };
@@ -3692,7 +3696,7 @@ function readFeedBalesFromSave(saveFolder) {
 // with name and capacity looked up in the vehicle's own XML when it comes
 // from a mod. Base-game wagons live in the game's archives, so their
 // capacity stays unknown until the player types it in.
-function readMixerWagonsFromSave(saveFolder, modsDir) {
+function readMixerWagonsFromSave(saveFolder, modsDirs) {
     const p = path.join(saveFolder, 'vehicles.xml');
     if (!fs.existsSync(p)) return [];
     const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
@@ -3707,7 +3711,7 @@ function readMixerWagonsFromSave(saveFolder, modsDir) {
             capacity: null,
             source: 'save'
         };
-        const bytes = modFiles.readModFile(modsDir, filename);
+        const bytes = modFiles.readModFile(modsDirs, filename);
         if (bytes) {
             const vx = new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml');
             if (!vx.querySelector('parsererror')) {
@@ -6697,7 +6701,7 @@ function readGameSave(pathToFile) {
         catch (e) { console.error('Could not read feed stock from savegame', e); }
         try { result.feedBales = readFeedBalesFromSave(saveFolder); }
         catch (e) { console.error('Could not read bales from savegame', e); }
-        try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDir(pathToFile)); }
+        try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
         catch (e) { console.error('Could not read mixer wagons from savegame', e); }
 
         const playTimeVal = findValueInRawText(careerText, 'playTime');
@@ -7984,6 +7988,14 @@ if (settingsBtn) {
         if (autoSyncToggle) autoSyncToggle.checked = isAutoSyncEnabled();
         const flToggle = document.getElementById('farmland-area-toggle');
         if (flToggle) flToggle.checked = !!(farm && farm.showFarmlandArea);
+        const modsDirInfo = document.getElementById('mods-dir-info');
+        if (modsDirInfo) {
+            const dirs = farm && farm.saveGamePath ? modFiles.findModsDirs(farm.saveGamePath) : [];
+            modsDirInfo.textContent = dirs.length
+                ? t('modsDirInfo').replace('{dir}', dirs[0]) + (dirs.length > 1 ? ' ' + t('modsDirInfoMore').replace('{n}', dirs.length - 1) : '')
+                : '';
+            modsDirInfo.title = dirs.join('\n');
+        }
         renderAnimalModsInfo(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";

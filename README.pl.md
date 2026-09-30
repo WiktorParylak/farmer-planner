@@ -80,7 +80,7 @@ npm run build
 4. (Opcjonalnie) wybierz folder definicji zwierząt, jeśli Twoja mapa lub mody dodają własne rasy. Uprawy mapy wczytują się automatycznie z zapisu gry; folder mapy wskaż tylko, gdy się nie wczytały (mapa podstawowa, brak moda).
 5. Kliknij **ZAPISZ I IMPORTUJ**.
 
-Zdjęcia ras są wczytywane automatycznie z folderu `mods` obok zapisu gry. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
+Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też zdjęcia ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
 
 ## Gdzie są Twoje dane
 
