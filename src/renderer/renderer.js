@@ -355,6 +355,7 @@ const TRANSLATIONS = {
         feedProduct_FORAGE: "TMR (forage)",
         feedProduct_MINERAL_FEED: "Mineral feed",
         feedMixersTitle: "Feed mixers",
+        feedMixerRename: "Rename mixer",
         feedRationMixer: "Mixer feed",
         feedRationMixerNote: "Fed from {name}: the needs below are the crops for its recipe {recipe}, minus ready pig food in stock.",
         feedRationMixerNoteOff: "Fed from {name} — no recipe is switched on in the game, so its first one is assumed: {recipe}. Switch a recipe on in the mixer.",
@@ -838,6 +839,7 @@ const TRANSLATIONS = {
         feedProduct_FORAGE: "TMR (mieszanka paszowa)",
         feedProduct_MINERAL_FEED: "Pasza mineralna",
         feedMixersTitle: "Mieszalniki pasz",
+        feedMixerRename: "Zmień nazwę mieszalnika",
         feedRationMixer: "Pasza z mieszalnika",
         feedRationMixerNote: "Karmione z {name}: zapotrzebowanie poniżej to surowce do receptury {recipe}, pomniejszone o gotową paszę dla świń w zapasach.",
         feedRationMixerNoteOff: "Karmione z {name} — w grze nie jest włączona żadna receptura, więc przyjęto pierwszą: {recipe}. Włącz recepturę w mieszalniku.",
@@ -3534,10 +3536,15 @@ function feedRationOptionsHtml(type, plan, selectedId) {
     const builtIn = Object.keys(ANIMAL_FOOD_GROUPS[type] || {}).map(id =>
         `<option value="${id}" ${selectedId === id ? 'selected' : ''}>${t('feedRation_' + id)} (${ANIMAL_FOOD_GROUPS[type][id].efficiency}%)</option>`).join('');
     const mixers = feedMixersFor(getCurrentFarm(), type).map(m =>
-        `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(m.name)} (100%)</option>`).join('');
+        `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(mixerDisplayName(getCurrentFarm(), m))} (100%)</option>`).join('');
     const custom = plan.customFeeds.filter(f => f.animalType === type).map(f =>
         `<option value="custom:${f.id}" ${selectedId === 'custom:' + f.id ? 'selected' : ''}>${escapeHtml(f.name)} (${f.efficiency}%)</option>`).join('');
     return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+}
+
+// Name the player gave a feed mixer (per farm), else the one from its mod.
+function mixerDisplayName(farm, mixer) {
+    return (farm && farm.feedMixerNames && farm.feedMixerNames[mixer.id]) || mixer.name;
 }
 
 // Feed mixers whose product is the complete feed of this species (pig food
@@ -3575,9 +3582,9 @@ function mixerRation(mixer, type) {
         ? Object.entries(byCat).map(([category, pct]) => ({ category, pct }))
         : ANIMAL_FOOD_GROUPS[type].mix.ingredients;
     return {
-        id: 'mixer:' + mixer.id, name: t('feedRationMixer') + ' · ' + mixer.name, efficiency: 100,
+        id: 'mixer:' + mixer.id, name: t('feedRationMixer') + ' · ' + mixerDisplayName(getCurrentFarm(), mixer), efficiency: 100,
         ingredients, absolute: !!Object.keys(byCat).length,
-        mixer: { id: mixer.id, name: mixer.name, product, recipeEnabled: !!(recipe && recipe.enabled), recipe }
+        mixer: { id: mixer.id, name: mixerDisplayName(getCurrentFarm(), mixer), product, recipeEnabled: !!(recipe && recipe.enabled), recipe }
     };
 }
 
@@ -4113,7 +4120,8 @@ function renderFeedMixersSection(farm, barnAnimalTypes, num) {
         const inputStock = inputs.filter(ft => m.stock[ft] > 0).map(ft => `${escapeHtml(feedFillTypeName(ft))} ${num(m.stock[ft])} l`).join(' · ');
         html += `<div class="feed-mixer-tile ${relevant ? 'feed-mixer-tile--relevant' : ''}">
             <div class="feed-mixer-head"><i class="fa-solid fa-blender" aria-hidden="true"></i>
-                <span class="feed-mixer-name">${escapeHtml(m.name)}</span>
+                <span class="feed-mixer-name-wrap"><span class="feed-mixer-name">${escapeHtml(mixerDisplayName(farm, m))}</span>
+                <button type="button" class="barn-rename-btn feed-mixer-rename-btn" data-mixer="${escapeHtml(m.id)}" title="${t('feedMixerRename')}" aria-label="${t('feedMixerRename')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button></span>
                 ${relevant ? `<span class="feed-mixer-badge">${t('feedMixerForBarn')}</span>` : ''}</div>
             ${products}
             ${on.length ? '' : `<p class="feed-mixer-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMixerNoneOn')}</p>`}
@@ -4185,7 +4193,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             feedMixersFor(farm, type).forEach(m => {
                 const id = 'mixer:' + m.id;
                 html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${escapeHtml(id)}">
-                    <span class="feed-ration-name"><i class="fa-solid fa-blender" aria-hidden="true"></i> ${t('feedRationMixer')} · ${escapeHtml(m.name)}</span><span class="feed-ration-eff">100%</span></button>`;
+                    <span class="feed-ration-name"><i class="fa-solid fa-blender" aria-hidden="true"></i> ${t('feedRationMixer')} · ${escapeHtml(mixerDisplayName(farm, m))}</span><span class="feed-ration-eff">100%</span></button>`;
             });
             plan.customFeeds.filter(f => f.animalType === type).forEach(f => {
                 const id = 'custom:' + f.id;
@@ -4683,8 +4691,54 @@ function validateFeedDraft(d) {
     return '';
 }
 
+// Inline rename of a feed mixer (same flow as renaming a barn): Enter or
+// leaving the field saves, Escape cancels, an empty name restores the one
+// from the mod.
+function startMixerRename(btn) {
+    const wrap = btn.closest('.feed-mixer-name-wrap');
+    const nameEl = wrap && wrap.querySelector('.feed-mixer-name');
+    if (!nameEl) return;
+    const mixerId = btn.dataset.mixer;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'feed-input feed-mixer-name-input';
+    input.value = nameEl.textContent;
+    input.setAttribute('aria-label', t('feedMixerRename'));
+    wrap.replaceChildren(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = (save) => {
+        if (done) return;
+        done = true;
+        const farm = getCurrentFarm();
+        const mixer = farm && (farm.feedMixers || []).find(m => m.id === mixerId);
+        if (save && farm && mixer) {
+            const value = input.value.trim();
+            if (!farm.feedMixerNames) farm.feedMixerNames = {};
+            if (value && value !== mixer.name) farm.feedMixerNames[mixer.id] = value;
+            else delete farm.feedMixerNames[mixer.id];
+            saveFarmData(farm);
+        }
+        rerenderFeedPlan();
+    };
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+}
+
 function wireFeedPlanPanel(bodyEl) {
     const update = (fn) => { const farm = getCurrentFarm(); const plan = getFeedPlan(farm); fn(plan); saveFeedPlan(plan); rerenderFeedPlan(); };
+
+    bodyEl.querySelectorAll('.feed-mixer-rename-btn').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        startMixerRename(btn);
+    }));
 
     bodyEl.querySelectorAll('.feed-barn-tile').forEach(el => el.addEventListener('click', () => {
         feedSelectedBuilding = el.dataset.building;

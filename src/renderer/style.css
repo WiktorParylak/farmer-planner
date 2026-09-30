@@ -5431,3 +5431,16 @@ select:focus-visible,
   opacity: 0.8;
   white-space: nowrap;
 }
+
+.feed-mixer-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.feed-plan input.feed-input.feed-mixer-name-input {
+  width: 180px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
