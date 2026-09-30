@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Fixed**
 - Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
+- Some crop names (spelt, mustard, flax, vetch-rye, mustard cover, field grass) were shown in English in the Polish interface.
 
 ## 0.9.6 — 2026-09-29
 
