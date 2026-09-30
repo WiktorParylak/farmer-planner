@@ -92,6 +92,12 @@ const TRANSLATIONS = {
         finColMonth: "Month",
         finColYear: "Year",
         finColChange: "Change",
+        animBuildings: "Buildings",
+        animChartCount: "Animals month by month",
+        animChartHealth: "Average health",
+        animChartSeasons: "Animals at the end of each season",
+        animKpiLowFeed: "low feed: {list}",
+        animKpiFeedOk: "every building has feed",
         detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
         detailFields: "Fields",
@@ -622,6 +628,12 @@ const TRANSLATIONS = {
         finColMonth: "Miesiąc",
         finColYear: "Rok",
         finColChange: "Zmiana",
+        animBuildings: "Budynki",
+        animChartCount: "Zwierzęta miesiąc po miesiącu",
+        animChartHealth: "Średnie zdrowie",
+        animChartSeasons: "Zwierzęta na koniec każdego sezonu",
+        animKpiLowFeed: "mało paszy: {list}",
+        animKpiFeedOk: "każdy budynek ma paszę",
         detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
         detailFields: "Pola",
@@ -2133,53 +2145,6 @@ function getAnimalHistoryTrend(farm) {
     return history;
 }
 
-// Generic single-series inline SVG line chart (no charting library), for trends that
-// don't need a second overlaid line (animal count, average health, ...).
-// Points whose value is null/undefined (e.g. health before this feature
-// existed) are dropped rather than plotted as zero.
-function buildSingleLineChartSvg(history, valueKey, opts) {
-    const points = (history || []).filter(h => h[valueKey] !== null && h[valueKey] !== undefined);
-    if (points.length < 2) return '';
-
-    const width = 460, height = 150;
-    const padL = 40, padR = 16, padT = 14, padB = 26;
-    const plotW = width - padL - padR;
-    const plotH = height - padT - padB;
-
-    const values = points.map(h => h[valueKey]);
-    let minV = opts.fixedMin !== undefined ? opts.fixedMin : Math.min(0, ...values);
-    let maxV = opts.fixedMax !== undefined ? opts.fixedMax : Math.max(...values, 1);
-    if (minV === maxV) maxV = minV + 1;
-
-    const xStep = plotW / (points.length - 1);
-    const xScale = (i) => padL + i * xStep;
-    const yScale = (v) => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
-
-    const linePts = points.map((h, i) => `${xScale(i)},${yScale(h[valueKey])}`).join(' ');
-    const unit = opts.unit || '';
-    const labelFn = opts.labelFn || ((h) => `S${h.season}`);
-    const titleFn = opts.titleFn || ((h) => `${t('season')} ${h.season}: ${Math.round(h[valueKey]).toLocaleString()}${unit}`);
-    const maxLabels = opts.maxLabels || Infinity;
-    const labelStep = Math.max(1, Math.ceil(points.length / maxLabels));
-
-    let svg = `<svg viewBox="0 0 ${width} ${height}" class="balance-chart-svg" xmlns="http://www.w3.org/2000/svg">`;
-    svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" class="chart-axis-line" />`;
-    svg += `<text x="${padL - 6}" y="${yScale(maxV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(maxV).toLocaleString()}${unit}</text>`;
-    svg += `<text x="${padL - 6}" y="${yScale(minV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(minV).toLocaleString()}${unit}</text>`;
-    svg += `<polyline points="${linePts}" class="chart-line ${opts.lineClass || ''}" />`;
-
-    points.forEach((h, i) => {
-        const x = xScale(i);
-        svg += `<circle cx="${x}" cy="${yScale(h[valueKey])}" r="3.5" class="chart-dot ${opts.dotClass || ''}"><title>${titleFn(h)}</title></circle>`;
-        if (i % labelStep === 0 || i === points.length - 1) {
-            svg += `<text x="${x}" y="${height - 8}" class="chart-axis-label" text-anchor="middle">${labelFn(h, i)}</text>`;
-        }
-    });
-
-    svg += `</svg>`;
-    return svg;
-}
-
 // =============================================================
 // SECTION 4A: MONTHLY HISTORY LOG
 // =============================================================
@@ -2669,121 +2634,111 @@ function renderFinanceKpis(farm, monthly, history) {
     </div>`;
 }
 
-// Monthly balance (and loan when there ever was one): area wash + 2px line,
-// recessive gridlines at nice ticks, end-value label, year marks under the
-// axis. Tooltip wiring in wireFinanceChart.
-function buildFinanceLineChart(rows, width) {
-    const hasLoan = rows.some(r => r.loan > 0);
-    const W = Math.max(520, Math.round(width)), H = 280;
+// --- Shared trend chart (Finance, Animals) ------------------------------------
+// Monthly rows as lines: the first series gets an area wash, recessive
+// gridlines at nice ticks, month labels + year marks under the axis, the last
+// value labelled at the end, and a crosshair tooltip (wireTrendChart).
+// series: [{ key, label, cls: 'balance'|'loan'|..., dashed }]
+// opts: { format(v) -> axis/end label, formatFull(v) -> tooltip value,
+//         domain: [min, max] fixed, ariaLabel }
+function buildTrendChart(rows, width, series, opts = {}) {
+    const W = Math.max(520, Math.round(width)), H = 260;
     const padL = 64, padR = 96, padT = 16, padB = 44;
     const plotW = W - padL - padR, plotH = H - padT - padB;
-    const vals = rows.map(r => r.balance).concat(hasLoan ? rows.map(r => r.loan) : []);
-    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
+    const format = opts.format || finCompact;
+    const valid = v => v !== null && v !== undefined && isFinite(v);
+    const vals = [];
+    series.forEach(s => rows.forEach(r => { if (valid(r[s.key])) vals.push(r[s.key]); }));
+    const ticks = opts.domain
+        ? finTicks(opts.domain[0], opts.domain[1])
+        : finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
     const minV = ticks[0], maxV = ticks[ticks.length - 1];
     const x = i => padL + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1));
-    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
-    const line = key => rows.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+    const y = v => padT + plotH - (Math.min(maxV, Math.max(minV, v)) - minV) / (maxV - minV) * plotH;
+    const pathOf = key => {
+        let d = '', pen = false;
+        rows.forEach((r, i) => {
+            if (!valid(r[key])) { pen = false; return; }
+            d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(r[key]).toFixed(1)} `;
+            pen = true;
+        });
+        return d.trim();
+    };
 
-    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(t('finChartMonthly'))}">`;
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(opts.ariaLabel || '')}">`;
     ticks.forEach(v => {
         s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
-        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${finCompact(v)}</text>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${escapeHtml(format(v))}</text>`;
     });
-    // Month labels, thinned to fit; a year mark under each January (or the first point).
-    const every = Math.max(1, Math.ceil(rows.length / Math.floor(plotW / 56)));
+    const every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor(plotW / 56))));
     rows.forEach((r, i) => {
         if (i % every === 0 || i === rows.length - 1) s += `<text class="fin-axis" x="${x(i)}" y="${padT + plotH + 18}" text-anchor="middle">${escapeHtml(monthlyRowLabel(r))}</text>`;
         if (i === 0 || r.period % 12 === 0) s += `<text class="fin-axis fin-axis--year" x="${x(i)}" y="${padT + plotH + 36}" text-anchor="middle">${t('finYear').replace('{y}', r.gameYear)}</text>`;
     });
-    s += `<path class="fin-area" d="${line('balance')} L${x(rows.length - 1)},${y(Math.max(minV, 0))} L${x(0)},${y(Math.max(minV, 0))} Z"/>`;
-    if (hasLoan) s += `<path class="fin-line fin-line--loan" d="${line('loan')}"/>`;
-    s += `<path class="fin-line fin-line--balance" d="${line('balance')}"/>`;
-    const last = rows[rows.length - 1], lx = x(rows.length - 1);
-    s += `<circle class="fin-dot fin-dot--balance" cx="${lx}" cy="${y(last.balance)}" r="4.5"/>`;
-    s += `<text class="fin-endlabel" x="${lx + 10}" y="${y(last.balance) + 4}">${finCompact(last.balance)} €</text>`;
-    if (hasLoan) {
-        s += `<circle class="fin-dot fin-dot--loan" cx="${lx}" cy="${y(last.loan)}" r="4.5"/>`;
-        s += `<text class="fin-endlabel fin-endlabel--muted" x="${lx + 10}" y="${y(last.loan) + 4}">${finCompact(last.loan)} €</text>`;
+    // Area under the first series (only where it has values).
+    const first = series[0];
+    const firstIdx = rows.map((r, i) => valid(r[first.key]) ? i : -1).filter(i => i >= 0);
+    if (firstIdx.length > 1) {
+        const base = y(Math.max(minV, 0));
+        s += `<path class="fin-area trend-area--${first.cls}" d="${pathOf(first.key)} L${x(firstIdx[firstIdx.length - 1])},${base} L${x(firstIdx[0])},${base} Z"/>`;
     }
-    // Crosshair + hover dots (moved by wireFinanceChart).
+    series.slice().reverse().forEach(se => { s += `<path class="fin-line trend-line--${se.cls}${se.dashed ? ' is-dashed' : ''}" d="${pathOf(se.key)}"/>`; });
+    series.forEach((se, k) => {
+        const li = rows.map((r, i) => valid(r[se.key]) ? i : -1).filter(i => i >= 0).pop();
+        if (li === undefined) return;
+        const v = rows[li][se.key];
+        s += `<circle class="fin-dot trend-dot--${se.cls}" cx="${x(li)}" cy="${y(v)}" r="4.5"/>`;
+        s += `<text class="fin-endlabel${k ? ' fin-endlabel--muted' : ''}" x="${x(li) + 10}" y="${y(v) + 4}">${escapeHtml(format(v, true))}</text>`;
+    });
     s += `<line class="fin-crosshair" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}" visibility="hidden"/>`;
-    s += `<circle class="fin-hover-dot fin-dot--balance" r="5" visibility="hidden"/>`;
-    if (hasLoan) s += `<circle class="fin-hover-dot fin-hover-dot--loan fin-dot--loan" r="5" visibility="hidden"/>`;
+    series.forEach((se, k) => { s += `<circle class="fin-hover-dot trend-dot--${se.cls}" data-series="${k}" r="5" visibility="hidden"/>`; });
     s += `<rect class="fin-hit" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent"/>`;
     s += `</svg>`;
-    return { svg: s, geom: { padL, plotW, rows, x, y, hasLoan } };
+    return { svg: s, geom: { rows, x, y, series, formatFull: opts.formatFull || (v => String(v)), deltaFull: opts.deltaFull } };
 }
 
-// Season-end balance as columns (≤24px, 4px rounded top, value above).
-function buildFinanceSeasonBars(history, width) {
-    const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
-    const padL = 64, padR = 16, padT = 26, padB = 30;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const vals = history.map(h => h.balance);
-    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
-    const minV = ticks[0], maxV = ticks[ticks.length - 1];
-    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
-    const band = plotW / history.length, bw = Math.min(24, band * 0.5);
-    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(t('finChartSeasons'))}">`;
-    ticks.forEach(v => {
-        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
-        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${finCompact(v)}</text>`;
-    });
-    history.forEach((h, i) => {
-        const cx = padL + band * i + band / 2;
-        const top = y(Math.max(h.balance, 0)), base = y(Math.max(minV, 0)), bot = y(Math.min(h.balance, 0));
-        const barTop = h.balance >= 0 ? top : base, barH = Math.max(1, (h.balance >= 0 ? base - top : bot - base));
-        const r = Math.min(4, barH / 2);
-        const x0 = cx - bw / 2, x1 = cx + bw / 2;
-        // Rounded data end, square at the baseline.
-        const d = h.balance >= 0
-            ? `M${x0},${barTop + barH} V${barTop + r} Q${x0},${barTop} ${x0 + r},${barTop} H${x1 - r} Q${x1},${barTop} ${x1},${barTop + r} V${barTop + barH} Z`
-            : `M${x0},${barTop} V${barTop + barH - r} Q${x0},${barTop + barH} ${x0 + r},${barTop + barH} H${x1 - r} Q${x1},${barTop + barH} ${x1},${barTop + barH - r} V${barTop} Z`;
-        const current = i === history.length - 1;
-        s += `<g class="fin-bar-g" tabindex="0"><title>${escapeHtml(t('season') + ' ' + h.season + ': ' + finMoney(h.balance))}</title>
-            <rect x="${cx - band / 2}" y="${padT}" width="${band}" height="${plotH}" fill="transparent"/>
-            <path class="fin-bar${current ? ' fin-bar--current' : ''}" d="${d}"/>
-            <text class="fin-barlabel" x="${cx}" y="${(h.balance >= 0 ? barTop : barTop + barH) - 8}" text-anchor="middle">${finCompact(h.balance)} €</text>
-            <text class="fin-axis" x="${cx}" y="${padT + plotH + 20}" text-anchor="middle">S${h.season}${current ? ' · ' + t('finNow') : ''}</text></g>`;
-    });
-    s += `</svg>`;
-    return s;
-}
-
-function wireFinanceChart(bodyEl, geom) {
-    const wrap = bodyEl.querySelector('.fin-chart--monthly');
-    if (!wrap || !geom) return;
-    const svg = wrap.querySelector('svg'), hit = svg.querySelector('.fin-hit');
-    const cross = svg.querySelector('.fin-crosshair'), dotB = svg.querySelector('.fin-hover-dot:not(.fin-hover-dot--loan)'), dotL = svg.querySelector('.fin-hover-dot--loan');
-    const tip = wrap.querySelector('.fin-tooltip');
-    const { rows, x, y, hasLoan } = geom;
+function wireTrendChart(card, geom) {
+    if (!card || !geom) return;
+    const svg = card.querySelector('svg'), hit = svg && svg.querySelector('.fin-hit');
+    const tip = card.querySelector('.fin-tooltip');
+    if (!hit || !tip) return;
+    const cross = svg.querySelector('.fin-crosshair');
+    const dots = [...svg.querySelectorAll('.fin-hover-dot')];
+    const { rows, x, y, series, formatFull, deltaFull } = geom;
+    const valid = v => v !== null && v !== undefined && isFinite(v);
     const show = (i) => {
         const r = rows[i], cx = x(i);
-        [cross].forEach(el => { el.setAttribute('x1', cx); el.setAttribute('x2', cx); el.setAttribute('visibility', 'visible'); });
-        dotB.setAttribute('cx', cx); dotB.setAttribute('cy', y(r.balance)); dotB.setAttribute('visibility', 'visible');
-        if (dotL) { dotL.setAttribute('cx', cx); dotL.setAttribute('cy', y(r.loan)); dotL.setAttribute('visibility', 'visible'); }
-        const prev = rows[i - 1];
+        cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+        dots.forEach((d, k) => {
+            const v = r[series[k].key];
+            if (!valid(v)) { d.setAttribute('visibility', 'hidden'); return; }
+            d.setAttribute('cx', cx); d.setAttribute('cy', y(v)); d.setAttribute('visibility', 'visible');
+        });
         tip.replaceChildren();
         const head = document.createElement('div'); head.className = 'fin-tip-head';
         head.textContent = `${translateMonth(r.month)} · ${t('finYear').replace('{y}', r.gameYear)}`;
         tip.appendChild(head);
-        const addRow = (cls, value, label) => {
+        series.forEach(se => {
+            const v = r[se.key];
             const row = document.createElement('div'); row.className = 'fin-tip-row';
-            const key = document.createElement('span'); key.className = 'fin-tip-key ' + cls;
-            const v = document.createElement('strong'); v.textContent = value;
-            const l = document.createElement('span'); l.className = 'fin-tip-label'; l.textContent = label;
-            row.append(key, v, l); tip.appendChild(row);
-        };
-        addRow('fin-tip-key--balance', finMoney(r.balance), t('detailBalance'));
-        if (hasLoan) addRow('fin-tip-key--loan', finMoney(r.loan), t('detailCredit'));
-        if (prev) { const d = document.createElement('div'); d.className = 'fin-tip-delta'; d.textContent = `${finSigned(r.balance - prev.balance)} ${t('finVsPrevMonth')}`; tip.appendChild(d); }
+            const key = document.createElement('span'); key.className = `fin-tip-key trend-key--${se.cls}${se.dashed ? ' is-dashed' : ''}`;
+            const val = document.createElement('strong'); val.textContent = valid(v) ? formatFull(v) : '–';
+            const l = document.createElement('span'); l.className = 'fin-tip-label'; l.textContent = se.label;
+            row.append(key, val, l); tip.appendChild(row);
+        });
+        const prev = rows[i - 1], k0 = series[0].key;
+        if (deltaFull && prev && valid(prev[k0]) && valid(r[k0])) {
+            const d = document.createElement('div'); d.className = 'fin-tip-delta';
+            d.textContent = `${deltaFull(r[k0] - prev[k0])} ${t('finVsPrevMonth')}`;
+            tip.appendChild(d);
+        }
         tip.hidden = false;
-        const box = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
-        const px = box.left - wb.left + cx * (box.width / svg.viewBox.baseVal.width);
-        tip.style.left = Math.min(wb.width - tip.offsetWidth - 8, Math.max(8, px + 14)) + 'px';
+        const box = svg.getBoundingClientRect(), cb = card.getBoundingClientRect();
+        const px = box.left - cb.left + cx * (box.width / svg.viewBox.baseVal.width);
+        tip.style.left = Math.min(cb.width - tip.offsetWidth - 8, Math.max(8, px + 14)) + 'px';
         tip.style.top = '8px';
     };
-    const hide = () => { cross.setAttribute('visibility', 'hidden'); dotB.setAttribute('visibility', 'hidden'); if (dotL) dotL.setAttribute('visibility', 'hidden'); tip.hidden = true; };
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hidden = true; };
     hit.addEventListener('pointermove', e => {
         const box = svg.getBoundingClientRect();
         const sx = (e.clientX - box.left) * (svg.viewBox.baseVal.width / box.width);
@@ -2794,28 +2749,108 @@ function wireFinanceChart(bodyEl, geom) {
     hit.addEventListener('pointerleave', hide);
 }
 
+// A titled card holding one trend chart; `build(width)` returns buildTrendChart().
+// Charts are registered so they can be redrawn at their card's real width.
+let trendCharts = [];
+function trendCardHtml(id, title, legendHtml, noteHtml, build, width) {
+    const chart = build(width);
+    trendCharts.push({ id, build, drawnAt: width });
+    return `<section class="fin-card fin-chart trend-card" data-trend="${id}">
+        <div class="fin-card-head"><h4>${title}</h4>${legendHtml || ''}</div>
+        ${chart.svg}
+        <div class="fin-tooltip" hidden></div>
+        ${noteHtml || ''}
+    </section>`;
+}
+
+// After a view's HTML is in the page: wire every trend chart and redraw it
+// at its card's real width (the view may still be hidden while rendering)
+// and on window resize, so charts fill their card with unscaled text.
+let trendResizeObserver = null;
+function activateTrendCharts(root) {
+    if (trendResizeObserver) trendResizeObserver.disconnect();
+    const redraw = (entry, card) => {
+        const inner = card.clientWidth - 36;
+        if (inner <= 0 || Math.abs(inner - entry.drawnAt) <= 4) return false;
+        entry.drawnAt = inner;
+        const chart = entry.build(inner);
+        card.querySelector('svg').outerHTML = chart.svg;
+        wireTrendChart(card, chart.geom);
+        return true;
+    };
+    trendCharts.forEach(entry => {
+        const card = root.querySelector(`[data-trend="${entry.id}"]`);
+        if (!card) return;
+        if (!redraw(entry, card)) wireTrendChart(card, entry.build(entry.drawnAt).geom);
+    });
+    if (typeof ResizeObserver === 'undefined') return;
+    trendResizeObserver = new ResizeObserver(entries => entries.forEach(en => {
+        const card = en.target;
+        const entry = trendCharts.find(c => c.id === card.dataset.trend);
+        if (entry) redraw(entry, card);
+    }));
+    root.querySelectorAll('[data-trend]').forEach(card => trendResizeObserver.observe(card));
+}
+
+function trendLegendHtml(items) {
+    return `<div class="chart-legend fin-legend">${items.map(it => `<span class="fin-legend-item"><span class="fin-legend-line trend-key--${it.cls}${it.dashed ? ' is-dashed' : ''}"></span>${it.label}</span>`).join('')}</div>`;
+}
+
+// Per-season values as columns (≤24px, 4px rounded top, value above).
+function buildSeasonBars(history, key, width, format, ariaLabel) {
+    const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
+    const padL = 64, padR = 16, padT = 26, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const vals = history.map(h => h[key] || 0);
+    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
+    const minV = ticks[0], maxV = ticks[ticks.length - 1];
+    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
+    const band = plotW / history.length, bw = Math.min(24, band * 0.5);
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(ariaLabel || '')}">`;
+    ticks.forEach(v => {
+        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${escapeHtml(format(v))}</text>`;
+    });
+    history.forEach((h, i) => {
+        const val = h[key] || 0;
+        const cx = padL + band * i + band / 2;
+        const top = y(Math.max(val, 0)), base = y(Math.max(minV, 0)), bot = y(Math.min(val, 0));
+        const barTop = val >= 0 ? top : base, barH = Math.max(1, (val >= 0 ? base - top : bot - base));
+        const r = Math.min(4, barH / 2);
+        const x0 = cx - bw / 2, x1 = cx + bw / 2;
+        const d = val >= 0
+            ? `M${x0},${barTop + barH} V${barTop + r} Q${x0},${barTop} ${x0 + r},${barTop} H${x1 - r} Q${x1},${barTop} ${x1},${barTop + r} V${barTop + barH} Z`
+            : `M${x0},${barTop} V${barTop + barH - r} Q${x0},${barTop + barH} ${x0 + r},${barTop + barH} H${x1 - r} Q${x1},${barTop + barH} ${x1},${barTop + barH - r} V${barTop} Z`;
+        const current = i === history.length - 1;
+        s += `<g class="fin-bar-g" tabindex="0"><title>${escapeHtml(t('season') + ' ' + h.season + ': ' + format(val, true))}</title>
+            <rect x="${cx - band / 2}" y="${padT}" width="${band}" height="${plotH}" fill="transparent"/>
+            <path class="fin-bar${current ? ' fin-bar--current' : ''}" d="${d}"/>
+            <text class="fin-barlabel" x="${cx}" y="${(val >= 0 ? barTop : barTop + barH) - 8}" text-anchor="middle">${escapeHtml(format(val, true))}</text>
+            <text class="fin-axis" x="${cx}" y="${padT + plotH + 20}" text-anchor="middle">S${h.season}${current ? ' · ' + t('finNow') : ''}</text></g>`;
+    });
+    s += `</svg>`;
+    return s;
+}
+
 function renderFinancePanel(bodyEl, farm) {
     const history = getSeasonBalanceHistory(farm);
     const monthly = getMonthlyHistory(farm);
     const width = Math.max(520, (bodyEl.clientWidth || 900) - 48);
+    trendCharts = [];
     let html = renderFinanceKpis(farm, monthly, history);
-    let geom = null;
 
     if (monthly.length > 1) {
-        const chart = buildFinanceLineChart(monthly, width);
-        geom = chart.geom;
-        html += `<section class="fin-card fin-chart fin-chart--monthly">
-            <div class="fin-card-head"><h4>${t('finChartMonthly')}</h4>
-                ${chart.geom.hasLoan ? `<div class="chart-legend fin-legend"><span class="fin-legend-item"><span class="fin-legend-line fin-legend-line--balance"></span>${t('detailBalance')}</span><span class="fin-legend-item"><span class="fin-legend-line fin-legend-line--loan"></span>${t('detailCredit')}</span></div>` : ''}
-            </div>
-            ${chart.svg}
-            <div class="fin-tooltip" hidden></div>
-        </section>`;
+        const hasLoan = monthly.some(r => r.loan > 0);
+        const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
+        if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
+        const opts = { format: (v, end) => finCompact(v) + (end ? ' €' : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
+            w => buildTrendChart(monthly, w, series, opts), width);
     }
     if (history.length > 1) {
         html += `<section class="fin-card fin-chart">
             <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
-            ${buildFinanceSeasonBars(history, width)}
+            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' €' : ''), t('finChartSeasons'))}
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
@@ -2830,28 +2865,80 @@ function renderFinancePanel(bodyEl, farm) {
             <tbody>${rowsHtml}</tbody></table></details>`;
     }
     bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
-
-    wireFinanceChart(bodyEl, geom);
-
-    // Redraw at the card's real width once it has one (the view may still be
-    // hidden while rendering) and whenever the window resizes — so the chart
-    // fills the card and its text is never scaled.
-    if (financeResizeObserver) financeResizeObserver.disconnect();
-    const card = bodyEl.querySelector('.fin-chart--monthly');
-    if (card && monthly.length > 1 && typeof ResizeObserver !== 'undefined') {
-        let drawnAt = width;
-        financeResizeObserver = new ResizeObserver(() => {
-            const inner = card.clientWidth - 36;
-            if (inner <= 0 || Math.abs(inner - drawnAt) <= 4) return;
-            drawnAt = inner;
-            const chart = buildFinanceLineChart(monthly, inner);
-            card.querySelector('svg').outerHTML = chart.svg;
-            wireFinanceChart(bodyEl, chart.geom);
-        });
-        financeResizeObserver.observe(card);
-    }
+    activateTrendCharts(bodyEl);
 }
-let financeResizeObserver = null;
+
+// --- Animals overview: KPI tiles + trend charts ---------------------------
+function animalsKpisHtml(farm, buildings, monthly, summaries) {
+    const heads = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + c.numAnimals, 0), 0);
+    const healthSum = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + (c.health || 0) * c.numAnimals, 0), 0);
+    const health = heads ? healthSum / heads : null;
+    const prev = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+    let pregnant = 0, nextBirth = null;
+    buildings.forEach(b => {
+        const r = barnReproSummary(b);
+        if (!r) return;
+        pregnant += r.pregnant || 0;
+        if (r.nextBirth !== null && r.nextBirth !== undefined) nextBirth = nextBirth === null ? r.nextBirth : Math.min(nextBirth, r.nextBirth);
+    });
+    const lowBarns = buildings.filter(b => summaries && summaries[b.id] && (summaries[b.id].lowFeed || summaries[b.id].noFeedAtAll));
+    const countDelta = prev ? heads - (prev.animals || 0) : null;
+    const healthDelta = prev && prev.avgHealth != null && health != null ? health - prev.avgHealth : null;
+    const deltaSpan = (d, fmt) => {
+        if (d == null || !isFinite(d)) return `<span class="fin-kpi-sub">${t('finNoHistory')}</span>`;
+        const dir = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
+        const icon = { up: 'fa-arrow-trend-up', down: 'fa-arrow-trend-down', flat: 'fa-minus' }[dir];
+        return `<span class="fin-kpi-sub"><span class="fin-delta fin-delta--${dir}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${fmt(d)}</span><span class="fin-delta-label">${t('finVsPrevMonth')}</span></span>`;
+    };
+    const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
+    return `<div class="fin-kpis">
+        <div class="fin-kpi fin-kpi--hero">
+            <span class="fin-kpi-label">${t('detailAnimals')}</span>
+            <span class="fin-kpi-value">${heads.toLocaleString(FIN_LOCALE())}</span>
+            ${deltaSpan(countDelta, signedInt)}
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('avgHealthLabel')}</span>
+            <span class="fin-kpi-value">${health != null ? Math.round(health) + '%' : '–'}</span>
+            ${deltaSpan(healthDelta, d => signedInt(d) + ' pp')}
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('reproPregnant')}</span>
+            <span class="fin-kpi-value">${pregnant.toLocaleString(FIN_LOCALE())}</span>
+            <span class="fin-kpi-sub">${pregnant && nextBirth !== null ? escapeHtml(reproDueText(nextBirth)) : ''}</span>
+        </div>
+        <div class="fin-kpi${lowBarns.length ? ' fin-kpi--alert' : ''}">
+            <span class="fin-kpi-label">${t('hubFeedLevel')}</span>
+            <span class="fin-kpi-value">${lowBarns.length ? `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${lowBarns.length}` : `<i class="fa-solid fa-circle-check" aria-hidden="true"></i>`}</span>
+            <span class="fin-kpi-sub">${lowBarns.length ? escapeHtml(t('animKpiLowFeed').replace('{list}', lowBarns.map(b => buildingDisplayName(farm, b)).join(', '))) : t('animKpiFeedOk')}</span>
+        </div>
+    </div>`;
+}
+
+function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
+    let html = '';
+    const hasHerd = monthly.some(r => (r.animals || 0) > 0);
+    const hasProd = monthly.some(r => (r.productionDeltaTotal || 0) > 0);
+    const int = v => Math.round(v).toLocaleString(FIN_LOCALE());
+    const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
+    if (monthly.length > 1 && hasHerd) {
+        html += trendCardHtml('anim-count', t('animChartCount'), '', '',
+            w => buildTrendChart(monthly, w, [{ key: 'animals', label: t('detailAnimals'), cls: 'animals' }],
+                { format: v => finCompact(v), formatFull: int, deltaFull: signedInt, ariaLabel: t('animChartCount') }), width);
+        html += trendCardHtml('anim-health', t('animChartHealth'), '', '',
+            w => buildTrendChart(monthly, w, [{ key: 'avgHealth', label: t('avgHealthLabel'), cls: 'health' }],
+                { format: v => Math.round(v) + '%', formatFull: v => Math.round(v) + '%', deltaFull: d => signedInt(d) + ' pp', domain: [0, 100], ariaLabel: t('animChartHealth') }), width);
+        if (hasProd) {
+            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t('hubProductionProxyNote')}</p>`,
+                w => buildTrendChart(monthly, w, [{ key: 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
+                    { format: (v, end) => finCompact(v) + (end ? ' l' : ''), formatFull: v => int(v) + ' l', ariaLabel: t('hubMilkProduced') }), width);
+        }
+    } else if (seasonHistory.length > 1) {
+        html += `<section class="fin-card fin-chart"><div class="fin-card-head"><h4>${t('animChartSeasons')}</h4></div>
+            ${buildSeasonBars(seasonHistory, 'animals', width, v => finCompact(v), t('animChartSeasons'))}</section>`;
+    }
+    return html || `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
+}
 
 window.openHubPanel = function (type) {
     const titleEl = document.getElementById('hub-panel-title');
@@ -2875,59 +2962,16 @@ window.openHubPanel = function (type) {
         // isn't gated on buildings.length).
         const animalHistory = getAnimalHistoryTrend(farm);
         const monthlyAnim = getMonthlyHistory(farm);
-        const monthLabelFn = (r) => (r.period % 12 === 0 ? `${monthlyRowLabel(r)} '${r.gameYear}` : monthlyRowLabel(r));
 
-        const historySectionHtml = (() => {
-            let sectionHtml = '';
-
-            // --- Monthly trends (preferred) ---
-            const hasHerd = monthlyAnim.some(r => (r.animals || 0) > 0);
-            const hasProd = monthlyAnim.some(r => (r.productionDeltaTotal || 0) > 0);
-            if (monthlyAnim.length > 1 && hasHerd) {
-                const mCount = buildSingleLineChartSvg(monthlyAnim, 'animals', {
-                    lineClass: 'chart-line--animals', dotClass: 'chart-dot--animals', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.animals).toLocaleString()}`
-                });
-                const mHealth = buildSingleLineChartSvg(monthlyAnim, 'avgHealth', {
-                    lineClass: 'chart-line--health', dotClass: 'chart-dot--health', fixedMin: 0, fixedMax: 100, unit: '%', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.avgHealth)}%`
-                });
-                const mProd = hasProd ? buildSingleLineChartSvg(monthlyAnim, 'productionDeltaTotal', {
-                    lineClass: 'chart-line--balance', dotClass: 'chart-dot--balance', unit: ' L', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.productionDeltaTotal).toLocaleString()} L`
-                }) : '';
-
-                if (mCount) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-caption">${t('hubMonthlyTrend')}</div><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--animals"></span>${t('detailAnimals')}</span></div>${mCount}</div>`;
-                if (mHealth) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--health"></span>${t('avgHealthLabel')}</span></div>${mHealth}</div>`;
-                if (mProd) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('hubMilkProduced')}</span></div>${mProd}<p class="hub-panel-note">${t('hubProductionProxyNote')}</p></div>`;
-            }
-
-            // --- Per-season trends (fallback / long-term overview) ---
-            const countChart = buildSingleLineChartSvg(animalHistory, 'animals', {
-                lineClass: 'chart-line--animals', dotClass: 'chart-dot--animals'
-            });
-            const healthChart = buildSingleLineChartSvg(animalHistory, 'avgHealth', {
-                lineClass: 'chart-line--health', dotClass: 'chart-dot--health', fixedMin: 0, fixedMax: 100, unit: '%'
-            });
-            if (countChart) {
-                sectionHtml += `<div class="balance-chart-wrapper">${sectionHtml ? `<div class="chart-caption">${t('hubSeasonTrend')}</div>` : ''}<div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--animals"></span>${t('detailAnimals')}</span></div>${countChart}</div>`;
-            }
-            if (healthChart) {
-                sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--health"></span>${t('avgHealthLabel')}</span></div>${healthChart}</div>`;
-            }
-
-            return sectionHtml || `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
-        })();
+        trendCharts = [];
+        const trendWidth = Math.max(520, (bodyEl.clientWidth || 900) - 48);
 
         if (buildings.length === 0) {
-            bodyEl.innerHTML = `
-                <p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>
+            bodyEl.innerHTML = `<div class="fin-view anim-view">
                 <p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>
-                ${historySectionHtml}
-            `;
+                ${animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth)}
+            </div>`;
+            activateTrendCharts(bodyEl);
         } else {
             // Fallback reference for buildings without a manually-entered
             // capacity: scaled against the fullest total feed load among
@@ -3225,8 +3269,8 @@ window.openHubPanel = function (type) {
                 </details>`;
             } else {
                 // --- Overview: one clickable tile per barn ---
-                html += `<p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>`;
-                html += `<div class="barn-tile-grid">`;
+                html += animalsKpisHtml(farm, buildings, monthlyAnim, summaries);
+                html += `<h4 class="anim-section-title">${t('animBuildings')}</h4><div class="barn-tile-grid">`;
                 buildings.forEach(building => {
                     const sum = summaries[building.id];
                     const warn = sum.lowFeed || sum.noFeedAtAll;
@@ -3281,11 +3325,13 @@ window.openHubPanel = function (type) {
                     </div>`;
                 });
                 html += `</div>`; // .barn-tile-grid
-                html += historySectionHtml;
+                html += animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth);
+                html = `<div class="fin-view anim-view">${html}</div>`;
             }
 
             bodyEl.innerHTML = html;
             wireBarnPanel(bodyEl, farm);
+            activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
                 const plan = getFeedPlan(getCurrentFarm());

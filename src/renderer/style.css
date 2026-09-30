@@ -6027,3 +6027,54 @@ button.table-chip-toggle:hover {
   font-size: 12px;
   color: var(--color-ink-soft);
 }
+
+/* Shared trend charts (Finance, Animals) — series colors validated with the
+   dataviz palette checker on --color-surface-soft. */
+.fin-view {
+  --trend-animals: #1F74A6;
+}
+
+.trend-line--balance, .trend-line--production { stroke: var(--fin-balance); }
+.trend-line--loan, .trend-line--health { stroke: var(--fin-loan); }
+.trend-line--animals { stroke: var(--trend-animals); }
+.fin-line.is-dashed { stroke-dasharray: 6 4; }
+
+.trend-area--balance, .trend-area--production { fill: var(--fin-balance); }
+.trend-area--loan, .trend-area--health { fill: var(--fin-loan); }
+.trend-area--animals { fill: var(--trend-animals); }
+
+.trend-dot--balance, .trend-dot--production { fill: var(--fin-balance); }
+.trend-dot--loan, .trend-dot--health { fill: var(--fin-loan); }
+.trend-dot--animals { fill: var(--trend-animals); }
+
+.fin-tip-key.trend-key--balance, .fin-legend-line.trend-key--balance,
+.fin-tip-key.trend-key--production, .fin-legend-line.trend-key--production { border-top: 2px solid var(--fin-balance); }
+.fin-tip-key.trend-key--loan, .fin-legend-line.trend-key--loan,
+.fin-tip-key.trend-key--health, .fin-legend-line.trend-key--health { border-top: 2px solid var(--fin-loan); }
+.fin-tip-key.trend-key--animals, .fin-legend-line.trend-key--animals { border-top: 2px solid var(--trend-animals); }
+.fin-tip-key.is-dashed, .fin-legend-line.is-dashed { border-top-style: dashed; }
+
+.fin-kpi--alert {
+  border-color: var(--color-rust);
+}
+
+.fin-kpi--alert .fin-kpi-value {
+  color: var(--color-rust);
+}
+
+.fin-kpi-value .fa-circle-check {
+  color: var(--fin-balance);
+}
+
+.anim-section-title {
+  margin: 4px 0 -4px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.anim-view .barn-tile-grid {
+  margin: 0;
+}

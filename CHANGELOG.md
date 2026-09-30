@@ -18,6 +18,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Feed in the mixers and ready-mixed pig food / TMR anywhere on the farm (silos, pallets) now count toward feed stock — pig food split like the game's pig mixture (base 50%, grain 25%, protein 20%, root crops 5%).
 
 **Changed**
+- **Animals view redesigned** to match Finance: tiles for head count (change vs last month), average health, pregnant animals (next birth) and feed (which buildings run low), the buildings under their own heading, and full-width charts for animals, average health (0–100% scale) and milk production with gridlines, year marks, end values and a hover readout.
 - **Finance view redesigned**: a row of tiles (balance with the change vs last month, loan with mod loans and monthly payment, change this season, play time), a full-width month-by-month balance chart with gridlines, year marks, the current value labelled and a hover readout (month, balance, loan, change), season-end balances as bars, and the numbers as an optional table. Loan is a dashed amber line when there is one.
 
 **Fixed**
