@@ -7,7 +7,7 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops } = require('./map-crops');
+const { readMapCrops, readModL10n } = require('./map-crops');
 const { readAnimalMods, easFoodFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
@@ -360,6 +360,7 @@ const TRANSLATIONS = {
         feedRationMixerNote: "Fed from {name}: the needs below are the crops for its recipe {recipe}, minus ready pig food in stock.",
         feedRationMixerNoteOff: "Fed from {name} — no recipe is switched on in the game, so its first one is assumed: {recipe}. Switch a recipe on in the mixer.",
         feedMixerPerMonth: "up to {l} l / month",
+        feedMixerUnlimited: "no real limit — depends on how fast ingredients arrive",
         feedMixerForBarn: "for this barn",
         feedMixerNoneOn: "No recipe is switched on — the mixer isn't producing.",
         feedMixerRecipes: "Recipes: {on} of {n} on",
@@ -844,6 +845,7 @@ const TRANSLATIONS = {
         feedRationMixerNote: "Karmione z {name}: zapotrzebowanie poniżej to surowce do receptury {recipe}, pomniejszone o gotową paszę dla świń w zapasach.",
         feedRationMixerNoteOff: "Karmione z {name} — w grze nie jest włączona żadna receptura, więc przyjęto pierwszą: {recipe}. Włącz recepturę w mieszalniku.",
         feedMixerPerMonth: "do {l} l / mies.",
+        feedMixerUnlimited: "bez limitu — zależy od dostaw składników",
         feedMixerForBarn: "dla tej obory",
         feedMixerNoneOn: "Żadna receptura nie jest włączona — mieszalnik nic nie produkuje.",
         feedMixerRecipes: "Receptury: włączone {on} z {n}",
@@ -1632,7 +1634,9 @@ const CROP_NAME_TRANSLATIONS = {
         // English titles from mod maps' l10n (e.g. Castile and León).
         "Forage Poplar": "Topola pastewna", "Teff": "Teff (miłka abisyńska)", "Lavender": "Lawenda", "Mint": "Mięta",
         "Thyme and Rosemary": "Tymianek i rozmaryn", "Apple": "Jabłka", "Orange": "Pomarańcze", "Cherry": "Czereśnie",
-        "Lemon": "Cytryny", "Quince": "Pigwa", "Acorn": "Żołędzie", "Chestnut": "Kasztany", "Almond (kernel)": "Migdały"
+        "Lemon": "Cytryny", "Quince": "Pigwa", "Acorn": "Żołędzie", "Chestnut": "Kasztany", "Almond (kernel)": "Migdały",
+        "Teff Hay": "Siano z teffu", "Feed Flour": "Mąka paszowa", "Omega-3 Oil": "Olej omega-3",
+        "Crushed Cereal": "Śruta zbożowa", "Crushed Protein Cereal": "Śruta białkowa", "Chopped Tubers": "Rozdrobnione bulwy"
     }
 };
 
@@ -3558,7 +3562,10 @@ function feedRationOptionsHtml(type, plan, selectedId) {
 
 // Name the player gave a feed mixer (per farm), else the one from its mod.
 function mixerDisplayName(farm, mixer) {
-    return (farm && farm.feedMixerNames && farm.feedMixerNames[mixer.id]) || mixer.name;
+    const custom = farm && farm.feedMixerNames && farm.feedMixerNames[mixer.id];
+    if (custom) return custom;
+    const titles = mixer.nameTitles;
+    return (titles && titles[currentLang]) || mixer.name;
 }
 
 // Feed mixers whose product is the complete feed of this species (pig food
@@ -3587,8 +3594,11 @@ function mixerRation(mixer, type) {
     const out = recipe ? recipe.outputs.filter(o => o.fillType === product).reduce((s, o) => s + o.amount, 0) : 0;
     const byCat = {};
     if (recipe && out > 0) {
+        // Only ingredients that are a feed category count — water, oils and a
+        // map's intermediate products (crushed cereal…) aren't grown on fields.
         recipe.inputs.forEach(i => {
-            const c = FEED_FILLTYPE_CATEGORY[i.fillType] || 'GRAIN';
+            const c = FEED_FILLTYPE_CATEGORY[i.fillType];
+            if (!c) return;
             byCat[c] = (byCat[c] || 0) + i.amount / out * 100;
         });
     }
@@ -3757,6 +3767,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
     if (doc.querySelector('parsererror')) return [];
     const up = s => String(s || '').toUpperCase();
     const defCache = {};
+    const l10nCache = {};
     const mixers = [];
     doc.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
         const saved = pl.querySelector(':scope > productionPoint');
@@ -3797,9 +3808,32 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
         const nameEl = def.querySelector('storeData > name');
         const rawName = nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '';
         const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
+
+        // The mod's own translations: its name ("$l10n_shopItem_…") and its
+        // fill types ("HARINAPIENSOS" -> "Feed Flour").
+        const modName = pl.getAttribute('modName') || '';
+        if (modName && !(modName in l10nCache)) l10nCache[modName] = readMixerModL10n(modsDirs, modName);
+        const l10n = l10nCache[modName] || {};
+        // Keys compared without underscores ("CEREAL_TRITURADO" ~ fillType_cerealTriturado).
+        const norm = k => String(k).toLowerCase().replace(/_/g, '');
+        const index = {};
+        Object.entries(l10n).forEach(([k, v]) => { index[norm(k)] = v; });
+        const titleOf = key => index[norm(key)] || null;
+        const fillTypeTitles = {};
+        feedRecipes.forEach(r => [...r.inputs, ...r.outputs].forEach(({ fillType }) => {
+            // Else drop trailing "_PART"s: DRYTEFFGRASS_WINDROW -> dryTeffGrass,
+            // CEREALPROTEICO_TRITURADO -> cerealProteico.
+            let name = fillType, t2 = null;
+            while (!(t2 = titleOf('fillType_' + name)) && name.includes('_')) name = name.replace(/_[^_]*$/, '');
+            if (t2) fillTypeTitles[fillType] = t2;
+        }));
+        const l10nName = rawName.startsWith('$l10n_') ? titleOf(rawName.slice(6)) : null;
         mixers.push({
             id: pl.getAttribute('uniqueId') || filename,
-            name: rawName && !rawName.startsWith('$') ? rawName : filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
+            name: rawName && !rawName.startsWith('$') ? rawName
+                : (l10nName && (l10nName.en || Object.values(l10nName)[0])) || filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
+            nameTitles: l10nName || null,
+            fillTypeTitles,
             mod: pl.getAttribute('modName') || '',
             products,
             recipes: feedRecipes,
@@ -3808,6 +3842,18 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
         });
     });
     return mixers;
+}
+
+// Translations of the mod a mixer comes from (see map-crops.js readModL10n).
+function readMixerModL10n(modsDirs, modName) {
+    try {
+        const read = rel => { const b = modFiles.readModFile(modsDirs, `$moddir$${modName}/${rel}`); return b ? b.toString('utf-8') : null; };
+        const modDesc = read('modDesc.xml');
+        return modDesc ? readModL10n(read, modDesc, ['en', 'pl']) : {};
+    } catch (e) {
+        console.warn('Could not read translations of', modName, e);
+        return {};
+    }
 }
 
 // Most a mixer can make of `product` per in-game month with its switched-on
@@ -4102,10 +4148,39 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
 
 // Fill type as the player knows it: mixer products by name, crops through
 // the crop dictionary.
-function feedFillTypeName(ft) {
+// Base-game fill types that show up in mixer recipes.
+const FEED_FILLTYPE_NAMES = {
+    en: {
+        DRYGRASS_WINDROW: 'Hay', DRYALFALFA_WINDROW: 'Alfalfa hay', DRYCLOVER_WINDROW: 'Clover hay',
+        GRASS_WINDROW: 'Grass', ALFALFA_WINDROW: 'Alfalfa', CLOVER_WINDROW: 'Clover',
+        SILAGE: 'Silage', STRAW: 'Straw', WATER: 'Water', CHAFF: 'Chaff'
+    },
+    pl: {
+        DRYGRASS_WINDROW: 'Siano', DRYALFALFA_WINDROW: 'Siano z lucerny', DRYCLOVER_WINDROW: 'Siano z koniczyny',
+        GRASS_WINDROW: 'Trawa', ALFALFA_WINDROW: 'Lucerna', CLOVER_WINDROW: 'Koniczyna',
+        SILAGE: 'Kiszonka', STRAW: 'Słoma', WATER: 'Woda', CHAFF: 'Sieczka'
+    }
+};
+
+// A fill type by name: mixer products, base-game types, the mixer mod's own
+// translations (in the app language, else its English title through the
+// dictionary), then crops.
+function feedFillTypeName(ft, mixer) {
     if (FEED_PRODUCT_FILLTYPES.includes(ft)) return t('feedProduct_' + ft);
+    const base = (FEED_FILLTYPE_NAMES[currentLang] || FEED_FILLTYPE_NAMES.en)[ft];
+    if (base) return base;
+    const titles = mixer && mixer.fillTypeTitles && mixer.fillTypeTitles[ft];
+    if (titles && titles[currentLang]) return titles[currentLang];
+    if (titles && titles.en) return translateCropName(titles.en);
     const crop = translateCropName(formatCropName(ft));
     return crop || formatFillType(ft);
+}
+
+// Some mods make a mixer practically instant (e.g. 1000 cycles/h x 1000 l):
+// then the real limit is how fast ingredients arrive, not the recipe rate.
+function mixerRateText(perMonth, capacity, num) {
+    const unlimited = perMonth > Math.max(capacity || 0, 1000) * 30;
+    return unlimited ? t('feedMixerUnlimited') : t('feedMixerPerMonth').replace('{l}', num(perMonth));
 }
 
 // One tile per feed mixer the farm owns. Mixers whose product the selected
@@ -4125,13 +4200,13 @@ function renderFeedMixersSection(farm, barnAnimalTypes, num) {
             return `<div class="feed-mixer-product">
                 <span class="feed-mixer-product-name">${escapeHtml(feedFillTypeName(p))}</span>
                 <span class="feed-mixer-product-stock">${num(inStock)} l${cap ? ` / ${num(cap)} l` : ''}</span>
-                <span class="feed-mixer-product-rate">${t('feedMixerPerMonth').replace('{l}', num(feedMixerMonthlyOutput(m, p)))}</span>
+                <span class="feed-mixer-product-rate">${mixerRateText(feedMixerMonthlyOutput(m, p), cap, num)}</span>
             </div>`;
         }).join('');
         const recipeLine = r => `<li class="${r.enabled ? 'is-on' : ''}"><i class="fa-solid ${r.enabled ? 'fa-circle-check' : 'fa-circle'}" aria-hidden="true"></i>
-            ${r.inputs.map(i => escapeHtml(feedFillTypeName(i.fillType))).join(' + ')} → ${r.outputs.map(o => escapeHtml(feedFillTypeName(o.fillType))).join(', ')}</li>`;
+            ${r.inputs.map(i => escapeHtml(feedFillTypeName(i.fillType, m))).join(' + ')} → ${r.outputs.map(o => escapeHtml(feedFillTypeName(o.fillType, m))).join(', ')}</li>`;
         const inputs = [...new Set(m.recipes.flatMap(r => r.inputs.map(i => i.fillType)))];
-        const inputStock = inputs.filter(ft => m.stock[ft] > 0).map(ft => `${escapeHtml(feedFillTypeName(ft))} ${num(m.stock[ft])} l`).join(' · ');
+        const inputStock = inputs.filter(ft => m.stock[ft] > 0).map(ft => `${escapeHtml(feedFillTypeName(ft, m))} ${num(m.stock[ft])} l`).join(' · ');
         html += `<div class="feed-mixer-tile ${relevant ? 'feed-mixer-tile--relevant' : ''}">
             <div class="feed-mixer-head"><i class="fa-solid fa-blender" aria-hidden="true"></i>
                 <span class="feed-mixer-name-wrap"><span class="feed-mixer-name">${escapeHtml(mixerDisplayName(farm, m))}</span>
@@ -4218,7 +4293,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             // Mixer ration: say which recipe the crop needs below follow.
             if (ration && ration.mixer) {
                 const r = ration.mixer.recipe;
-                const inputs = r ? r.inputs.map(i => feedFillTypeName(i.fillType)).join(' + ') : '–';
+                const inputs = r ? r.inputs.map(i => feedFillTypeName(i.fillType, (farm.feedMixers || []).find(x => x.id === ration.mixer.id))).join(' + ') : '–';
                 html += `<p class="hub-panel-note feed-mixer-ration-note">${t(ration.mixer.recipeEnabled ? 'feedRationMixerNote' : 'feedRationMixerNoteOff').replace('{recipe}', escapeHtml(inputs)).replace('{name}', escapeHtml(ration.mixer.name))}</p>`;
             }
 

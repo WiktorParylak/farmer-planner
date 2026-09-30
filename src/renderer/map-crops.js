@@ -135,4 +135,4 @@ function readModL10n(read, modDesc, langs) {
     return out;
 }
 
-module.exports = { readMapCrops };
+module.exports = { readMapCrops, readModL10n };
