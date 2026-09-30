@@ -18,7 +18,8 @@
 //   xmls/<species>.xml (EAS_AnimalCluster.getLactationFoodFactor).
 const fs = require('fs');
 const path = require('path');
-const { openMod, findModsDir } = require('./savegame-soil');
+const { openMod } = require('./savegame-soil');
+const { locateMod } = require('./mod-locator');
 
 const AFC_MOD = 'FS25_AnimalFoodCalculator';
 const EAS_MOD = 'FS25_EnhancedAnimalSystem';
@@ -67,7 +68,7 @@ function readAnimalMods(careerSavegamePath) {
     const days = parseInt((career.match(/<plannedDaysPerPeriod>(\d+)</) || [])[1], 10);
     if (days > 0) out.daysPerPeriod = days;
     const active = new Set([...career.matchAll(/<mod\b[^>]*\bmodName="([^"]+)"/g)].map(m => m[1]));
-    const modsDir = findModsDir(path.dirname(saveDir));
+    const openSaveMod = name => { const dir = locateMod(careerSavegamePath, name); return dir ? openMod(dir, name) : null; };
 
     if (active.has(AFC_MOD)) {
         const afc = { enabled: false, autoScaleByDays: false, customMultiplier: 1, mode: 'vanilla', referenceSource: 'effective', referenceXml: [] };
@@ -88,11 +89,11 @@ function readAnimalMods(careerSavegamePath) {
         let refMod = null;
         try {
             if (refSrc === 'custom') {
-                refMod = openMod(modsDir, AFC_MOD);
+                refMod = openSaveMod(AFC_MOD);
                 const xml = refMod && readText(refMod, 'xmls/animals.xml');
                 if (xml) afc.referenceXml.push(xml);
             } else if (refSrc === 'animalpackage') {
-                refMod = openMod(modsDir, ANIMAL_PACKAGE_MOD);
+                refMod = openSaveMod(ANIMAL_PACKAGE_MOD);
                 if (refMod) ANIMAL_PACKAGE_XMLS.forEach(rel => { const xml = readText(refMod, rel); if (xml) afc.referenceXml.push(xml); });
             }
         } catch (e) { console.warn('AFC reference curves unreadable', e); }
@@ -103,7 +104,7 @@ function readAnimalMods(careerSavegamePath) {
     if (active.has(EAS_MOD)) {
         let mod = null;
         try {
-            mod = openMod(modsDir, EAS_MOD);
+            mod = openSaveMod(EAS_MOD);
             if (mod) out.eas = { lactation: readEasLactation(mod) };
         } catch (e) { console.warn('EAS lactation data unreadable', e); }
         finally { if (mod) mod.close(); }

@@ -2,6 +2,35 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.7 — 2026-09-30
+
+**New**
+- **Mods outside the default folder are found**: the app now looks in the folder set in the game's `gameSettings.xml` (*modsDirectoryOverride*) and in every **FSG Mod Assistant** collection, not only in `FarmingSimulator2025\mods`. The folder holding most of the savegame's mods is used first, so a savegame from a collection that isn't active right now still works. This applies to the map's crops, field soils and land plots, animal mods (AnimalFoodCalculator, EnhancedAnimalSystem), mixer wagon capacities and breed pictures.
+- Settings shows which mods folder the farm uses (hover to see all searched folders).
+- **Feed mixers** in the Feed planner: productions you own whose recipes make feed — pig food, TMR or mineral feed (e.g. Food Mixer Silo, Small Food Mixer, Lizard Mixed Food) — are found automatically. Each shows its product stock and capacity, how much it can make per month with the recipes switched on, the recipes and the ingredients waiting to be mixed; mixers for the selected barn's animals are highlighted, and a warning shows when no recipe is on.
+- **Cuts (Pokosy) for grassland**: grass, meadow, alfalfa, clover (and mod grasses like teff) show a *Cuts* button instead of the sown badge. It opens a timeline — sowing month, then each cut with its month, use (grass / hay / silage / sale) and done-checks (harvested, fertilized, limed, rolled), and *Add cut*. The table badge shows done/planned cuts, and the feed planner counts each planned cut into its use instead of the global cuts-per-year.
+- **Quick edits in the fields table** (current season, no Edit season needed): click the state badge to mark a field sown / not sown, click the rolling chip to switch rolling, click the lime chip to lime the field (or lime again when it runs low, or undo a mistaken liming) — lime asks first in a small dialog.
+- **Rolling**: an "I want to roll" checkbox per field in Edit season and a chip next to lime in the table; cleared with a new season like the other treatments.
+- Feed mixer recipes and names are translated: base-game ingredients (hay, alfalfa hay, water, silage…) by the app, a mod's own ingredients and the mixer's shop name from that mod's translations (e.g. Castile and León's crushed cereal, feed flour, chopped tubers). Mixers a mod makes practically instant show "no real limit" instead of an absurd monthly rate.
+- Feed mixers can be renamed (pencil next to the name, like barns); the name is used everywhere the mixer shows up. Empty name restores the one from the mod.
+- **Pigs can be fed from a mixer**: a pig-food mixer appears as a feed choice for pigs (*Mixer feed · name*). Their need then follows the mixer's recipe — the crops it takes (e.g. maize + barley + soy, a third each; the switched-on recipe, else the first) — minus the ready pig food in stock. Also selectable in the Animals panel.
+- Rye, triticale, millet and buckwheat count as pig/chicken feed (grain, base, protein) like in the maps' animal food settings.
+- Feed in the mixers and ready-mixed pig food / TMR anywhere on the farm (silos, pallets) now count toward feed stock — pig food split like the game's pig mixture (base 50%, grain 25%, protein 20%, root crops 5%).
+
+**Changed**
+- **Animals view redesigned** to match Finance: tiles for head count (change vs last month), average health, pregnant animals (next birth) and feed (which buildings run low), the buildings under their own heading, and full-width charts for animals, average health (0–100% scale) and milk production with gridlines, year marks, end values and a hover readout.
+- **Finance view redesigned**: a row of tiles (balance with the change vs last month, loan with mod loans and monthly payment, change this season, play time), a full-width month-by-month balance chart with gridlines, year marks, the current value labelled and a hover readout (month, balance, loan, change), season-end balances as bars, and the numbers as an optional table. Loan is a dashed amber line when there is one.
+- **Tutorial refreshed** for the new interface: the Finance and Animals steps point at the new tiles and charts (they highlighted a chart that no longer existed), a new *Cuts* step (the practice farm now has a grass field), and the table steps mention the one-click sown badge, rolling chip and lime dialog. The farm-settings steps cover the found mods folder (Mod Assistant collections), the land plot area option and automatically detected animal mods.
+
+**Fixed**
+- Grassland (grass, meadow, alfalfa, clover) no longer loses lime with a new season: these crops have consumesLime="false" in the game and map files, so cutting them doesn't lower pH (cereals, maize and green rye still do). In the cuts plan, ticking *limed* limes the field (pH 100%) and *rolled* switches the field's rolling chip.
+- Lime chip in Edit season didn't change when clicked (it only changed after saving); freshly limed is now green instead of pale beige, so a limed field stands out, and the letter stays readable on a filled chip.
+- The state checkbox in a field card had no caption — it now says "Sown".
+- Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
+- Feed planner ingredient tiles: when other barns eat the same feed (e.g. straw), the tile now says the shortfall and "you have" are for all barns, and shows the all-barns need next to this barn's.
+- Some crop names (spelt, mustard, flax, vetch-rye, mustard cover, field grass) were shown in English in the Polish interface.
+- Crops of mod maps that name them in their own language (e.g. *Centeno*, *Lavanda* on Castile and León) now show the map's translated name — in the app's language when the map has it, else its English name through the app's dictionary (Centeno → Rye → Żyto). Polish names added for Castile and León's forage poplar, teff, lavender, mint, thyme & rosemary and orchard fruits.
+
 ## 0.9.6 — 2026-09-29
 
 **New**

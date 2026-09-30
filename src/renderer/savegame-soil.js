@@ -11,6 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { locateMod } = require('./mod-locator');
 
 // --- Map source: an unpacked mod folder or a mod .zip -----------------------
 // Reads only the central directory and the requested entries (map mods can be
@@ -211,7 +212,8 @@ function readFieldSoilFromSave(careerSavegamePath) {
         if (!mapId || mapId.indexOf('.') < 0) return { ok: false, reason: 'nomapid' };
 
         const modName = mapId.split('.')[0];
-        mod = openMod(findModsDir(path.dirname(saveDir)), modName);
+        const modsDir = locateMod(careerSavegamePath, modName);
+        mod = modsDir ? openMod(modsDir, modName) : null;
         if (!mod) return { ok: false, reason: 'nomod', modName };
 
         const modDesc = (mod.read('modDesc.xml') || '').toString('utf-8');
@@ -302,7 +304,8 @@ function readFarmlandAreas(careerSavegamePath) {
         if (!mapId || mapId.indexOf('.') < 0) return { ok: false, reason: 'nomapid' };
 
         const modName = mapId.split('.')[0];
-        mod = openMod(findModsDir(path.dirname(saveDir)), modName);
+        const modsDir = locateMod(careerSavegamePath, modName);
+        mod = modsDir ? openMod(modsDir, modName) : null;
         if (!mod) return { ok: false, reason: 'nomod', modName };
 
         const modDesc = (mod.read('modDesc.xml') || '').toString('utf-8');

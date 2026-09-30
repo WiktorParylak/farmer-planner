@@ -5315,3 +5315,766 @@ select:focus-visible,
   font-size: 14px;
   color: var(--color-ink-soft);
 }
+
+/* Feed planner: feed mixers (productions making pig food / TMR / mineral feed). */
+.feed-mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+
+.feed-mixer-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  font-size: 13px;
+}
+
+.feed-mixer-tile--relevant {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.feed-mixer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary-dark);
+}
+
+.feed-mixer-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.feed-mixer-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.feed-mixer-product {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.feed-mixer-product-name {
+  font-weight: 700;
+}
+
+.feed-mixer-product-stock {
+  font-family: var(--font-mono);
+}
+
+.feed-plan .feed-mixer-product-rate,
+.feed-plan .feed-mixer-inputs {
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  margin: 0;
+}
+
+.feed-plan .feed-mixer-warn {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-accent-dark);
+}
+
+.feed-mixer-recipes summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.feed-mixer-recipes ul {
+  margin: 6px 0 0;
+  padding-left: 4px;
+  list-style: none;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+}
+
+.feed-mixer-recipes li.is-on {
+  color: var(--color-ink);
+}
+
+.feed-mixer-recipes li i {
+  width: 14px;
+  color: var(--color-ink-faint);
+}
+
+.feed-mixer-recipes li.is-on i {
+  color: var(--color-primary);
+}
+
+/* Farm-wide figures on an ingredient tile (stock is shared by every barn). */
+.feed-ing-barn--all {
+  margin-top: -2px;
+}
+
+.feed-ing-scope {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.feed-mixer-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.feed-plan input.feed-input.feed-mixer-name-input {
+  width: 180px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+/* Field card: checkbox + its caption (state "Sown", rolling "I want to roll"). */
+.fc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.fc-cell--state .field-rolling {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+
+/* Main table: the state badge is a button that toggles sown / not sown. */
+.state-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+
+.state-toggle:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.state-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Rolling planned chip next to lime. */
+.treatment-chip--rolling.is-active {
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+/* Lime chip switched on in Edit season: make the "on" state obvious. */
+button.treatment-chip--lime.is-active,
+button.treatment-chip--lime.is-warning {
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+/* Letter readable on a chip filled at least halfway. */
+.treatment-chip--lime.lime-strong .lime-letter {
+  color: var(--color-surface);
+}
+
+.fc-check input[type="checkbox"] {
+  accent-color: var(--color-primary);
+}
+
+/* Small confirm dialog (e.g. liming a field from the table). */
+.small-confirm-modal .modal-content.small-confirm {
+  max-width: 340px;
+  padding: 24px 26px 22px;
+  gap: 10px;
+}
+
+.small-confirm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-size: 20px;
+}
+
+.small-confirm h3 {
+  font-size: 22px;
+}
+
+.small-confirm p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.small-confirm .modal-buttons button {
+  min-width: 96px;
+  padding: 9px 18px;
+}
+
+.small-confirm .modal-buttons .small-confirm-cancel {
+  background-color: transparent;
+  color: var(--color-ink-soft);
+  border-color: var(--color-border-strong);
+}
+
+.small-confirm .modal-buttons .small-confirm-cancel:hover {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* Table chips you can click (lime, rolling). */
+button.table-chip-toggle {
+  cursor: pointer;
+}
+
+button.table-chip-toggle:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+.treatment-chip--rolling {
+  font-size: 12px;
+}
+
+/* ========================================================= */
+/* FINANCE VIEW                                               */
+/* Chart colors validated with the dataviz palette checker:   */
+/* balance #3B7542, loan #C97A2B on --color-surface-soft.     */
+/* ========================================================= */
+.fin-view {
+  --fin-balance: #3B7542;
+  --fin-loan: #C97A2B;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+}
+
+.fin-kpis {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 12px;
+}
+
+.fin-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  min-width: 0;
+}
+
+.fin-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.fin-kpi-value {
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fin-kpi--hero .fin-kpi-value {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.fin-kpi-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.fin-delta {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.fin-delta--up { color: var(--fin-balance); }
+.fin-delta--down { color: var(--color-rust); }
+.fin-delta--flat { color: var(--color-ink-soft); }
+
+.fin-card {
+  position: relative;
+  padding: 16px 18px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+}
+
+.fin-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.fin-card-head h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.fin-chart-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fin-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.fin-axis {
+  font-family: var(--font-body);
+  font-size: 11px;
+  fill: var(--color-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-axis--year {
+  font-weight: 700;
+  fill: var(--color-ink-soft);
+}
+
+.fin-area {
+  fill: var(--fin-balance);
+  fill-opacity: 0.1;
+}
+
+.fin-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.fin-line--balance { stroke: var(--fin-balance); }
+.fin-line--loan { stroke: var(--fin-loan); stroke-dasharray: 6 4; }
+
+.fin-dot {
+  stroke: var(--color-surface-soft);
+  stroke-width: 2;
+}
+
+.fin-dot--balance { fill: var(--fin-balance); }
+.fin-dot--loan { fill: var(--fin-loan); }
+
+.fin-endlabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--color-ink);
+}
+
+.fin-endlabel--muted {
+  font-weight: 600;
+  fill: var(--color-ink-soft);
+}
+
+.fin-crosshair {
+  stroke: var(--color-ink-faint);
+  stroke-width: 1;
+}
+
+.fin-hit {
+  cursor: crosshair;
+}
+
+.fin-tooltip {
+  position: absolute;
+  z-index: 5;
+  min-width: 170px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+  font-size: 12px;
+}
+
+.fin-tip-head {
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.fin-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.fin-tip-row strong {
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+.fin-tip-label {
+  color: var(--color-ink-soft);
+}
+
+.fin-tip-key {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  border-top: 2px solid var(--fin-balance);
+}
+
+.fin-tip-key--loan { border-top: 2px dashed var(--fin-loan); }
+
+.fin-tip-delta {
+  margin-top: 6px;
+  color: var(--color-ink-soft);
+}
+
+.fin-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.fin-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fin-legend-line {
+  display: inline-block;
+  width: 16px;
+  border-top: 2px solid var(--fin-balance);
+}
+
+.fin-legend-line--loan { border-top: 2px dashed var(--fin-loan); }
+
+.fin-bar {
+  fill: var(--fin-balance);
+  fill-opacity: 0.55;
+}
+
+.fin-bar--current { fill-opacity: 1; }
+
+.fin-bar-g:hover .fin-bar,
+.fin-bar-g:focus .fin-bar {
+  fill-opacity: 0.85;
+}
+
+.fin-bar-g:focus { outline: none; }
+
+.fin-barlabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--color-ink);
+}
+
+.fin-table-wrap summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.fin-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fin-table th,
+.fin-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.fin-table th {
+  position: static;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  background: none;
+}
+
+.fin-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1180px) {
+  .fin-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Cuts (Pokosy) timeline — sowing -> cut 1 -> cut 2 -> add cut. */
+.cuts-modal .modal-content.cuts-content {
+  max-width: min(1100px, 94vw);
+  width: min(1100px, 94vw);
+  align-items: stretch;
+  text-align: left;
+  gap: 14px;
+}
+
+.cuts-content h3 {
+  text-align: center;
+}
+
+.cuts-intro {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+.cuts-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 26px 8px 12px;
+  overflow-x: auto;
+}
+
+.cuts-node {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 190px;
+}
+
+.cuts-node-label {
+  position: absolute;
+  top: -22px;
+  left: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cuts-node select.feed-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface-soft);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.cuts-node select.cuts-use {
+  width: auto;
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.cuts-node.is-done select.cuts-month {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+.cuts-remove {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  color: var(--color-ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cuts-remove:hover {
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.cuts-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.cuts-checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cuts-checks input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+/* Connector between nodes, level with the month pills. */
+.cuts-link {
+  flex: 1 0 40px;
+  max-width: 120px;
+  height: 0;
+  margin-top: 18px;
+  border-top: 2px solid var(--color-border-strong);
+}
+
+.cuts-add {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-primary-dark);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cuts-add:hover {
+  background-color: var(--color-primary-soft);
+}
+
+/* Fields table: "Cuts" button in the state column. */
+.cuts-open {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+
+.cuts-open:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.badge--cuts {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+.badge--cuts.is-complete {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.feed-use-cuts {
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+/* Shared trend charts (Finance, Animals) — series colors validated with the
+   dataviz palette checker on --color-surface-soft. */
+.fin-view {
+  --trend-animals: #1F74A6;
+}
+
+.trend-line--balance, .trend-line--production { stroke: var(--fin-balance); }
+.trend-line--loan, .trend-line--health { stroke: var(--fin-loan); }
+.trend-line--animals { stroke: var(--trend-animals); }
+.fin-line.is-dashed { stroke-dasharray: 6 4; }
+
+.trend-area--balance, .trend-area--production { fill: var(--fin-balance); }
+.trend-area--loan, .trend-area--health { fill: var(--fin-loan); }
+.trend-area--animals { fill: var(--trend-animals); }
+
+.trend-dot--balance, .trend-dot--production { fill: var(--fin-balance); }
+.trend-dot--loan, .trend-dot--health { fill: var(--fin-loan); }
+.trend-dot--animals { fill: var(--trend-animals); }
+
+.fin-tip-key.trend-key--balance, .fin-legend-line.trend-key--balance,
+.fin-tip-key.trend-key--production, .fin-legend-line.trend-key--production { border-top: 2px solid var(--fin-balance); }
+.fin-tip-key.trend-key--loan, .fin-legend-line.trend-key--loan,
+.fin-tip-key.trend-key--health, .fin-legend-line.trend-key--health { border-top: 2px solid var(--fin-loan); }
+.fin-tip-key.trend-key--animals, .fin-legend-line.trend-key--animals { border-top: 2px solid var(--trend-animals); }
+.fin-tip-key.is-dashed, .fin-legend-line.is-dashed { border-top-style: dashed; }
+
+.fin-kpi--alert {
+  border-color: var(--color-rust);
+}
+
+.fin-kpi--alert .fin-kpi-value {
+  color: var(--color-rust);
+}
+
+.fin-kpi-value .fa-circle-check {
+  color: var(--fin-balance);
+}
+
+.anim-section-title {
+  margin: 4px 0 -4px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.anim-view .barn-tile-grid {
+  margin: 0;
+}

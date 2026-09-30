@@ -7,7 +7,7 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops } = require('./map-crops');
+const { readMapCrops, readModL10n } = require('./map-crops');
 const { readAnimalMods, easFoodFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
@@ -78,9 +78,26 @@ const TRANSLATIONS = {
         farmDetails: "Farm Details",
         detailBalance: "Balance",
         detailCredit: "Credit",
-        bankCreditLabel: "Bank And Credit (mod)",
         bankCreditValue: "{n} active loan(s) · {m} € / month",
-        bankCreditNone: "no active loans",
+        finNoLoan: "no loan",
+        finVsPrevMonth: "vs last month",
+        finNoHistory: "history builds up as you play",
+        finSeasonChange: "Change in season {n}",
+        finFromStart: "from {v} at the start",
+        finChartMonthly: "Balance month by month",
+        finChartSeasons: "Balance at the end of each season",
+        finYear: "Year {y}",
+        finNow: "now",
+        finShowTable: "Show the numbers as a table",
+        finColMonth: "Month",
+        finColYear: "Year",
+        finColChange: "Change",
+        animBuildings: "Buildings",
+        animChartCount: "Animals month by month",
+        animChartHealth: "Average health",
+        animChartSeasons: "Animals at the end of each season",
+        animKpiLowFeed: "low feed: {list}",
+        animKpiFeedOk: "every building has feed",
         detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
         detailFields: "Fields",
@@ -205,6 +222,40 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Catch crop sowing",
         catchCropHint: "A crop grown on the same field before or after the main crop (green rye, oilseed radish…). Listed separately in the crops summary so its area isn't counted twice.",
         catchCropShort: "catch crop",
+        thRolling: "Rolling",
+        rollingWant: "I want to roll",
+        rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
+        rollingPlanned: "Rolling planned",
+        cutsTitle: "Cuts · field {field}",
+        cutsIntro: "Plan each cut: month, what it's for and what's done. About {l} l per cut on this field — the feed planner counts every cut into its use.",
+        cutsIntroNoYield: "Plan each cut: month, what it's for and what's done.",
+        cutsSowing: "Sowing",
+        cutsCutN: "Cut {n}",
+        cutsRemove: "Remove cut",
+        cutsAdd: "Add cut",
+        cutUse_grass: "for grass",
+        cutUse_hay: "for hay",
+        cutUse_silage: "for silage",
+        cutUse_sale: "for sale",
+        cutHarvested: "harvested",
+        cutFertilized: "fertilized",
+        cutLimed: "limed",
+        cutRolled: "rolled",
+        cutsBadge: "Cuts {done}/{n}",
+        cutsBadgeEmpty: "Cuts",
+        cutsOpenHint: "Open the cuts plan",
+        feedUseCuts: "by cuts ({n})",
+        rollingOff: "No rolling planned",
+        rollingClickHint: "click to switch",
+        limeClickHint: "click to lime / undo",
+        limeConfirmTitle: "Lime field {field}?",
+        limeConfirmOn: "Mark the field as limed this season — pH goes to 100%.",
+        limeConfirmAgain: "pH is down to {pct}%. Lime again this season — back to 100%?",
+        limeConfirmOff: "The field is limed ({pct}% pH). Remove the liming (e.g. marked by mistake)?",
+        limeConfirmOnBtn: "Lime",
+        limeConfirmOffBtn: "Remove",
+        confirm: "Confirm",
+        stateToggleHint: "Click to mark as sown / not sown",
         cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
         cropsLoaded: "crop(s).",
         noCropsLoadedYet: "No crops loaded yet.",
@@ -238,7 +289,7 @@ const TRANSLATIONS = {
         fieldSoilImportMissing: "Not found on the map (left unchanged): {list}.",
         fieldSoilImportArea: "Area differs from the map outline: {list}.",
         fieldSoilImportFail: "Couldn't read soils from the game ({reason}).",
-        fieldSoilImportReasons: { nosave: "savegame file not found", nomapid: "no map in careerSavegame.xml", nomod: "map mod {mod} not found in the mods folder", nomap: "map file not found in {mod}", nofields: "map has no field outlines / farmland layer", nosoil: "no soil map (is Precision Farming enabled?)", parse: "file read error" },
+        fieldSoilImportReasons: { nosave: "savegame file not found", nomapid: "no map in careerSavegame.xml", nomod: "map mod {mod} not found in any mods folder (default, gameSettings override or Mod Assistant collections)", nomap: "map file not found in {mod}", nofields: "map has no field outlines / farmland layer", nosoil: "no soil map (is Precision Farming enabled?)", parse: "file read error" },
         suppliesSoilHint: "Set each field's soil type in the sidebar → Field soil type.",
         suppliesTitle: "Season supplies",
         suppliesIntro: "How much to buy for Season {n} so you don't run short mid-season — one row per field, with the crop taken from that field in the season table. Seed is in litres; fertilizer is shown in litres and kilograms of nitrogen (Precision Farming's model), sourced from each field's own fertilization plan.",
@@ -350,6 +401,24 @@ const TRANSLATIONS = {
         feedSrc_bunker: "Bunker silos",
         feedSrc_bale: "Bales",
         feedSrc_pallet: "Pallets",
+        feedSrc_mixer: "Feed mixers",
+        feedProduct_PIGFOOD: "Pig food",
+        feedProduct_FORAGE: "TMR (forage)",
+        feedProduct_MINERAL_FEED: "Mineral feed",
+        feedMixersTitle: "Feed mixers",
+        feedMixerRename: "Rename mixer",
+        feedRationMixer: "Mixer feed",
+        feedRationMixerNote: "Fed from {name}: the needs below are the crops for its recipe {recipe}, minus ready pig food in stock.",
+        feedRationMixerNoteOff: "Fed from {name} — no recipe is switched on in the game, so its first one is assumed: {recipe}. Switch a recipe on in the mixer.",
+        feedMixerPerMonth: "up to {l} l / month",
+        feedMixerUnlimited: "no real limit — depends on how fast ingredients arrive",
+        feedMixerForBarn: "for this barn",
+        feedMixerNoneOn: "No recipe is switched on — the mixer isn't producing.",
+        feedMixerRecipes: "Recipes: {on} of {n} on",
+        feedMixerInputs: "Waiting to be mixed",
+        feedMixerInputsEmpty: "No ingredients in the mixer.",
+        feedMixersNote: "Feed and ingredients in the mixers count toward your stock above — pig food split like the game's mixture (base 50%, grain 25%, protein 20%, root crops 5%).",
+        feedMixersNoteRecipe: "Feed and ingredients in the mixers count toward your stock above — pig food split by the mixer recipe the pigs are fed from.",
         feedStockNoSave: "Set the path to careerSavegame.xml in Farm settings to read what's already in your silos and bales.",
         feedStockNotRead: "Stock not read yet — it appears after the next sync with the game save.",
         feedStockEmpty: "No feed found in silos, bunker silos, bales or pallets in the last game save.",
@@ -473,6 +542,8 @@ const TRANSLATIONS = {
         feedEnough: "Enough",
         feedMissing: "Missing",
         feedThisBarn: "This barn",
+        feedAllBarns: "All barns",
+        feedAllBarnsShort: "all barns",
         feedPerYearShort: "/year",
         feedFoodPerYear: "feed / year",
         feedYearNeedFood: "Feed needed per year",
@@ -498,6 +569,8 @@ const TRANSLATIONS = {
         farmlandAreaHint: "Counted from the map like the game does (field plus margins); needs the savegame and the map mod.",
         farmlandPlot: "plot",
         farmlandTotal: "· land owned: {ha} ha ({n} plots)",
+        modsDirInfo: "Mods folder: {dir}",
+        modsDirInfoMore: "(+{n} more searched: gameSettings override / Mod Assistant collections)",
         feedSettings: "Settings — feed fields, parameters, custom feeds"
     },
     pl: {
@@ -541,9 +614,26 @@ const TRANSLATIONS = {
         farmDetails: "Szczegóły Farmy",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
-        bankCreditLabel: "Bank And Credit (mod)",
         bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
-        bankCreditNone: "brak aktywnych kredytów",
+        finNoLoan: "brak kredytu",
+        finVsPrevMonth: "wobec poprzedniego miesiąca",
+        finNoHistory: "historia zbiera się w trakcie gry",
+        finSeasonChange: "Zmiana w sezonie {n}",
+        finFromStart: "od {v} na początku",
+        finChartMonthly: "Saldo miesiąc po miesiącu",
+        finChartSeasons: "Saldo na koniec każdego sezonu",
+        finYear: "Rok {y}",
+        finNow: "teraz",
+        finShowTable: "Pokaż liczby w tabeli",
+        finColMonth: "Miesiąc",
+        finColYear: "Rok",
+        finColChange: "Zmiana",
+        animBuildings: "Budynki",
+        animChartCount: "Zwierzęta miesiąc po miesiącu",
+        animChartHealth: "Średnie zdrowie",
+        animChartSeasons: "Zwierzęta na koniec każdego sezonu",
+        animKpiLowFeed: "mało paszy: {list}",
+        animKpiFeedOk: "każdy budynek ma paszę",
         detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
         detailFields: "Pola",
@@ -668,6 +758,40 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Siew międzyplonu",
         catchCropHint: "Uprawa na tym samym polu przed lub po uprawie głównej (zielone żyto, poplon…). W podsumowaniu upraw liczona osobno, żeby areał nie liczył się podwójnie.",
         catchCropShort: "międzyplon",
+        thRolling: "Wałowanie",
+        rollingWant: "chcę wałować",
+        rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
+        rollingPlanned: "Wałowanie zaplanowane",
+        cutsTitle: "Pokosy · pole {field}",
+        cutsIntro: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione. Z tego pola ok. {l} l z pokosu — planer pasz liczy każdy pokos do jego przeznaczenia.",
+        cutsIntroNoYield: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione.",
+        cutsSowing: "Siew",
+        cutsCutN: "{n}. pokos",
+        cutsRemove: "Usuń pokos",
+        cutsAdd: "Dodaj pokos",
+        cutUse_grass: "na trawę",
+        cutUse_hay: "na siano",
+        cutUse_silage: "na kiszonkę",
+        cutUse_sale: "na sprzedaż",
+        cutHarvested: "zebrane",
+        cutFertilized: "nawiezione",
+        cutLimed: "zwapnowane",
+        cutRolled: "zwałowane",
+        cutsBadge: "Pokosy {done}/{n}",
+        cutsBadgeEmpty: "Pokosy",
+        cutsOpenHint: "Otwórz plan pokosów",
+        feedUseCuts: "wg pokosów ({n})",
+        rollingOff: "Wałowanie niezaplanowane",
+        rollingClickHint: "kliknij, żeby przełączyć",
+        limeClickHint: "kliknij, żeby wapnować / cofnąć",
+        limeConfirmTitle: "Wapnowanie pola {field}",
+        limeConfirmOn: "Oznaczyć pole jako wapnowane w tym sezonie? pH wróci do 100%.",
+        limeConfirmAgain: "pH spadło do {pct}%. Wapnować ponownie w tym sezonie — z powrotem do 100%?",
+        limeConfirmOff: "Pole jest wapnowane ({pct}% pH). Usunąć wapnowanie (np. zaznaczone przez pomyłkę)?",
+        limeConfirmOnBtn: "Wapnuj",
+        limeConfirmOffBtn: "Usuń",
+        confirm: "Potwierdź",
+        stateToggleHint: "Kliknij, żeby oznaczyć jako obsiane / nieobsiane",
         cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
         cropsLoaded: "uprawa(-y).",
         noCropsLoadedYet: "Nie wczytano jeszcze żadnych upraw.",
@@ -701,7 +825,7 @@ const TRANSLATIONS = {
         fieldSoilImportMissing: "Nie znaleziono na mapie (bez zmian): {list}.",
         fieldSoilImportArea: "Powierzchnia różni się od obrysu na mapie: {list}.",
         fieldSoilImportFail: "Nie udało się wczytać gleb z gry ({reason}).",
-        fieldSoilImportReasons: { nosave: "nie znaleziono pliku zapisu", nomapid: "brak mapy w careerSavegame.xml", nomod: "nie znaleziono moda mapy {mod} w folderze mods", nomap: "brak pliku mapy w {mod}", nofields: "mapa nie ma obrysów pól / warstwy działek", nosoil: "brak mapy gleb (czy Precision Farming jest włączony?)", parse: "błąd odczytu plików" },
+        fieldSoilImportReasons: { nosave: "nie znaleziono pliku zapisu", nomapid: "brak mapy w careerSavegame.xml", nomod: "nie znaleziono moda mapy {mod} w żadnym folderze modów (domyślnym, z gameSettings ani w kolekcjach Mod Assistanta)", nomap: "brak pliku mapy w {mod}", nofields: "mapa nie ma obrysów pól / warstwy działek", nosoil: "brak mapy gleb (czy Precision Farming jest włączony?)", parse: "błąd odczytu plików" },
         suppliesSoilHint: "Typ gleby pól ustawisz w pasku bocznym → Typ gleby pól.",
         suppliesTitle: "Zaopatrzenie na sezon",
         suppliesIntro: "Ile kupić na sezon {n}, żeby nie zabrakło w trakcie — jeden wiersz na pole, uprawa pobierana z tego pola w tabeli sezonu. Nasiona w litrach; nawóz podany w litrach i kilogramach azotu (model Precision Farming), pobrany z planu nawożenia każdego pola.",
@@ -813,6 +937,24 @@ const TRANSLATIONS = {
         feedSrc_bunker: "Pryzmy",
         feedSrc_bale: "Bele",
         feedSrc_pallet: "Palety",
+        feedSrc_mixer: "Mieszalniki pasz",
+        feedProduct_PIGFOOD: "Pasza dla świń",
+        feedProduct_FORAGE: "TMR (mieszanka paszowa)",
+        feedProduct_MINERAL_FEED: "Pasza mineralna",
+        feedMixersTitle: "Mieszalniki pasz",
+        feedMixerRename: "Zmień nazwę mieszalnika",
+        feedRationMixer: "Pasza z mieszalnika",
+        feedRationMixerNote: "Karmione z {name}: zapotrzebowanie poniżej to surowce do receptury {recipe}, pomniejszone o gotową paszę dla świń w zapasach.",
+        feedRationMixerNoteOff: "Karmione z {name} — w grze nie jest włączona żadna receptura, więc przyjęto pierwszą: {recipe}. Włącz recepturę w mieszalniku.",
+        feedMixerPerMonth: "do {l} l / mies.",
+        feedMixerUnlimited: "bez limitu — zależy od dostaw składników",
+        feedMixerForBarn: "dla tej obory",
+        feedMixerNoneOn: "Żadna receptura nie jest włączona — mieszalnik nic nie produkuje.",
+        feedMixerRecipes: "Receptury: włączone {on} z {n}",
+        feedMixerInputs: "Czeka na zmieszanie",
+        feedMixerInputsEmpty: "Brak składników w mieszalniku.",
+        feedMixersNote: "Pasza i składniki w mieszalnikach liczą się do zapasów powyżej — pasza dla świń rozdzielona jak mieszanka z gry (baza 50%, zboże 25%, białko 20%, okopowe 5%).",
+        feedMixersNoteRecipe: "Pasza i składniki w mieszalnikach liczą się do zapasów powyżej — pasza dla świń rozdzielona według receptury mieszalnika, z którego karmione są świnie.",
         feedStockNoSave: "Ustaw ścieżkę do careerSavegame.xml w Ustawieniach farmy, żeby odczytać, co już jest w silosach i belach.",
         feedStockNotRead: "Zapasy nie zostały jeszcze odczytane — pojawią się po następnej synchronizacji z zapisem gry.",
         feedStockEmpty: "W ostatnim zapisie gry nie ma paszy w silosach, pryzmach, belach ani na paletach.",
@@ -936,6 +1078,8 @@ const TRANSLATIONS = {
         feedEnough: "Wystarczy",
         feedMissing: "Brakuje",
         feedThisBarn: "Ta obora",
+        feedAllBarns: "Wszystkie obory",
+        feedAllBarnsShort: "wszystkie obory",
         feedPerYearShort: "/rok",
         feedFoodPerYear: "paszy / rok",
         feedYearNeedFood: "Pasza potrzebna na rok",
@@ -961,6 +1105,8 @@ const TRANSLATIONS = {
         farmlandAreaHint: "Liczone z mapy tak jak w grze (pole plus miedze i obrzeża); wymaga zapisu gry i moda mapy.",
         farmlandPlot: "działka",
         farmlandTotal: "· posiadana ziemia: {ha} ha ({n} działek)",
+        modsDirInfo: "Folder modów: {dir}",
+        modsDirInfoMore: "(+{n} przeszukiwanych dodatkowo: z gameSettings / kolekcje Mod Assistanta)",
         feedSettings: "Ustawienia — pola paszowe, parametry, własne pasze"
     }
 };
@@ -1048,7 +1194,9 @@ Object.assign(TRANSLATIONS.en, {
     tut_c2_t: "Plant now",
     tut_c2_x: "Orange \"Plant now\": the field isn't sown yet and its sowing month is the current in-game month.",
     tut_c3_t: "Planted / To plant",
-    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month.",
+    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Click the badge to switch it right in the table, no edit mode needed.",
+    tut_c11_t: "Grass cuts ✂",
+    tut_c11_x: "Grass, meadow and other grassland fields have a \"Cuts\" button instead of \"Planted\". It opens this season's cuts on a timeline: when each cut was made, what it went to (fresh grass, hay, silage, sale) and whether you fertilized, limed or rolled after it — those checks update the field too.",
     tut_c4_t: "Rotation warning ⟳",
     tut_c4_x: "The same crop was grown on this field last season. Consider rotating crops — hover the icon for details.",
     tut_c5_t: "Split field",
@@ -1056,9 +1204,9 @@ Object.assign(TRANSLATIONS.en, {
     tut_c6_t: "Combined fields",
     tut_c6_x: "A number like \"5-6\" means several physical fields farmed as one row.",
     tut_c7_t: "Tillage",
-    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing.",
+    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. The chip next to it is rolling — click it to plan or clear it.",
     tut_c8_t: "Lime",
-    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Beige = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils. Hover for details.",
+    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland keeps its pH. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c10_t: "Total area",
@@ -1122,8 +1270,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_h1_x: "The bar on the left switches between the field plan and the farm's tools: finance, animals, supplies, field soils, notes, yield forecast and feed planner.",
     tut_h3_t: "Finance",
     tut_h3_x: "Click \"Finance\".",
-    tut_h4_t: "Charts",
-    tut_h4_x: "Balance (solid line) and credit (dashed) month by month, recorded automatically from the savegame, plus a chart per season.",
+    tut_h4_t: "Finance at a glance",
+    tut_h4_x: "Tiles on top: balance, credit, change this season and farm age, each with the change since last month. Below: balance and credit month by month (hover to read any month), a bar per season and the full monthly table on demand — all recorded automatically from the savegame.",
     tut_h6_t: "Field soils",
     tut_h6_x: "Click the field soil tool.",
     tut_h7_t: "Soil mix",
@@ -1157,8 +1305,8 @@ Object.assign(TRANSLATIONS.en, {
 
     tut_k1_t: "Animals",
     tut_k1_x: "Click \"Animals\" in the sidebar.",
-    tut_k3_t: "Head count",
-    tut_k3_x: "All your animals together, read from the savegame (placeables.xml), and one tile per barn with a picture of its breed, feed level and how many animals are pregnant. Everything here refreshes whenever the game saves — with auto-sync even while you play.",
+    tut_k3_t: "Herd at a glance",
+    tut_k3_x: "Tiles on top: all your animals, average health, pregnant animals with the next birth, and a warning when a barn is low on feed. Below: one tile per barn with a picture of its breed, feed level and pregnancies. Everything is read from the savegame and refreshes on every save — with auto-sync even while you play.",
     tut_k4_t: "Barn details",
     tut_k4_x: "Clicking a tile opens that building's full card: cow barns, chicken coops, pastures, stables. The name comes from the building's file on the map — click the pencil to give it your own.",
     tut_k5_t: "Animals & health",
@@ -1190,9 +1338,9 @@ Object.assign(TRANSLATIONS.en, {
     tut_k15_t: "Estimated output",
     tut_k15_x: "How much the barn should produce per day at its current age mix. Useful for planning milk runs and slurry spreading.",
     tut_k16_t: "Herd history",
-    tut_k16_x: "Month by month: head count, average health and milk produced. The app records a point every in-game month from the savegame.",
+    tut_k16_x: "Month by month: head count, average health and milk produced — hover a chart to read any month. The app records a point every in-game month from the savegame.",
     tut_k17_t: "Modded maps",
-    tut_k17_x: "Food, water and production rates come from the base game. If your map or mods add their own animals, import their definitions in Farm settings → animal definitions folder.",
+    tut_k17_x: "Food, water and production rates come from the base game. Mods that change feeding (Animal Food Calculator, Enhanced Animal System) are detected from your savegame automatically — see Farm settings. If your map adds its own animals, import their definitions there (animal definitions folder).",
     tut_k18_t: "Back to the plan",
     tut_k18_x: "Click \"Plan\" to return to the field table.",
 
@@ -1226,11 +1374,11 @@ Object.assign(TRANSLATIONS.en, {
     tut_i2_t: "Map name",
     tut_i2_x: "Type the map name, e.g. \"Hutan Pantai\".",
     tut_i3_t: "Savegame",
-    tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment, animals, feed stock, bales and mixer wagons.",
+    tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment, animals, feed stock, bales, mixer wagons and feed mixers. Below it shows the mods folder the app found — FSG Mod Assistant collections included.",
     tut_i4_t: "Auto-sync",
-    tut_i4_x: "Turn on to update the planner automatically every time you save in the game.",
+    tut_i4_x: "Turn on to update the planner automatically every time you save in the game. The option below also shows the whole land plot area (farmland), not just the field.",
     tut_i5_t: "Map crops & animals",
-    tut_i5_x: "For modded maps: choose the map's folder to import its crops (sowing calendar) and animal definitions.",
+    tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: animal mods found in this savegame.",
     tut_i6_t: "Adjust rates",
     tut_i6_x: "Click \"Adjust rates\" to expand it.",
     tut_i7_t: "Rates",
@@ -1336,7 +1484,9 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c2_t: "Siej teraz",
     tut_c2_x: "Pomarańczowe „Siej teraz”: pole nie jest obsiane, a jego miesiąc siewu to bieżący miesiąc w grze.",
     tut_c3_t: "Obsiane / Do obsiania",
-    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc.",
+    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Kliknij plakietkę, żeby przełączyć ją od razu w tabeli, bez trybu edycji.",
+    tut_c11_t: "Pokosy ✂",
+    tut_c11_x: "Pola z trawą, łąką i innymi użytkami zielonymi mają zamiast „Obsiane” przycisk „Pokosy”. Otwiera on pokosy tego sezonu na osi czasu: kiedy był każdy pokos, na co poszedł (zielonka, siano, kiszonka, sprzedaż) i czy po nim nawożono, wapnowano lub wałowano — te zaznaczenia aktualizują też pole.",
     tut_c4_t: "Ostrzeżenie o płodozmianie ⟳",
     tut_c4_x: "Na tym polu w poprzednim sezonie rosła ta sama uprawa. Rozważ zmianę — najedź na ikonę po szczegóły.",
     tut_c5_t: "Pole dzielone",
@@ -1344,9 +1494,9 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c6_t: "Pola łączone",
     tut_c6_x: "Numer w stylu „5-6” oznacza kilka fizycznych pól uprawianych jako jeden wiersz.",
     tut_c7_t: "Uprawa gleby",
-    tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem.",
+    tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem. Chip obok to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
     tut_c8_t: "Wapno",
-    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Beżowy = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach. Najedź, żeby zobaczyć szczegóły.",
+    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone zachowują pH. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c10_t: "Suma powierzchni",
@@ -1410,8 +1560,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_h1_x: "Pasek po lewej przełącza między planem pól a narzędziami farmy: finanse, zwierzęta, zaopatrzenie, gleby pól, notatki, prognoza plonów i planer pasz.",
     tut_h3_t: "Finanse",
     tut_h3_x: "Kliknij „Finanse”.",
-    tut_h4_t: "Wykresy",
-    tut_h4_x: "Saldo (linia ciągła) i kredyt (przerywana) miesiąc po miesiącu, zapisywane automatycznie z zapisu gry, oraz wykres według sezonów.",
+    tut_h4_t: "Finanse w skrócie",
+    tut_h4_x: "Kafelki na górze: saldo, kredyt, zmiana w tym sezonie i wiek farmy, każdy ze zmianą od poprzedniego miesiąca. Niżej: saldo i kredyt miesiąc po miesiącu (najedź, żeby odczytać dowolny miesiąc), słupek na każdy sezon i pełna tabela miesięczna na żądanie — wszystko zapisywane automatycznie z zapisu gry.",
     tut_h6_t: "Gleby pól",
     tut_h6_x: "Kliknij narzędzie gleb pól.",
     tut_h7_t: "Mieszanka gleb",
@@ -1445,8 +1595,8 @@ Object.assign(TRANSLATIONS.pl, {
 
     tut_k1_t: "Zwierzęta",
     tut_k1_x: "Kliknij „Zwierzęta” w pasku bocznym.",
-    tut_k3_t: "Liczba zwierząt",
-    tut_k3_x: "Wszystkie zwierzęta razem, odczytane z zapisu gry (placeables.xml), i kafelek dla każdego budynku ze zdjęciem rasy, poziomem paszy i liczbą ciężarnych zwierząt. Wszystko odświeża się przy każdym zapisie gry — z automatyczną synchronizacją nawet w trakcie grania.",
+    tut_k3_t: "Stado w skrócie",
+    tut_k3_x: "Kafelki na górze: wszystkie zwierzęta, średnie zdrowie, ciężarne zwierzęta z najbliższym porodem i ostrzeżenie, gdy w którymś budynku kończy się pasza. Niżej: kafelek dla każdego budynku ze zdjęciem rasy, poziomem paszy i ciążami. Wszystko pochodzi z zapisu gry i odświeża się przy każdym zapisie — z automatyczną synchronizacją nawet w trakcie grania.",
     tut_k4_t: "Szczegóły budynku",
     tut_k4_x: "Kliknięcie kafelka otwiera pełną kartę budynku: obory, kurniki, pastwiska, stajnie. Nazwa pochodzi z pliku budynku na mapie — kliknij ołówek, żeby nadać własną.",
     tut_k5_t: "Zwierzęta i zdrowie",
@@ -1478,9 +1628,9 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k15_t: "Szacowana produkcja",
     tut_k15_x: "Ile budynek powinien produkować dziennie przy obecnym wieku zwierząt. Przydatne do planowania odbioru mleka i wywozu gnojowicy.",
     tut_k16_t: "Historia stada",
-    tut_k16_x: "Miesiąc po miesiącu: liczba zwierząt, średnie zdrowie i wyprodukowane mleko. Aplikacja zapisuje punkt co miesiąc gry z zapisu gry.",
+    tut_k16_x: "Miesiąc po miesiącu: liczba zwierząt, średnie zdrowie i wyprodukowane mleko — najedź na wykres, żeby odczytać dowolny miesiąc. Aplikacja zapisuje punkt co miesiąc gry z zapisu gry.",
     tut_k17_t: "Mapy z modami",
-    tut_k17_x: "Zapotrzebowanie i produkcja pochodzą z podstawowej gry. Jeśli mapa lub mody dodają własne zwierzęta, zaimportuj ich definicje w Ustawieniach farmy → folder definicji zwierząt.",
+    tut_k17_x: "Zapotrzebowanie i produkcja pochodzą z podstawowej gry. Mody zmieniające karmienie (Animal Food Calculator, Enhanced Animal System) są wykrywane z zapisu gry automatycznie — zobacz Ustawienia farmy. Jeśli mapa dodaje własne zwierzęta, zaimportuj tam ich definicje (folder definicji zwierząt).",
     tut_k18_t: "Powrót do planu",
     tut_k18_x: "Kliknij „Plan”, żeby wrócić do tabeli pól.",
 
@@ -1514,11 +1664,11 @@ Object.assign(TRANSLATIONS.pl, {
     tut_i2_t: "Nazwa mapy",
     tut_i2_x: "Wpisz nazwę mapy, np. „Hutan Pantai”.",
     tut_i3_t: "Zapis gry",
-    tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt, zwierzęta, zapasy paszy, bele i paszowozy są pobierane z gry.",
+    tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt, zwierzęta, zapasy paszy, bele, paszowozy i mieszalnie pasz są pobierane z gry. Pod spodem widać znaleziony folder modów — także kolekcje FSG Mod Assistanta.",
     tut_i4_t: "Automatyczna synchronizacja",
-    tut_i4_x: "Włącz, żeby planer aktualizował się sam po każdym zapisie gry.",
+    tut_i4_x: "Włącz, żeby planer aktualizował się sam po każdym zapisie gry. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
-    tut_i5_x: "Dla map z modami: wskaż folder mapy, żeby zaimportować jej uprawy (kalendarz siewu) i definicje zwierząt.",
+    tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: mody zwierząt znalezione w tym zapisie.",
     tut_i6_t: "Dostosuj stawki",
     tut_i6_x: "Kliknij „Dostosuj stawki”, żeby je rozwinąć.",
     tut_i7_t: "Dawki",
@@ -1584,7 +1734,15 @@ const CROP_NAME_TRANSLATIONS = {
         "Onion": "Cebula", "Onions": "Cebula", "Sorghum": "Sorgo", "Alfalfa": "Lucerna",
         "Semolina": "Kasza Manna", "Grass": "Trawa", "Hay": "Siano", "Silage": "Kiszonka", "Straw": "Słoma",
         "Chaff": "Sieczka", "Wood Chips": "Zrębki", "Manure": "Obornik", "Slurry": "Gnojowica", "Digestate": "Poferment",
-        "Fallow": "Ugór"
+        "Fallow": "Ugór",
+        "Spelt": "Orkisz", "Mustard": "Gorczyca", "Flax": "Len", "Vetch": "Wyka", "Vetchrye": "Wyka z żytem",
+        "Mustardcover": "Gorczyca na międzyplon", "Fieldgrass": "Trawa polowa",
+        // English titles from mod maps' l10n (e.g. Castile and León).
+        "Forage Poplar": "Topola pastewna", "Teff": "Teff (miłka abisyńska)", "Lavender": "Lawenda", "Mint": "Mięta",
+        "Thyme and Rosemary": "Tymianek i rozmaryn", "Apple": "Jabłka", "Orange": "Pomarańcze", "Cherry": "Czereśnie",
+        "Lemon": "Cytryny", "Quince": "Pigwa", "Acorn": "Żołędzie", "Chestnut": "Kasztany", "Almond (kernel)": "Migdały",
+        "Teff Hay": "Siano z teffu", "Feed Flour": "Mąka paszowa", "Omega-3 Oil": "Olej omega-3",
+        "Crushed Cereal": "Śruta zbożowa", "Crushed Protein Cereal": "Śruta białkowa", "Chopped Tubers": "Rozdrobnione bulwy"
     }
 };
 
@@ -1608,11 +1766,21 @@ Object.keys(CROP_NAME_TRANSLATIONS).forEach(lang => {
     CROP_NAME_TRANSLATIONS_NORMALIZED[lang] = normalized;
 });
 
+// Crop titles from the open farm's map mod translations ({ CROPKEY: { en, pl } },
+// filled in loadFarmConfigs) — maps name crops in their own language
+// ("Centeno"), their l10n says what it is ("Rye").
+let MAP_CROP_TITLES = {};
+
 function translateCropName(name) {
-    if (!name || currentLang === 'en') return name;
+    if (!name) return name;
+    const mapTitles = MAP_CROP_TITLES[String(name).replace(/[_\s]+/g, '').toUpperCase()];
+    if (mapTitles && mapTitles[currentLang]) return mapTitles[currentLang];
+    // No title in this language: use the map's English one through our dictionary.
+    const base = (mapTitles && mapTitles.en) || name;
+    if (currentLang === 'en') return base;
     const dict = CROP_NAME_TRANSLATIONS_NORMALIZED[currentLang];
-    const translated = dict && dict[normalizeCropNameKey(name)];
-    return translated || name;
+    const translated = dict && (dict[normalizeCropNameKey(base)] || dict[normalizeCropNameKey(name)]);
+    return translated || base;
 }
 
 // Animal subType strings look like "COW_HOLSTEIN", "ROOSTER_BOHUSDAL",
@@ -1937,62 +2105,6 @@ function getSeasonBalanceHistory(farm) {
     return history;
 }
 
-// Hand-rolled inline SVG line chart — no charting library, so the app stays
-// dependency-free and works fully offline. Draws balance (solid) and, if
-// any loan was ever owed, a dashed loan line on the same axes.
-function buildBalanceChartSvg(history, opts = {}) {
-    if (!history || history.length < 2) return '';
-
-    // Default labelling = season charts ("S1", "S2", ...); monthly charts pass
-    // their own labelFn/titleFn and a maxLabels cap so a 24-point year-and-a-half
-    // trend doesn't turn the x-axis into mush.
-    const labelFn = opts.labelFn || ((h) => `S${h.season}`);
-    const titleBalanceFn = opts.titleBalanceFn || ((h) => `${t('season')} ${h.season}: ${Math.round(h.balance).toLocaleString()} €`);
-    const titleLoanFn = opts.titleLoanFn || ((h) => `${t('season')} ${h.season} — ${t('detailCredit')}: ${Math.round(h.loan).toLocaleString()} €`);
-    const maxLabels = opts.maxLabels || Infinity;
-    const labelStep = Math.max(1, Math.ceil(history.length / maxLabels));
-
-    const width = 460, height = 180;
-    const padL = 54, padR = 16, padT = 16, padB = 26;
-    const plotW = width - padL - padR;
-    const plotH = height - padT - padB;
-
-    const hasLoan = history.some(h => h.loan > 0);
-    const allValues = history.map(h => h.balance).concat(hasLoan ? history.map(h => h.loan) : [0]);
-    let minV = Math.min(0, ...allValues);
-    let maxV = Math.max(...allValues, 1);
-    if (minV === maxV) maxV = minV + 1;
-
-    const xStep = plotW / (history.length - 1);
-    const xScale = (i) => padL + i * xStep;
-    const yScale = (v) => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
-    const zeroY = yScale(0);
-
-    const balancePts = history.map((h, i) => `${xScale(i)},${yScale(h.balance)}`).join(' ');
-    const loanPts = history.map((h, i) => `${xScale(i)},${yScale(h.loan)}`).join(' ');
-
-    let svg = `<svg viewBox="0 0 ${width} ${height}" class="balance-chart-svg" xmlns="http://www.w3.org/2000/svg">`;
-    svg += `<line x1="${padL}" y1="${yScale(maxV)}" x2="${padL}" y2="${padT + plotH}" class="chart-axis-line" />`;
-    svg += `<line x1="${padL}" y1="${zeroY}" x2="${width - padR}" y2="${zeroY}" class="chart-zero-line" />`;
-    svg += `<text x="${padL - 8}" y="${yScale(maxV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(maxV).toLocaleString()}</text>`;
-    svg += `<text x="${padL - 8}" y="${zeroY + 4}" class="chart-axis-label" text-anchor="end">0</text>`;
-
-    if (hasLoan) svg += `<polyline points="${loanPts}" class="chart-line chart-line--loan" />`;
-    svg += `<polyline points="${balancePts}" class="chart-line chart-line--balance" />`;
-
-    history.forEach((h, i) => {
-        const x = xScale(i);
-        svg += `<circle cx="${x}" cy="${yScale(h.balance)}" r="3.5" class="chart-dot chart-dot--balance"><title>${titleBalanceFn(h)}</title></circle>`;
-        if (hasLoan) svg += `<circle cx="${x}" cy="${yScale(h.loan)}" r="3.5" class="chart-dot chart-dot--loan"><title>${titleLoanFn(h)}</title></circle>`;
-        if (i % labelStep === 0 || i === history.length - 1) {
-            svg += `<text x="${x}" y="${height - 8}" class="chart-axis-label" text-anchor="middle">${labelFn(h, i)}</text>`;
-        }
-    });
-
-    svg += `</svg>`;
-    return svg;
-}
-
 // Same idea as getSeasonBalanceHistory, but for the animal herd: total head
 // count and the (numAnimals-weighted) average health, read from every
 // archived season that has them (older archives made before this feature
@@ -2035,53 +2147,6 @@ function getAnimalHistoryTrend(farm) {
     });
     history.sort((a, b) => a.season - b.season);
     return history;
-}
-
-// Generic single-series version of buildBalanceChartSvg, for trends that
-// don't need a second overlaid line (animal count, average health, ...).
-// Points whose value is null/undefined (e.g. health before this feature
-// existed) are dropped rather than plotted as zero.
-function buildSingleLineChartSvg(history, valueKey, opts) {
-    const points = (history || []).filter(h => h[valueKey] !== null && h[valueKey] !== undefined);
-    if (points.length < 2) return '';
-
-    const width = 460, height = 150;
-    const padL = 40, padR = 16, padT = 14, padB = 26;
-    const plotW = width - padL - padR;
-    const plotH = height - padT - padB;
-
-    const values = points.map(h => h[valueKey]);
-    let minV = opts.fixedMin !== undefined ? opts.fixedMin : Math.min(0, ...values);
-    let maxV = opts.fixedMax !== undefined ? opts.fixedMax : Math.max(...values, 1);
-    if (minV === maxV) maxV = minV + 1;
-
-    const xStep = plotW / (points.length - 1);
-    const xScale = (i) => padL + i * xStep;
-    const yScale = (v) => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
-
-    const linePts = points.map((h, i) => `${xScale(i)},${yScale(h[valueKey])}`).join(' ');
-    const unit = opts.unit || '';
-    const labelFn = opts.labelFn || ((h) => `S${h.season}`);
-    const titleFn = opts.titleFn || ((h) => `${t('season')} ${h.season}: ${Math.round(h[valueKey]).toLocaleString()}${unit}`);
-    const maxLabels = opts.maxLabels || Infinity;
-    const labelStep = Math.max(1, Math.ceil(points.length / maxLabels));
-
-    let svg = `<svg viewBox="0 0 ${width} ${height}" class="balance-chart-svg" xmlns="http://www.w3.org/2000/svg">`;
-    svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" class="chart-axis-line" />`;
-    svg += `<text x="${padL - 6}" y="${yScale(maxV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(maxV).toLocaleString()}${unit}</text>`;
-    svg += `<text x="${padL - 6}" y="${yScale(minV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(minV).toLocaleString()}${unit}</text>`;
-    svg += `<polyline points="${linePts}" class="chart-line ${opts.lineClass || ''}" />`;
-
-    points.forEach((h, i) => {
-        const x = xScale(i);
-        svg += `<circle cx="${x}" cy="${yScale(h[valueKey])}" r="3.5" class="chart-dot ${opts.dotClass || ''}"><title>${titleFn(h)}</title></circle>`;
-        if (i % labelStep === 0 || i === points.length - 1) {
-            svg += `<text x="${x}" y="${height - 8}" class="chart-axis-label" text-anchor="middle">${labelFn(h, i)}</text>`;
-        }
-    });
-
-    svg += `</svg>`;
-    return svg;
 }
 
 // =============================================================
@@ -2493,19 +2558,390 @@ function wireBarnPanel(bodyEl) {
     });
 }
 
-// Finance: Bank And Credit (FS25_BankCredit) contracts behind the loan total.
-function bankCreditLine(farm) {
-    const bc = farm && farm.bankCredit;
-    if (!bc) return '';
-    const value = bc.count
-        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString())
-        : t('bankCreditNone');
-    return `<p class="details-category"><span>${t('bankCreditLabel')}</span><span class="details-category-value">${value}</span></p>`;
-}
-
 function getDetailValue(id) {
     const el = document.getElementById(id);
     return el ? el.textContent : '-';
+}
+
+// =============================================================
+// FINANCE VIEW — KPI tiles, monthly balance chart (crosshair tooltip),
+// season-end bars, table view. Colors: balance #3B7542 / loan #C97A2B,
+// validated with the dataviz palette checker against --color-surface-soft
+// (the brand #3F6B44 is too gray for a chart mark). Loan is also dashed, so
+// the two series never rely on color alone.
+// =============================================================
+const FIN_LOCALE = () => (currentLang === 'pl' ? 'pl-PL' : 'en-US');
+function finMoney(v) {
+    return `${Math.round(v).toLocaleString(FIN_LOCALE())} €`;
+}
+function finCompact(v) {
+    return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+function finSigned(v) {
+    return (v > 0 ? '+' : v < 0 ? '−' : '') + finMoney(Math.abs(v));
+}
+// "Nice" axis ticks (1/2/5 × 10^n) covering [min, max].
+function finTicks(min, max, count = 4) {
+    const span = Math.max(1, max - min);
+    const raw = span / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+    const ticks = [];
+    for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v));
+    return ticks;
+}
+
+function finDeltaHtml(delta, label) {
+    if (delta == null || !isFinite(delta)) return '';
+    const dir = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+    const icon = { up: 'fa-arrow-trend-up', down: 'fa-arrow-trend-down', flat: 'fa-minus' }[dir];
+    return `<span class="fin-delta fin-delta--${dir}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${finSigned(delta)}</span>
+        <span class="fin-delta-label">${label}</span>`;
+}
+
+// KPI row: balance (hero), loan, change this season, play time.
+function renderFinanceKpis(farm, monthly, history) {
+    const parse = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
+    const balance = parse(farm && farm.balance);
+    const loan = parse(farm && farm.loan);
+    const prevMonth = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+    const season = (farm && farm.currentSeason) || 1;
+    // Season start: the last archived season's end balance, else this season's first month.
+    const prevSeason = history.filter(h => h.season < season).slice(-1)[0];
+    const firstThisSeason = monthly.find(r => r.appSeason === season);
+    const seasonStart = prevSeason ? prevSeason.balance : (firstThisSeason ? firstThisSeason.balance : null);
+    const bc = farm && farm.bankCredit;
+    const loanSub = bc && bc.count
+        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString(FIN_LOCALE()))
+        : (loan > 0 ? '' : t('finNoLoan'));
+    return `<div class="fin-kpis">
+        <div class="fin-kpi fin-kpi--hero">
+            <span class="fin-kpi-label">${t('detailBalance')}</span>
+            <span class="fin-kpi-value">${finMoney(balance)}</span>
+            <span class="fin-kpi-sub">${prevMonth ? finDeltaHtml(balance - prevMonth.balance, t('finVsPrevMonth')) : t('finNoHistory')}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('detailCredit')}</span>
+            <span class="fin-kpi-value">${finMoney(loan)}</span>
+            <span class="fin-kpi-sub">${escapeHtml(loanSub)}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('finSeasonChange').replace('{n}', season)}</span>
+            <span class="fin-kpi-value">${seasonStart != null ? finSigned(balance - seasonStart) : '–'}</span>
+            <span class="fin-kpi-sub">${seasonStart != null ? t('finFromStart').replace('{v}', finMoney(seasonStart)) : t('finNoHistory')}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('detailFarmAge')}</span>
+            <span class="fin-kpi-value">${escapeHtml(getDetailValue('detail-age'))}</span>
+        </div>
+    </div>`;
+}
+
+// --- Shared trend chart (Finance, Animals) ------------------------------------
+// Monthly rows as lines: the first series gets an area wash, recessive
+// gridlines at nice ticks, month labels + year marks under the axis, the last
+// value labelled at the end, and a crosshair tooltip (wireTrendChart).
+// series: [{ key, label, cls: 'balance'|'loan'|..., dashed }]
+// opts: { format(v) -> axis/end label, formatFull(v) -> tooltip value,
+//         domain: [min, max] fixed, ariaLabel }
+function buildTrendChart(rows, width, series, opts = {}) {
+    const W = Math.max(520, Math.round(width)), H = 260;
+    const padL = 64, padR = 96, padT = 16, padB = 44;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const format = opts.format || finCompact;
+    const valid = v => v !== null && v !== undefined && isFinite(v);
+    const vals = [];
+    series.forEach(s => rows.forEach(r => { if (valid(r[s.key])) vals.push(r[s.key]); }));
+    const ticks = opts.domain
+        ? finTicks(opts.domain[0], opts.domain[1])
+        : finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
+    const minV = ticks[0], maxV = ticks[ticks.length - 1];
+    const x = i => padL + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1));
+    const y = v => padT + plotH - (Math.min(maxV, Math.max(minV, v)) - minV) / (maxV - minV) * plotH;
+    const pathOf = key => {
+        let d = '', pen = false;
+        rows.forEach((r, i) => {
+            if (!valid(r[key])) { pen = false; return; }
+            d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(r[key]).toFixed(1)} `;
+            pen = true;
+        });
+        return d.trim();
+    };
+
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(opts.ariaLabel || '')}">`;
+    ticks.forEach(v => {
+        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${escapeHtml(format(v))}</text>`;
+    });
+    const every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor(plotW / 56))));
+    rows.forEach((r, i) => {
+        if (i % every === 0 || i === rows.length - 1) s += `<text class="fin-axis" x="${x(i)}" y="${padT + plotH + 18}" text-anchor="middle">${escapeHtml(monthlyRowLabel(r))}</text>`;
+        if (i === 0 || r.period % 12 === 0) s += `<text class="fin-axis fin-axis--year" x="${x(i)}" y="${padT + plotH + 36}" text-anchor="middle">${t('finYear').replace('{y}', r.gameYear)}</text>`;
+    });
+    // Area under the first series (only where it has values).
+    const first = series[0];
+    const firstIdx = rows.map((r, i) => valid(r[first.key]) ? i : -1).filter(i => i >= 0);
+    if (firstIdx.length > 1) {
+        const base = y(Math.max(minV, 0));
+        s += `<path class="fin-area trend-area--${first.cls}" d="${pathOf(first.key)} L${x(firstIdx[firstIdx.length - 1])},${base} L${x(firstIdx[0])},${base} Z"/>`;
+    }
+    series.slice().reverse().forEach(se => { s += `<path class="fin-line trend-line--${se.cls}${se.dashed ? ' is-dashed' : ''}" d="${pathOf(se.key)}"/>`; });
+    series.forEach((se, k) => {
+        const li = rows.map((r, i) => valid(r[se.key]) ? i : -1).filter(i => i >= 0).pop();
+        if (li === undefined) return;
+        const v = rows[li][se.key];
+        s += `<circle class="fin-dot trend-dot--${se.cls}" cx="${x(li)}" cy="${y(v)}" r="4.5"/>`;
+        s += `<text class="fin-endlabel${k ? ' fin-endlabel--muted' : ''}" x="${x(li) + 10}" y="${y(v) + 4}">${escapeHtml(format(v, true))}</text>`;
+    });
+    s += `<line class="fin-crosshair" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}" visibility="hidden"/>`;
+    series.forEach((se, k) => { s += `<circle class="fin-hover-dot trend-dot--${se.cls}" data-series="${k}" r="5" visibility="hidden"/>`; });
+    s += `<rect class="fin-hit" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent"/>`;
+    s += `</svg>`;
+    return { svg: s, geom: { rows, x, y, series, formatFull: opts.formatFull || (v => String(v)), deltaFull: opts.deltaFull } };
+}
+
+function wireTrendChart(card, geom) {
+    if (!card || !geom) return;
+    const svg = card.querySelector('svg'), hit = svg && svg.querySelector('.fin-hit');
+    const tip = card.querySelector('.fin-tooltip');
+    if (!hit || !tip) return;
+    const cross = svg.querySelector('.fin-crosshair');
+    const dots = [...svg.querySelectorAll('.fin-hover-dot')];
+    const { rows, x, y, series, formatFull, deltaFull } = geom;
+    const valid = v => v !== null && v !== undefined && isFinite(v);
+    const show = (i) => {
+        const r = rows[i], cx = x(i);
+        cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+        dots.forEach((d, k) => {
+            const v = r[series[k].key];
+            if (!valid(v)) { d.setAttribute('visibility', 'hidden'); return; }
+            d.setAttribute('cx', cx); d.setAttribute('cy', y(v)); d.setAttribute('visibility', 'visible');
+        });
+        tip.replaceChildren();
+        const head = document.createElement('div'); head.className = 'fin-tip-head';
+        head.textContent = `${translateMonth(r.month)} · ${t('finYear').replace('{y}', r.gameYear)}`;
+        tip.appendChild(head);
+        series.forEach(se => {
+            const v = r[se.key];
+            const row = document.createElement('div'); row.className = 'fin-tip-row';
+            const key = document.createElement('span'); key.className = `fin-tip-key trend-key--${se.cls}${se.dashed ? ' is-dashed' : ''}`;
+            const val = document.createElement('strong'); val.textContent = valid(v) ? formatFull(v) : '–';
+            const l = document.createElement('span'); l.className = 'fin-tip-label'; l.textContent = se.label;
+            row.append(key, val, l); tip.appendChild(row);
+        });
+        const prev = rows[i - 1], k0 = series[0].key;
+        if (deltaFull && prev && valid(prev[k0]) && valid(r[k0])) {
+            const d = document.createElement('div'); d.className = 'fin-tip-delta';
+            d.textContent = `${deltaFull(r[k0] - prev[k0])} ${t('finVsPrevMonth')}`;
+            tip.appendChild(d);
+        }
+        tip.hidden = false;
+        const box = svg.getBoundingClientRect(), cb = card.getBoundingClientRect();
+        const px = box.left - cb.left + cx * (box.width / svg.viewBox.baseVal.width);
+        tip.style.left = Math.min(cb.width - tip.offsetWidth - 8, Math.max(8, px + 14)) + 'px';
+        tip.style.top = '8px';
+    };
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hidden = true; };
+    hit.addEventListener('pointermove', e => {
+        const box = svg.getBoundingClientRect();
+        const sx = (e.clientX - box.left) * (svg.viewBox.baseVal.width / box.width);
+        let best = 0, bd = Infinity;
+        rows.forEach((_, i) => { const d = Math.abs(x(i) - sx); if (d < bd) { bd = d; best = i; } });
+        show(best);
+    });
+    hit.addEventListener('pointerleave', hide);
+}
+
+// A titled card holding one trend chart; `build(width)` returns buildTrendChart().
+// Charts are registered so they can be redrawn at their card's real width.
+let trendCharts = [];
+function trendCardHtml(id, title, legendHtml, noteHtml, build, width) {
+    const chart = build(width);
+    trendCharts.push({ id, build, drawnAt: width });
+    return `<section class="fin-card fin-chart trend-card" data-trend="${id}">
+        <div class="fin-card-head"><h4>${title}</h4>${legendHtml || ''}</div>
+        ${chart.svg}
+        <div class="fin-tooltip" hidden></div>
+        ${noteHtml || ''}
+    </section>`;
+}
+
+// After a view's HTML is in the page: wire every trend chart and redraw it
+// at its card's real width (the view may still be hidden while rendering)
+// and on window resize, so charts fill their card with unscaled text.
+let trendResizeObserver = null;
+function activateTrendCharts(root) {
+    if (trendResizeObserver) trendResizeObserver.disconnect();
+    const redraw = (entry, card) => {
+        const inner = card.clientWidth - 36;
+        if (inner <= 0 || Math.abs(inner - entry.drawnAt) <= 4) return false;
+        entry.drawnAt = inner;
+        const chart = entry.build(inner);
+        card.querySelector('svg').outerHTML = chart.svg;
+        wireTrendChart(card, chart.geom);
+        return true;
+    };
+    trendCharts.forEach(entry => {
+        const card = root.querySelector(`[data-trend="${entry.id}"]`);
+        if (!card) return;
+        if (!redraw(entry, card)) wireTrendChart(card, entry.build(entry.drawnAt).geom);
+    });
+    if (typeof ResizeObserver === 'undefined') return;
+    trendResizeObserver = new ResizeObserver(entries => entries.forEach(en => {
+        const card = en.target;
+        const entry = trendCharts.find(c => c.id === card.dataset.trend);
+        if (entry) redraw(entry, card);
+    }));
+    root.querySelectorAll('[data-trend]').forEach(card => trendResizeObserver.observe(card));
+}
+
+function trendLegendHtml(items) {
+    return `<div class="chart-legend fin-legend">${items.map(it => `<span class="fin-legend-item"><span class="fin-legend-line trend-key--${it.cls}${it.dashed ? ' is-dashed' : ''}"></span>${it.label}</span>`).join('')}</div>`;
+}
+
+// Per-season values as columns (≤24px, 4px rounded top, value above).
+function buildSeasonBars(history, key, width, format, ariaLabel) {
+    const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
+    const padL = 64, padR = 16, padT = 26, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const vals = history.map(h => h[key] || 0);
+    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
+    const minV = ticks[0], maxV = ticks[ticks.length - 1];
+    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
+    const band = plotW / history.length, bw = Math.min(24, band * 0.5);
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(ariaLabel || '')}">`;
+    ticks.forEach(v => {
+        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${escapeHtml(format(v))}</text>`;
+    });
+    history.forEach((h, i) => {
+        const val = h[key] || 0;
+        const cx = padL + band * i + band / 2;
+        const top = y(Math.max(val, 0)), base = y(Math.max(minV, 0)), bot = y(Math.min(val, 0));
+        const barTop = val >= 0 ? top : base, barH = Math.max(1, (val >= 0 ? base - top : bot - base));
+        const r = Math.min(4, barH / 2);
+        const x0 = cx - bw / 2, x1 = cx + bw / 2;
+        const d = val >= 0
+            ? `M${x0},${barTop + barH} V${barTop + r} Q${x0},${barTop} ${x0 + r},${barTop} H${x1 - r} Q${x1},${barTop} ${x1},${barTop + r} V${barTop + barH} Z`
+            : `M${x0},${barTop} V${barTop + barH - r} Q${x0},${barTop + barH} ${x0 + r},${barTop + barH} H${x1 - r} Q${x1},${barTop + barH} ${x1},${barTop + barH - r} V${barTop} Z`;
+        const current = i === history.length - 1;
+        s += `<g class="fin-bar-g" tabindex="0"><title>${escapeHtml(t('season') + ' ' + h.season + ': ' + format(val, true))}</title>
+            <rect x="${cx - band / 2}" y="${padT}" width="${band}" height="${plotH}" fill="transparent"/>
+            <path class="fin-bar${current ? ' fin-bar--current' : ''}" d="${d}"/>
+            <text class="fin-barlabel" x="${cx}" y="${(val >= 0 ? barTop : barTop + barH) - 8}" text-anchor="middle">${escapeHtml(format(val, true))}</text>
+            <text class="fin-axis" x="${cx}" y="${padT + plotH + 20}" text-anchor="middle">S${h.season}${current ? ' · ' + t('finNow') : ''}</text></g>`;
+    });
+    s += `</svg>`;
+    return s;
+}
+
+function renderFinancePanel(bodyEl, farm) {
+    const history = getSeasonBalanceHistory(farm);
+    const monthly = getMonthlyHistory(farm);
+    const width = Math.max(520, (bodyEl.clientWidth || 900) - 48);
+    trendCharts = [];
+    let html = renderFinanceKpis(farm, monthly, history);
+
+    if (monthly.length > 1) {
+        const hasLoan = monthly.some(r => r.loan > 0);
+        const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
+        if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
+        const opts = { format: (v, end) => finCompact(v) + (end ? ' €' : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
+            w => buildTrendChart(monthly, w, series, opts), width);
+    }
+    if (history.length > 1) {
+        html += `<section class="fin-card fin-chart">
+            <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
+            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' €' : ''), t('finChartSeasons'))}
+        </section>`;
+    }
+    if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
+
+    if (monthly.length) {
+        const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
+            const prev = arr[idx + 1];
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td>${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+        }).join('');
+        html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
+            <table class="fin-table"><thead><tr><th>${t('finColMonth')}</th><th>${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <tbody>${rowsHtml}</tbody></table></details>`;
+    }
+    bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
+    activateTrendCharts(bodyEl);
+}
+
+// --- Animals overview: KPI tiles + trend charts ---------------------------
+function animalsKpisHtml(farm, buildings, monthly, summaries) {
+    const heads = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + c.numAnimals, 0), 0);
+    const healthSum = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + (c.health || 0) * c.numAnimals, 0), 0);
+    const health = heads ? healthSum / heads : null;
+    const prev = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+    let pregnant = 0, nextBirth = null;
+    buildings.forEach(b => {
+        const r = barnReproSummary(b);
+        if (!r) return;
+        pregnant += r.pregnant || 0;
+        if (r.nextBirth !== null && r.nextBirth !== undefined) nextBirth = nextBirth === null ? r.nextBirth : Math.min(nextBirth, r.nextBirth);
+    });
+    const lowBarns = buildings.filter(b => summaries && summaries[b.id] && (summaries[b.id].lowFeed || summaries[b.id].noFeedAtAll));
+    const countDelta = prev ? heads - (prev.animals || 0) : null;
+    const healthDelta = prev && prev.avgHealth != null && health != null ? health - prev.avgHealth : null;
+    const deltaSpan = (d, fmt) => {
+        if (d == null || !isFinite(d)) return `<span class="fin-kpi-sub">${t('finNoHistory')}</span>`;
+        const dir = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
+        const icon = { up: 'fa-arrow-trend-up', down: 'fa-arrow-trend-down', flat: 'fa-minus' }[dir];
+        return `<span class="fin-kpi-sub"><span class="fin-delta fin-delta--${dir}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${fmt(d)}</span><span class="fin-delta-label">${t('finVsPrevMonth')}</span></span>`;
+    };
+    const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
+    return `<div class="fin-kpis">
+        <div class="fin-kpi fin-kpi--hero">
+            <span class="fin-kpi-label">${t('detailAnimals')}</span>
+            <span class="fin-kpi-value">${heads.toLocaleString(FIN_LOCALE())}</span>
+            ${deltaSpan(countDelta, signedInt)}
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('avgHealthLabel')}</span>
+            <span class="fin-kpi-value">${health != null ? Math.round(health) + '%' : '–'}</span>
+            ${deltaSpan(healthDelta, d => signedInt(d) + ' pp')}
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('reproPregnant')}</span>
+            <span class="fin-kpi-value">${pregnant.toLocaleString(FIN_LOCALE())}</span>
+            <span class="fin-kpi-sub">${pregnant && nextBirth !== null ? escapeHtml(reproDueText(nextBirth)) : ''}</span>
+        </div>
+        <div class="fin-kpi${lowBarns.length ? ' fin-kpi--alert' : ''}">
+            <span class="fin-kpi-label">${t('hubFeedLevel')}</span>
+            <span class="fin-kpi-value">${lowBarns.length ? `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${lowBarns.length}` : `<i class="fa-solid fa-circle-check" aria-hidden="true"></i>`}</span>
+            <span class="fin-kpi-sub">${lowBarns.length ? escapeHtml(t('animKpiLowFeed').replace('{list}', lowBarns.map(b => buildingDisplayName(farm, b)).join(', '))) : t('animKpiFeedOk')}</span>
+        </div>
+    </div>`;
+}
+
+function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
+    let html = '';
+    const hasHerd = monthly.some(r => (r.animals || 0) > 0);
+    const hasProd = monthly.some(r => (r.productionDeltaTotal || 0) > 0);
+    const int = v => Math.round(v).toLocaleString(FIN_LOCALE());
+    const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
+    if (monthly.length > 1 && hasHerd) {
+        html += trendCardHtml('anim-count', t('animChartCount'), '', '',
+            w => buildTrendChart(monthly, w, [{ key: 'animals', label: t('detailAnimals'), cls: 'animals' }],
+                { format: v => finCompact(v), formatFull: int, deltaFull: signedInt, ariaLabel: t('animChartCount') }), width);
+        html += trendCardHtml('anim-health', t('animChartHealth'), '', '',
+            w => buildTrendChart(monthly, w, [{ key: 'avgHealth', label: t('avgHealthLabel'), cls: 'health' }],
+                { format: v => Math.round(v) + '%', formatFull: v => Math.round(v) + '%', deltaFull: d => signedInt(d) + ' pp', domain: [0, 100], ariaLabel: t('animChartHealth') }), width);
+        if (hasProd) {
+            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t('hubProductionProxyNote')}</p>`,
+                w => buildTrendChart(monthly, w, [{ key: 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
+                    { format: (v, end) => finCompact(v) + (end ? ' l' : ''), formatFull: v => int(v) + ' l', ariaLabel: t('hubMilkProduced') }), width);
+        }
+    } else if (seasonHistory.length > 1) {
+        html += `<section class="fin-card fin-chart"><div class="fin-card-head"><h4>${t('animChartSeasons')}</h4></div>
+            ${buildSeasonBars(seasonHistory, 'animals', width, v => finCompact(v), t('animChartSeasons'))}</section>`;
+    }
+    return html || `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
 }
 
 window.openHubPanel = function (type) {
@@ -2516,48 +2952,8 @@ window.openHubPanel = function (type) {
     if (!titleEl || !bodyEl) return;
 
     if (type === 'finance') {
-        const farm = getAllFarms().find(f => f.id === currentFarmId);
-        const history = getSeasonBalanceHistory(farm);
-        const monthly = getMonthlyHistory(farm);
-        const hasLoanData = history.some(h => h.loan > 0) || monthly.some(r => r.loan > 0);
-
-        const monthLabelFn = (r) => (r.period % 12 === 0 ? `${monthlyRowLabel(r)} '${r.gameYear}` : monthlyRowLabel(r));
-        const monthBalanceTitle = (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.balance).toLocaleString()} €`;
-        const monthLoanTitle = (r) => `${translateMonth(r.month)} · Y${r.gameYear} — ${t('detailCredit')}: ${Math.round(r.loan).toLocaleString()} €`;
-
-        const monthlyChartHtml = monthly.length > 1 ? `
-            <div class="balance-chart-wrapper">
-                <div class="chart-caption">${t('hubMonthlyTrend')}</div>
-                <div class="chart-legend">
-                    <span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('detailBalance')}</span>
-                    ${hasLoanData ? `<span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--loan"></span>${t('detailCredit')}</span>` : ''}
-                </div>
-                ${buildBalanceChartSvg(monthly, {
-                    labelFn: monthLabelFn, titleBalanceFn: monthBalanceTitle,
-                    titleLoanFn: monthLoanTitle, maxLabels: 9
-                })}
-            </div>` : '';
-
-        const seasonChartHtml = history.length > 1 ? `
-            <div class="balance-chart-wrapper">
-                ${monthly.length > 1 ? `<div class="chart-caption">${t('hubSeasonTrend')}</div>` : ''}
-                <div class="chart-legend">
-                    <span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('detailBalance')}</span>
-                    ${hasLoanData ? `<span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--loan"></span>${t('detailCredit')}</span>` : ''}
-                </div>
-                ${buildBalanceChartSvg(history)}
-            </div>` : '';
-
         titleEl.textContent = t('hubFinance');
-        bodyEl.innerHTML = `
-            <p class="details-category"><span>${t('detailBalance')}</span><span class="details-category-value">${getDetailValue('details-balance')}</span></p>
-            <p class="details-category"><span>${t('detailCredit')}</span><span class="details-category-value">${getDetailValue('detail-loan')}</span></p>
-            ${bankCreditLine(getCurrentFarm())}
-            <p class="details-category"><span>${t('detailFarmAge')}</span><span class="details-category-value">${getDetailValue('detail-age')}</span></p>
-            ${(monthlyChartHtml || seasonChartHtml)
-                ? monthlyChartHtml + seasonChartHtml
-                : `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`}
-        `;
+        renderFinancePanel(bodyEl, getAllFarms().find(f => f.id === currentFarmId));
     } else if (type === 'animals') {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
         const buildings = (farm && farm.animalBuildings) || [];
@@ -2570,59 +2966,16 @@ window.openHubPanel = function (type) {
         // isn't gated on buildings.length).
         const animalHistory = getAnimalHistoryTrend(farm);
         const monthlyAnim = getMonthlyHistory(farm);
-        const monthLabelFn = (r) => (r.period % 12 === 0 ? `${monthlyRowLabel(r)} '${r.gameYear}` : monthlyRowLabel(r));
 
-        const historySectionHtml = (() => {
-            let sectionHtml = '';
-
-            // --- Monthly trends (preferred) ---
-            const hasHerd = monthlyAnim.some(r => (r.animals || 0) > 0);
-            const hasProd = monthlyAnim.some(r => (r.productionDeltaTotal || 0) > 0);
-            if (monthlyAnim.length > 1 && hasHerd) {
-                const mCount = buildSingleLineChartSvg(monthlyAnim, 'animals', {
-                    lineClass: 'chart-line--animals', dotClass: 'chart-dot--animals', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.animals).toLocaleString()}`
-                });
-                const mHealth = buildSingleLineChartSvg(monthlyAnim, 'avgHealth', {
-                    lineClass: 'chart-line--health', dotClass: 'chart-dot--health', fixedMin: 0, fixedMax: 100, unit: '%', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.avgHealth)}%`
-                });
-                const mProd = hasProd ? buildSingleLineChartSvg(monthlyAnim, 'productionDeltaTotal', {
-                    lineClass: 'chart-line--balance', dotClass: 'chart-dot--balance', unit: ' L', maxLabels: 9,
-                    labelFn: monthLabelFn,
-                    titleFn: (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.productionDeltaTotal).toLocaleString()} L`
-                }) : '';
-
-                if (mCount) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-caption">${t('hubMonthlyTrend')}</div><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--animals"></span>${t('detailAnimals')}</span></div>${mCount}</div>`;
-                if (mHealth) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--health"></span>${t('avgHealthLabel')}</span></div>${mHealth}</div>`;
-                if (mProd) sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('hubMilkProduced')}</span></div>${mProd}<p class="hub-panel-note">${t('hubProductionProxyNote')}</p></div>`;
-            }
-
-            // --- Per-season trends (fallback / long-term overview) ---
-            const countChart = buildSingleLineChartSvg(animalHistory, 'animals', {
-                lineClass: 'chart-line--animals', dotClass: 'chart-dot--animals'
-            });
-            const healthChart = buildSingleLineChartSvg(animalHistory, 'avgHealth', {
-                lineClass: 'chart-line--health', dotClass: 'chart-dot--health', fixedMin: 0, fixedMax: 100, unit: '%'
-            });
-            if (countChart) {
-                sectionHtml += `<div class="balance-chart-wrapper">${sectionHtml ? `<div class="chart-caption">${t('hubSeasonTrend')}</div>` : ''}<div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--animals"></span>${t('detailAnimals')}</span></div>${countChart}</div>`;
-            }
-            if (healthChart) {
-                sectionHtml += `<div class="balance-chart-wrapper"><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--health"></span>${t('avgHealthLabel')}</span></div>${healthChart}</div>`;
-            }
-
-            return sectionHtml || `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
-        })();
+        trendCharts = [];
+        const trendWidth = Math.max(520, (bodyEl.clientWidth || 900) - 48);
 
         if (buildings.length === 0) {
-            bodyEl.innerHTML = `
-                <p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>
+            bodyEl.innerHTML = `<div class="fin-view anim-view">
                 <p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>
-                ${historySectionHtml}
-            `;
+                ${animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth)}
+            </div>`;
+            activateTrendCharts(bodyEl);
         } else {
             // Fallback reference for buildings without a manually-entered
             // capacity: scaled against the fullest total feed load among
@@ -2642,7 +2995,7 @@ window.openHubPanel = function (type) {
             // silos/bales is shared by every building, so "how long it lasts"
             // is stock / what the whole farm eats of it.
             const feedPlan = getFeedPlan(farm);
-            const feedStockCat = feedStockByCategory(farm && farm.feedStock);
+            const feedStockCat = feedStockCategoriesFor(farm, feedPlan);
             const farmDailyByCat = {};
             buildings.forEach(b => b.clusters.forEach(c => {
                 const type = animalTypeOf(c.subType);
@@ -2920,8 +3273,8 @@ window.openHubPanel = function (type) {
                 </details>`;
             } else {
                 // --- Overview: one clickable tile per barn ---
-                html += `<p class="details-category"><span>${t('detailAnimals')}</span><span class="details-category-value">${getDetailValue('detail-animals')}</span></p>`;
-                html += `<div class="barn-tile-grid">`;
+                html += animalsKpisHtml(farm, buildings, monthlyAnim, summaries);
+                html += `<h4 class="anim-section-title">${t('animBuildings')}</h4><div class="barn-tile-grid">`;
                 buildings.forEach(building => {
                     const sum = summaries[building.id];
                     const warn = sum.lowFeed || sum.noFeedAtAll;
@@ -2976,11 +3329,13 @@ window.openHubPanel = function (type) {
                     </div>`;
                 });
                 html += `</div>`; // .barn-tile-grid
-                html += historySectionHtml;
+                html += animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth);
+                html = `<div class="fin-view anim-view">${html}</div>`;
             }
 
             bodyEl.innerHTML = html;
             wireBarnPanel(bodyEl, farm);
+            activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
                 const plan = getFeedPlan(getCurrentFarm());
@@ -3340,6 +3695,15 @@ const TMR_DEFAULT = { HAY: 40, SILAGE: 40, STRAW: 15, MINERAL: 5 };
 // 'sale' is always offered on top of these. Grassland crops are cut several
 // times a year, so their yield is multiplied by plan.grassCuts.
 const FEED_GRASSLAND_CROPS = ['Grass', 'Meadow', 'Alfalfa', 'Clover'];
+// Crops cut several times a season — the fields table shows "Cuts" (Pokosy)
+// for them instead of the sown badge. Teff / field grass come from mod maps.
+const CUT_CROPS = [...FEED_GRASSLAND_CROPS, 'Teffgrass', 'Fieldgrass'];
+function isCutCrop(crop) {
+    return CUT_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+// What a cut is for -> feed category (sale = none).
+const CUT_USES = ['grass', 'hay', 'silage', 'sale'];
+const CUT_USE_CATEGORY = { grass: 'GRASS', hay: 'HAY', silage: 'SILAGE' };
 // Chopped whole for silage at their own harvest yield (the maize chaff-yield
 // setting doesn't apply to them).
 const FEED_SILAGE_OWN_YIELD = ['Greenrye'];
@@ -3466,6 +3830,11 @@ function saveFeedPlan(plan) {
 function resolveRation(type, plan) {
     const groups = ANIMAL_FOOD_GROUPS[type] || {};
     let id = plan.rations[type] || defaultRationFor(type);
+    if (id.startsWith('mixer:')) {
+        const mixer = feedMixersFor(getCurrentFarm(), type).find(m => 'mixer:' + m.id === id);
+        if (mixer) return mixerRation(mixer, type);
+        id = defaultRationFor(type);
+    }
     if (id.startsWith('custom:')) {
         const feed = plan.customFeeds.find(f => 'custom:' + f.id === id && f.animalType === type);
         if (feed) return { id, name: feed.name, efficiency: feed.efficiency, ingredients: feed.ingredients, custom: true };
@@ -3479,22 +3848,88 @@ function resolveRation(type, plan) {
     return { id, name: t('feedRation_' + id), efficiency: g.efficiency, ingredients, tmr: !!g.tmr };
 }
 
-// <option>s for a species' ration picker: built-in rations, then that
-// species' custom feeds in their own group. Shared by the feed planner and
-// the Animals panel so both always offer (and save) the same choice.
+// <option>s for a species' ration picker: built-in rations, feed mixers that
+// make this species' feed, then its custom feeds in their own group. Shared by
+// the feed planner and the Animals panel so both always offer (and save) the
+// same choice.
 function feedRationOptionsHtml(type, plan, selectedId) {
     const builtIn = Object.keys(ANIMAL_FOOD_GROUPS[type] || {}).map(id =>
         `<option value="${id}" ${selectedId === id ? 'selected' : ''}>${t('feedRation_' + id)} (${ANIMAL_FOOD_GROUPS[type][id].efficiency}%)</option>`).join('');
+    const mixers = feedMixersFor(getCurrentFarm(), type).map(m =>
+        `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(mixerDisplayName(getCurrentFarm(), m))} (100%)</option>`).join('');
     const custom = plan.customFeeds.filter(f => f.animalType === type).map(f =>
         `<option value="custom:${f.id}" ${selectedId === 'custom:' + f.id ? 'selected' : ''}>${escapeHtml(f.name)} (${f.efficiency}%)</option>`).join('');
-    return builtIn + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+}
+
+// Name the player gave a feed mixer (per farm), else the one from its mod.
+function mixerDisplayName(farm, mixer) {
+    const custom = farm && farm.feedMixerNames && farm.feedMixerNames[mixer.id];
+    if (custom) return custom;
+    const titles = mixer.nameTitles;
+    return (titles && titles[currentLang]) || mixer.name;
+}
+
+// Feed mixers whose product is the complete feed of this species (pig food
+// for pigs) — they can be picked as that species' ration.
+const FEED_MIXER_RATION_PRODUCT = { PIG: 'PIGFOOD' };
+function feedMixersFor(farm, type) {
+    const product = FEED_MIXER_RATION_PRODUCT[type];
+    if (!product) return [];
+    return ((farm && farm.feedMixers) || []).filter(m => m.products.includes(product));
+}
+
+// The recipe a mixer ration follows: the first switched-on recipe making the
+// product, else the mixer's first one for it.
+function mixerRecipeFor(mixer, product) {
+    const makes = mixer.recipes.filter(r => r.outputs.some(o => o.fillType === product));
+    return makes.find(r => r.enabled) || makes[0] || null;
+}
+
+// A mixer as a ration: the animals eat its product, so their need turns into
+// the recipe's crops — litres of each ingredient per litre of product (e.g.
+// maize + barley + soy 1:1:1 -> 3 l make 3 l, a third each; 2+2+2 -> 4 l
+// needs 1.5 l of crops per litre). `absolute` = pct already per 100 l of feed.
+function mixerRation(mixer, type) {
+    const product = FEED_MIXER_RATION_PRODUCT[type];
+    const recipe = mixerRecipeFor(mixer, product);
+    const out = recipe ? recipe.outputs.filter(o => o.fillType === product).reduce((s, o) => s + o.amount, 0) : 0;
+    const byCat = {};
+    if (recipe && out > 0) {
+        // Only ingredients that are a feed category count — water, oils and a
+        // map's intermediate products (crushed cereal…) aren't grown on fields.
+        recipe.inputs.forEach(i => {
+            const c = FEED_FILLTYPE_CATEGORY[i.fillType];
+            if (!c) return;
+            byCat[c] = (byCat[c] || 0) + i.amount / out * 100;
+        });
+    }
+    const ingredients = Object.keys(byCat).length
+        ? Object.entries(byCat).map(([category, pct]) => ({ category, pct }))
+        : ANIMAL_FOOD_GROUPS[type].mix.ingredients;
+    return {
+        id: 'mixer:' + mixer.id, name: t('feedRationMixer') + ' · ' + mixerDisplayName(getCurrentFarm(), mixer), efficiency: 100,
+        ingredients, absolute: !!Object.keys(byCat).length,
+        mixer: { id: mixer.id, name: mixerDisplayName(getCurrentFarm(), mixer), product, recipeEnabled: !!(recipe && recipe.enabled), recipe }
+    };
+}
+
+// Stock litres per category with ready-mixed pig food split the way the
+// pigs' chosen mixer recipe uses it (else the game's pig mixture).
+function feedStockCategoriesFor(farm, plan) {
+    const ration = resolveRation('PIG', plan);
+    const override = {};
+    if (ration && ration.mixer && ration.absolute) {
+        override.PIGFOOD = Object.fromEntries(ration.ingredients.map(i => [i.category, i.pct / 100]));
+    }
+    return feedStockByCategory(farm && farm.feedStock, override);
 }
 
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
 function splitByRecipe(litres, recipe, into) {
-    const total = recipe.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100;
+    const total = recipe.absolute ? 100 : (recipe.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100);
     recipe.ingredients.forEach(i => {
         into[i.category] = (into[i.category] || 0) + litres * (parseFloat(i.pct) || 0) / total;
     });
@@ -3548,6 +3983,23 @@ function buildFeedSupply(farm, plan, rates) {
         if (!uses || area <= 0) return;
 
         const key = fertPlanKey(f, i) + (isCatch ? ':catch' : '');
+
+        // Grassland with its cuts planned (Pokosy): each cut goes to its own
+        // use — fresh grass, hay or silage — instead of the global cuts/year.
+        const cuts = !isCatch && Array.isArray(f.cuts) ? f.cuts : [];
+        if (cuts.length && uses.feed === 'ROUGHAGE') {
+            const perCut = area * (getCropYieldRate(crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(f, i), rates));
+            let litres = 0;
+            cuts.forEach(c => {
+                const cat = CUT_USE_CATEGORY[c.use];
+                if (!cat) return;
+                byCategory[cat] = (byCategory[cat] || 0) + perCut;
+                litres += perCut;
+            });
+            rows.push({ key, number: (f.number || '').toString().trim() || ('#' + (i + 1)), crop, isCatch, area, use: 'cuts', uses: [], cuts: cuts.length, litres, strawPossible: false, straw: 0 });
+            return;
+        }
+
         // A catch crop grown for forage (green rye) defaults to silage.
         let use = plan.fieldUse[key] || (isCatch && uses.silage ? 'silage' : defaultFieldUse(crop));
         if (use !== 'sale' && !uses[use]) use = Object.keys(uses)[0];
@@ -3596,9 +4048,141 @@ const FEED_FILLTYPE_CATEGORY = {
     MAIZE: 'PIG_BASE', SORGHUM: 'PIG_BASE', WHEAT: 'GRAIN', BARLEY: 'GRAIN',
     SOYBEAN: 'PROTEIN', CANOLA: 'PROTEIN', SUNFLOWER: 'PROTEIN',
     POTATO: 'EARTH', SUGARBEET: 'EARTH', CARROT: 'EARTH', PARSNIP: 'EARTH', BEETROOT: 'EARTH',
-    OAT: 'OAT'
+    OAT: 'OAT',
+    // Mod-map crops, grouped as the maps' animalFood.xml does (e.g. Solek).
+    RYE: 'GRAIN', TRITICALE: 'GRAIN', MILLET: 'PIG_BASE', BUCKWHEAT: 'PROTEIN'
 };
-const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet'];
+const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer'];
+
+// Ready-mixed feeds count toward the categories they're made of — pig food is
+// the game's PIGFOOD mixture (animalFood.xml <mixture animalType="PIG">: base
+// 50 / grain 25 / protein 20 / earth 5), FORAGE is a finished TMR (default
+// recipe). Shares are fractions of the litres.
+const FEED_MIXTURE_SPLIT = {
+    PIGFOOD: { PIG_BASE: 0.5, GRAIN: 0.25, PROTEIN: 0.2, EARTH: 0.05 },
+    FORAGE: Object.fromEntries(Object.entries(TMR_DEFAULT).map(([c, pct]) => [c, pct / 100]))
+};
+// A production whose recipes make any of these is a feed mixer.
+const FEED_PRODUCT_FILLTYPES = ['PIGFOOD', 'FORAGE', 'MINERAL_FEED'];
+// Which animals a mixer product is for (to flag the mixers a barn can use).
+const FEED_PRODUCT_ANIMALS = { PIGFOOD: ['PIG'], FORAGE: ['COW', 'SHEEP'], MINERAL_FEED: ['COW', 'SHEEP'] };
+
+function isFeedFillType(fillType) {
+    return !!(FEED_FILLTYPE_CATEGORY[fillType] || FEED_MIXTURE_SPLIT[fillType]);
+}
+
+// Feed mixers the player owns: placeables (farmId 1) with a productionPoint
+// whose recipes output a feed (FEED_PRODUCT_FILLTYPES) — e.g. FoodMixerSilo,
+// SmallFoodMixer, Lizard Mixed Food. Recipes, throughput and capacity come
+// from the placeable's own XML in its mod; which recipes are switched on and
+// what's in storage from placeables.xml. Base-game placeables live in the
+// game's archives and can't be read, so only mod mixers are found.
+// Production rates: cyclesPerMonth, or legacy cyclesPerHour x 24 (the game
+// converts it the same way), so output per in-game month.
+function readFeedMixersFromSave(saveFolder, modsDirs) {
+    const p = path.join(saveFolder, 'placeables.xml');
+    if (!fs.existsSync(p)) return [];
+    const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const up = s => String(s || '').toUpperCase();
+    const defCache = {};
+    const l10nCache = {};
+    const mixers = [];
+    doc.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+        const saved = pl.querySelector(':scope > productionPoint');
+        if (!saved) return;
+        const filename = pl.getAttribute('filename') || '';
+        if (!(filename in defCache)) {
+            const bytes = modFiles.readModFile(modsDirs, filename);
+            const x = bytes ? new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml') : null;
+            defCache[filename] = x && !x.querySelector('parsererror') ? x : null;
+        }
+        const def = defCache[filename];
+        if (!def) return;
+        const recipes = [...def.querySelectorAll('productionPoint productions > production')].map(pr => {
+            const perMonth = parseFloat(pr.getAttribute('cyclesPerMonth')) || (parseFloat(pr.getAttribute('cyclesPerHour')) || 0) * 24;
+            const items = sel => [...pr.querySelectorAll(sel)].map(i => ({ fillType: up(i.getAttribute('fillType')), amount: parseFloat(i.getAttribute('amount')) || 0 }));
+            return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth };
+        });
+        const feedRecipes = recipes.filter(r => r.outputs.some(o => FEED_PRODUCT_FILLTYPES.includes(o.fillType)));
+        if (!feedRecipes.length) return;
+
+        const enabled = {};
+        saved.querySelectorAll(':scope > production').forEach(pr => { enabled[pr.getAttribute('id')] = pr.getAttribute('isEnabled') === 'true'; });
+        feedRecipes.forEach(r => { r.enabled = enabled[r.id] !== undefined ? enabled[r.id] : false; });
+
+        const stock = {};
+        saved.querySelectorAll(':scope > storage > node[fillType]').forEach(n => {
+            const lvl = parseFloat(n.getAttribute('fillLevel'));
+            if (lvl > 0) stock[up(n.getAttribute('fillType'))] = (stock[up(n.getAttribute('fillType'))] || 0) + lvl;
+        });
+        const capacity = {};
+        const storageDef = def.querySelector('productionPoint > storage');
+        if (storageDef) {
+            const all = parseFloat(storageDef.getAttribute('capacity')) || null;
+            storageDef.querySelectorAll(':scope > capacity[fillType]').forEach(c => { capacity[up(c.getAttribute('fillType'))] = parseFloat(c.getAttribute('capacity')) || all; });
+            capacity._default = all;
+        }
+
+        const nameEl = def.querySelector('storeData > name');
+        const rawName = nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '';
+        const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
+
+        // The mod's own translations: its name ("$l10n_shopItem_…") and its
+        // fill types ("HARINAPIENSOS" -> "Feed Flour").
+        const modName = pl.getAttribute('modName') || '';
+        if (modName && !(modName in l10nCache)) l10nCache[modName] = readMixerModL10n(modsDirs, modName);
+        const l10n = l10nCache[modName] || {};
+        // Keys compared without underscores ("CEREAL_TRITURADO" ~ fillType_cerealTriturado).
+        const norm = k => String(k).toLowerCase().replace(/_/g, '');
+        const index = {};
+        Object.entries(l10n).forEach(([k, v]) => { index[norm(k)] = v; });
+        const titleOf = key => index[norm(key)] || null;
+        const fillTypeTitles = {};
+        feedRecipes.forEach(r => [...r.inputs, ...r.outputs].forEach(({ fillType }) => {
+            // Else drop trailing "_PART"s: DRYTEFFGRASS_WINDROW -> dryTeffGrass,
+            // CEREALPROTEICO_TRITURADO -> cerealProteico.
+            let name = fillType, t2 = null;
+            while (!(t2 = titleOf('fillType_' + name)) && name.includes('_')) name = name.replace(/_[^_]*$/, '');
+            if (t2) fillTypeTitles[fillType] = t2;
+        }));
+        const l10nName = rawName.startsWith('$l10n_') ? titleOf(rawName.slice(6)) : null;
+        mixers.push({
+            id: pl.getAttribute('uniqueId') || filename,
+            name: rawName && !rawName.startsWith('$') ? rawName
+                : (l10nName && (l10nName.en || Object.values(l10nName)[0])) || filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
+            nameTitles: l10nName || null,
+            fillTypeTitles,
+            mod: pl.getAttribute('modName') || '',
+            products,
+            recipes: feedRecipes,
+            stock,
+            capacity
+        });
+    });
+    return mixers;
+}
+
+// Translations of the mod a mixer comes from (see map-crops.js readModL10n).
+function readMixerModL10n(modsDirs, modName) {
+    try {
+        const read = rel => { const b = modFiles.readModFile(modsDirs, `$moddir$${modName}/${rel}`); return b ? b.toString('utf-8') : null; };
+        const modDesc = read('modDesc.xml');
+        return modDesc ? readModL10n(read, modDesc, ['en', 'pl']) : {};
+    } catch (e) {
+        console.warn('Could not read translations of', modName, e);
+        return {};
+    }
+}
+
+// Most a mixer can make of `product` per in-game month with its switched-on
+// recipes (all recipes when none is on — the game then produces nothing, but
+// it's the mixer's potential).
+function feedMixerMonthlyOutput(mixer, product) {
+    const on = mixer.recipes.filter(r => r.enabled);
+    const use = on.length ? on : mixer.recipes;
+    return use.reduce((s, r) => s + r.outputs.filter(o => o.fillType === product).reduce((a, o) => a + o.amount * r.cyclesPerMonth, 0), 0);
+}
 
 // Feed already on the farm (farmId 1) at the last save, in litres per
 // fillType and source:
@@ -3611,7 +4195,7 @@ const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet'];
 function readFeedStockFromSave(saveFolder) {
     const stock = {};
     const add = (fillType, source, litres) => {
-        if (!FEED_FILLTYPE_CATEGORY[fillType] || !(litres > 0)) return;
+        if (!isFeedFillType(fillType) || !(litres > 0)) return;
         const e = stock[fillType] || (stock[fillType] = {});
         e[source] = (e[source] || 0) + litres;
     };
@@ -3692,7 +4276,7 @@ function readFeedBalesFromSave(saveFolder) {
 // with name and capacity looked up in the vehicle's own XML when it comes
 // from a mod. Base-game wagons live in the game's archives, so their
 // capacity stays unknown until the player types it in.
-function readMixerWagonsFromSave(saveFolder, modsDir) {
+function readMixerWagonsFromSave(saveFolder, modsDirs) {
     const p = path.join(saveFolder, 'vehicles.xml');
     if (!fs.existsSync(p)) return [];
     const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
@@ -3707,7 +4291,7 @@ function readMixerWagonsFromSave(saveFolder, modsDir) {
             capacity: null,
             source: 'save'
         };
-        const bytes = modFiles.readModFile(modsDir, filename);
+        const bytes = modFiles.readModFile(modsDirs, filename);
         if (bytes) {
             const vx = new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml');
             if (!vx.querySelector('parsererror')) {
@@ -3732,12 +4316,13 @@ function readMixerWagonsFromSave(saveFolder, modsDir) {
 }
 
 // Stock litres per feed category (sum over every source).
-function feedStockByCategory(stock) {
+function feedStockByCategory(stock, splitOverride = {}) {
     const byCategory = {};
     Object.entries(stock || {}).forEach(([ft, sources]) => {
-        const c = FEED_FILLTYPE_CATEGORY[ft];
-        if (!c) return;
-        byCategory[c] = (byCategory[c] || 0) + Object.values(sources).reduce((a, v) => a + v, 0);
+        const litres = Object.values(sources).reduce((a, v) => a + v, 0);
+        const split = splitOverride[ft] || FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
+        if (!split) return;
+        Object.entries(split).forEach(([c, share]) => { byCategory[c] = (byCategory[c] || 0) + litres * share; });
     });
     return byCategory;
 }
@@ -3751,7 +4336,10 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
     const d = demand.byCategory, s = supply.byCategory, st = stockByCategory;
     const rows = [];
     const grassPerHa = (getCropYieldRate('Grass') || 0) * plan.grassCuts * avgFactor;
-    const own = c => (st[c] || 0) + (c === 'SILAGE' ? (s.SILAGE || 0) : 0);
+    // s.GRASS / s.HAY / s.SILAGE = harvest already assigned to that category
+    // (maize chaff, grass cuts planned per field); s.ROUGHAGE is handed out below.
+    const direct = c => s[c] || 0;
+    const own = c => (st[c] || 0) + direct(c);
     const deficit = {};
     FEED_ROUGHAGE.forEach(c => { deficit[c] = Math.max(0, (d[c] || 0) - own(c)); });
     const totalDeficit = FEED_ROUGHAGE.reduce((sum, c) => sum + deficit[c], 0);
@@ -3763,7 +4351,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         let meadow = totalDeficit > 0 ? covered * deficit[c] / totalDeficit : 0;
         meadow += totalNeed > 0 ? surplus * (d[c] || 0) / totalNeed : (c === 'HAY' ? surplus : 0);
         const need = d[c] || 0, stock = st[c] || 0;
-        const have = meadow + (c === 'SILAGE' ? (s.SILAGE || 0) : 0);
+        const have = meadow + direct(c);
         if (need <= 0 && have <= 0 && stock <= 0) return;
         rows.push({ id: c, need, have, stock, perHa: grassPerHa });
     });
@@ -3841,8 +4429,13 @@ function feedIsShort(row) {
     return row && !row.buyOnly && row.stock + row.have < row.need;
 }
 
+// The status, bar and "you have" line compare the WHOLE farm's need with the
+// farm's stock + harvest (stock is shared by every barn); only the "this barn"
+// line is per barn. When other barns eat the same feed, say so on the tile.
 function renderFeedIngredientTile(categories, barnLitres, row, num) {
     const need = row ? row.need : 0;
+    const farmWide = need > barnLitres * 1.001 + 1;
+    const allBarns = farmWide ? ` <span class="feed-ing-scope">(${t('feedAllBarnsShort')})</span>` : '';
     const have = row ? row.stock + (row.buyOnly ? 0 : row.have) : 0;
     const diff = have - need;
     const pct = need > 0 ? Math.max(0, Math.min(100, have / need * 100)) : 100;
@@ -3858,6 +4451,7 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
         const ha = row.perHa > 0 ? `<span class="feed-ing-extra">≈ ${(-diff / row.perHa).toFixed(1)} ha</span>` : '';
         status = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMissing')} ${num(-diff)} l ${ha}`;
     }
+    status += allBarns;
     const haveParts = [];
     if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}`);
     if (row && !row.buyOnly && row.have > 0) haveParts.push(`${t('feedHarvestShort')} ${num(row.have)}`);
@@ -3867,10 +4461,89 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
             <span class="feed-ing-name">${categories.map(feedCategoryLabel).join(' + ')}</span>
         </div>
         <div class="feed-ing-barn">${t('feedThisBarn')}: <strong>${num(barnLitres)} l</strong>${t('feedPerYearShort')}</div>
+        ${farmWide ? `<div class="feed-ing-barn feed-ing-barn--all">${t('feedAllBarns')}: <strong>${num(need)} l</strong>${t('feedPerYearShort')}</div>` : ''}
         <div class="feed-ing-status">${status}</div>
         <div class="feed-ing-bar"><div class="feed-ing-bar-fill" style="width:${pct}%"></div></div>
-        <div class="feed-ing-have">${t('feedYouHave')}: ${haveParts.length ? haveParts.join(' + ') : '0'} ${t('feedOfNeeded').replace('{n}', num(need))}</div>
+        <div class="feed-ing-have">${t('feedYouHave')}${farmWide ? ` (${t('feedAllBarnsShort')})` : ''}: ${haveParts.length ? haveParts.join(' + ') : '0'} ${t('feedOfNeeded').replace('{n}', num(need))}</div>
     </div>`;
+}
+
+// Fill type as the player knows it: mixer products by name, crops through
+// the crop dictionary.
+// Base-game fill types that show up in mixer recipes.
+const FEED_FILLTYPE_NAMES = {
+    en: {
+        DRYGRASS_WINDROW: 'Hay', DRYALFALFA_WINDROW: 'Alfalfa hay', DRYCLOVER_WINDROW: 'Clover hay',
+        GRASS_WINDROW: 'Grass', ALFALFA_WINDROW: 'Alfalfa', CLOVER_WINDROW: 'Clover',
+        SILAGE: 'Silage', STRAW: 'Straw', WATER: 'Water', CHAFF: 'Chaff'
+    },
+    pl: {
+        DRYGRASS_WINDROW: 'Siano', DRYALFALFA_WINDROW: 'Siano z lucerny', DRYCLOVER_WINDROW: 'Siano z koniczyny',
+        GRASS_WINDROW: 'Trawa', ALFALFA_WINDROW: 'Lucerna', CLOVER_WINDROW: 'Koniczyna',
+        SILAGE: 'Kiszonka', STRAW: 'Słoma', WATER: 'Woda', CHAFF: 'Sieczka'
+    }
+};
+
+// A fill type by name: mixer products, base-game types, the mixer mod's own
+// translations (in the app language, else its English title through the
+// dictionary), then crops.
+function feedFillTypeName(ft, mixer) {
+    if (FEED_PRODUCT_FILLTYPES.includes(ft)) return t('feedProduct_' + ft);
+    const base = (FEED_FILLTYPE_NAMES[currentLang] || FEED_FILLTYPE_NAMES.en)[ft];
+    if (base) return base;
+    const titles = mixer && mixer.fillTypeTitles && mixer.fillTypeTitles[ft];
+    if (titles && titles[currentLang]) return titles[currentLang];
+    if (titles && titles.en) return translateCropName(titles.en);
+    const crop = translateCropName(formatCropName(ft));
+    return crop || formatFillType(ft);
+}
+
+// Some mods make a mixer practically instant (e.g. 1000 cycles/h x 1000 l):
+// then the real limit is how fast ingredients arrive, not the recipe rate.
+function mixerRateText(perMonth, capacity, num) {
+    const unlimited = perMonth > Math.max(capacity || 0, 1000) * 30;
+    return unlimited ? t('feedMixerUnlimited') : t('feedMixerPerMonth').replace('{l}', num(perMonth));
+}
+
+// One tile per feed mixer the farm owns. Mixers whose product the selected
+// barn's animals eat come first and are highlighted.
+function renderFeedMixersSection(farm, barnAnimalTypes, num) {
+    const mixers = (farm && farm.feedMixers) || [];
+    if (!mixers.length) return '';
+    const forBarn = m => m.products.some(p => (FEED_PRODUCT_ANIMALS[p] || []).some(a => barnAnimalTypes.includes(a)));
+    const sorted = [...mixers].sort((a, b) => forBarn(b) - forBarn(a));
+    let html = `<div class="hub-panel-subtitle">${t('feedMixersTitle')}</div><div class="feed-mixer-grid">`;
+    sorted.forEach(m => {
+        const relevant = forBarn(m);
+        const on = m.recipes.filter(r => r.enabled);
+        const products = m.products.map(p => {
+            const inStock = m.stock[p] || 0;
+            const cap = m.capacity[p] || m.capacity._default;
+            return `<div class="feed-mixer-product">
+                <span class="feed-mixer-product-name">${escapeHtml(feedFillTypeName(p))}</span>
+                <span class="feed-mixer-product-stock">${num(inStock)} l${cap ? ` / ${num(cap)} l` : ''}</span>
+                <span class="feed-mixer-product-rate">${mixerRateText(feedMixerMonthlyOutput(m, p), cap, num)}</span>
+            </div>`;
+        }).join('');
+        const recipeLine = r => `<li class="${r.enabled ? 'is-on' : ''}"><i class="fa-solid ${r.enabled ? 'fa-circle-check' : 'fa-circle'}" aria-hidden="true"></i>
+            ${r.inputs.map(i => escapeHtml(feedFillTypeName(i.fillType, m))).join(' + ')} → ${r.outputs.map(o => escapeHtml(feedFillTypeName(o.fillType, m))).join(', ')}</li>`;
+        const inputs = [...new Set(m.recipes.flatMap(r => r.inputs.map(i => i.fillType)))];
+        const inputStock = inputs.filter(ft => m.stock[ft] > 0).map(ft => `${escapeHtml(feedFillTypeName(ft, m))} ${num(m.stock[ft])} l`).join(' · ');
+        html += `<div class="feed-mixer-tile ${relevant ? 'feed-mixer-tile--relevant' : ''}">
+            <div class="feed-mixer-head"><i class="fa-solid fa-blender" aria-hidden="true"></i>
+                <span class="feed-mixer-name-wrap"><span class="feed-mixer-name">${escapeHtml(mixerDisplayName(farm, m))}</span>
+                <button type="button" class="barn-rename-btn feed-mixer-rename-btn" data-mixer="${escapeHtml(m.id)}" title="${t('feedMixerRename')}" aria-label="${t('feedMixerRename')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button></span>
+                ${relevant ? `<span class="feed-mixer-badge">${t('feedMixerForBarn')}</span>` : ''}</div>
+            ${products}
+            ${on.length ? '' : `<p class="feed-mixer-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMixerNoneOn')}</p>`}
+            <details class="feed-mixer-recipes"><summary>${t('feedMixerRecipes').replace('{on}', on.length).replace('{n}', m.recipes.length)}</summary>
+                <ul>${m.recipes.map(recipeLine).join('')}</ul></details>
+            <p class="feed-mixer-inputs">${inputStock ? `${t('feedMixerInputs')}: ${inputStock}` : t('feedMixerInputsEmpty')}</p>
+        </div>`;
+    });
+    const pigRation = resolveRation('PIG', getFeedPlan(farm));
+    html += `</div><p class="hub-panel-note">${t(pigRation && pigRation.mixer ? 'feedMixersNoteRecipe' : 'feedMixersNote')}</p>`;
+    return html;
 }
 
 function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
@@ -3888,7 +4561,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const demand = buildFeedDemand(farm, plan);
     const supply = buildFeedSupply(farm, plan, rates);
     const stock = (farm && farm.feedStock) || null;
-    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockByCategory(stock));
+    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan));
     const num = n => Math.round(n).toLocaleString();
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 
@@ -3928,12 +4601,23 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
                 html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
                     <span class="feed-ration-name">${t('feedRation_' + id)}</span><span class="feed-ration-eff">${ANIMAL_FOOD_GROUPS[type][id].efficiency}%</span></button>`;
             });
+            feedMixersFor(farm, type).forEach(m => {
+                const id = 'mixer:' + m.id;
+                html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${escapeHtml(id)}">
+                    <span class="feed-ration-name"><i class="fa-solid fa-blender" aria-hidden="true"></i> ${t('feedRationMixer')} · ${escapeHtml(mixerDisplayName(farm, m))}</span><span class="feed-ration-eff">100%</span></button>`;
+            });
             plan.customFeeds.filter(f => f.animalType === type).forEach(f => {
                 const id = 'custom:' + f.id;
                 html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
                     <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span></button>`;
             });
             html += `<button type="button" class="feed-ration-tile feed-ration-tile--new feed-custom-new" data-type="${type}"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomNew')}</button></div>`;
+            // Mixer ration: say which recipe the crop needs below follow.
+            if (ration && ration.mixer) {
+                const r = ration.mixer.recipe;
+                const inputs = r ? r.inputs.map(i => feedFillTypeName(i.fillType, (farm.feedMixers || []).find(x => x.id === ration.mixer.id))).join(' + ') : '–';
+                html += `<p class="hub-panel-note feed-mixer-ration-note">${t(ration.mixer.recipeEnabled ? 'feedRationMixerNote' : 'feedRationMixerNoteOff').replace('{recipe}', escapeHtml(inputs)).replace('{name}', escapeHtml(ration.mixer.name))}</p>`;
+            }
 
         });
 
@@ -3963,6 +4647,9 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         }
         if (farm && !farm.saveGamePath) html += `<p class="hub-panel-note">${t('feedStockNoSave')}</p>`;
         else if (!stock) html += `<p class="hub-panel-note">${t('feedStockNotRead')}</p>`;
+
+        // --- 3b. Feed mixers (productions making pig food / TMR / mineral feed) ---
+        html += renderFeedMixersSection(farm, Object.keys(barnNeed.heads), num);
     }
 
     // --- 4. Settings (collapsed): feed fields, parameters, custom feeds ---
@@ -3979,7 +4666,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         supply.rows.forEach(r => {
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
             html += `<tr><td>${escapeHtml(r.number)}</td><td>${translateCropName(r.crop)}${catchTag(r)}</td><td>${r.area.toFixed(2)} ha</td>
-                <td><select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select></td>
+                <td>${r.use === 'cuts' ? `<span class="feed-use-cuts">${t('feedUseCuts').replace('{n}', r.cuts)}</span>` : `<select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select>`}</td>
                 <td>${r.strawPossible ? `<input type="checkbox" class="feed-straw-check" data-key="${escapeHtml(r.key)}" ${plan.strawFields[r.key] ? 'checked' : ''}>` : '–'}</td>
                 <td>${r.litres > 0 ? num(r.litres) + ' l' : '–'}${r.straw > 0 ? `<span class="supply-sub">${feedCategoryLabel('STRAW')}: ${num(r.straw)} l</span>` : ''}</td></tr>`;
         });
@@ -4415,8 +5102,54 @@ function validateFeedDraft(d) {
     return '';
 }
 
+// Inline rename of a feed mixer (same flow as renaming a barn): Enter or
+// leaving the field saves, Escape cancels, an empty name restores the one
+// from the mod.
+function startMixerRename(btn) {
+    const wrap = btn.closest('.feed-mixer-name-wrap');
+    const nameEl = wrap && wrap.querySelector('.feed-mixer-name');
+    if (!nameEl) return;
+    const mixerId = btn.dataset.mixer;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'feed-input feed-mixer-name-input';
+    input.value = nameEl.textContent;
+    input.setAttribute('aria-label', t('feedMixerRename'));
+    wrap.replaceChildren(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = (save) => {
+        if (done) return;
+        done = true;
+        const farm = getCurrentFarm();
+        const mixer = farm && (farm.feedMixers || []).find(m => m.id === mixerId);
+        if (save && farm && mixer) {
+            const value = input.value.trim();
+            if (!farm.feedMixerNames) farm.feedMixerNames = {};
+            if (value && value !== mixer.name) farm.feedMixerNames[mixer.id] = value;
+            else delete farm.feedMixerNames[mixer.id];
+            saveFarmData(farm);
+        }
+        rerenderFeedPlan();
+    };
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+}
+
 function wireFeedPlanPanel(bodyEl) {
     const update = (fn) => { const farm = getCurrentFarm(); const plan = getFeedPlan(farm); fn(plan); saveFeedPlan(plan); rerenderFeedPlan(); };
+
+    bodyEl.querySelectorAll('.feed-mixer-rename-btn').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        startMixerRename(btn);
+    }));
 
     bodyEl.querySelectorAll('.feed-barn-tile').forEach(el => el.addEventListener('click', () => {
         feedSelectedBuilding = el.dataset.building;
@@ -6022,6 +6755,7 @@ function loadFarmConfigs(farm) {
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
     CROP_ORDER = [...BASE_CROP_ORDER];
     mapCropsInfo = null;
+    MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     // Same pattern as crops: base FS25 animal needs/production are always
     // available; a farm's own imported animal-defs data is merged on top
@@ -6046,6 +6780,7 @@ function loadFarmConfigs(farm) {
             CROP_ORDER = [...mapCropNames];
             res.crops.forEach(c => {
                 if (c.calendar) CROP_CALENDAR[c.name] = { ...(CROP_CALENDAR[c.name] || {}), ...c.calendar };
+                if (c.titles) MAP_CROP_TITLES[cropOrderKey(c.name)] = c.titles;
             });
         }
     }
@@ -6128,6 +6863,7 @@ function clearFarmConfigs() {
     AVAILABLE_CROPS = [];
     CROP_ORDER = [];
     mapCropsInfo = null;
+    MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
 }
@@ -6697,8 +7433,21 @@ function readGameSave(pathToFile) {
         catch (e) { console.error('Could not read feed stock from savegame', e); }
         try { result.feedBales = readFeedBalesFromSave(saveFolder); }
         catch (e) { console.error('Could not read bales from savegame', e); }
-        try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDir(pathToFile)); }
+        try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
         catch (e) { console.error('Could not read mixer wagons from savegame', e); }
+        try {
+            result.feedMixers = readFeedMixersFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            // What sits in a mixer (finished feed and the crops waiting to be
+            // mixed) is feed on the farm too.
+            if (result.feedStock) {
+                result.feedMixers.forEach(m => Object.entries(m.stock).forEach(([ft, litres]) => {
+                    if (!isFeedFillType(ft)) return;
+                    const e = result.feedStock[ft] || (result.feedStock[ft] = {});
+                    e.mixer = (e.mixer || 0) + litres;
+                }));
+            }
+        }
+        catch (e) { console.error('Could not read feed mixers from savegame', e); }
 
         const playTimeVal = findValueInRawText(careerText, 'playTime');
         if (playTimeVal) {
@@ -6777,6 +7526,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
     if (gameData.feedBales !== null) { farm.feedBales = gameData.feedBales; changed = true; }
     if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
+    if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
@@ -7012,12 +7762,12 @@ function getLimeStatus(field, i, seasonNum, rates) {
 }
 
 // Fill color for the lime chip, interpolated across 3 stops as pH drops from
-// ideal (beige — the old "active" color) through amber to --color-rust (the
+// ideal (field green) through amber to --color-rust (the
 // old "warning" color). Returns null when never limed (chip stays empty).
 const LIME_COLOR_STOPS = [
     [0, [166, 69, 43]],     // 0.0 -> --color-rust (#A6452B)
     [0.5, [201, 122, 43]],  // 0.5 -> --color-accent (#C97A2B)
-    [1, [216, 207, 166]]    // 1.0 -> old "active" beige (#D8CFA6)
+    [1, [63, 107, 68]]      // 1.0 -> --color-primary (#3F6B44), freshly limed
 ];
 function limeChipColor(ph) {
     if (ph == null) return null;
@@ -7052,9 +7802,21 @@ window.toggleLimeChip = function (btn) {
         // Clear the tracked application season so that turning this back on
         // later is treated as a fresh application, not a resumed old one.
         delete btn.dataset.limeSeason;
+        delete btn.dataset.limePh;
+        // Visual state lives in the inline --lime-* vars — clear them too, or
+        // the chip looks unchanged.
+        btn.style.removeProperty('--lime-color');
+        btn.style.removeProperty('--lime-pct');
+        btn.classList.remove('lime-strong');
+        btn.title = t('limeEditTitle');
     } else {
         btn.classList.add('is-active');
         btn.classList.remove('is-warning');
+        // Fresh application = ideal pH: show the chip full right away.
+        btn.style.setProperty('--lime-color', limeChipColor(LIME_PH_IDEAL));
+        btn.style.setProperty('--lime-pct', '100%');
+        btn.classList.add('lime-strong');
+        btn.title = `${t('limeEditTitle')} (100% pH)`;
     }
 };
 
@@ -7147,6 +7909,212 @@ function catchCropCaption(field) {
     const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
     return `<span class="ha-caption catch-crop-caption">+ ${t('catchCropShort')}: ${translateCropName(field.catchCrop)}${month}</span>`;
 }
+
+// --- Cuts (Pokosy) for grassland fields ---------------------------------------
+// A timeline: sowing month -> cut 1 -> cut 2 -> … -> "add cut". Each cut has a
+// month, a use (grass / hay / silage / sale) and done-checks (harvested,
+// fertilized, limed, rolled). Saved on every change to field.cuts; the feed
+// planner counts each cut into its use's category.
+let cutsFieldIdx = null;
+
+function cutsMonthOptions(selected) {
+    let html = `<option value="">${t('selectMonth')}</option>`;
+    ALL_MONTHS.forEach(m => { html += `<option value="${m}" ${selected === m ? 'selected' : ''}>${translateMonth(m)}</option>`; });
+    return html;
+}
+
+function renderCutsModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[cutsFieldIdx];
+    const body = document.getElementById('cuts-body');
+    if (!field || !body) return;
+    const label = [(field.number || '').toString().trim(), translateCropName(field.crop)].filter(Boolean).join(' · ');
+    document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
+    const area = parseFloat(field.area) || 0;
+    const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
+    document.getElementById('cuts-intro').textContent = perCut > 0
+        ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))
+        : t('cutsIntroNoYield');
+
+    const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
+    let html = `<div class="cuts-node cuts-node--sow">
+        <span class="cuts-node-label">${t('cutsSowing')}</span>
+        <select class="feed-input cuts-month" data-cut="sow">${cutsMonthOptions((field.sowingMonth || '').toUpperCase())}</select>
+    </div>`;
+    cuts.forEach((c, i) => {
+        html += `<span class="cuts-link" aria-hidden="true"></span>
+        <div class="cuts-node${c.harvested ? ' is-done' : ''}">
+            <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
+            <button type="button" class="cuts-remove" data-cut="${i}" title="${t('cutsRemove')}" aria-label="${t('cutsRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <select class="feed-input cuts-month" data-cut="${i}">${cutsMonthOptions(c.month)}</select>
+            <select class="feed-input cuts-use" data-cut="${i}">${CUT_USES.map(u => `<option value="${u}" ${c.use === u ? 'selected' : ''}>${t('cutUse_' + u)}</option>`).join('')}</select>
+            <div class="cuts-checks">${checks.map(([k, lbl]) => `<label><input type="checkbox" class="cuts-check" data-cut="${i}" data-key="${k}" ${c[k] ? 'checked' : ''}> ${t(lbl)}</label>`).join('')}</div>
+        </div>`;
+    });
+    html += `<span class="cuts-link" aria-hidden="true"></span>
+        <button type="button" class="cuts-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('cutsAdd')}</button>`;
+    body.innerHTML = html;
+    const add = body.querySelector('.cuts-add');
+    if (add) add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function updateCutsField(fn) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[cutsFieldIdx];
+    if (!field) return;
+    if (!Array.isArray(field.cuts)) field.cuts = [];
+    fn(field);
+    saveFarmData(farm);
+    renderCutsModal();
+}
+
+window.openCutsModal = function (idx) {
+    cutsFieldIdx = idx;
+    renderCutsModal();
+    document.getElementById('cuts-modal').style.display = 'flex';
+};
+
+(function wireCutsModal() {
+    const modal = document.getElementById('cuts-modal');
+    const body = document.getElementById('cuts-body');
+    if (!modal || !body) return;
+    const close = () => { modal.style.display = 'none'; cutsFieldIdx = null; renderSeasonView(); };
+    document.getElementById('cuts-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    body.addEventListener('change', e => {
+        const el = e.target;
+        const i = el.dataset.cut;
+        if (el.classList.contains('cuts-month')) {
+            updateCutsField(f => { if (i === 'sow') f.sowingMonth = el.value; else f.cuts[+i].month = el.value; });
+        } else if (el.classList.contains('cuts-use')) {
+            updateCutsField(f => { f.cuts[+i].use = el.value; });
+        } else if (el.classList.contains('cuts-check')) {
+            updateCutsField(f => {
+                f.cuts[+i][el.dataset.key] = el.checked;
+                // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
+                if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
+                if (el.dataset.key === 'rolled') f.rolling = f.cuts.some(c => c.rolled);
+            });
+        }
+    });
+    body.addEventListener('click', e => {
+        if (e.target.closest('.cuts-add')) {
+            updateCutsField(f => {
+                const last = f.cuts[f.cuts.length - 1];
+                const from = last ? last.month : (f.sowingMonth || '').toUpperCase();
+                const idx = ALL_MONTHS.indexOf(from);
+                const month = idx >= 0 ? ALL_MONTHS[(idx + 1) % 12] : '';
+                f.cuts.push({ month, use: last ? last.use : 'hay', harvested: false, fertilized: false, limed: false, rolled: false });
+                // Grass you cut is in the ground — no seed needed for it any more.
+                f.state = 'Planted';
+            });
+        }
+        const rm = e.target.closest('.cuts-remove');
+        if (rm) updateCutsField(f => { f.cuts.splice(+rm.dataset.cut, 1); });
+    });
+})();
+
+// State column: grassland gets a "Cuts" button (done / planned) that opens
+// the cuts timeline; everything else the sown / not sown badge (a toggle in
+// the current season).
+function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+    if (isCutCrop(field.crop)) {
+        const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+        const done = cuts.filter(c => c.harvested).length;
+        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
+        return isPastSeason
+            ? `<span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
+            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${t('cutsOpenHint')}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+    }
+    return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
+}
+
+// Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
+// cancels, Enter confirms.
+function showSmallConfirm({ title, text, ok, icon, danger }) {
+    const modal = document.getElementById('small-confirm-modal');
+    if (!modal) return Promise.resolve(confirm(text));
+    document.getElementById('small-confirm-title').textContent = title;
+    document.getElementById('small-confirm-text').textContent = text;
+    document.getElementById('small-confirm-icon').className = 'fa-solid ' + (icon || 'fa-circle-question');
+    const okBtn = document.getElementById('small-confirm-ok');
+    const cancelBtn = document.getElementById('small-confirm-cancel');
+    okBtn.textContent = ok || t('confirm');
+    okBtn.classList.toggle('danger-btn', !!danger);
+    cancelBtn.textContent = t('cancel');
+    modal.style.display = 'flex';
+    okBtn.focus();
+    return new Promise(resolve => {
+        const done = (value) => {
+            modal.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve(value);
+        };
+        const onOk = () => done(true);
+        const onCancel = () => done(false);
+        const onBackdrop = (e) => { if (e.target === modal) done(false); };
+        const onKey = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+            else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
+        };
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+    });
+}
+
+// Main table quick edits, current season only (past seasons render plain
+// badges/chips): the state badge toggles sown / not sown and the rolling chip
+// toggles "I want to roll" straight away; the lime chip asks first in a small
+// dialog — lime a field, lime it again when it's running low, or take a
+// mistaken liming back.
+if (fieldsBody) fieldsBody.addEventListener('click', async e => {
+    const cutsBtn = e.target.closest('.cuts-open');
+    if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
+    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle');
+    if (!btn || isEditMode) return;
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const idx = parseInt(btn.dataset.idx, 10);
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+
+    if (btn.classList.contains('state-toggle')) {
+        field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
+    } else if (btn.classList.contains('rolling-toggle')) {
+        field.rolling = !field.rolling;
+    } else {
+        const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
+        const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
+        const remove = status === 'active';
+        const key = status === 'off' ? 'limeConfirmOn' : (status === 'warning' ? 'limeConfirmAgain' : 'limeConfirmOff');
+        const ok = await showSmallConfirm({
+            title: t('limeConfirmTitle').replace('{field}', label),
+            text: t(key).replace('{pct}', ph != null ? Math.round(ph * 100) : 0),
+            ok: t(remove ? 'limeConfirmOffBtn' : 'limeConfirmOnBtn'),
+            icon: remove ? 'fa-rotate-left' : 'fa-flask',
+            danger: remove
+        });
+        if (!ok) return;
+        if (remove) {
+            field.limeAppliedSeason = null;
+            field.limePh = null;
+        } else {
+            field.limeAppliedSeason = farm.currentSeason || 1;
+            field.limePh = LIME_PH_IDEAL;
+        }
+    }
+    saveFarmData(farm);
+    renderSeasonView();
+});
 
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
@@ -7246,7 +8214,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateDisplay}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>
                         <div class="tillage-switch tillage-switch--readonly">
                             <span class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}">${t('tillagePlowed')}</span>
@@ -7254,10 +8222,19 @@ function renderFieldsTable(fields) {
                         </div>
                     </td>
                     <td class="treatments-cell">
-                        <span class="treatment-chip treatment-chip--lime"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}">
-                            <span class="lime-fill"></span>
-                            <span class="lime-letter">${t('limeLetter')}</span>
-                        </span>
+                        ${(() => {
+                            // Current season: chips are buttons (lime asks first, rolling toggles).
+                            const tag = isPastSeason ? 'span' : 'button';
+                            const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
+                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
+                                <span class="lime-fill"></span>
+                                <span class="lime-letter">${t('limeLetter')}</span>
+                            </${tag}>`;
+                            const rollingHtml = isPastSeason
+                                ? (field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : '')
+                                : `<button${btnAttrs} class="treatment-chip treatment-chip--rolling table-chip-toggle rolling-toggle${field.rolling ? ' is-active' : ''}" title="${t(field.rolling ? 'rollingPlanned' : 'rollingOff')} · ${t('rollingClickHint')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>`;
+                            return limeHtml + rollingHtml;
+                        })()}
                     </td>
                     ${fertPlanCell}
                 </tr>
@@ -7340,7 +8317,7 @@ function buildFieldEditCard(field, opts) {
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -7358,7 +8335,11 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
-                            <input type="checkbox" class="edit-input field-state" ${isChecked}>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
+                        </label>
+                        <label class="fc-cell fc-cell--state" title="${t('rollingHint')}">
+                            <span class="fc-label">${t('thRolling')}</span>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-rolling" ${field.rolling ? 'checked' : ''}> <span class="fc-check-text">${t('rollingWant')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -7380,7 +8361,7 @@ function buildFieldEditCard(field, opts) {
                         <div class="fc-cell">
                             <span class="fc-label">${t('thSoil')}</span>
                             <div class="treatments-cell">
-                                <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
+                                <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}${limePhForCard != null && limePhForCard >= 0.5 ? ' lime-strong' : ''}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
                                     <span class="lime-fill"></span>
                                     <span class="lime-letter">${t('limeLetter')}</span>
                                 </button>
@@ -7655,6 +8636,7 @@ if (editSeasonBtn) {
                         area: rawArea,
                         crop: row.querySelector('.field-crop').value,
                         sowingMonth: row.querySelector('.field-sow').value,
+                        rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
                         catchCrop: catchCrop,
                         catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
                         state: stateValue,
@@ -7665,6 +8647,7 @@ if (editSeasonBtn) {
                         // plan; the edit card no longer shows them, so just carry
                         // through whatever was already on the field when edit mode
                         // opened (stamped onto the row as data attributes).
+                        cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
                         manure: row.dataset.manure === '1',
                         fertilizer: row.dataset.fertilizer === '1'
                     });
@@ -7849,10 +8832,14 @@ if (newSeasonBtn) {
 
             const supplyRatesForLime = getSupplyRates();
             farm.fields.forEach((field, i) => {
+                // Read before the crop is cleared: grassland doesn't use up lime.
+                const keepsLime = isCutCrop(field.crop);
                 field.crop = "";
                 field.sowingMonth = "";
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
+                field.rolling = false;
+                field.cuts = [];
                 field.state = "To Plant";
                 field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
@@ -7863,7 +8850,10 @@ if (newSeasonBtn) {
                 // field that predates this model instead of resetting it.
                 const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
                 const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - fieldLimePhDrop(soilMix));
+                // Grassland (grass, meadow, alfalfa, clover) has consumesLime="false" in
+                // every map's fruit XML — cutting it doesn't lower pH, cereals do.
+                const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
+                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
                 field.fertilizer = false;
             });
@@ -7984,6 +8974,14 @@ if (settingsBtn) {
         if (autoSyncToggle) autoSyncToggle.checked = isAutoSyncEnabled();
         const flToggle = document.getElementById('farmland-area-toggle');
         if (flToggle) flToggle.checked = !!(farm && farm.showFarmlandArea);
+        const modsDirInfo = document.getElementById('mods-dir-info');
+        if (modsDirInfo) {
+            const dirs = farm && farm.saveGamePath ? modFiles.findModsDirs(farm.saveGamePath) : [];
+            modsDirInfo.textContent = dirs.length
+                ? t('modsDirInfo').replace('{dir}', dirs[0]) + (dirs.length > 1 ? ' ' + t('modsDirInfoMore').replace('{n}', dirs.length - 1) : '')
+                : '';
+            modsDirInfo.title = dirs.join('\n');
+        }
         renderAnimalModsInfo(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
@@ -8794,7 +9792,8 @@ function seedDemoFarm(farm) {
             field("3", 3.1, "Wheat", "OCTOBER", "To Plant", "plowed", lime(0.7, 1)),
             field("4", 2.0, "Soybean", "APRIL", "To Plant", "noTill", { ...lime(1.0, 2), catchCrop: "Oilseedradish", catchSowingMonth: "SEPTEMBER" }),
             field("4", 2.5, "Maize", "APRIL", "To Plant", "plowed", lime(1.0, 2)),
-            field("5-6", 6.8, "Canola", "AUGUST", "Planted", "plowed", { ...lime(0.2, 1), manure: true })
+            field("5-6", 6.8, "Canola", "AUGUST", "Planted", "plowed", { ...lime(0.2, 1), manure: true }),
+            field("8", 3.0, "Grass", "MARCH", "Planted", "noTill", { ...lime(0.8, 1), cuts: [{ month: 'MAY', use: 'silage', harvested: true, fertilized: true }, { month: 'JULY', use: 'hay', harvested: true }] })
         ],
         supplyRates: {
             defaultOverridesCleaned: true,
@@ -9022,10 +10021,11 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c1', '#fields-table'),
             tutInfo('c2', '#fields-body .badge--plant-now'),
             tutInfo('c3', () => [tq('#fields-body .badge--planted'), tq('#fields-body .badge--to-plant')]),
+            tutInfo('c11', () => tq('#fields-body .cuts-open')),
             tutInfo('c4', () => { const b = tq('#fields-body .badge--rotation-warn'); return b ? b.closest('tr') : null; }),
             tutInfo('c5', () => tqa('#fields-body tr.field-split-row')),
             tutInfo('c6', () => { const s = tq('#fields-body .field-number-sep'); return s ? s.closest('tr') : null; }),
-            tutInfo('c7', '#fields-body .tillage-switch--readonly'),
+            tutInfo('c7', () => [tq('#fields-body .tillage-switch--readonly'), tq('#fields-body .rolling-toggle')]),
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
             tutInfo('c10', '#total-ha-sum')
@@ -9108,7 +10108,7 @@ const TUTORIAL_CHAPTERS = [
         steps: [
             tutInfo('h1', '#planner-sidebar'),
             hubOpen('h3', 'finance'),
-            tutInfo('h4', () => { const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts : tq('#hub-panel-body'); }),
+            tutInfo('h4', () => { const parts = tqa('#hub-panel-body .fin-kpis, #hub-panel-body .fin-card.trend-card, #hub-panel-body .fin-chart'); return parts.length ? parts : tq('#hub-panel-body'); }),
             hubOpen('h6', 'fieldsoil'),
             tutInput('h7', '#hub-panel-body .supply-soil-input[data-soil-field="1"]', () => {
                 const el = tq('#hub-panel-body .supply-soil-input[data-soil-field="1"]');
@@ -9138,7 +10138,7 @@ const TUTORIAL_CHAPTERS = [
         prepare: tutOpenDemoPlanner,
         steps: [
             hubOpen('k1', 'animals'),
-            tutInfo('k3', () => { tutAnimalsOverview(); return tqa('#hub-panel-body > .details-category, #hub-panel-body .barn-tile-grid'); }),
+            tutInfo('k3', () => { tutAnimalsOverview(); return tqa('#hub-panel-body .fin-kpis, #hub-panel-body .barn-tile-grid'); }),
             tutInfo('k4', () => tutPen(0)),
             tutInfo('k5', () => tutPenPart(0, '.herd-grid')),
             tutInfo('k19', () => { const card = tutPen(0); return card ? Array.from(card.querySelectorAll('.herd-repro, .herd-repro-bar, .herd-repro-last')) : null; }),
@@ -9158,7 +10158,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k21', () => tutPenPart(0, '.barn-panel--repro')),
             tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
             tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
-            tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .balance-chart-wrapper'); return charts.length ? charts.slice(0, 3) : null; }),
+            tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .trend-card, #hub-panel-body .fin-chart'); return charts.length ? charts.slice(0, 3) : null; }),
             tutInfo('k17', null),
             hubOpen('k18', 'plan')
         ]
@@ -9202,9 +10202,9 @@ const TUTORIAL_CHAPTERS = [
         steps: [
             tutClick('i1', '#settings-btn', () => tutModalOpen('settings-modal')),
             tutInput('i2', '#settings-map-name', () => { const el = tq('#settings-map-name'); return !!el && el.value.trim() !== ''; }, 'Hutan Pantai'),
-            tutInfo('i3', ['#game-save-path', '#browse-save-btn']),
-            tutInfo('i4', () => { const el = tq('#auto-sync-toggle'); return el ? (el.closest('label') || el) : null; }),
-            tutInfo('i5', ['#crops-folder-path', '#browse-crops-btn', '#animal-defs-folder-path', '#browse-animal-defs-btn']),
+            tutInfo('i3', ['#game-save-path', '#browse-save-btn', '#mods-dir-info']),
+            tutInfo('i4', () => ['#auto-sync-toggle', '#farmland-area-toggle'].map(s => { const el = tq(s); return el ? (el.closest('label') || el) : null; }).filter(Boolean)),
+            tutInfo('i5', ['#crops-folder-path', '#browse-crops-btn', '#animal-defs-folder-path', '#browse-animal-defs-btn', '#animal-mods-info']),
             tutClick('i6', '#settings-supply-adjust summary', () => { const d = tq('#settings-supply-adjust details'); return !!d && d.open; }),
             tutInfo('i7', '#settings-supply-adjust details'),
             tutClick('i8', '#save-settings-btn', () => !tutModalOpen('settings-modal')),

@@ -217,6 +217,7 @@
                     <button id="browse-save-btn" class="settings-btn" type="button"
                         style="min-width: 40px; cursor: pointer;">...</button>
                 </div>
+                <p id="mods-dir-info" class="animal-mods-note" style="margin-top: 4px;"></p>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
                     <input type="checkbox" id="auto-sync-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
@@ -316,6 +317,27 @@
                 <div class="modal-buttons">
                     <button id="cancel-btn" data-i18n="cancel">Cancel</button>
                     <button id="confirm-btn" data-i18n="add">Add</button>
+                </div>
+            </div>
+        </div>
+        <div id="cuts-modal" class="modal cuts-modal">
+            <div class="modal-content cuts-content" role="dialog" aria-labelledby="cuts-title">
+                <h3 id="cuts-title"></h3>
+                <p id="cuts-intro" class="cuts-intro"></p>
+                <div id="cuts-body" class="cuts-timeline"></div>
+                <div class="modal-buttons">
+                    <button type="button" id="cuts-close" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="small-confirm-modal" class="modal small-confirm-modal">
+            <div class="modal-content small-confirm" role="alertdialog" aria-labelledby="small-confirm-title" aria-describedby="small-confirm-text">
+                <span class="small-confirm-icon" aria-hidden="true"><i id="small-confirm-icon" class="fa-solid fa-circle-question"></i></span>
+                <h3 id="small-confirm-title"></h3>
+                <p id="small-confirm-text"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="small-confirm-cancel" class="small-confirm-cancel" data-i18n="cancel">Cancel</button>
+                    <button type="button" id="small-confirm-ok"></button>
                 </div>
             </div>
         </div>

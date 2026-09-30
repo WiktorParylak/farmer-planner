@@ -39,7 +39,7 @@
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
 - **Notatki** — przypięte do miesięcy, z tagami i listą zadań.
 - **Przewidywane plony**.
-- **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry.
+- **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry. Wykrywa też mieszalniki pasz (pasza dla świń, TMR, pasza mineralna) z zapasami, recepturami i wydajnością miesięczną.
 
 **Inne**
 - Język polski i angielski.
@@ -80,7 +80,7 @@ npm run build
 4. (Opcjonalnie) wybierz folder definicji zwierząt, jeśli Twoja mapa lub mody dodają własne rasy. Uprawy mapy wczytują się automatycznie z zapisu gry; folder mapy wskaż tylko, gdy się nie wczytały (mapa podstawowa, brak moda).
 5. Kliknij **ZAPISZ I IMPORTUJ**.
 
-Zdjęcia ras są wczytywane automatycznie z folderu `mods` obok zapisu gry. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
+Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też zdjęcia ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
 
 ## Gdzie są Twoje dane
 
