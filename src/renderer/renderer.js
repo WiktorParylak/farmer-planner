@@ -7942,7 +7942,12 @@ window.openCutsModal = function (idx) {
         } else if (el.classList.contains('cuts-use')) {
             updateCutsField(f => { f.cuts[+i].use = el.value; });
         } else if (el.classList.contains('cuts-check')) {
-            updateCutsField(f => { f.cuts[+i][el.dataset.key] = el.checked; });
+            updateCutsField(f => {
+                f.cuts[+i][el.dataset.key] = el.checked;
+                // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
+                if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
+                if (el.dataset.key === 'rolled') f.rolling = f.cuts.some(c => c.rolled);
+            });
         }
     });
     body.addEventListener('click', e => {
@@ -8777,6 +8782,8 @@ if (newSeasonBtn) {
 
             const supplyRatesForLime = getSupplyRates();
             farm.fields.forEach((field, i) => {
+                // Read before the crop is cleared: grassland doesn't use up lime.
+                const keepsLime = isCutCrop(field.crop);
                 field.crop = "";
                 field.sowingMonth = "";
                 field.catchCrop = "";
@@ -8793,7 +8800,10 @@ if (newSeasonBtn) {
                 // field that predates this model instead of resetting it.
                 const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
                 const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - fieldLimePhDrop(soilMix));
+                // Grassland (grass, meadow, alfalfa, clover) has consumesLime="false" in
+                // every map's fruit XML — cutting it doesn't lower pH, cereals do.
+                const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
+                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
                 field.fertilizer = false;
             });

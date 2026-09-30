@@ -21,6 +21,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Finance view redesigned**: a row of tiles (balance with the change vs last month, loan with mod loans and monthly payment, change this season, play time), a full-width month-by-month balance chart with gridlines, year marks, the current value labelled and a hover readout (month, balance, loan, change), season-end balances as bars, and the numbers as an optional table. Loan is a dashed amber line when there is one.
 
 **Fixed**
+- Grassland (grass, meadow, alfalfa, clover) no longer loses lime with a new season: these crops have consumesLime="false" in the game and map files, so cutting them doesn't lower pH (cereals, maize and green rye still do). In the cuts plan, ticking *limed* limes the field (pH 100%) and *rolled* switches the field's rolling chip.
 - Lime chip in Edit season didn't change when clicked (it only changed after saving); freshly limed is now green instead of pale beige, so a limed field stands out, and the letter stays readable on a filled chip.
 - The state checkbox in a field card had no caption — it now says "Sown".
 - Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
