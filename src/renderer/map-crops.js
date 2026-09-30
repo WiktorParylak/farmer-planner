@@ -58,20 +58,29 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
             if (!file) continue;
             const norm = file.replace(/\\/g, '/');
             const base = path.posix.basename(norm, path.posix.extname(norm));
-            let name = null, calendar = null;
+            let name = null, calendar = null, rawName = null;
             if (!/^\$data\//i.test(norm)) {
                 const xml = read(norm.replace(/^\$moddir\$[^/]+\//i, ''));
                 const parsed = xml ? parseGrowthXml(xml) : null;
                 if (parsed) { name = parsed.name; calendar = parsed.calendar; }
+                if (xml) rawName = attr((xml.match(/<fruitType\b[^>]*>/) || [''])[0], 'name');
             }
             // "meadowUS.xml" -> the folder name ("meadow") is the crop.
             if (!name) name = formatName(path.posix.basename(path.posix.dirname(norm)) || base);
             const key = name.replace(/[_\s]+/g, '').toUpperCase();
             if (seen.has(key)) continue;
             seen.add(key);
-            crops.push({ name, calendar, fromBase: calendar === null });
+            crops.push({ name, rawName: rawName || name, calendar, fromBase: calendar === null });
         }
         if (!crops.length) return { ok: false, reason: 'nofruittypes', modName };
+
+        // Crop names as the map shows them ("centeno" -> "Rye"), from its
+        // translations: fillType_<crop> in l10n files or inline in modDesc.
+        const l10n = readModL10n(read, modDesc, ['en', 'pl']);
+        crops.forEach(c => {
+            const k = ('filltype_' + c.rawName).toLowerCase();
+            if (l10n[k]) c.titles = l10n[k];
+        });
 
         // Normally a map's list is added on top of the base game's crops. A
         // map that overrides FruitTypeManager.loadDefaultTypes in one of its
@@ -88,6 +97,42 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
     } finally {
         if (mod) mod.close();
     }
+}
+
+function decodeXmlText(s) {
+    return String(s).replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
+}
+
+// A mod's translations: { lowercased key: { en: '…', pl: '…' } }. Mods use
+// either separate files (<l10n filenamePrefix="dir/l10n"/> -> dir/l10n_en.xml
+// with <e k="…" v="…"/> or <text name="…" text="…"/>) or inline
+// <l10n><text name="…"><en>…</en><pl>…</pl></text></l10n> in modDesc.xml.
+function readModL10n(read, modDesc, langs) {
+    const out = {};
+    const put = (k, lang, v) => {
+        if (!k || !v) return;
+        const key = k.toLowerCase();
+        (out[key] || (out[key] = {}))[lang] = decodeXmlText(v);
+    };
+    const prefix = attr((modDesc.match(/<l10n\b[^>]*filenamePrefix="[^"]*"[^>]*>/) || [''])[0], 'filenamePrefix');
+    if (prefix) {
+        langs.forEach(lang => {
+            const xml = read(`${prefix}_${lang}.xml`);
+            if (!xml) return;
+            for (const m of xml.matchAll(/<e\b[^>]*>/g)) put(attr(m[0], 'k'), lang, attr(m[0], 'v'));
+            for (const m of xml.matchAll(/<text\b[^>]*\bname="[^"]*"[^>]*\btext="[^"]*"[^>]*>/g)) put(attr(m[0], 'name'), lang, attr(m[0], 'text'));
+        });
+    }
+    const inline = (modDesc.match(/<l10n>([\s\S]*?)<\/l10n>/) || [])[1];
+    if (inline) {
+        for (const m of inline.matchAll(/<text\b[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g)) {
+            langs.forEach(lang => {
+                const v = (m[2].match(new RegExp('<' + lang + '>([\\s\\S]*?)</' + lang + '>')) || [])[1];
+                if (v) put(m[1], lang, v.replace(/<!\[CDATA\[|\]\]>/g, ''));
+            });
+        }
+    }
+    return out;
 }
 
 module.exports = { readMapCrops };

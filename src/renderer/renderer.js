@@ -1628,7 +1628,11 @@ const CROP_NAME_TRANSLATIONS = {
         "Chaff": "Sieczka", "Wood Chips": "Zrębki", "Manure": "Obornik", "Slurry": "Gnojowica", "Digestate": "Poferment",
         "Fallow": "Ugór",
         "Spelt": "Orkisz", "Mustard": "Gorczyca", "Flax": "Len", "Vetch": "Wyka", "Vetchrye": "Wyka z żytem",
-        "Mustardcover": "Gorczyca na międzyplon", "Fieldgrass": "Trawa polowa"
+        "Mustardcover": "Gorczyca na międzyplon", "Fieldgrass": "Trawa polowa",
+        // English titles from mod maps' l10n (e.g. Castile and León).
+        "Forage Poplar": "Topola pastewna", "Teff": "Teff (miłka abisyńska)", "Lavender": "Lawenda", "Mint": "Mięta",
+        "Thyme and Rosemary": "Tymianek i rozmaryn", "Apple": "Jabłka", "Orange": "Pomarańcze", "Cherry": "Czereśnie",
+        "Lemon": "Cytryny", "Quince": "Pigwa", "Acorn": "Żołędzie", "Chestnut": "Kasztany", "Almond (kernel)": "Migdały"
     }
 };
 
@@ -1652,11 +1656,21 @@ Object.keys(CROP_NAME_TRANSLATIONS).forEach(lang => {
     CROP_NAME_TRANSLATIONS_NORMALIZED[lang] = normalized;
 });
 
+// Crop titles from the open farm's map mod translations ({ CROPKEY: { en, pl } },
+// filled in loadFarmConfigs) — maps name crops in their own language
+// ("Centeno"), their l10n says what it is ("Rye").
+let MAP_CROP_TITLES = {};
+
 function translateCropName(name) {
-    if (!name || currentLang === 'en') return name;
+    if (!name) return name;
+    const mapTitles = MAP_CROP_TITLES[String(name).replace(/[_\s]+/g, '').toUpperCase()];
+    if (mapTitles && mapTitles[currentLang]) return mapTitles[currentLang];
+    // No title in this language: use the map's English one through our dictionary.
+    const base = (mapTitles && mapTitles.en) || name;
+    if (currentLang === 'en') return base;
     const dict = CROP_NAME_TRANSLATIONS_NORMALIZED[currentLang];
-    const translated = dict && dict[normalizeCropNameKey(name)];
-    return translated || name;
+    const translated = dict && (dict[normalizeCropNameKey(base)] || dict[normalizeCropNameKey(name)]);
+    return translated || base;
 }
 
 // Animal subType strings look like "COW_HOLSTEIN", "ROOSTER_BOHUSDAL",
@@ -6344,6 +6358,7 @@ function loadFarmConfigs(farm) {
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
     CROP_ORDER = [...BASE_CROP_ORDER];
     mapCropsInfo = null;
+    MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     // Same pattern as crops: base FS25 animal needs/production are always
     // available; a farm's own imported animal-defs data is merged on top
@@ -6368,6 +6383,7 @@ function loadFarmConfigs(farm) {
             CROP_ORDER = [...mapCropNames];
             res.crops.forEach(c => {
                 if (c.calendar) CROP_CALENDAR[c.name] = { ...(CROP_CALENDAR[c.name] || {}), ...c.calendar };
+                if (c.titles) MAP_CROP_TITLES[cropOrderKey(c.name)] = c.titles;
             });
         }
     }
@@ -6450,6 +6466,7 @@ function clearFarmConfigs() {
     AVAILABLE_CROPS = [];
     CROP_ORDER = [];
     mapCropsInfo = null;
+    MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
 }

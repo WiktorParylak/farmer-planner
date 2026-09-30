@@ -17,6 +17,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
 - Feed planner ingredient tiles: when other barns eat the same feed (e.g. straw), the tile now says the shortfall and "you have" are for all barns, and shows the all-barns need next to this barn's.
 - Some crop names (spelt, mustard, flax, vetch-rye, mustard cover, field grass) were shown in English in the Polish interface.
+- Crops of mod maps that name them in their own language (e.g. *Centeno*, *Lavanda* on Castile and León) now show the map's translated name — in the app's language when the map has it, else its English name through the app's dictionary (Centeno → Rye → Żyto). Polish names added for Castile and León's forage poplar, teff, lavender, mint, thyme & rosemary and orchard fruits.
 
 ## 0.9.6 — 2026-09-29
 
