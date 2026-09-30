@@ -8,6 +8,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Mods outside the default folder are found**: the app now looks in the folder set in the game's `gameSettings.xml` (*modsDirectoryOverride*) and in every **FSG Mod Assistant** collection, not only in `FarmingSimulator2025\mods`. The folder holding most of the savegame's mods is used first, so a savegame from a collection that isn't active right now still works. This applies to the map's crops, field soils and land plots, animal mods (AnimalFoodCalculator, EnhancedAnimalSystem), mixer wagon capacities and breed pictures.
 - Settings shows which mods folder the farm uses (hover to see all searched folders).
 - **Feed mixers** in the Feed planner: productions you own whose recipes make feed — pig food, TMR or mineral feed (e.g. Food Mixer Silo, Small Food Mixer, Lizard Mixed Food) — are found automatically. Each shows its product stock and capacity, how much it can make per month with the recipes switched on, the recipes and the ingredients waiting to be mixed; mixers for the selected barn's animals are highlighted, and a warning shows when no recipe is on.
+- **Mark a field sown straight from the fields table**: click its state badge (To plant / Plant now / Sown) and confirm — no need to open Edit season. Current season only.
+- **Rolling**: an "I want to roll" checkbox per field in Edit season, shown as a chip next to lime in the table; cleared with a new season like the other treatments.
 - Feed mixer recipes and names are translated: base-game ingredients (hay, alfalfa hay, water, silage…) by the app, a mod's own ingredients and the mixer's shop name from that mod's translations (e.g. Castile and León's crushed cereal, feed flour, chopped tubers). Mixers a mod makes practically instant show "no real limit" instead of an absurd monthly rate.
 - Feed mixers can be renamed (pencil next to the name, like barns); the name is used everywhere the mixer shows up. Empty name restores the one from the mod.
 - **Pigs can be fed from a mixer**: a pig-food mixer appears as a feed choice for pigs (*Mixer feed · name*). Their need then follows the mixer's recipe — the crops it takes (e.g. maize + barley + soy, a third each; the switched-on recipe, else the first) — minus the ready pig food in stock. Also selectable in the Animals panel.
@@ -15,6 +17,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Feed in the mixers and ready-mixed pig food / TMR anywhere on the farm (silos, pallets) now count toward feed stock — pig food split like the game's pig mixture (base 50%, grain 25%, protein 20%, root crops 5%).
 
 **Fixed**
+- Lime chip in Edit season didn't change when clicked (it only changed after saving); freshly limed is now green instead of pale beige, so a limed field stands out, and the letter stays readable on a filled chip.
+- The state checkbox in a field card had no caption — it now says "Sown".
 - Breed pictures and mixer wagon capacities ignored a mods folder set in `gameSettings.xml`.
 - Feed planner ingredient tiles: when other barns eat the same feed (e.g. straw), the tile now says the shortfall and "you have" are for all barns, and shows the all-barns need next to this barn's.
 - Some crop names (spelt, mustard, flax, vetch-rye, mustard cover, field grass) were shown in English in the Polish interface.

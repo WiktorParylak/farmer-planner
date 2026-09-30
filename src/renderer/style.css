@@ -5444,3 +5444,59 @@ select:focus-visible,
   font-family: var(--font-body);
   font-size: 13px;
 }
+
+/* Field card: checkbox + its caption (state "Sown", rolling "I want to roll"). */
+.fc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.fc-cell--state .field-rolling {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+
+/* Main table: the state badge is a button that toggles sown / not sown. */
+.state-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+
+.state-toggle:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.state-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Rolling planned chip next to lime. */
+.treatment-chip--rolling.is-active {
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+/* Lime chip switched on in Edit season: make the "on" state obvious. */
+button.treatment-chip--lime.is-active,
+button.treatment-chip--lime.is-warning {
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+/* Letter readable on a chip filled at least halfway. */
+.treatment-chip--lime.lime-strong .lime-letter {
+  color: var(--color-surface);
+}
+
+.fc-check input[type="checkbox"] {
+  accent-color: var(--color-primary);
+}

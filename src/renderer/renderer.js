@@ -205,6 +205,13 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Catch crop sowing",
         catchCropHint: "A crop grown on the same field before or after the main crop (green rye, oilseed radish…). Listed separately in the crops summary so its area isn't counted twice.",
         catchCropShort: "catch crop",
+        thRolling: "Rolling",
+        rollingWant: "I want to roll",
+        rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
+        rollingPlanned: "Rolling planned",
+        stateToggleHint: "Click to mark as sown / not sown",
+        stateConfirmPlanted: "Mark field {field} as sown?",
+        stateConfirmToPlant: "Mark field {field} as not sown yet?",
         cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
         cropsLoaded: "crop(s).",
         noCropsLoadedYet: "No crops loaded yet.",
@@ -690,6 +697,13 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Siew międzyplonu",
         catchCropHint: "Uprawa na tym samym polu przed lub po uprawie głównej (zielone żyto, poplon…). W podsumowaniu upraw liczona osobno, żeby areał nie liczył się podwójnie.",
         catchCropShort: "międzyplon",
+        thRolling: "Wałowanie",
+        rollingWant: "chcę wałować",
+        rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
+        rollingPlanned: "Wałowanie zaplanowane",
+        stateToggleHint: "Kliknij, żeby oznaczyć jako obsiane / nieobsiane",
+        stateConfirmPlanted: "Oznaczyć pole {field} jako obsiane?",
+        stateConfirmToPlant: "Oznaczyć pole {field} jako jeszcze nieobsiane?",
         cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
         cropsLoaded: "uprawa(-y).",
         noCropsLoadedYet: "Nie wczytano jeszcze żadnych upraw.",
@@ -1102,7 +1116,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c7_t: "Tillage",
     tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing.",
     tut_c8_t: "Lime",
-    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Beige = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils. Hover for details.",
+    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils. Hover for details.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c10_t: "Total area",
@@ -1390,7 +1404,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c7_t: "Uprawa gleby",
     tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem.",
     tut_c8_t: "Wapno",
-    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Beżowy = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach. Najedź, żeby zobaczyć szczegóły.",
+    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach. Najedź, żeby zobaczyć szczegóły.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c10_t: "Suma powierzchni",
@@ -7445,7 +7459,7 @@ function getLimeStatus(field, i, seasonNum, rates) {
 const LIME_COLOR_STOPS = [
     [0, [166, 69, 43]],     // 0.0 -> --color-rust (#A6452B)
     [0.5, [201, 122, 43]],  // 0.5 -> --color-accent (#C97A2B)
-    [1, [216, 207, 166]]    // 1.0 -> old "active" beige (#D8CFA6)
+    [1, [63, 107, 68]]      // 1.0 -> --color-primary (#3F6B44), freshly limed
 ];
 function limeChipColor(ph) {
     if (ph == null) return null;
@@ -7480,9 +7494,21 @@ window.toggleLimeChip = function (btn) {
         // Clear the tracked application season so that turning this back on
         // later is treated as a fresh application, not a resumed old one.
         delete btn.dataset.limeSeason;
+        delete btn.dataset.limePh;
+        // Visual state lives in the inline --lime-* vars — clear them too, or
+        // the chip looks unchanged.
+        btn.style.removeProperty('--lime-color');
+        btn.style.removeProperty('--lime-pct');
+        btn.classList.remove('lime-strong');
+        btn.title = t('limeEditTitle');
     } else {
         btn.classList.add('is-active');
         btn.classList.remove('is-warning');
+        // Fresh application = ideal pH: show the chip full right away.
+        btn.style.setProperty('--lime-color', limeChipColor(LIME_PH_IDEAL));
+        btn.style.setProperty('--lime-pct', '100%');
+        btn.classList.add('lime-strong');
+        btn.title = `${t('limeEditTitle')} (100% pH)`;
     }
 };
 
@@ -7575,6 +7601,24 @@ function catchCropCaption(field) {
     const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
     return `<span class="ha-caption catch-crop-caption">+ ${t('catchCropShort')}: ${translateCropName(field.catchCrop)}${month}</span>`;
 }
+
+// Main table: click a field's state badge to mark it sown / not sown without
+// opening Edit season (asks first). Current season only — past seasons render
+// a plain badge.
+if (fieldsBody) fieldsBody.addEventListener('click', e => {
+    const btn = e.target.closest('.state-toggle');
+    if (!btn || isEditMode) return;
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[parseInt(btn.dataset.idx, 10)];
+    if (!field) return;
+    const toPlanted = field.state !== 'Planted';
+    const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
+    if (!confirm(t(toPlanted ? 'stateConfirmPlanted' : 'stateConfirmToPlant').replace('{field}', label))) return;
+    field.state = toPlanted ? 'Planted' : 'To Plant';
+    saveFarmData(farm);
+    renderSeasonView();
+});
 
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
@@ -7674,7 +7718,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateDisplay}</td>
+                    <td>${isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${origIdx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`}</td>
                     <td>
                         <div class="tillage-switch tillage-switch--readonly">
                             <span class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}">${t('tillagePlowed')}</span>
@@ -7682,10 +7726,11 @@ function renderFieldsTable(fields) {
                         </div>
                     </td>
                     <td class="treatments-cell">
-                        <span class="treatment-chip treatment-chip--lime"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}">
+                        <span class="treatment-chip treatment-chip--lime${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}">
                             <span class="lime-fill"></span>
                             <span class="lime-letter">${t('limeLetter')}</span>
                         </span>
+                        ${field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : ''}
                     </td>
                     ${fertPlanCell}
                 </tr>
@@ -7786,7 +7831,11 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
-                            <input type="checkbox" class="edit-input field-state" ${isChecked}>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
+                        </label>
+                        <label class="fc-cell fc-cell--state" title="${t('rollingHint')}">
+                            <span class="fc-label">${t('thRolling')}</span>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-rolling" ${field.rolling ? 'checked' : ''}> <span class="fc-check-text">${t('rollingWant')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -7808,7 +7857,7 @@ function buildFieldEditCard(field, opts) {
                         <div class="fc-cell">
                             <span class="fc-label">${t('thSoil')}</span>
                             <div class="treatments-cell">
-                                <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
+                                <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}${limePhForCard != null && limePhForCard >= 0.5 ? ' lime-strong' : ''}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
                                     <span class="lime-fill"></span>
                                     <span class="lime-letter">${t('limeLetter')}</span>
                                 </button>
@@ -8083,6 +8132,7 @@ if (editSeasonBtn) {
                         area: rawArea,
                         crop: row.querySelector('.field-crop').value,
                         sowingMonth: row.querySelector('.field-sow').value,
+                        rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
                         catchCrop: catchCrop,
                         catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
                         state: stateValue,
@@ -8281,6 +8331,7 @@ if (newSeasonBtn) {
                 field.sowingMonth = "";
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
+                field.rolling = false;
                 field.state = "To Plant";
                 field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
