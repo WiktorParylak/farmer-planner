@@ -355,6 +355,9 @@ const TRANSLATIONS = {
         feedProduct_FORAGE: "TMR (forage)",
         feedProduct_MINERAL_FEED: "Mineral feed",
         feedMixersTitle: "Feed mixers",
+        feedRationMixer: "Mixer feed",
+        feedRationMixerNote: "Fed from {name}: the needs below are the crops for its recipe {recipe}, minus ready pig food in stock.",
+        feedRationMixerNoteOff: "Fed from {name} — no recipe is switched on in the game, so its first one is assumed: {recipe}. Switch a recipe on in the mixer.",
         feedMixerPerMonth: "up to {l} l / month",
         feedMixerForBarn: "for this barn",
         feedMixerNoneOn: "No recipe is switched on — the mixer isn't producing.",
@@ -362,6 +365,7 @@ const TRANSLATIONS = {
         feedMixerInputs: "Waiting to be mixed",
         feedMixerInputsEmpty: "No ingredients in the mixer.",
         feedMixersNote: "Feed and ingredients in the mixers count toward your stock above — pig food split like the game's mixture (base 50%, grain 25%, protein 20%, root crops 5%).",
+        feedMixersNoteRecipe: "Feed and ingredients in the mixers count toward your stock above — pig food split by the mixer recipe the pigs are fed from.",
         feedStockNoSave: "Set the path to careerSavegame.xml in Farm settings to read what's already in your silos and bales.",
         feedStockNotRead: "Stock not read yet — it appears after the next sync with the game save.",
         feedStockEmpty: "No feed found in silos, bunker silos, bales or pallets in the last game save.",
@@ -832,6 +836,9 @@ const TRANSLATIONS = {
         feedProduct_FORAGE: "TMR (mieszanka paszowa)",
         feedProduct_MINERAL_FEED: "Pasza mineralna",
         feedMixersTitle: "Mieszalniki pasz",
+        feedRationMixer: "Pasza z mieszalnika",
+        feedRationMixerNote: "Karmione z {name}: zapotrzebowanie poniżej to surowce do receptury {recipe}, pomniejszone o gotową paszę dla świń w zapasach.",
+        feedRationMixerNoteOff: "Karmione z {name} — w grze nie jest włączona żadna receptura, więc przyjęto pierwszą: {recipe}. Włącz recepturę w mieszalniku.",
         feedMixerPerMonth: "do {l} l / mies.",
         feedMixerForBarn: "dla tej obory",
         feedMixerNoneOn: "Żadna receptura nie jest włączona — mieszalnik nic nie produkuje.",
@@ -839,6 +846,7 @@ const TRANSLATIONS = {
         feedMixerInputs: "Czeka na zmieszanie",
         feedMixerInputsEmpty: "Brak składników w mieszalniku.",
         feedMixersNote: "Pasza i składniki w mieszalnikach liczą się do zapasów powyżej — pasza dla świń rozdzielona jak mieszanka z gry (baza 50%, zboże 25%, białko 20%, okopowe 5%).",
+        feedMixersNoteRecipe: "Pasza i składniki w mieszalnikach liczą się do zapasów powyżej — pasza dla świń rozdzielona według receptury mieszalnika, z którego karmione są świnie.",
         feedStockNoSave: "Ustaw ścieżkę do careerSavegame.xml w Ustawieniach farmy, żeby odczytać, co już jest w silosach i belach.",
         feedStockNotRead: "Zapasy nie zostały jeszcze odczytane — pojawią się po następnej synchronizacji z zapisem gry.",
         feedStockEmpty: "W ostatnim zapisie gry nie ma paszy w silosach, pryzmach, belach ani na paletach.",
@@ -2672,7 +2680,7 @@ window.openHubPanel = function (type) {
             // silos/bales is shared by every building, so "how long it lasts"
             // is stock / what the whole farm eats of it.
             const feedPlan = getFeedPlan(farm);
-            const feedStockCat = feedStockByCategory(farm && farm.feedStock);
+            const feedStockCat = feedStockCategoriesFor(farm, feedPlan);
             const farmDailyByCat = {};
             buildings.forEach(b => b.clusters.forEach(c => {
                 const type = animalTypeOf(c.subType);
@@ -3496,6 +3504,11 @@ function saveFeedPlan(plan) {
 function resolveRation(type, plan) {
     const groups = ANIMAL_FOOD_GROUPS[type] || {};
     let id = plan.rations[type] || defaultRationFor(type);
+    if (id.startsWith('mixer:')) {
+        const mixer = feedMixersFor(getCurrentFarm(), type).find(m => 'mixer:' + m.id === id);
+        if (mixer) return mixerRation(mixer, type);
+        id = defaultRationFor(type);
+    }
     if (id.startsWith('custom:')) {
         const feed = plan.customFeeds.find(f => 'custom:' + f.id === id && f.animalType === type);
         if (feed) return { id, name: feed.name, efficiency: feed.efficiency, ingredients: feed.ingredients, custom: true };
@@ -3509,22 +3522,77 @@ function resolveRation(type, plan) {
     return { id, name: t('feedRation_' + id), efficiency: g.efficiency, ingredients, tmr: !!g.tmr };
 }
 
-// <option>s for a species' ration picker: built-in rations, then that
-// species' custom feeds in their own group. Shared by the feed planner and
-// the Animals panel so both always offer (and save) the same choice.
+// <option>s for a species' ration picker: built-in rations, feed mixers that
+// make this species' feed, then its custom feeds in their own group. Shared by
+// the feed planner and the Animals panel so both always offer (and save) the
+// same choice.
 function feedRationOptionsHtml(type, plan, selectedId) {
     const builtIn = Object.keys(ANIMAL_FOOD_GROUPS[type] || {}).map(id =>
         `<option value="${id}" ${selectedId === id ? 'selected' : ''}>${t('feedRation_' + id)} (${ANIMAL_FOOD_GROUPS[type][id].efficiency}%)</option>`).join('');
+    const mixers = feedMixersFor(getCurrentFarm(), type).map(m =>
+        `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(m.name)} (100%)</option>`).join('');
     const custom = plan.customFeeds.filter(f => f.animalType === type).map(f =>
         `<option value="custom:${f.id}" ${selectedId === 'custom:' + f.id ? 'selected' : ''}>${escapeHtml(f.name)} (${f.efficiency}%)</option>`).join('');
-    return builtIn + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+}
+
+// Feed mixers whose product is the complete feed of this species (pig food
+// for pigs) — they can be picked as that species' ration.
+const FEED_MIXER_RATION_PRODUCT = { PIG: 'PIGFOOD' };
+function feedMixersFor(farm, type) {
+    const product = FEED_MIXER_RATION_PRODUCT[type];
+    if (!product) return [];
+    return ((farm && farm.feedMixers) || []).filter(m => m.products.includes(product));
+}
+
+// The recipe a mixer ration follows: the first switched-on recipe making the
+// product, else the mixer's first one for it.
+function mixerRecipeFor(mixer, product) {
+    const makes = mixer.recipes.filter(r => r.outputs.some(o => o.fillType === product));
+    return makes.find(r => r.enabled) || makes[0] || null;
+}
+
+// A mixer as a ration: the animals eat its product, so their need turns into
+// the recipe's crops — litres of each ingredient per litre of product (e.g.
+// maize + barley + soy 1:1:1 -> 3 l make 3 l, a third each; 2+2+2 -> 4 l
+// needs 1.5 l of crops per litre). `absolute` = pct already per 100 l of feed.
+function mixerRation(mixer, type) {
+    const product = FEED_MIXER_RATION_PRODUCT[type];
+    const recipe = mixerRecipeFor(mixer, product);
+    const out = recipe ? recipe.outputs.filter(o => o.fillType === product).reduce((s, o) => s + o.amount, 0) : 0;
+    const byCat = {};
+    if (recipe && out > 0) {
+        recipe.inputs.forEach(i => {
+            const c = FEED_FILLTYPE_CATEGORY[i.fillType] || 'GRAIN';
+            byCat[c] = (byCat[c] || 0) + i.amount / out * 100;
+        });
+    }
+    const ingredients = Object.keys(byCat).length
+        ? Object.entries(byCat).map(([category, pct]) => ({ category, pct }))
+        : ANIMAL_FOOD_GROUPS[type].mix.ingredients;
+    return {
+        id: 'mixer:' + mixer.id, name: t('feedRationMixer') + ' · ' + mixer.name, efficiency: 100,
+        ingredients, absolute: !!Object.keys(byCat).length,
+        mixer: { id: mixer.id, name: mixer.name, product, recipeEnabled: !!(recipe && recipe.enabled), recipe }
+    };
+}
+
+// Stock litres per category with ready-mixed pig food split the way the
+// pigs' chosen mixer recipe uses it (else the game's pig mixture).
+function feedStockCategoriesFor(farm, plan) {
+    const ration = resolveRation('PIG', plan);
+    const override = {};
+    if (ration && ration.mixer && ration.absolute) {
+        override.PIGFOOD = Object.fromEntries(ration.ingredients.map(i => [i.category, i.pct / 100]));
+    }
+    return feedStockByCategory(farm && farm.feedStock, override);
 }
 
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
 function splitByRecipe(litres, recipe, into) {
-    const total = recipe.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100;
+    const total = recipe.absolute ? 100 : (recipe.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100);
     recipe.ingredients.forEach(i => {
         into[i.category] = (into[i.category] || 0) + litres * (parseFloat(i.pct) || 0) / total;
     });
@@ -3626,7 +3694,9 @@ const FEED_FILLTYPE_CATEGORY = {
     MAIZE: 'PIG_BASE', SORGHUM: 'PIG_BASE', WHEAT: 'GRAIN', BARLEY: 'GRAIN',
     SOYBEAN: 'PROTEIN', CANOLA: 'PROTEIN', SUNFLOWER: 'PROTEIN',
     POTATO: 'EARTH', SUGARBEET: 'EARTH', CARROT: 'EARTH', PARSNIP: 'EARTH', BEETROOT: 'EARTH',
-    OAT: 'OAT'
+    OAT: 'OAT',
+    // Mod-map crops, grouped as the maps' animalFood.xml does (e.g. Solek).
+    RYE: 'GRAIN', TRITICALE: 'GRAIN', MILLET: 'PIG_BASE', BUCKWHEAT: 'PROTEIN'
 };
 const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer'];
 
@@ -3856,11 +3926,11 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
 }
 
 // Stock litres per feed category (sum over every source).
-function feedStockByCategory(stock) {
+function feedStockByCategory(stock, splitOverride = {}) {
     const byCategory = {};
     Object.entries(stock || {}).forEach(([ft, sources]) => {
         const litres = Object.values(sources).reduce((a, v) => a + v, 0);
-        const split = FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
+        const split = splitOverride[ft] || FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
         if (!split) return;
         Object.entries(split).forEach(([c, share]) => { byCategory[c] = (byCategory[c] || 0) + litres * share; });
     });
@@ -4041,7 +4111,8 @@ function renderFeedMixersSection(farm, barnAnimalTypes, num) {
             <p class="feed-mixer-inputs">${inputStock ? `${t('feedMixerInputs')}: ${inputStock}` : t('feedMixerInputsEmpty')}</p>
         </div>`;
     });
-    html += `</div><p class="hub-panel-note">${t('feedMixersNote')}</p>`;
+    const pigRation = resolveRation('PIG', getFeedPlan(farm));
+    html += `</div><p class="hub-panel-note">${t(pigRation && pigRation.mixer ? 'feedMixersNoteRecipe' : 'feedMixersNote')}</p>`;
     return html;
 }
 
@@ -4060,7 +4131,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const demand = buildFeedDemand(farm, plan);
     const supply = buildFeedSupply(farm, plan, rates);
     const stock = (farm && farm.feedStock) || null;
-    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockByCategory(stock));
+    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan));
     const num = n => Math.round(n).toLocaleString();
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 
@@ -4100,12 +4171,23 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
                 html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
                     <span class="feed-ration-name">${t('feedRation_' + id)}</span><span class="feed-ration-eff">${ANIMAL_FOOD_GROUPS[type][id].efficiency}%</span></button>`;
             });
+            feedMixersFor(farm, type).forEach(m => {
+                const id = 'mixer:' + m.id;
+                html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${escapeHtml(id)}">
+                    <span class="feed-ration-name"><i class="fa-solid fa-blender" aria-hidden="true"></i> ${t('feedRationMixer')} · ${escapeHtml(m.name)}</span><span class="feed-ration-eff">100%</span></button>`;
+            });
             plan.customFeeds.filter(f => f.animalType === type).forEach(f => {
                 const id = 'custom:' + f.id;
                 html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
                     <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span></button>`;
             });
             html += `<button type="button" class="feed-ration-tile feed-ration-tile--new feed-custom-new" data-type="${type}"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomNew')}</button></div>`;
+            // Mixer ration: say which recipe the crop needs below follow.
+            if (ration && ration.mixer) {
+                const r = ration.mixer.recipe;
+                const inputs = r ? r.inputs.map(i => feedFillTypeName(i.fillType)).join(' + ') : '–';
+                html += `<p class="hub-panel-note feed-mixer-ration-note">${t(ration.mixer.recipeEnabled ? 'feedRationMixerNote' : 'feedRationMixerNoteOff').replace('{recipe}', escapeHtml(inputs)).replace('{name}', escapeHtml(ration.mixer.name))}</p>`;
+            }
 
         });
 
