@@ -39,7 +39,7 @@
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
 - **Notatki** — przypięte do miesięcy, z tagami i listą zadań.
 - **Przewidywane plony**.
-- **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry.
+- **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry. Wykrywa też mieszalniki pasz (pasza dla świń, TMR, pasza mineralna) z zapasami, recepturami i wydajnością miesięczną.
 
 **Inne**
 - Język polski i angielski.

@@ -5315,3 +5315,107 @@ select:focus-visible,
   font-size: 14px;
   color: var(--color-ink-soft);
 }
+
+/* Feed planner: feed mixers (productions making pig food / TMR / mineral feed). */
+.feed-mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+
+.feed-mixer-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  font-size: 13px;
+}
+
+.feed-mixer-tile--relevant {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.feed-mixer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary-dark);
+}
+
+.feed-mixer-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.feed-mixer-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.feed-mixer-product {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.feed-mixer-product-name {
+  font-weight: 700;
+}
+
+.feed-mixer-product-stock {
+  font-family: var(--font-mono);
+}
+
+.feed-plan .feed-mixer-product-rate,
+.feed-plan .feed-mixer-inputs {
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  margin: 0;
+}
+
+.feed-plan .feed-mixer-warn {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-accent-dark);
+}
+
+.feed-mixer-recipes summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.feed-mixer-recipes ul {
+  margin: 6px 0 0;
+  padding-left: 4px;
+  list-style: none;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+}
+
+.feed-mixer-recipes li.is-on {
+  color: var(--color-ink);
+}
+
+.feed-mixer-recipes li i {
+  width: 14px;
+  color: var(--color-ink-faint);
+}
+
+.feed-mixer-recipes li.is-on i {
+  color: var(--color-primary);
+}

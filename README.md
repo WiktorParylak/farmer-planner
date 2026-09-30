@@ -39,7 +39,7 @@
 - **Field soil type** — field soils used by the fertilization plans.
 - **Notes** — pinned to months, with tags and a checklist.
 - **Predicted yields**.
-- **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd, plus a **mixer wagon** calculator: load it from the bales on your farm and check the mix against the game's TMR recipe.
+- **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd, plus a **mixer wagon** calculator: load it from the bales on your farm and check the mix against the game's TMR recipe. Feed mixer productions (pig food, TMR, mineral feed) are detected with their stock, recipes and monthly output.
 
 **Other**
 - English and Polish.

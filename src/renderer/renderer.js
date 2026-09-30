@@ -350,6 +350,18 @@ const TRANSLATIONS = {
         feedSrc_bunker: "Bunker silos",
         feedSrc_bale: "Bales",
         feedSrc_pallet: "Pallets",
+        feedSrc_mixer: "Feed mixers",
+        feedProduct_PIGFOOD: "Pig food",
+        feedProduct_FORAGE: "TMR (forage)",
+        feedProduct_MINERAL_FEED: "Mineral feed",
+        feedMixersTitle: "Feed mixers",
+        feedMixerPerMonth: "up to {l} l / month",
+        feedMixerForBarn: "for this barn",
+        feedMixerNoneOn: "No recipe is switched on — the mixer isn't producing.",
+        feedMixerRecipes: "Recipes: {on} of {n} on",
+        feedMixerInputs: "Waiting to be mixed",
+        feedMixerInputsEmpty: "No ingredients in the mixer.",
+        feedMixersNote: "Feed and ingredients in the mixers count toward your stock above — pig food split like the game's mixture (base 50%, grain 25%, protein 20%, root crops 5%).",
         feedStockNoSave: "Set the path to careerSavegame.xml in Farm settings to read what's already in your silos and bales.",
         feedStockNotRead: "Stock not read yet — it appears after the next sync with the game save.",
         feedStockEmpty: "No feed found in silos, bunker silos, bales or pallets in the last game save.",
@@ -815,6 +827,18 @@ const TRANSLATIONS = {
         feedSrc_bunker: "Pryzmy",
         feedSrc_bale: "Bele",
         feedSrc_pallet: "Palety",
+        feedSrc_mixer: "Mieszalniki pasz",
+        feedProduct_PIGFOOD: "Pasza dla świń",
+        feedProduct_FORAGE: "TMR (mieszanka paszowa)",
+        feedProduct_MINERAL_FEED: "Pasza mineralna",
+        feedMixersTitle: "Mieszalniki pasz",
+        feedMixerPerMonth: "do {l} l / mies.",
+        feedMixerForBarn: "dla tej obory",
+        feedMixerNoneOn: "Żadna receptura nie jest włączona — mieszalnik nic nie produkuje.",
+        feedMixerRecipes: "Receptury: włączone {on} z {n}",
+        feedMixerInputs: "Czeka na zmieszanie",
+        feedMixerInputsEmpty: "Brak składników w mieszalniku.",
+        feedMixersNote: "Pasza i składniki w mieszalnikach liczą się do zapasów powyżej — pasza dla świń rozdzielona jak mieszanka z gry (baza 50%, zboże 25%, białko 20%, okopowe 5%).",
         feedStockNoSave: "Ustaw ścieżkę do careerSavegame.xml w Ustawieniach farmy, żeby odczytać, co już jest w silosach i belach.",
         feedStockNotRead: "Zapasy nie zostały jeszcze odczytane — pojawią się po następnej synchronizacji z zapisem gry.",
         feedStockEmpty: "W ostatnim zapisie gry nie ma paszy w silosach, pryzmach, belach ani na paletach.",
@@ -3604,7 +3628,101 @@ const FEED_FILLTYPE_CATEGORY = {
     POTATO: 'EARTH', SUGARBEET: 'EARTH', CARROT: 'EARTH', PARSNIP: 'EARTH', BEETROOT: 'EARTH',
     OAT: 'OAT'
 };
-const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet'];
+const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer'];
+
+// Ready-mixed feeds count toward the categories they're made of — pig food is
+// the game's PIGFOOD mixture (animalFood.xml <mixture animalType="PIG">: base
+// 50 / grain 25 / protein 20 / earth 5), FORAGE is a finished TMR (default
+// recipe). Shares are fractions of the litres.
+const FEED_MIXTURE_SPLIT = {
+    PIGFOOD: { PIG_BASE: 0.5, GRAIN: 0.25, PROTEIN: 0.2, EARTH: 0.05 },
+    FORAGE: Object.fromEntries(Object.entries(TMR_DEFAULT).map(([c, pct]) => [c, pct / 100]))
+};
+// A production whose recipes make any of these is a feed mixer.
+const FEED_PRODUCT_FILLTYPES = ['PIGFOOD', 'FORAGE', 'MINERAL_FEED'];
+// Which animals a mixer product is for (to flag the mixers a barn can use).
+const FEED_PRODUCT_ANIMALS = { PIGFOOD: ['PIG'], FORAGE: ['COW', 'SHEEP'], MINERAL_FEED: ['COW', 'SHEEP'] };
+
+function isFeedFillType(fillType) {
+    return !!(FEED_FILLTYPE_CATEGORY[fillType] || FEED_MIXTURE_SPLIT[fillType]);
+}
+
+// Feed mixers the player owns: placeables (farmId 1) with a productionPoint
+// whose recipes output a feed (FEED_PRODUCT_FILLTYPES) — e.g. FoodMixerSilo,
+// SmallFoodMixer, Lizard Mixed Food. Recipes, throughput and capacity come
+// from the placeable's own XML in its mod; which recipes are switched on and
+// what's in storage from placeables.xml. Base-game placeables live in the
+// game's archives and can't be read, so only mod mixers are found.
+// Production rates: cyclesPerMonth, or legacy cyclesPerHour x 24 (the game
+// converts it the same way), so output per in-game month.
+function readFeedMixersFromSave(saveFolder, modsDirs) {
+    const p = path.join(saveFolder, 'placeables.xml');
+    if (!fs.existsSync(p)) return [];
+    const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const up = s => String(s || '').toUpperCase();
+    const defCache = {};
+    const mixers = [];
+    doc.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+        const saved = pl.querySelector(':scope > productionPoint');
+        if (!saved) return;
+        const filename = pl.getAttribute('filename') || '';
+        if (!(filename in defCache)) {
+            const bytes = modFiles.readModFile(modsDirs, filename);
+            const x = bytes ? new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml') : null;
+            defCache[filename] = x && !x.querySelector('parsererror') ? x : null;
+        }
+        const def = defCache[filename];
+        if (!def) return;
+        const recipes = [...def.querySelectorAll('productionPoint productions > production')].map(pr => {
+            const perMonth = parseFloat(pr.getAttribute('cyclesPerMonth')) || (parseFloat(pr.getAttribute('cyclesPerHour')) || 0) * 24;
+            const items = sel => [...pr.querySelectorAll(sel)].map(i => ({ fillType: up(i.getAttribute('fillType')), amount: parseFloat(i.getAttribute('amount')) || 0 }));
+            return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth };
+        });
+        const feedRecipes = recipes.filter(r => r.outputs.some(o => FEED_PRODUCT_FILLTYPES.includes(o.fillType)));
+        if (!feedRecipes.length) return;
+
+        const enabled = {};
+        saved.querySelectorAll(':scope > production').forEach(pr => { enabled[pr.getAttribute('id')] = pr.getAttribute('isEnabled') === 'true'; });
+        feedRecipes.forEach(r => { r.enabled = enabled[r.id] !== undefined ? enabled[r.id] : false; });
+
+        const stock = {};
+        saved.querySelectorAll(':scope > storage > node[fillType]').forEach(n => {
+            const lvl = parseFloat(n.getAttribute('fillLevel'));
+            if (lvl > 0) stock[up(n.getAttribute('fillType'))] = (stock[up(n.getAttribute('fillType'))] || 0) + lvl;
+        });
+        const capacity = {};
+        const storageDef = def.querySelector('productionPoint > storage');
+        if (storageDef) {
+            const all = parseFloat(storageDef.getAttribute('capacity')) || null;
+            storageDef.querySelectorAll(':scope > capacity[fillType]').forEach(c => { capacity[up(c.getAttribute('fillType'))] = parseFloat(c.getAttribute('capacity')) || all; });
+            capacity._default = all;
+        }
+
+        const nameEl = def.querySelector('storeData > name');
+        const rawName = nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '';
+        const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
+        mixers.push({
+            id: pl.getAttribute('uniqueId') || filename,
+            name: rawName && !rawName.startsWith('$') ? rawName : filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
+            mod: pl.getAttribute('modName') || '',
+            products,
+            recipes: feedRecipes,
+            stock,
+            capacity
+        });
+    });
+    return mixers;
+}
+
+// Most a mixer can make of `product` per in-game month with its switched-on
+// recipes (all recipes when none is on — the game then produces nothing, but
+// it's the mixer's potential).
+function feedMixerMonthlyOutput(mixer, product) {
+    const on = mixer.recipes.filter(r => r.enabled);
+    const use = on.length ? on : mixer.recipes;
+    return use.reduce((s, r) => s + r.outputs.filter(o => o.fillType === product).reduce((a, o) => a + o.amount * r.cyclesPerMonth, 0), 0);
+}
 
 // Feed already on the farm (farmId 1) at the last save, in litres per
 // fillType and source:
@@ -3617,7 +3735,7 @@ const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet'];
 function readFeedStockFromSave(saveFolder) {
     const stock = {};
     const add = (fillType, source, litres) => {
-        if (!FEED_FILLTYPE_CATEGORY[fillType] || !(litres > 0)) return;
+        if (!isFeedFillType(fillType) || !(litres > 0)) return;
         const e = stock[fillType] || (stock[fillType] = {});
         e[source] = (e[source] || 0) + litres;
     };
@@ -3741,9 +3859,10 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
 function feedStockByCategory(stock) {
     const byCategory = {};
     Object.entries(stock || {}).forEach(([ft, sources]) => {
-        const c = FEED_FILLTYPE_CATEGORY[ft];
-        if (!c) return;
-        byCategory[c] = (byCategory[c] || 0) + Object.values(sources).reduce((a, v) => a + v, 0);
+        const litres = Object.values(sources).reduce((a, v) => a + v, 0);
+        const split = FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
+        if (!split) return;
+        Object.entries(split).forEach(([c, share]) => { byCategory[c] = (byCategory[c] || 0) + litres * share; });
     });
     return byCategory;
 }
@@ -3879,6 +3998,53 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
     </div>`;
 }
 
+// Fill type as the player knows it: mixer products by name, crops through
+// the crop dictionary.
+function feedFillTypeName(ft) {
+    if (FEED_PRODUCT_FILLTYPES.includes(ft)) return t('feedProduct_' + ft);
+    const crop = translateCropName(formatCropName(ft));
+    return crop || formatFillType(ft);
+}
+
+// One tile per feed mixer the farm owns. Mixers whose product the selected
+// barn's animals eat come first and are highlighted.
+function renderFeedMixersSection(farm, barnAnimalTypes, num) {
+    const mixers = (farm && farm.feedMixers) || [];
+    if (!mixers.length) return '';
+    const forBarn = m => m.products.some(p => (FEED_PRODUCT_ANIMALS[p] || []).some(a => barnAnimalTypes.includes(a)));
+    const sorted = [...mixers].sort((a, b) => forBarn(b) - forBarn(a));
+    let html = `<div class="hub-panel-subtitle">${t('feedMixersTitle')}</div><div class="feed-mixer-grid">`;
+    sorted.forEach(m => {
+        const relevant = forBarn(m);
+        const on = m.recipes.filter(r => r.enabled);
+        const products = m.products.map(p => {
+            const inStock = m.stock[p] || 0;
+            const cap = m.capacity[p] || m.capacity._default;
+            return `<div class="feed-mixer-product">
+                <span class="feed-mixer-product-name">${escapeHtml(feedFillTypeName(p))}</span>
+                <span class="feed-mixer-product-stock">${num(inStock)} l${cap ? ` / ${num(cap)} l` : ''}</span>
+                <span class="feed-mixer-product-rate">${t('feedMixerPerMonth').replace('{l}', num(feedMixerMonthlyOutput(m, p)))}</span>
+            </div>`;
+        }).join('');
+        const recipeLine = r => `<li class="${r.enabled ? 'is-on' : ''}"><i class="fa-solid ${r.enabled ? 'fa-circle-check' : 'fa-circle'}" aria-hidden="true"></i>
+            ${r.inputs.map(i => escapeHtml(feedFillTypeName(i.fillType))).join(' + ')} → ${r.outputs.map(o => escapeHtml(feedFillTypeName(o.fillType))).join(', ')}</li>`;
+        const inputs = [...new Set(m.recipes.flatMap(r => r.inputs.map(i => i.fillType)))];
+        const inputStock = inputs.filter(ft => m.stock[ft] > 0).map(ft => `${escapeHtml(feedFillTypeName(ft))} ${num(m.stock[ft])} l`).join(' · ');
+        html += `<div class="feed-mixer-tile ${relevant ? 'feed-mixer-tile--relevant' : ''}">
+            <div class="feed-mixer-head"><i class="fa-solid fa-blender" aria-hidden="true"></i>
+                <span class="feed-mixer-name">${escapeHtml(m.name)}</span>
+                ${relevant ? `<span class="feed-mixer-badge">${t('feedMixerForBarn')}</span>` : ''}</div>
+            ${products}
+            ${on.length ? '' : `<p class="feed-mixer-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMixerNoneOn')}</p>`}
+            <details class="feed-mixer-recipes"><summary>${t('feedMixerRecipes').replace('{on}', on.length).replace('{n}', m.recipes.length)}</summary>
+                <ul>${m.recipes.map(recipeLine).join('')}</ul></details>
+            <p class="feed-mixer-inputs">${inputStock ? `${t('feedMixerInputs')}: ${inputStock}` : t('feedMixerInputsEmpty')}</p>
+        </div>`;
+    });
+    html += `</div><p class="hub-panel-note">${t('feedMixersNote')}</p>`;
+    return html;
+}
+
 function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('feedPlanTitle');
     if (!feedPlanRerendering) {   // fresh open from the hub menu
@@ -3969,6 +4135,9 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         }
         if (farm && !farm.saveGamePath) html += `<p class="hub-panel-note">${t('feedStockNoSave')}</p>`;
         else if (!stock) html += `<p class="hub-panel-note">${t('feedStockNotRead')}</p>`;
+
+        // --- 3b. Feed mixers (productions making pig food / TMR / mineral feed) ---
+        html += renderFeedMixersSection(farm, Object.keys(barnNeed.heads), num);
     }
 
     // --- 4. Settings (collapsed): feed fields, parameters, custom feeds ---
@@ -6705,6 +6874,19 @@ function readGameSave(pathToFile) {
         catch (e) { console.error('Could not read bales from savegame', e); }
         try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
         catch (e) { console.error('Could not read mixer wagons from savegame', e); }
+        try {
+            result.feedMixers = readFeedMixersFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            // What sits in a mixer (finished feed and the crops waiting to be
+            // mixed) is feed on the farm too.
+            if (result.feedStock) {
+                result.feedMixers.forEach(m => Object.entries(m.stock).forEach(([ft, litres]) => {
+                    if (!isFeedFillType(ft)) return;
+                    const e = result.feedStock[ft] || (result.feedStock[ft] = {});
+                    e.mixer = (e.mixer || 0) + litres;
+                }));
+            }
+        }
+        catch (e) { console.error('Could not read feed mixers from savegame', e); }
 
         const playTimeVal = findValueInRawText(careerText, 'playTime');
         if (playTimeVal) {
@@ -6783,6 +6965,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
     if (gameData.feedBales !== null) { farm.feedBales = gameData.feedBales; changed = true; }
     if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
+    if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
