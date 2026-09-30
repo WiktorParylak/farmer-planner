@@ -78,9 +78,20 @@ const TRANSLATIONS = {
         farmDetails: "Farm Details",
         detailBalance: "Balance",
         detailCredit: "Credit",
-        bankCreditLabel: "Bank And Credit (mod)",
         bankCreditValue: "{n} active loan(s) · {m} € / month",
-        bankCreditNone: "no active loans",
+        finNoLoan: "no loan",
+        finVsPrevMonth: "vs last month",
+        finNoHistory: "history builds up as you play",
+        finSeasonChange: "Change in season {n}",
+        finFromStart: "from {v} at the start",
+        finChartMonthly: "Balance month by month",
+        finChartSeasons: "Balance at the end of each season",
+        finYear: "Year {y}",
+        finNow: "now",
+        finShowTable: "Show the numbers as a table",
+        finColMonth: "Month",
+        finColYear: "Year",
+        finColChange: "Change",
         detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
         detailFields: "Fields",
@@ -578,9 +589,20 @@ const TRANSLATIONS = {
         farmDetails: "Szczegóły Farmy",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
-        bankCreditLabel: "Bank And Credit (mod)",
         bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
-        bankCreditNone: "brak aktywnych kredytów",
+        finNoLoan: "brak kredytu",
+        finVsPrevMonth: "wobec poprzedniego miesiąca",
+        finNoHistory: "historia zbiera się w trakcie gry",
+        finSeasonChange: "Zmiana w sezonie {n}",
+        finFromStart: "od {v} na początku",
+        finChartMonthly: "Saldo miesiąc po miesiącu",
+        finChartSeasons: "Saldo na koniec każdego sezonu",
+        finYear: "Rok {y}",
+        finNow: "teraz",
+        finShowTable: "Pokaż liczby w tabeli",
+        finColMonth: "Miesiąc",
+        finColYear: "Rok",
+        finColChange: "Zmiana",
         detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
         detailFields: "Pola",
@@ -2029,62 +2051,6 @@ function getSeasonBalanceHistory(farm) {
     return history;
 }
 
-// Hand-rolled inline SVG line chart — no charting library, so the app stays
-// dependency-free and works fully offline. Draws balance (solid) and, if
-// any loan was ever owed, a dashed loan line on the same axes.
-function buildBalanceChartSvg(history, opts = {}) {
-    if (!history || history.length < 2) return '';
-
-    // Default labelling = season charts ("S1", "S2", ...); monthly charts pass
-    // their own labelFn/titleFn and a maxLabels cap so a 24-point year-and-a-half
-    // trend doesn't turn the x-axis into mush.
-    const labelFn = opts.labelFn || ((h) => `S${h.season}`);
-    const titleBalanceFn = opts.titleBalanceFn || ((h) => `${t('season')} ${h.season}: ${Math.round(h.balance).toLocaleString()} €`);
-    const titleLoanFn = opts.titleLoanFn || ((h) => `${t('season')} ${h.season} — ${t('detailCredit')}: ${Math.round(h.loan).toLocaleString()} €`);
-    const maxLabels = opts.maxLabels || Infinity;
-    const labelStep = Math.max(1, Math.ceil(history.length / maxLabels));
-
-    const width = 460, height = 180;
-    const padL = 54, padR = 16, padT = 16, padB = 26;
-    const plotW = width - padL - padR;
-    const plotH = height - padT - padB;
-
-    const hasLoan = history.some(h => h.loan > 0);
-    const allValues = history.map(h => h.balance).concat(hasLoan ? history.map(h => h.loan) : [0]);
-    let minV = Math.min(0, ...allValues);
-    let maxV = Math.max(...allValues, 1);
-    if (minV === maxV) maxV = minV + 1;
-
-    const xStep = plotW / (history.length - 1);
-    const xScale = (i) => padL + i * xStep;
-    const yScale = (v) => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
-    const zeroY = yScale(0);
-
-    const balancePts = history.map((h, i) => `${xScale(i)},${yScale(h.balance)}`).join(' ');
-    const loanPts = history.map((h, i) => `${xScale(i)},${yScale(h.loan)}`).join(' ');
-
-    let svg = `<svg viewBox="0 0 ${width} ${height}" class="balance-chart-svg" xmlns="http://www.w3.org/2000/svg">`;
-    svg += `<line x1="${padL}" y1="${yScale(maxV)}" x2="${padL}" y2="${padT + plotH}" class="chart-axis-line" />`;
-    svg += `<line x1="${padL}" y1="${zeroY}" x2="${width - padR}" y2="${zeroY}" class="chart-zero-line" />`;
-    svg += `<text x="${padL - 8}" y="${yScale(maxV) + 4}" class="chart-axis-label" text-anchor="end">${Math.round(maxV).toLocaleString()}</text>`;
-    svg += `<text x="${padL - 8}" y="${zeroY + 4}" class="chart-axis-label" text-anchor="end">0</text>`;
-
-    if (hasLoan) svg += `<polyline points="${loanPts}" class="chart-line chart-line--loan" />`;
-    svg += `<polyline points="${balancePts}" class="chart-line chart-line--balance" />`;
-
-    history.forEach((h, i) => {
-        const x = xScale(i);
-        svg += `<circle cx="${x}" cy="${yScale(h.balance)}" r="3.5" class="chart-dot chart-dot--balance"><title>${titleBalanceFn(h)}</title></circle>`;
-        if (hasLoan) svg += `<circle cx="${x}" cy="${yScale(h.loan)}" r="3.5" class="chart-dot chart-dot--loan"><title>${titleLoanFn(h)}</title></circle>`;
-        if (i % labelStep === 0 || i === history.length - 1) {
-            svg += `<text x="${x}" y="${height - 8}" class="chart-axis-label" text-anchor="middle">${labelFn(h, i)}</text>`;
-        }
-    });
-
-    svg += `</svg>`;
-    return svg;
-}
-
 // Same idea as getSeasonBalanceHistory, but for the animal herd: total head
 // count and the (numAnimals-weighted) average health, read from every
 // archived season that has them (older archives made before this feature
@@ -2129,7 +2095,7 @@ function getAnimalHistoryTrend(farm) {
     return history;
 }
 
-// Generic single-series version of buildBalanceChartSvg, for trends that
+// Generic single-series inline SVG line chart (no charting library), for trends that
 // don't need a second overlaid line (animal count, average health, ...).
 // Points whose value is null/undefined (e.g. health before this feature
 // existed) are dropped rather than plotted as zero.
@@ -2585,20 +2551,269 @@ function wireBarnPanel(bodyEl) {
     });
 }
 
-// Finance: Bank And Credit (FS25_BankCredit) contracts behind the loan total.
-function bankCreditLine(farm) {
-    const bc = farm && farm.bankCredit;
-    if (!bc) return '';
-    const value = bc.count
-        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString())
-        : t('bankCreditNone');
-    return `<p class="details-category"><span>${t('bankCreditLabel')}</span><span class="details-category-value">${value}</span></p>`;
-}
-
 function getDetailValue(id) {
     const el = document.getElementById(id);
     return el ? el.textContent : '-';
 }
+
+// =============================================================
+// FINANCE VIEW — KPI tiles, monthly balance chart (crosshair tooltip),
+// season-end bars, table view. Colors: balance #3B7542 / loan #C97A2B,
+// validated with the dataviz palette checker against --color-surface-soft
+// (the brand #3F6B44 is too gray for a chart mark). Loan is also dashed, so
+// the two series never rely on color alone.
+// =============================================================
+const FIN_LOCALE = () => (currentLang === 'pl' ? 'pl-PL' : 'en-US');
+function finMoney(v) {
+    return `${Math.round(v).toLocaleString(FIN_LOCALE())} €`;
+}
+function finCompact(v) {
+    return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+function finSigned(v) {
+    return (v > 0 ? '+' : v < 0 ? '−' : '') + finMoney(Math.abs(v));
+}
+// "Nice" axis ticks (1/2/5 × 10^n) covering [min, max].
+function finTicks(min, max, count = 4) {
+    const span = Math.max(1, max - min);
+    const raw = span / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+    const ticks = [];
+    for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v));
+    return ticks;
+}
+
+function finDeltaHtml(delta, label) {
+    if (delta == null || !isFinite(delta)) return '';
+    const dir = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+    const icon = { up: 'fa-arrow-trend-up', down: 'fa-arrow-trend-down', flat: 'fa-minus' }[dir];
+    return `<span class="fin-delta fin-delta--${dir}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${finSigned(delta)}</span>
+        <span class="fin-delta-label">${label}</span>`;
+}
+
+// KPI row: balance (hero), loan, change this season, play time.
+function renderFinanceKpis(farm, monthly, history) {
+    const parse = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
+    const balance = parse(farm && farm.balance);
+    const loan = parse(farm && farm.loan);
+    const prevMonth = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+    const season = (farm && farm.currentSeason) || 1;
+    // Season start: the last archived season's end balance, else this season's first month.
+    const prevSeason = history.filter(h => h.season < season).slice(-1)[0];
+    const firstThisSeason = monthly.find(r => r.appSeason === season);
+    const seasonStart = prevSeason ? prevSeason.balance : (firstThisSeason ? firstThisSeason.balance : null);
+    const bc = farm && farm.bankCredit;
+    const loanSub = bc && bc.count
+        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString(FIN_LOCALE()))
+        : (loan > 0 ? '' : t('finNoLoan'));
+    return `<div class="fin-kpis">
+        <div class="fin-kpi fin-kpi--hero">
+            <span class="fin-kpi-label">${t('detailBalance')}</span>
+            <span class="fin-kpi-value">${finMoney(balance)}</span>
+            <span class="fin-kpi-sub">${prevMonth ? finDeltaHtml(balance - prevMonth.balance, t('finVsPrevMonth')) : t('finNoHistory')}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('detailCredit')}</span>
+            <span class="fin-kpi-value">${finMoney(loan)}</span>
+            <span class="fin-kpi-sub">${escapeHtml(loanSub)}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('finSeasonChange').replace('{n}', season)}</span>
+            <span class="fin-kpi-value">${seasonStart != null ? finSigned(balance - seasonStart) : '–'}</span>
+            <span class="fin-kpi-sub">${seasonStart != null ? t('finFromStart').replace('{v}', finMoney(seasonStart)) : t('finNoHistory')}</span>
+        </div>
+        <div class="fin-kpi">
+            <span class="fin-kpi-label">${t('detailFarmAge')}</span>
+            <span class="fin-kpi-value">${escapeHtml(getDetailValue('detail-age'))}</span>
+        </div>
+    </div>`;
+}
+
+// Monthly balance (and loan when there ever was one): area wash + 2px line,
+// recessive gridlines at nice ticks, end-value label, year marks under the
+// axis. Tooltip wiring in wireFinanceChart.
+function buildFinanceLineChart(rows, width) {
+    const hasLoan = rows.some(r => r.loan > 0);
+    const W = Math.max(520, Math.round(width)), H = 280;
+    const padL = 64, padR = 96, padT = 16, padB = 44;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const vals = rows.map(r => r.balance).concat(hasLoan ? rows.map(r => r.loan) : []);
+    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
+    const minV = ticks[0], maxV = ticks[ticks.length - 1];
+    const x = i => padL + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1));
+    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
+    const line = key => rows.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(t('finChartMonthly'))}">`;
+    ticks.forEach(v => {
+        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${finCompact(v)}</text>`;
+    });
+    // Month labels, thinned to fit; a year mark under each January (or the first point).
+    const every = Math.max(1, Math.ceil(rows.length / Math.floor(plotW / 56)));
+    rows.forEach((r, i) => {
+        if (i % every === 0 || i === rows.length - 1) s += `<text class="fin-axis" x="${x(i)}" y="${padT + plotH + 18}" text-anchor="middle">${escapeHtml(monthlyRowLabel(r))}</text>`;
+        if (i === 0 || r.period % 12 === 0) s += `<text class="fin-axis fin-axis--year" x="${x(i)}" y="${padT + plotH + 36}" text-anchor="middle">${t('finYear').replace('{y}', r.gameYear)}</text>`;
+    });
+    s += `<path class="fin-area" d="${line('balance')} L${x(rows.length - 1)},${y(Math.max(minV, 0))} L${x(0)},${y(Math.max(minV, 0))} Z"/>`;
+    if (hasLoan) s += `<path class="fin-line fin-line--loan" d="${line('loan')}"/>`;
+    s += `<path class="fin-line fin-line--balance" d="${line('balance')}"/>`;
+    const last = rows[rows.length - 1], lx = x(rows.length - 1);
+    s += `<circle class="fin-dot fin-dot--balance" cx="${lx}" cy="${y(last.balance)}" r="4.5"/>`;
+    s += `<text class="fin-endlabel" x="${lx + 10}" y="${y(last.balance) + 4}">${finCompact(last.balance)} €</text>`;
+    if (hasLoan) {
+        s += `<circle class="fin-dot fin-dot--loan" cx="${lx}" cy="${y(last.loan)}" r="4.5"/>`;
+        s += `<text class="fin-endlabel fin-endlabel--muted" x="${lx + 10}" y="${y(last.loan) + 4}">${finCompact(last.loan)} €</text>`;
+    }
+    // Crosshair + hover dots (moved by wireFinanceChart).
+    s += `<line class="fin-crosshair" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}" visibility="hidden"/>`;
+    s += `<circle class="fin-hover-dot fin-dot--balance" r="5" visibility="hidden"/>`;
+    if (hasLoan) s += `<circle class="fin-hover-dot fin-hover-dot--loan fin-dot--loan" r="5" visibility="hidden"/>`;
+    s += `<rect class="fin-hit" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent"/>`;
+    s += `</svg>`;
+    return { svg: s, geom: { padL, plotW, rows, x, y, hasLoan } };
+}
+
+// Season-end balance as columns (≤24px, 4px rounded top, value above).
+function buildFinanceSeasonBars(history, width) {
+    const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
+    const padL = 64, padR = 16, padT = 26, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const vals = history.map(h => h.balance);
+    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
+    const minV = ticks[0], maxV = ticks[ticks.length - 1];
+    const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
+    const band = plotW / history.length, bw = Math.min(24, band * 0.5);
+    let s = `<svg class="fin-chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(t('finChartSeasons'))}">`;
+    ticks.forEach(v => {
+        s += `<line class="fin-grid" x1="${padL}" x2="${padL + plotW}" y1="${y(v)}" y2="${y(v)}"/>`;
+        s += `<text class="fin-axis" x="${padL - 10}" y="${y(v) + 4}" text-anchor="end">${finCompact(v)}</text>`;
+    });
+    history.forEach((h, i) => {
+        const cx = padL + band * i + band / 2;
+        const top = y(Math.max(h.balance, 0)), base = y(Math.max(minV, 0)), bot = y(Math.min(h.balance, 0));
+        const barTop = h.balance >= 0 ? top : base, barH = Math.max(1, (h.balance >= 0 ? base - top : bot - base));
+        const r = Math.min(4, barH / 2);
+        const x0 = cx - bw / 2, x1 = cx + bw / 2;
+        // Rounded data end, square at the baseline.
+        const d = h.balance >= 0
+            ? `M${x0},${barTop + barH} V${barTop + r} Q${x0},${barTop} ${x0 + r},${barTop} H${x1 - r} Q${x1},${barTop} ${x1},${barTop + r} V${barTop + barH} Z`
+            : `M${x0},${barTop} V${barTop + barH - r} Q${x0},${barTop + barH} ${x0 + r},${barTop + barH} H${x1 - r} Q${x1},${barTop + barH} ${x1},${barTop + barH - r} V${barTop} Z`;
+        const current = i === history.length - 1;
+        s += `<g class="fin-bar-g" tabindex="0"><title>${escapeHtml(t('season') + ' ' + h.season + ': ' + finMoney(h.balance))}</title>
+            <rect x="${cx - band / 2}" y="${padT}" width="${band}" height="${plotH}" fill="transparent"/>
+            <path class="fin-bar${current ? ' fin-bar--current' : ''}" d="${d}"/>
+            <text class="fin-barlabel" x="${cx}" y="${(h.balance >= 0 ? barTop : barTop + barH) - 8}" text-anchor="middle">${finCompact(h.balance)} €</text>
+            <text class="fin-axis" x="${cx}" y="${padT + plotH + 20}" text-anchor="middle">S${h.season}${current ? ' · ' + t('finNow') : ''}</text></g>`;
+    });
+    s += `</svg>`;
+    return s;
+}
+
+function wireFinanceChart(bodyEl, geom) {
+    const wrap = bodyEl.querySelector('.fin-chart--monthly');
+    if (!wrap || !geom) return;
+    const svg = wrap.querySelector('svg'), hit = svg.querySelector('.fin-hit');
+    const cross = svg.querySelector('.fin-crosshair'), dotB = svg.querySelector('.fin-hover-dot:not(.fin-hover-dot--loan)'), dotL = svg.querySelector('.fin-hover-dot--loan');
+    const tip = wrap.querySelector('.fin-tooltip');
+    const { rows, x, y, hasLoan } = geom;
+    const show = (i) => {
+        const r = rows[i], cx = x(i);
+        [cross].forEach(el => { el.setAttribute('x1', cx); el.setAttribute('x2', cx); el.setAttribute('visibility', 'visible'); });
+        dotB.setAttribute('cx', cx); dotB.setAttribute('cy', y(r.balance)); dotB.setAttribute('visibility', 'visible');
+        if (dotL) { dotL.setAttribute('cx', cx); dotL.setAttribute('cy', y(r.loan)); dotL.setAttribute('visibility', 'visible'); }
+        const prev = rows[i - 1];
+        tip.replaceChildren();
+        const head = document.createElement('div'); head.className = 'fin-tip-head';
+        head.textContent = `${translateMonth(r.month)} · ${t('finYear').replace('{y}', r.gameYear)}`;
+        tip.appendChild(head);
+        const addRow = (cls, value, label) => {
+            const row = document.createElement('div'); row.className = 'fin-tip-row';
+            const key = document.createElement('span'); key.className = 'fin-tip-key ' + cls;
+            const v = document.createElement('strong'); v.textContent = value;
+            const l = document.createElement('span'); l.className = 'fin-tip-label'; l.textContent = label;
+            row.append(key, v, l); tip.appendChild(row);
+        };
+        addRow('fin-tip-key--balance', finMoney(r.balance), t('detailBalance'));
+        if (hasLoan) addRow('fin-tip-key--loan', finMoney(r.loan), t('detailCredit'));
+        if (prev) { const d = document.createElement('div'); d.className = 'fin-tip-delta'; d.textContent = `${finSigned(r.balance - prev.balance)} ${t('finVsPrevMonth')}`; tip.appendChild(d); }
+        tip.hidden = false;
+        const box = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
+        const px = box.left - wb.left + cx * (box.width / svg.viewBox.baseVal.width);
+        tip.style.left = Math.min(wb.width - tip.offsetWidth - 8, Math.max(8, px + 14)) + 'px';
+        tip.style.top = '8px';
+    };
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); dotB.setAttribute('visibility', 'hidden'); if (dotL) dotL.setAttribute('visibility', 'hidden'); tip.hidden = true; };
+    hit.addEventListener('pointermove', e => {
+        const box = svg.getBoundingClientRect();
+        const sx = (e.clientX - box.left) * (svg.viewBox.baseVal.width / box.width);
+        let best = 0, bd = Infinity;
+        rows.forEach((_, i) => { const d = Math.abs(x(i) - sx); if (d < bd) { bd = d; best = i; } });
+        show(best);
+    });
+    hit.addEventListener('pointerleave', hide);
+}
+
+function renderFinancePanel(bodyEl, farm) {
+    const history = getSeasonBalanceHistory(farm);
+    const monthly = getMonthlyHistory(farm);
+    const width = Math.max(520, (bodyEl.clientWidth || 900) - 48);
+    let html = renderFinanceKpis(farm, monthly, history);
+    let geom = null;
+
+    if (monthly.length > 1) {
+        const chart = buildFinanceLineChart(monthly, width);
+        geom = chart.geom;
+        html += `<section class="fin-card fin-chart fin-chart--monthly">
+            <div class="fin-card-head"><h4>${t('finChartMonthly')}</h4>
+                ${chart.geom.hasLoan ? `<div class="chart-legend fin-legend"><span class="fin-legend-item"><span class="fin-legend-line fin-legend-line--balance"></span>${t('detailBalance')}</span><span class="fin-legend-item"><span class="fin-legend-line fin-legend-line--loan"></span>${t('detailCredit')}</span></div>` : ''}
+            </div>
+            ${chart.svg}
+            <div class="fin-tooltip" hidden></div>
+        </section>`;
+    }
+    if (history.length > 1) {
+        html += `<section class="fin-card fin-chart">
+            <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
+            ${buildFinanceSeasonBars(history, width)}
+        </section>`;
+    }
+    if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
+
+    if (monthly.length) {
+        const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
+            const prev = arr[idx + 1];
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td>${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+        }).join('');
+        html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
+            <table class="fin-table"><thead><tr><th>${t('finColMonth')}</th><th>${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <tbody>${rowsHtml}</tbody></table></details>`;
+    }
+    bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
+
+    wireFinanceChart(bodyEl, geom);
+
+    // Redraw at the card's real width once it has one (the view may still be
+    // hidden while rendering) and whenever the window resizes — so the chart
+    // fills the card and its text is never scaled.
+    if (financeResizeObserver) financeResizeObserver.disconnect();
+    const card = bodyEl.querySelector('.fin-chart--monthly');
+    if (card && monthly.length > 1 && typeof ResizeObserver !== 'undefined') {
+        let drawnAt = width;
+        financeResizeObserver = new ResizeObserver(() => {
+            const inner = card.clientWidth - 36;
+            if (inner <= 0 || Math.abs(inner - drawnAt) <= 4) return;
+            drawnAt = inner;
+            const chart = buildFinanceLineChart(monthly, inner);
+            card.querySelector('svg').outerHTML = chart.svg;
+            wireFinanceChart(bodyEl, chart.geom);
+        });
+        financeResizeObserver.observe(card);
+    }
+}
+let financeResizeObserver = null;
 
 window.openHubPanel = function (type) {
     const titleEl = document.getElementById('hub-panel-title');
@@ -2608,48 +2823,8 @@ window.openHubPanel = function (type) {
     if (!titleEl || !bodyEl) return;
 
     if (type === 'finance') {
-        const farm = getAllFarms().find(f => f.id === currentFarmId);
-        const history = getSeasonBalanceHistory(farm);
-        const monthly = getMonthlyHistory(farm);
-        const hasLoanData = history.some(h => h.loan > 0) || monthly.some(r => r.loan > 0);
-
-        const monthLabelFn = (r) => (r.period % 12 === 0 ? `${monthlyRowLabel(r)} '${r.gameYear}` : monthlyRowLabel(r));
-        const monthBalanceTitle = (r) => `${translateMonth(r.month)} · Y${r.gameYear}: ${Math.round(r.balance).toLocaleString()} €`;
-        const monthLoanTitle = (r) => `${translateMonth(r.month)} · Y${r.gameYear} — ${t('detailCredit')}: ${Math.round(r.loan).toLocaleString()} €`;
-
-        const monthlyChartHtml = monthly.length > 1 ? `
-            <div class="balance-chart-wrapper">
-                <div class="chart-caption">${t('hubMonthlyTrend')}</div>
-                <div class="chart-legend">
-                    <span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('detailBalance')}</span>
-                    ${hasLoanData ? `<span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--loan"></span>${t('detailCredit')}</span>` : ''}
-                </div>
-                ${buildBalanceChartSvg(monthly, {
-                    labelFn: monthLabelFn, titleBalanceFn: monthBalanceTitle,
-                    titleLoanFn: monthLoanTitle, maxLabels: 9
-                })}
-            </div>` : '';
-
-        const seasonChartHtml = history.length > 1 ? `
-            <div class="balance-chart-wrapper">
-                ${monthly.length > 1 ? `<div class="chart-caption">${t('hubSeasonTrend')}</div>` : ''}
-                <div class="chart-legend">
-                    <span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--balance"></span>${t('detailBalance')}</span>
-                    ${hasLoanData ? `<span class="chart-legend-item"><span class="chart-legend-swatch chart-legend-swatch--loan"></span>${t('detailCredit')}</span>` : ''}
-                </div>
-                ${buildBalanceChartSvg(history)}
-            </div>` : '';
-
         titleEl.textContent = t('hubFinance');
-        bodyEl.innerHTML = `
-            <p class="details-category"><span>${t('detailBalance')}</span><span class="details-category-value">${getDetailValue('details-balance')}</span></p>
-            <p class="details-category"><span>${t('detailCredit')}</span><span class="details-category-value">${getDetailValue('detail-loan')}</span></p>
-            ${bankCreditLine(getCurrentFarm())}
-            <p class="details-category"><span>${t('detailFarmAge')}</span><span class="details-category-value">${getDetailValue('detail-age')}</span></p>
-            ${(monthlyChartHtml || seasonChartHtml)
-                ? monthlyChartHtml + seasonChartHtml
-                : `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`}
-        `;
+        renderFinancePanel(bodyEl, getAllFarms().find(f => f.id === currentFarmId));
     } else if (type === 'animals') {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
         const buildings = (farm && farm.animalBuildings) || [];

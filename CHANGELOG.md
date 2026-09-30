@@ -16,6 +16,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Rye, triticale, millet and buckwheat count as pig/chicken feed (grain, base, protein) like in the maps' animal food settings.
 - Feed in the mixers and ready-mixed pig food / TMR anywhere on the farm (silos, pallets) now count toward feed stock — pig food split like the game's pig mixture (base 50%, grain 25%, protein 20%, root crops 5%).
 
+**Changed**
+- **Finance view redesigned**: a row of tiles (balance with the change vs last month, loan with mod loans and monthly payment, change this season, play time), a full-width month-by-month balance chart with gridlines, year marks, the current value labelled and a hover readout (month, balance, loan, change), season-end balances as bars, and the numbers as an optional table. Loan is a dashed amber line when there is one.
+
 **Fixed**
 - Lime chip in Edit season didn't change when clicked (it only changed after saving); freshly limed is now green instead of pale beige, so a limed field stands out, and the letter stays readable on a filled chip.
 - The state checkbox in a field card had no caption — it now says "Sown".
