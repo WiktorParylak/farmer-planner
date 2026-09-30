@@ -5419,3 +5419,15 @@ select:focus-visible,
 .feed-mixer-recipes li.is-on i {
   color: var(--color-primary);
 }
+
+/* Farm-wide figures on an ingredient tile (stock is shared by every barn). */
+.feed-ing-barn--all {
+  margin-top: -2px;
+}
+
+.feed-ing-scope {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+  white-space: nowrap;
+}

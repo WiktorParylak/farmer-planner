@@ -489,6 +489,8 @@ const TRANSLATIONS = {
         feedEnough: "Enough",
         feedMissing: "Missing",
         feedThisBarn: "This barn",
+        feedAllBarns: "All barns",
+        feedAllBarnsShort: "all barns",
         feedPerYearShort: "/year",
         feedFoodPerYear: "feed / year",
         feedYearNeedFood: "Feed needed per year",
@@ -970,6 +972,8 @@ const TRANSLATIONS = {
         feedEnough: "Wystarczy",
         feedMissing: "Brakuje",
         feedThisBarn: "Ta obora",
+        feedAllBarns: "Wszystkie obory",
+        feedAllBarnsShort: "wszystkie obory",
         feedPerYearShort: "/rok",
         feedFoodPerYear: "paszy / rok",
         feedYearNeedFood: "Pasza potrzebna na rok",
@@ -4036,8 +4040,13 @@ function feedIsShort(row) {
     return row && !row.buyOnly && row.stock + row.have < row.need;
 }
 
+// The status, bar and "you have" line compare the WHOLE farm's need with the
+// farm's stock + harvest (stock is shared by every barn); only the "this barn"
+// line is per barn. When other barns eat the same feed, say so on the tile.
 function renderFeedIngredientTile(categories, barnLitres, row, num) {
     const need = row ? row.need : 0;
+    const farmWide = need > barnLitres * 1.001 + 1;
+    const allBarns = farmWide ? ` <span class="feed-ing-scope">(${t('feedAllBarnsShort')})</span>` : '';
     const have = row ? row.stock + (row.buyOnly ? 0 : row.have) : 0;
     const diff = have - need;
     const pct = need > 0 ? Math.max(0, Math.min(100, have / need * 100)) : 100;
@@ -4053,6 +4062,7 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
         const ha = row.perHa > 0 ? `<span class="feed-ing-extra">≈ ${(-diff / row.perHa).toFixed(1)} ha</span>` : '';
         status = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMissing')} ${num(-diff)} l ${ha}`;
     }
+    status += allBarns;
     const haveParts = [];
     if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}`);
     if (row && !row.buyOnly && row.have > 0) haveParts.push(`${t('feedHarvestShort')} ${num(row.have)}`);
@@ -4062,9 +4072,10 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
             <span class="feed-ing-name">${categories.map(feedCategoryLabel).join(' + ')}</span>
         </div>
         <div class="feed-ing-barn">${t('feedThisBarn')}: <strong>${num(barnLitres)} l</strong>${t('feedPerYearShort')}</div>
+        ${farmWide ? `<div class="feed-ing-barn feed-ing-barn--all">${t('feedAllBarns')}: <strong>${num(need)} l</strong>${t('feedPerYearShort')}</div>` : ''}
         <div class="feed-ing-status">${status}</div>
         <div class="feed-ing-bar"><div class="feed-ing-bar-fill" style="width:${pct}%"></div></div>
-        <div class="feed-ing-have">${t('feedYouHave')}: ${haveParts.length ? haveParts.join(' + ') : '0'} ${t('feedOfNeeded').replace('{n}', num(need))}</div>
+        <div class="feed-ing-have">${t('feedYouHave')}${farmWide ? ` (${t('feedAllBarnsShort')})` : ''}: ${haveParts.length ? haveParts.join(' + ') : '0'} ${t('feedOfNeeded').replace('{n}', num(need))}</div>
     </div>`;
 }
 
