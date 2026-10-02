@@ -3556,6 +3556,53 @@ select:focus-visible,
 /* ========================================================= */
 /* SEASON SUPPLIES (hub panel — shopping list)               */
 /* ========================================================= */
+/* Predicted yields: ‹ Season N › switcher */
+.yield-season-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+.yield-season-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  min-width: 110px;
+  text-align: center;
+}
+
+.yield-season-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.yield-season-arrow:hover {
+  background: var(--color-primary-soft);
+}
+
+.yield-season-arrow.is-disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.yield-season-arrow.is-disabled:hover {
+  background: transparent;
+}
+
 .supply-intro {
   width: 100%;
   margin: 0 0 6px;

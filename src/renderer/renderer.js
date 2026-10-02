@@ -376,6 +376,7 @@ const TRANSLATIONS = {
 
         hubYieldForecast: "Predicted yields",
         yieldForecastTitle: "Predicted yields",
+        yieldForecastPastIntro: "Season {n} as it was planned when it was archived: predicted harvest for every crop on its fields, assuming ideal nitrogen, ideal soil pH and no weeds.",
         yieldForecastIntro: "Predicted harvest for every crop planned this season — planted or still just \"To Plant\" — assuming ideal nitrogen, ideal soil pH and no weeds: the ceiling your fields' soil allows, one row per crop across every matching field.",
         yieldForecastColCrop: "Crop",
         yieldForecastColArea: "Area",
@@ -928,6 +929,7 @@ const TRANSLATIONS = {
 
         hubYieldForecast: "Przewidywane plony",
         yieldForecastTitle: "Przewidywane plony",
+        yieldForecastPastIntro: "Sezon {n} tak, jak był zaplanowany w chwili archiwizacji: przewidywany zbiór każdej uprawy z jego pól przy idealnym azocie, idealnym pH gleby i braku chwastów.",
         yieldForecastIntro: "Przewidywany zbiór dla każdej zaplanowanej w tym sezonie uprawy — obsianej lub wciąż tylko \"Do obsiania\" — przy założeniu idealnego azotu, idealnego pH gleby i braku chwastów: górny pułap jaki pozwala gleba Twoich pól, jeden wiersz na uprawę ze wszystkich pasujących pól.",
         yieldForecastColCrop: "Uprawa",
         yieldForecastColArea: "Powierzchnia",
@@ -3649,23 +3651,37 @@ function importFieldSoilFromGame(farm) {
     return msg;
 }
 
-// Farm Hub → "Predicted yields": every crop sown this month, aggregated
+// Farm Hub → "Predicted yields": every crop planned in a season, aggregated
 // across fields, with a predicted harvest in litres assuming ideal N, ideal
-// pH and no weeds. Read-only — no wiring needed.
-function renderYieldForecastPanel(titleEl, bodyEl, modalEl) {
+// pH and no weeds. Opens on the season shown in the planner; the arrows step
+// through the archived seasons.
+function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeason) {
     titleEl.textContent = t('yieldForecastTitle');
 
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) { bodyEl.innerHTML = `<p class="hub-panel-note">${t('suppliesNoCrops')}</p>`; return; }
 
+    const currentSeason = parseInt(farm.currentSeason) || 1;
+    season = Math.min(Math.max(1, parseInt(season) || currentSeason), currentSeason);
+    const isPast = season < currentSeason;
+
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(farm, rates);
+    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
     const num = n => Math.round(n).toLocaleString();
 
-    let html = `<p class="supply-intro">${t('yieldForecastIntro')}</p>`;
+    const arrow = (dir, enabled) => enabled
+        ? `<button type="button" class="yield-season-arrow" data-season="${season + dir}" aria-label="${t('season')} ${season + dir}"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}" aria-hidden="true"></i></button>`
+        : `<span class="yield-season-arrow is-disabled" aria-hidden="true"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}"></i></span>`;
+    let html = `<div class="yield-season-nav">${arrow(-1, season > 1)}<span class="yield-season-label">${t('season')} ${season}</span>${arrow(1, season < currentSeason)}</div>`;
+    html += `<p class="supply-intro">${isPast ? t('yieldForecastPastIntro').replace('{n}', season) : t('yieldForecastIntro')}</p>`;
+
+    const wireArrows = () => bodyEl.querySelectorAll('.yield-season-arrow[data-season]').forEach(btn => {
+        btn.addEventListener('click', () => renderYieldForecastPanel(titleEl, bodyEl, modalEl, parseInt(btn.dataset.season)));
+    });
 
     if (!data.rows.length) {
         bodyEl.innerHTML = html + `<p class="hub-panel-note">${t('yieldForecastEmpty')}</p>`;
+        wireArrows();
         return;
     }
 
@@ -3687,6 +3703,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl) {
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
 
     bodyEl.innerHTML = html;
+    wireArrows();
 }
 
 // =============================================================
@@ -6494,15 +6511,15 @@ function buildSuppliesFertRows(farm, rates) {
 }
 
 // "Przewidywane plony" (Predicted yields) panel data: every field with a crop
-// assigned this season — planted or still just planned ("To Plant"), any
+// assigned in the given season — planted or still just planned ("To Plant"), any
 // sowing month — aggregated per crop across all matching fields. Predicted
 // litres assumes ideal N, ideal pH and no weeds (i.e. just the crop's
 // full-potential yield scaled by the field's soil-mix yield potential — see
 // fieldYieldFactor above) since those are the only levers this app models;
 // a crop with no known yield rate taints its whole aggregated row rather
 // than silently under-counting one field.
-function buildYieldForecastRows(farm, rates) {
-    const fields = (farm && farm.fields) || [];
+function buildYieldForecastRows(fields, rates) {
+    fields = fields || [];
     const byCrop = new Map();
     fields.forEach((f, i) => {
         const area = parseFloat(f.area) || 0;
@@ -7730,25 +7747,29 @@ function showAutoSyncToast() {
 if (exitBtn) exitBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 if (backBtn) backBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
+// Fields of one season: the archive (seasons/season_N.json) for a past
+// season, the live farm.fields for the current one. [] if the archive is
+// missing or unreadable.
+function loadSeasonFields(farm, seasonNum) {
+    if (!farm) return [];
+    if (seasonNum >= (farm.currentSeason || 1)) return farm.fields || [];
+    const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum}.json`);
+    if (!fs.existsSync(archivePath)) return [];
+    try {
+        return JSON.parse(fs.readFileSync(archivePath, 'utf-8')).fields || [];
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
 window.renderSeasonView = function () {
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) return;
 
     const currentActiveSeason = farm.currentSeason || 1;
-    let fieldsToDisplay = [];
-    let isPastSeason = viewedSeason < currentActiveSeason;
-
-    if (isPastSeason) {
-        const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${viewedSeason}.json`);
-        if (fs.existsSync(archivePath)) {
-            try {
-                const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
-                fieldsToDisplay = archiveData.fields || [];
-            } catch (e) { console.error(e); }
-        }
-    } else {
-        fieldsToDisplay = farm.fields || [];
-    }
+    const isPastSeason = viewedSeason < currentActiveSeason;
+    const fieldsToDisplay = loadSeasonFields(farm, viewedSeason);
 
     renderFieldsTable(fieldsToDisplay);
     updateCropsSummary(fieldsToDisplay);
