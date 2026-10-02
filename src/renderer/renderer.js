@@ -7230,7 +7230,7 @@ function buildCropsCalendarFromFiles(fileList) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -7329,6 +7329,7 @@ function readGameSave(pathToFile) {
             // so it's the natural gap-free x-axis for the monthly history.
             const gamePeriod = Math.floor((currentDay - 1) / daysPerPeriod);
             result.gameDay = currentDay;
+            result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;
             result.month = fsMonths[gamePeriod % 12];
@@ -7528,6 +7529,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
+    if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
     if (changed) saveFarmData(farm);
@@ -7546,7 +7548,12 @@ function applyGameSaveToFarm(farm) {
 function refreshPlannerHeader(farm) {
     if (!farm) return;
     if (plannerBalance) plannerBalance.innerText = farm.balance || "0 €";
-    if (plannerMonth) plannerMonth.innerText = translateMonth(farm.month || "AUGUST");
+    if (plannerMonth) {
+        // Day of the in-game month next to its name ("MARCH 2") — only when a
+        // month has more than one day, otherwise it'd always read "1".
+        const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
+        plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
+    }
     if (plannerYear) plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
 
     const loanInput = document.getElementById('detail-loan');
