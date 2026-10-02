@@ -8,7 +8,7 @@ const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n } = require('./map-crops');
-const { readAnimalMods, easFoodFactor } = require('./animal-mods');
+const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -185,6 +185,8 @@ const TRANSLATIONS = {
         repro_ready: "Ready to breed",
         repro_male: "Male",
         reproLastBirth: "Last birth {m} mo. ago",
+        lactationMilk: "milk ×{x}",
+        lactationDry: "dry, no milk",
         reproWaitingHint: "Old and healthy enough, but the game hasn't marked them inseminated — check there's a male of the same breed in this building.",
         barnNeedsUnknown: "No food/water/straw data for some breeds in this building. If they come from a mod, import its animal definitions in Farm settings.",
         hubFinance: "Finance",
@@ -578,7 +580,7 @@ const TRANSLATIONS = {
         afcSource_basegame: "base game",
         afcSource_map: "map",
         afcSource_effective: "as loaded in game",
-        easLine: "lactation food factor after calving for: {list}",
+        easLine: "lactation milk and food factors after calving for: {list}",
         farmlandAreaLabel: "Also show whole land plot area (farmland), not just the field",
         farmlandAreaHint: "Counted from the map like the game does (field plus margins); needs the savegame and the map mod.",
         farmlandPlot: "plot",
@@ -735,6 +737,8 @@ const TRANSLATIONS = {
         repro_ready: "Gotowe do rozrodu",
         repro_male: "Samiec",
         reproLastBirth: "Ostatni poród {m} mies. temu",
+        lactationMilk: "mleko ×{x}",
+        lactationDry: "zasuszona, bez mleka",
         reproWaitingHint: "Mają odpowiedni wiek i zdrowie, ale gra nie oznaczyła ich jako zapłodnione — sprawdź, czy w budynku jest samiec tej samej rasy.",
         barnNeedsUnknown: "Brak danych o paszy, wodzie i słomie dla części ras w tym budynku. Jeśli pochodzą z moda, zaimportuj jego definicje zwierząt w Ustawieniach farmy.",
         hubFinance: "Finanse",
@@ -1128,7 +1132,7 @@ const TRANSLATIONS = {
         afcSource_basegame: "gra podstawowa",
         afcSource_map: "mapa",
         afcSource_effective: "jak w grze",
-        easLine: "współczynnik paszy w laktacji po porodzie dla: {list}",
+        easLine: "współczynniki mleka i paszy w laktacji po porodzie dla: {list}",
         farmlandAreaLabel: "Pokazuj też areał całej działki (farmland), nie tylko pola",
         farmlandAreaHint: "Liczone z mapy tak jak w grze (pole plus miedze i obrzeża); wymaga zapisu gry i moda mapy.",
         farmlandPlot: "działka",
@@ -2455,7 +2459,7 @@ function reproDueText(monthsLeft) {
     return monthsLeft <= 0 ? t('reproDueNow') : t('reproDue').replace('{m}', monthsLeft);
 }
 
-function reproStatusHtml(c, st) {
+function reproStatusHtml(c, st, milkFactor = null) {
     if (!st) return '';
     const icons = { pregnant: 'fa-baby-carriage', young: 'fa-hourglass-half', lowHealth: 'fa-heart-crack', waiting: 'fa-circle-pause', ready: 'fa-circle-check', male: 'fa-mars' };
     let label;
@@ -2465,7 +2469,16 @@ function reproStatusHtml(c, st) {
     else label = t('repro_' + st.kind);
     let html = `<div class="herd-repro herd-repro--${st.kind}"><i class="fa-solid ${icons[st.kind]}" aria-hidden="true"></i><span>${label}</span></div>`;
     if (st.kind === 'pregnant') html += `<div class="herd-repro-bar"><div class="pen-bar-track"><div class="pen-bar-fill repro-bar-fill" style="width:${Math.max(3, Math.min(100, st.progress))}%"></div></div></div>`;
-    if (c.hadABirth && c.monthsSinceLastBirth !== undefined) html += `<div class="herd-repro-last">${t('reproLastBirth').replace('{m}', c.monthsSinceLastBirth)}</div>`;
+    if (c.hadABirth && c.monthsSinceLastBirth !== undefined) {
+        // EAS lactation: what this month after calving does to the milk.
+        let lact = '';
+        if (milkFactor !== null && st.kind !== 'male') {
+            lact = milkFactor > 0
+                ? ' · ' + t('lactationMilk').replace('{x}', milkFactor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                : ' · ' + t('lactationDry');
+        }
+        html += `<div class="herd-repro-last">${t('reproLastBirth').replace('{m}', c.monthsSinceLastBirth)}${lact}</div>`;
+    }
     return html;
 }
 
@@ -3062,8 +3075,10 @@ window.openHubPanel = function (type) {
                     // The ration's productionWeight scales milk/eggs/wool the way
                     // the game does; manure/slurry don't depend on the feed.
                     const outputFactor = ration ? ration.efficiency / 100 : 1;
-                    if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals;
-                    dailyNeed.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals;
+                    // EAS lactation: same food factor as the feed planner.
+                    const clusterFood = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, animalType, c);
+                    if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
+                    dailyNeed.food += clusterFood;
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
                     dailyNeed.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
 
@@ -3071,7 +3086,8 @@ window.openHubPanel = function (type) {
                     if (def && def.production) {
                         Object.keys(def.production).forEach(fillType => {
                             const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
-                            const factor = FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor;
+                            const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
+                                * clusterMilkFactor(farm, animalType, c, fillType);
                             if (rate > 0) dailyOutput[fillType] = (dailyOutput[fillType] || 0) + rate * c.numAnimals * factor;
                         });
                     }
@@ -3129,7 +3145,7 @@ window.openHubPanel = function (type) {
                                 <div class="pen-bar-track"><div class="pen-bar-fill ${hClass}" style="width:${Math.max(2, h)}%"></div></div>
                                 <span>${h}%</span>
                             </div>
-                            ${reproStatusHtml(c, reproductionStatus(c))}
+                            ${reproStatusHtml(c, reproductionStatus(c), clusterLactationMilk(farm, animalTypeOf(c.subType), c))}
                         </div>
                     </div>`;
                 });
@@ -3782,6 +3798,16 @@ function feedYearFactor(farm) {
 }
 function clusterFoodFactor(farm, type, cluster) {
     return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
+}
+// EAS lactation milk factor, or null when EAS isn't in play for this species.
+function clusterLactationMilk(farm, type, cluster) {
+    return easActive(farm) ? easMilkFactor(ANIMAL_MODS.eas, type, cluster) : null;
+}
+// Milk output multiplier for a fill type (1 for eggs, wool, manure...).
+function clusterMilkFactor(farm, type, cluster, fillType) {
+    if (!/MILK/i.test(fillType || '')) return 1;
+    const f = clusterLactationMilk(farm, type, cluster);
+    return f === null ? 1 : f;
 }
 // One line under the monthly need: what scales it, so the number is explainable.
 function feedScaleNote(farm) {
