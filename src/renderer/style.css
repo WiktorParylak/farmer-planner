@@ -769,6 +769,49 @@ body {
   color: var(--color-ink) !important;
 }
 
+.modal-buttons .modal-cancel-btn {
+  background-color: transparent;
+  color: var(--color-ink-soft);
+  border: 1px solid var(--color-border-strong);
+}
+
+.modal-buttons .modal-cancel-btn:hover {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+/* New season / reset seasons modal */
+.season-modal-content {
+  max-width: 420px;
+}
+
+.season-modal-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  margin-bottom: -6px;
+}
+
+.season-modal-icon.is-danger {
+  background: rgba(166, 69, 43, 0.12);
+  color: var(--color-rust);
+}
+
+.season-modal-content.is-danger h3 {
+  color: var(--color-rust);
+}
+
+.season-modal-content p {
+  white-space: pre-line;
+  margin: 0;
+}
+
 /* Danger Button (Delete Confirmation) */
 .modal-buttons .danger-btn {
   background-color: var(--color-rust);

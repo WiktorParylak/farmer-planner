@@ -378,6 +378,18 @@
                 </div>
             </div>
         </div>
+        <!-- New season / reset seasons: confirm + result. Filled by showSeasonModal(). -->
+        <div id="season-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="season-modal-title">
+            <div class="modal-content season-modal-content">
+                <div id="season-modal-icon" class="season-modal-icon" aria-hidden="true"></div>
+                <h3 id="season-modal-title"></h3>
+                <p id="season-modal-body"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="season-modal-cancel" class="modal-cancel-btn"></button>
+                    <button type="button" id="season-modal-confirm"></button>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="tutorial-overlay" class="tutorial-overlay" style="display:none;">
         <div class="tutorial-blocker tutorial-blocker--top"></div>

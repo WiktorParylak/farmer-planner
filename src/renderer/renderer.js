@@ -129,6 +129,20 @@ const TRANSLATIONS = {
         farmMapPlaceholder: "e.g. Solek, Zielonka, Riverbend",
         add: "Add",
         areYouSure: "Are you sure?",
+        newSeasonTitle: "Start season {n}?",
+        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown.",
+        newSeasonConfirm: "Start season {n}",
+        newSeasonDoneTitle: "Season {n}",
+        newSeasonDone: "Season {c} is archived. Welcome to season {n}!",
+        newSeasonError: "Could not start a new season.",
+        resetSeasonsTitle: "Reset all seasons?",
+        resetSeasonsBody: "Every archived season will be permanently deleted and the farm goes back to season 1. Current fields stay as they are. This cannot be undone.",
+        resetSeasonsConfirm: "Delete history",
+        resetSeasonsDoneTitle: "Seasons reset",
+        resetSeasonsDone: "All seasons were reset. The farm is back to season 1.",
+        resetSeasonsError: "Could not delete the season files.",
+        seasonModalOk: "OK",
+        seasonModalErrorTitle: "Something went wrong",
         deleteFarmConfirm: "Do you really want to delete this farm? This action cannot be undone.",
         delete: "DELETE",
         planted: "Planted",
@@ -665,6 +679,20 @@ const TRANSLATIONS = {
         farmMapPlaceholder: "np. Solek, Zielonka, Riverbend",
         add: "Dodaj",
         areYouSure: "Czy na pewno?",
+        newSeasonTitle: "Rozpocząć sezon {n}?",
+        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane.",
+        newSeasonConfirm: "Rozpocznij sezon {n}",
+        newSeasonDoneTitle: "Sezon {n}",
+        newSeasonDone: "Sezon {c} zarchiwizowany. Witaj w sezonie {n}!",
+        newSeasonError: "Nie udało się rozpocząć nowego sezonu.",
+        resetSeasonsTitle: "Zresetować wszystkie sezony?",
+        resetSeasonsBody: "Wszystkie zarchiwizowane sezony zostaną trwale usunięte, a farma wróci do sezonu 1. Obecne pola zostają bez zmian. Tej operacji nie da się cofnąć.",
+        resetSeasonsConfirm: "Usuń historię",
+        resetSeasonsDoneTitle: "Sezony zresetowane",
+        resetSeasonsDone: "Wszystkie sezony zostały zresetowane. Farma jest znowu w sezonie 1.",
+        resetSeasonsError: "Nie udało się usunąć plików sezonów.",
+        seasonModalOk: "OK",
+        seasonModalErrorTitle: "Coś poszło nie tak",
         deleteFarmConfirm: "Czy na pewno chcesz usunąć tę farmę? Tej operacji nie można cofnąć.",
         delete: "USUŃ",
         planted: "Obsiane",
@@ -8797,11 +8825,99 @@ document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
 // =============================================================
 // SECTION 8: NEW SEASON LOGIC
 // =============================================================
+// Season confirm / result dialog (#season-modal). Resolves true on the main
+// button, false on Cancel, a click on the backdrop or Escape. Without
+// cancelText it's a one-button notice.
+function showSeasonModal({ title, body, confirmText, cancelText = null, danger = false, icon = 'fa-seedling' }) {
+    const modal = document.getElementById('season-modal');
+    if (!modal) return Promise.resolve(window.confirm(body));
+    const content = modal.querySelector('.season-modal-content');
+    const iconEl = document.getElementById('season-modal-icon');
+    const confirmBtn = document.getElementById('season-modal-confirm');
+    const cancelBtn = document.getElementById('season-modal-cancel');
+
+    document.getElementById('season-modal-title').textContent = title;
+    document.getElementById('season-modal-body').textContent = body;
+    iconEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+    iconEl.classList.toggle('is-danger', danger);
+    content.classList.toggle('is-danger', danger);
+    confirmBtn.textContent = confirmText;
+    confirmBtn.classList.toggle('danger-btn', danger);
+    cancelBtn.textContent = cancelText || '';
+    cancelBtn.style.display = cancelText ? '' : 'none';
+
+    return new Promise(resolve => {
+        const finish = result => {
+            modal.style.display = 'none';
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('mousedown', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve(result);
+        };
+        const onConfirm = () => finish(true);
+        const onCancel = () => finish(false);
+        const onBackdrop = e => { if (e.target === modal) finish(false); };
+        const onKey = e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+        };
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('mousedown', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+        modal.style.display = 'flex';
+        confirmBtn.focus();
+    });
+}
+
+function showSeasonNotice(title, body, isError = false) {
+    return showSeasonModal({
+        title, body,
+        confirmText: t('seasonModalOk'),
+        danger: isError,
+        icon: isError ? 'fa-triangle-exclamation' : 'fa-circle-check'
+    });
+}
+
+function resetEditSeasonButton() {
+    isEditMode = false;
+    if (editSeasonBtn) {
+        editSeasonBtn.innerText = t('edit');
+        editSeasonBtn.style.backgroundColor = "transparent";
+        editSeasonBtn.style.color = "var(--color-black)";
+    }
+}
+
+// Crops that keep growing for years once sown — "New Season" carries them
+// over (still planted) instead of clearing the field.
+const PERENNIAL_CROPS = FEED_GRASSLAND_CROPS;
+function isPerennialCrop(crop) {
+    return PERENNIAL_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+// Crops whose fruit XML has <soil consumesLime="false">: harvesting them
+// doesn't lower pH. Base game (data/foliage/*/*.xml): grass, every meadow,
+// oilseed radish and both rices; cut crops (grassland, teff, field grass)
+// per the maps' fruit XML.
+const NO_LIME_CROPS = ['Oilseedradish', 'Rice', 'Ricelonggrain'];
+function cropKeepsLime(crop) {
+    return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+
 if (newSeasonBtn) {
-    newSeasonBtn.addEventListener('click', () => {
+    newSeasonBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
 
-        const confirmNew = confirm("Are you sure you want to start a new season? Current fields will be saved to archive and cleared.");
+        const startFarm = getAllFarms().find(f => f.id === currentFarmId);
+        if (!startFarm) return;
+        const seasonNow = parseInt(startFarm.currentSeason) || 1;
+        const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
+        const confirmNew = await showSeasonModal({
+            title: fill(t('newSeasonTitle')),
+            body: fill(t('newSeasonBody')),
+            confirmText: fill(t('newSeasonConfirm')),
+            cancelText: t('cancel'),
+            icon: 'fa-seedling'
+        });
         if (!confirmNew) return;
 
         const allFarms = getAllFarms();
@@ -8839,16 +8955,22 @@ if (newSeasonBtn) {
 
             const supplyRatesForLime = getSupplyRates();
             farm.fields.forEach((field, i) => {
-                // Read before the crop is cleared: grassland doesn't use up lime.
-                const keepsLime = isCutCrop(field.crop);
-                field.crop = "";
-                field.sowingMonth = "";
+                // Read before the crop is cleared.
+                const keepsLime = cropKeepsLime(field.crop);
+                if (isPerennialCrop(field.crop)) {
+                    // Grassland stays sown for years: keep the crop, sowing
+                    // month and tillage; only this season's work is cleared.
+                    field.state = "Planted";
+                } else {
+                    field.crop = "";
+                    field.sowingMonth = "";
+                    field.state = "To Plant";
+                    field.tillage = null;
+                }
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
                 field.rolling = false;
                 field.cuts = [];
-                field.state = "To Plant";
-                field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
                 // display-only metadata now (see limePh below for the actual
                 // decaying value).
@@ -8857,8 +8979,8 @@ if (newSeasonBtn) {
                 // field that predates this model instead of resetting it.
                 const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
                 const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                // Grassland (grass, meadow, alfalfa, clover) has consumesLime="false" in
-                // every map's fruit XML — cutting it doesn't lower pH, cereals do.
+                // consumesLime="false" crops (grassland, oilseed radish, rice)
+                // don't lower pH when harvested; everything else does.
                 const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
                 field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
@@ -8868,32 +8990,31 @@ if (newSeasonBtn) {
             farm.currentSeason = currentSeasonNum + 1;
             saveFarmData(farm);
 
-            isEditMode = false;
-            if (editSeasonBtn) {
-                editSeasonBtn.innerText = t('edit');
-                editSeasonBtn.style.backgroundColor = "transparent";
-                editSeasonBtn.style.color = "var(--color-black)";
-            }
-
+            resetEditSeasonButton();
             viewedSeason = farm.currentSeason;
             renderSeasonView();
 
-            alert(currentLang === 'pl'
-                ? `Sukces! Sezon ${currentSeasonNum} zarchiwizowany.\nWitaj w Sezonie ${farm.currentSeason}!`
-                : `Success! Season ${currentSeasonNum} archived.\nWelcome to Season ${farm.currentSeason}!`);
-
+            const done = s => s.replace(/\{c\}/g, currentSeasonNum).replace(/\{n\}/g, farm.currentSeason);
+            await showSeasonNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
         } catch (err) {
             console.error(err);
-            alert("Error: Could not create a new season.");
+            await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
         }
     });
 }
 
 if (resetSeasonsBtn) {
-    resetSeasonsBtn.addEventListener('click', () => {
+    resetSeasonsBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
 
-        const confirmReset = confirm("WARNING: Are you sure you want to reset all seasons? This will permanently DELETE all archived season history!");
+        const confirmReset = await showSeasonModal({
+            title: t('resetSeasonsTitle'),
+            body: t('resetSeasonsBody'),
+            confirmText: t('resetSeasonsConfirm'),
+            cancelText: t('cancel'),
+            danger: true,
+            icon: 'fa-trash-can'
+        });
         if (!confirmReset) return;
 
         const allFarms = getAllFarms();
@@ -8908,7 +9029,7 @@ if (resetSeasonsBtn) {
                 fs.rmSync(seasonsDirPath, { recursive: true, force: true });
             } catch (err) {
                 console.error("Błąd podczas usuwania archiwum:", err);
-                alert("Error: Could not delete season files.");
+                await showSeasonNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
                 return;
             }
         }
@@ -8917,17 +9038,10 @@ if (resetSeasonsBtn) {
         saveFarmData(farm);
 
         viewedSeason = 1;
-
-        isEditMode = false;
-        if (editSeasonBtn) {
-            editSeasonBtn.innerText = t('edit');
-            editSeasonBtn.style.backgroundColor = "transparent";
-            editSeasonBtn.style.color = "var(--color-black)";
-        }
-
+        resetEditSeasonButton();
         renderSeasonView();
 
-        alert("Success! All seasons have been reset to Season 1.");
+        await showSeasonNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));
     });
 }
 
