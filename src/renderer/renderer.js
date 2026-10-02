@@ -8,7 +8,7 @@ const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n } = require('./map-crops');
-const { readAnimalMods, easFoodFactor } = require('./animal-mods');
+const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -129,6 +129,20 @@ const TRANSLATIONS = {
         farmMapPlaceholder: "e.g. Solek, Zielonka, Riverbend",
         add: "Add",
         areYouSure: "Are you sure?",
+        newSeasonTitle: "Start season {n}?",
+        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown.",
+        newSeasonConfirm: "Start season {n}",
+        newSeasonDoneTitle: "Season {n}",
+        newSeasonDone: "Season {c} is archived. Welcome to season {n}!",
+        newSeasonError: "Could not start a new season.",
+        resetSeasonsTitle: "Reset all seasons?",
+        resetSeasonsBody: "Every archived season will be permanently deleted and the farm goes back to season 1. Current fields stay as they are. This cannot be undone.",
+        resetSeasonsConfirm: "Delete history",
+        resetSeasonsDoneTitle: "Seasons reset",
+        resetSeasonsDone: "All seasons were reset. The farm is back to season 1.",
+        resetSeasonsError: "Could not delete the season files.",
+        seasonModalOk: "OK",
+        seasonModalErrorTitle: "Something went wrong",
         deleteFarmConfirm: "Do you really want to delete this farm? This action cannot be undone.",
         delete: "DELETE",
         planted: "Planted",
@@ -171,6 +185,8 @@ const TRANSLATIONS = {
         repro_ready: "Ready to breed",
         repro_male: "Male",
         reproLastBirth: "Last birth {m} mo. ago",
+        lactationMilk: "milk ×{x}",
+        lactationDry: "dry, no milk",
         reproWaitingHint: "Old and healthy enough, but the game hasn't marked them inseminated — check there's a male of the same breed in this building.",
         barnNeedsUnknown: "No food/water/straw data for some breeds in this building. If they come from a mod, import its animal definitions in Farm settings.",
         hubFinance: "Finance",
@@ -360,6 +376,7 @@ const TRANSLATIONS = {
 
         hubYieldForecast: "Predicted yields",
         yieldForecastTitle: "Predicted yields",
+        yieldForecastPastIntro: "Season {n} as it was planned when it was archived: predicted harvest for every crop on its fields, assuming ideal nitrogen, ideal soil pH and no weeds.",
         yieldForecastIntro: "Predicted harvest for every crop planned this season — planted or still just \"To Plant\" — assuming ideal nitrogen, ideal soil pH and no weeds: the ceiling your fields' soil allows, one row per crop across every matching field.",
         yieldForecastColCrop: "Crop",
         yieldForecastColArea: "Area",
@@ -564,7 +581,7 @@ const TRANSLATIONS = {
         afcSource_basegame: "base game",
         afcSource_map: "map",
         afcSource_effective: "as loaded in game",
-        easLine: "lactation food factor after calving for: {list}",
+        easLine: "lactation milk and food factors after calving for: {list}",
         farmlandAreaLabel: "Also show whole land plot area (farmland), not just the field",
         farmlandAreaHint: "Counted from the map like the game does (field plus margins); needs the savegame and the map mod.",
         farmlandPlot: "plot",
@@ -665,6 +682,20 @@ const TRANSLATIONS = {
         farmMapPlaceholder: "np. Solek, Zielonka, Riverbend",
         add: "Dodaj",
         areYouSure: "Czy na pewno?",
+        newSeasonTitle: "Rozpocząć sezon {n}?",
+        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane.",
+        newSeasonConfirm: "Rozpocznij sezon {n}",
+        newSeasonDoneTitle: "Sezon {n}",
+        newSeasonDone: "Sezon {c} zarchiwizowany. Witaj w sezonie {n}!",
+        newSeasonError: "Nie udało się rozpocząć nowego sezonu.",
+        resetSeasonsTitle: "Zresetować wszystkie sezony?",
+        resetSeasonsBody: "Wszystkie zarchiwizowane sezony zostaną trwale usunięte, a farma wróci do sezonu 1. Obecne pola zostają bez zmian. Tej operacji nie da się cofnąć.",
+        resetSeasonsConfirm: "Usuń historię",
+        resetSeasonsDoneTitle: "Sezony zresetowane",
+        resetSeasonsDone: "Wszystkie sezony zostały zresetowane. Farma jest znowu w sezonie 1.",
+        resetSeasonsError: "Nie udało się usunąć plików sezonów.",
+        seasonModalOk: "OK",
+        seasonModalErrorTitle: "Coś poszło nie tak",
         deleteFarmConfirm: "Czy na pewno chcesz usunąć tę farmę? Tej operacji nie można cofnąć.",
         delete: "USUŃ",
         planted: "Obsiane",
@@ -707,6 +738,8 @@ const TRANSLATIONS = {
         repro_ready: "Gotowe do rozrodu",
         repro_male: "Samiec",
         reproLastBirth: "Ostatni poród {m} mies. temu",
+        lactationMilk: "mleko ×{x}",
+        lactationDry: "zasuszona, bez mleka",
         reproWaitingHint: "Mają odpowiedni wiek i zdrowie, ale gra nie oznaczyła ich jako zapłodnione — sprawdź, czy w budynku jest samiec tej samej rasy.",
         barnNeedsUnknown: "Brak danych o paszy, wodzie i słomie dla części ras w tym budynku. Jeśli pochodzą z moda, zaimportuj jego definicje zwierząt w Ustawieniach farmy.",
         hubFinance: "Finanse",
@@ -896,6 +929,7 @@ const TRANSLATIONS = {
 
         hubYieldForecast: "Przewidywane plony",
         yieldForecastTitle: "Przewidywane plony",
+        yieldForecastPastIntro: "Sezon {n} tak, jak był zaplanowany w chwili archiwizacji: przewidywany zbiór każdej uprawy z jego pól przy idealnym azocie, idealnym pH gleby i braku chwastów.",
         yieldForecastIntro: "Przewidywany zbiór dla każdej zaplanowanej w tym sezonie uprawy — obsianej lub wciąż tylko \"Do obsiania\" — przy założeniu idealnego azotu, idealnego pH gleby i braku chwastów: górny pułap jaki pozwala gleba Twoich pól, jeden wiersz na uprawę ze wszystkich pasujących pól.",
         yieldForecastColCrop: "Uprawa",
         yieldForecastColArea: "Powierzchnia",
@@ -1100,7 +1134,7 @@ const TRANSLATIONS = {
         afcSource_basegame: "gra podstawowa",
         afcSource_map: "mapa",
         afcSource_effective: "jak w grze",
-        easLine: "współczynnik paszy w laktacji po porodzie dla: {list}",
+        easLine: "współczynniki mleka i paszy w laktacji po porodzie dla: {list}",
         farmlandAreaLabel: "Pokazuj też areał całej działki (farmland), nie tylko pola",
         farmlandAreaHint: "Liczone z mapy tak jak w grze (pole plus miedze i obrzeża); wymaga zapisu gry i moda mapy.",
         farmlandPlot: "działka",
@@ -1185,7 +1219,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_b7_t: "Back to the current season",
     tut_b7_x: "Click ▶ to return to season 2.",
     tut_b8_t: "New season",
-    tut_b8_x: "After the harvest: archives the current season, clears crops, sowing months and tillage, lowers lime pH by one step (depending on soil) and keeps field numbers and areas. It asks for confirmation — don't click it now.",
+    tut_b8_x: "After the harvest: archives the current season, clears crops, sowing months and tillage (grass, meadow, alfalfa and clover stay sown), lowers lime pH by one step (depending on soil; not after grassland, oilseed radish or rice) and keeps field numbers and areas. It asks for confirmation — don't click it now.",
     tut_b9_t: "Reset seasons",
     tut_b9_x: "Deletes the whole season archive and starts counting from season 1 again. Your current fields stay as they are.",
 
@@ -1206,7 +1240,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c7_t: "Tillage",
     tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. The chip next to it is rolling — click it to plan or clear it.",
     tut_c8_t: "Lime",
-    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland keeps its pH. Click the chip to mark liming in a small dialog.",
+    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c10_t: "Total area",
@@ -1475,7 +1509,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_b7_t: "Powrót do bieżącego sezonu",
     tut_b7_x: "Kliknij ▶, żeby wrócić do sezonu 2.",
     tut_b8_t: "Nowy sezon",
-    tut_b8_x: "Po żniwach: archiwizuje bieżący sezon, czyści uprawy, miesiące siewu i uprawę gleby, obniża pH wapna o jeden krok (zależnie od gleby) i zachowuje numery oraz powierzchnie pól. Pyta o potwierdzenie — nie klikaj teraz.",
+    tut_b8_x: "Po żniwach: archiwizuje bieżący sezon, czyści uprawy, miesiące siewu i uprawę gleby (trawa, łąka, lucerna i koniczyna zostają zasiane), obniża pH wapna o jeden krok (zależnie od gleby; nie po użytkach zielonych, poplonie i ryżu) i zachowuje numery oraz powierzchnie pól. Pyta o potwierdzenie — nie klikaj teraz.",
     tut_b9_t: "Reset sezonów",
     tut_b9_x: "Usuwa całe archiwum sezonów i liczy od sezonu 1. Bieżące pola zostają bez zmian.",
 
@@ -1496,7 +1530,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c7_t: "Uprawa gleby",
     tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem. Chip obok to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
     tut_c8_t: "Wapno",
-    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone zachowują pH. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
+    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone, poplon i ryż go nie obniżają. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c10_t: "Suma powierzchni",
@@ -2427,7 +2461,7 @@ function reproDueText(monthsLeft) {
     return monthsLeft <= 0 ? t('reproDueNow') : t('reproDue').replace('{m}', monthsLeft);
 }
 
-function reproStatusHtml(c, st) {
+function reproStatusHtml(c, st, milkFactor = null) {
     if (!st) return '';
     const icons = { pregnant: 'fa-baby-carriage', young: 'fa-hourglass-half', lowHealth: 'fa-heart-crack', waiting: 'fa-circle-pause', ready: 'fa-circle-check', male: 'fa-mars' };
     let label;
@@ -2437,7 +2471,16 @@ function reproStatusHtml(c, st) {
     else label = t('repro_' + st.kind);
     let html = `<div class="herd-repro herd-repro--${st.kind}"><i class="fa-solid ${icons[st.kind]}" aria-hidden="true"></i><span>${label}</span></div>`;
     if (st.kind === 'pregnant') html += `<div class="herd-repro-bar"><div class="pen-bar-track"><div class="pen-bar-fill repro-bar-fill" style="width:${Math.max(3, Math.min(100, st.progress))}%"></div></div></div>`;
-    if (c.hadABirth && c.monthsSinceLastBirth !== undefined) html += `<div class="herd-repro-last">${t('reproLastBirth').replace('{m}', c.monthsSinceLastBirth)}</div>`;
+    if (c.hadABirth && c.monthsSinceLastBirth !== undefined) {
+        // EAS lactation: what this month after calving does to the milk.
+        let lact = '';
+        if (milkFactor !== null && st.kind !== 'male') {
+            lact = milkFactor > 0
+                ? ' · ' + t('lactationMilk').replace('{x}', milkFactor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                : ' · ' + t('lactationDry');
+        }
+        html += `<div class="herd-repro-last">${t('reproLastBirth').replace('{m}', c.monthsSinceLastBirth)}${lact}</div>`;
+    }
     return html;
 }
 
@@ -3034,8 +3077,10 @@ window.openHubPanel = function (type) {
                     // The ration's productionWeight scales milk/eggs/wool the way
                     // the game does; manure/slurry don't depend on the feed.
                     const outputFactor = ration ? ration.efficiency / 100 : 1;
-                    if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals;
-                    dailyNeed.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals;
+                    // EAS lactation: same food factor as the feed planner.
+                    const clusterFood = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, animalType, c);
+                    if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
+                    dailyNeed.food += clusterFood;
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
                     dailyNeed.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
 
@@ -3043,7 +3088,8 @@ window.openHubPanel = function (type) {
                     if (def && def.production) {
                         Object.keys(def.production).forEach(fillType => {
                             const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
-                            const factor = FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor;
+                            const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
+                                * clusterMilkFactor(farm, animalType, c, fillType);
                             if (rate > 0) dailyOutput[fillType] = (dailyOutput[fillType] || 0) + rate * c.numAnimals * factor;
                         });
                     }
@@ -3101,7 +3147,7 @@ window.openHubPanel = function (type) {
                                 <div class="pen-bar-track"><div class="pen-bar-fill ${hClass}" style="width:${Math.max(2, h)}%"></div></div>
                                 <span>${h}%</span>
                             </div>
-                            ${reproStatusHtml(c, reproductionStatus(c))}
+                            ${reproStatusHtml(c, reproductionStatus(c), clusterLactationMilk(farm, animalTypeOf(c.subType), c))}
                         </div>
                     </div>`;
                 });
@@ -3605,23 +3651,37 @@ function importFieldSoilFromGame(farm) {
     return msg;
 }
 
-// Farm Hub → "Predicted yields": every crop sown this month, aggregated
+// Farm Hub → "Predicted yields": every crop planned in a season, aggregated
 // across fields, with a predicted harvest in litres assuming ideal N, ideal
-// pH and no weeds. Read-only — no wiring needed.
-function renderYieldForecastPanel(titleEl, bodyEl, modalEl) {
+// pH and no weeds. Opens on the season shown in the planner; the arrows step
+// through the archived seasons.
+function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeason) {
     titleEl.textContent = t('yieldForecastTitle');
 
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) { bodyEl.innerHTML = `<p class="hub-panel-note">${t('suppliesNoCrops')}</p>`; return; }
 
+    const currentSeason = parseInt(farm.currentSeason) || 1;
+    season = Math.min(Math.max(1, parseInt(season) || currentSeason), currentSeason);
+    const isPast = season < currentSeason;
+
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(farm, rates);
+    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
     const num = n => Math.round(n).toLocaleString();
 
-    let html = `<p class="supply-intro">${t('yieldForecastIntro')}</p>`;
+    const arrow = (dir, enabled) => enabled
+        ? `<button type="button" class="yield-season-arrow" data-season="${season + dir}" aria-label="${t('season')} ${season + dir}"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}" aria-hidden="true"></i></button>`
+        : `<span class="yield-season-arrow is-disabled" aria-hidden="true"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}"></i></span>`;
+    let html = `<div class="yield-season-nav">${arrow(-1, season > 1)}<span class="yield-season-label">${t('season')} ${season}</span>${arrow(1, season < currentSeason)}</div>`;
+    html += `<p class="supply-intro">${isPast ? t('yieldForecastPastIntro').replace('{n}', season) : t('yieldForecastIntro')}</p>`;
+
+    const wireArrows = () => bodyEl.querySelectorAll('.yield-season-arrow[data-season]').forEach(btn => {
+        btn.addEventListener('click', () => renderYieldForecastPanel(titleEl, bodyEl, modalEl, parseInt(btn.dataset.season)));
+    });
 
     if (!data.rows.length) {
         bodyEl.innerHTML = html + `<p class="hub-panel-note">${t('yieldForecastEmpty')}</p>`;
+        wireArrows();
         return;
     }
 
@@ -3643,6 +3703,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl) {
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
 
     bodyEl.innerHTML = html;
+    wireArrows();
 }
 
 // =============================================================
@@ -3754,6 +3815,16 @@ function feedYearFactor(farm) {
 }
 function clusterFoodFactor(farm, type, cluster) {
     return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
+}
+// EAS lactation milk factor, or null when EAS isn't in play for this species.
+function clusterLactationMilk(farm, type, cluster) {
+    return easActive(farm) ? easMilkFactor(ANIMAL_MODS.eas, type, cluster) : null;
+}
+// Milk output multiplier for a fill type (1 for eggs, wool, manure...).
+function clusterMilkFactor(farm, type, cluster, fillType) {
+    if (!/MILK/i.test(fillType || '')) return 1;
+    const f = clusterLactationMilk(farm, type, cluster);
+    return f === null ? 1 : f;
 }
 // One line under the monthly need: what scales it, so the number is explainable.
 function feedScaleNote(farm) {
@@ -6440,15 +6511,15 @@ function buildSuppliesFertRows(farm, rates) {
 }
 
 // "Przewidywane plony" (Predicted yields) panel data: every field with a crop
-// assigned this season — planted or still just planned ("To Plant"), any
+// assigned in the given season — planted or still just planned ("To Plant"), any
 // sowing month — aggregated per crop across all matching fields. Predicted
 // litres assumes ideal N, ideal pH and no weeds (i.e. just the crop's
 // full-potential yield scaled by the field's soil-mix yield potential — see
 // fieldYieldFactor above) since those are the only levers this app models;
 // a crop with no known yield rate taints its whole aggregated row rather
 // than silently under-counting one field.
-function buildYieldForecastRows(farm, rates) {
-    const fields = (farm && farm.fields) || [];
+function buildYieldForecastRows(fields, rates) {
+    fields = fields || [];
     const byCrop = new Map();
     fields.forEach((f, i) => {
         const area = parseFloat(f.area) || 0;
@@ -7230,7 +7301,7 @@ function buildCropsCalendarFromFiles(fileList) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -7329,6 +7400,7 @@ function readGameSave(pathToFile) {
             // so it's the natural gap-free x-axis for the monthly history.
             const gamePeriod = Math.floor((currentDay - 1) / daysPerPeriod);
             result.gameDay = currentDay;
+            result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;
             result.month = fsMonths[gamePeriod % 12];
@@ -7528,6 +7600,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
+    if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
     if (changed) saveFarmData(farm);
@@ -7546,7 +7619,12 @@ function applyGameSaveToFarm(farm) {
 function refreshPlannerHeader(farm) {
     if (!farm) return;
     if (plannerBalance) plannerBalance.innerText = farm.balance || "0 €";
-    if (plannerMonth) plannerMonth.innerText = translateMonth(farm.month || "AUGUST");
+    if (plannerMonth) {
+        // Day of the in-game month next to its name ("MARCH 2") — only when a
+        // month has more than one day, otherwise it'd always read "1".
+        const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
+        plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
+    }
     if (plannerYear) plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
 
     const loanInput = document.getElementById('detail-loan');
@@ -7669,25 +7747,29 @@ function showAutoSyncToast() {
 if (exitBtn) exitBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 if (backBtn) backBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
+// Fields of one season: the archive (seasons/season_N.json) for a past
+// season, the live farm.fields for the current one. [] if the archive is
+// missing or unreadable.
+function loadSeasonFields(farm, seasonNum) {
+    if (!farm) return [];
+    if (seasonNum >= (farm.currentSeason || 1)) return farm.fields || [];
+    const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum}.json`);
+    if (!fs.existsSync(archivePath)) return [];
+    try {
+        return JSON.parse(fs.readFileSync(archivePath, 'utf-8')).fields || [];
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
 window.renderSeasonView = function () {
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) return;
 
     const currentActiveSeason = farm.currentSeason || 1;
-    let fieldsToDisplay = [];
-    let isPastSeason = viewedSeason < currentActiveSeason;
-
-    if (isPastSeason) {
-        const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${viewedSeason}.json`);
-        if (fs.existsSync(archivePath)) {
-            try {
-                const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
-                fieldsToDisplay = archiveData.fields || [];
-            } catch (e) { console.error(e); }
-        }
-    } else {
-        fieldsToDisplay = farm.fields || [];
-    }
+    const isPastSeason = viewedSeason < currentActiveSeason;
+    const fieldsToDisplay = loadSeasonFields(farm, viewedSeason);
 
     renderFieldsTable(fieldsToDisplay);
     updateCropsSummary(fieldsToDisplay);
@@ -8790,11 +8872,99 @@ document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
 // =============================================================
 // SECTION 8: NEW SEASON LOGIC
 // =============================================================
+// Season confirm / result dialog (#season-modal). Resolves true on the main
+// button, false on Cancel, a click on the backdrop or Escape. Without
+// cancelText it's a one-button notice.
+function showSeasonModal({ title, body, confirmText, cancelText = null, danger = false, icon = 'fa-seedling' }) {
+    const modal = document.getElementById('season-modal');
+    if (!modal) return Promise.resolve(window.confirm(body));
+    const content = modal.querySelector('.season-modal-content');
+    const iconEl = document.getElementById('season-modal-icon');
+    const confirmBtn = document.getElementById('season-modal-confirm');
+    const cancelBtn = document.getElementById('season-modal-cancel');
+
+    document.getElementById('season-modal-title').textContent = title;
+    document.getElementById('season-modal-body').textContent = body;
+    iconEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+    iconEl.classList.toggle('is-danger', danger);
+    content.classList.toggle('is-danger', danger);
+    confirmBtn.textContent = confirmText;
+    confirmBtn.classList.toggle('danger-btn', danger);
+    cancelBtn.textContent = cancelText || '';
+    cancelBtn.style.display = cancelText ? '' : 'none';
+
+    return new Promise(resolve => {
+        const finish = result => {
+            modal.style.display = 'none';
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('mousedown', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve(result);
+        };
+        const onConfirm = () => finish(true);
+        const onCancel = () => finish(false);
+        const onBackdrop = e => { if (e.target === modal) finish(false); };
+        const onKey = e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+        };
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('mousedown', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+        modal.style.display = 'flex';
+        confirmBtn.focus();
+    });
+}
+
+function showSeasonNotice(title, body, isError = false) {
+    return showSeasonModal({
+        title, body,
+        confirmText: t('seasonModalOk'),
+        danger: isError,
+        icon: isError ? 'fa-triangle-exclamation' : 'fa-circle-check'
+    });
+}
+
+function resetEditSeasonButton() {
+    isEditMode = false;
+    if (editSeasonBtn) {
+        editSeasonBtn.innerText = t('edit');
+        editSeasonBtn.style.backgroundColor = "transparent";
+        editSeasonBtn.style.color = "var(--color-black)";
+    }
+}
+
+// Crops that keep growing for years once sown — "New Season" carries them
+// over (still planted) instead of clearing the field.
+const PERENNIAL_CROPS = FEED_GRASSLAND_CROPS;
+function isPerennialCrop(crop) {
+    return PERENNIAL_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+// Crops whose fruit XML has <soil consumesLime="false">: harvesting them
+// doesn't lower pH. Base game (data/foliage/*/*.xml): grass, every meadow,
+// oilseed radish and both rices; cut crops (grassland, teff, field grass)
+// per the maps' fruit XML.
+const NO_LIME_CROPS = ['Oilseedradish', 'Rice', 'Ricelonggrain'];
+function cropKeepsLime(crop) {
+    return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+
 if (newSeasonBtn) {
-    newSeasonBtn.addEventListener('click', () => {
+    newSeasonBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
 
-        const confirmNew = confirm("Are you sure you want to start a new season? Current fields will be saved to archive and cleared.");
+        const startFarm = getAllFarms().find(f => f.id === currentFarmId);
+        if (!startFarm) return;
+        const seasonNow = parseInt(startFarm.currentSeason) || 1;
+        const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
+        const confirmNew = await showSeasonModal({
+            title: fill(t('newSeasonTitle')),
+            body: fill(t('newSeasonBody')),
+            confirmText: fill(t('newSeasonConfirm')),
+            cancelText: t('cancel'),
+            icon: 'fa-seedling'
+        });
         if (!confirmNew) return;
 
         const allFarms = getAllFarms();
@@ -8832,16 +9002,22 @@ if (newSeasonBtn) {
 
             const supplyRatesForLime = getSupplyRates();
             farm.fields.forEach((field, i) => {
-                // Read before the crop is cleared: grassland doesn't use up lime.
-                const keepsLime = isCutCrop(field.crop);
-                field.crop = "";
-                field.sowingMonth = "";
+                // Read before the crop is cleared.
+                const keepsLime = cropKeepsLime(field.crop);
+                if (isPerennialCrop(field.crop)) {
+                    // Grassland stays sown for years: keep the crop, sowing
+                    // month and tillage; only this season's work is cleared.
+                    field.state = "Planted";
+                } else {
+                    field.crop = "";
+                    field.sowingMonth = "";
+                    field.state = "To Plant";
+                    field.tillage = null;
+                }
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
                 field.rolling = false;
                 field.cuts = [];
-                field.state = "To Plant";
-                field.tillage = null;
                 // limeAppliedSeason is intentionally left untouched — it's
                 // display-only metadata now (see limePh below for the actual
                 // decaying value).
@@ -8850,8 +9026,8 @@ if (newSeasonBtn) {
                 // field that predates this model instead of resetting it.
                 const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
                 const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                // Grassland (grass, meadow, alfalfa, clover) has consumesLime="false" in
-                // every map's fruit XML — cutting it doesn't lower pH, cereals do.
+                // consumesLime="false" crops (grassland, oilseed radish, rice)
+                // don't lower pH when harvested; everything else does.
                 const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
                 field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
@@ -8861,32 +9037,31 @@ if (newSeasonBtn) {
             farm.currentSeason = currentSeasonNum + 1;
             saveFarmData(farm);
 
-            isEditMode = false;
-            if (editSeasonBtn) {
-                editSeasonBtn.innerText = t('edit');
-                editSeasonBtn.style.backgroundColor = "transparent";
-                editSeasonBtn.style.color = "var(--color-black)";
-            }
-
+            resetEditSeasonButton();
             viewedSeason = farm.currentSeason;
             renderSeasonView();
 
-            alert(currentLang === 'pl'
-                ? `Sukces! Sezon ${currentSeasonNum} zarchiwizowany.\nWitaj w Sezonie ${farm.currentSeason}!`
-                : `Success! Season ${currentSeasonNum} archived.\nWelcome to Season ${farm.currentSeason}!`);
-
+            const done = s => s.replace(/\{c\}/g, currentSeasonNum).replace(/\{n\}/g, farm.currentSeason);
+            await showSeasonNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
         } catch (err) {
             console.error(err);
-            alert("Error: Could not create a new season.");
+            await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
         }
     });
 }
 
 if (resetSeasonsBtn) {
-    resetSeasonsBtn.addEventListener('click', () => {
+    resetSeasonsBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
 
-        const confirmReset = confirm("WARNING: Are you sure you want to reset all seasons? This will permanently DELETE all archived season history!");
+        const confirmReset = await showSeasonModal({
+            title: t('resetSeasonsTitle'),
+            body: t('resetSeasonsBody'),
+            confirmText: t('resetSeasonsConfirm'),
+            cancelText: t('cancel'),
+            danger: true,
+            icon: 'fa-trash-can'
+        });
         if (!confirmReset) return;
 
         const allFarms = getAllFarms();
@@ -8901,7 +9076,7 @@ if (resetSeasonsBtn) {
                 fs.rmSync(seasonsDirPath, { recursive: true, force: true });
             } catch (err) {
                 console.error("Błąd podczas usuwania archiwum:", err);
-                alert("Error: Could not delete season files.");
+                await showSeasonNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
                 return;
             }
         }
@@ -8910,17 +9085,10 @@ if (resetSeasonsBtn) {
         saveFarmData(farm);
 
         viewedSeason = 1;
-
-        isEditMode = false;
-        if (editSeasonBtn) {
-            editSeasonBtn.innerText = t('edit');
-            editSeasonBtn.style.backgroundColor = "transparent";
-            editSeasonBtn.style.color = "var(--color-black)";
-        }
-
+        resetEditSeasonButton();
         renderSeasonView();
 
-        alert("Success! All seasons have been reset to Season 1.");
+        await showSeasonNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));
     });
 }
 

@@ -16,6 +16,10 @@
 // FS25_EnhancedAnimalSystem (EAS): a cluster that has given birth eats
 //   food x <lactation><key month=monthsSinceLastBirth+1 food=…> from the mod's
 //   xmls/<species>.xml (EAS_AnimalCluster.getLactationFoodFactor).
+//   Milk (EAS_PlaceableHusbandryMilk / …Pallets for *MILK fill types) only
+//   flows while hadABirth and reproduction < 80, at the age curve x
+//   <key month=monthsSinceLastBirth milk=…>; no key for that month -> 0
+//   (EAS_AnimalCluster.getLactationMilkFactor).
 const fs = require('fs');
 const path = require('path');
 const { openMod } = require('./savegame-soil');
@@ -36,7 +40,8 @@ function readText(mod, rel) {
     return b ? b.toString('utf-8') : null;
 }
 
-// EAS lactation tables per animal type ("COW"), from the mod's xmls/*.xml.
+// EAS lactation tables per animal type ("COW") -> { month: { food, milk } },
+// from the mod's xmls/*.xml.
 function readEasLactation(mod) {
     const byType = {};
     mod.list('xmls/').filter(n => n.endsWith('.xml')).forEach(rel => {
@@ -50,7 +55,9 @@ function readEasLactation(mod) {
             for (const k of lact.matchAll(/<key\b[^>]*>/g)) {
                 const month = parseInt(attr(k[0], 'month'), 10);
                 const food = parseFloat(attr(k[0], 'food'));
-                if (!isNaN(month) && !isNaN(food)) table[month] = food;
+                const milk = parseFloat(attr(k[0], 'milk'));
+                if (isNaN(month) || (isNaN(food) && isNaN(milk))) continue;
+                table[month] = { food: isNaN(food) ? 1 : food, milk: isNaN(milk) ? null : milk };
             }
             if (Object.keys(table).length) byType[type] = table;
         }
@@ -117,8 +124,19 @@ function easFoodFactor(eas, animalType, cluster) {
     if (!eas || !cluster || !cluster.hadABirth) return 1;
     const table = eas.lactation[String(animalType || '').toUpperCase()];
     if (!table) return 1;
-    const f = table[(parseInt(cluster.monthsSinceLastBirth, 10) || 0) + 1];
-    return typeof f === 'number' ? f : 1;
+    const key = table[(parseInt(cluster.monthsSinceLastBirth, 10) || 0) + 1];
+    return key && typeof key.food === 'number' ? key.food : 1;
 }
 
-module.exports = { readAnimalMods, easFoodFactor };
+// EAS milk factor for one cluster, or null when the mod has no lactation
+// table for this species (milk then follows the plain age curve).
+function easMilkFactor(eas, animalType, cluster) {
+    if (!eas || !cluster) return null;
+    const table = eas.lactation[String(animalType || '').toUpperCase()];
+    if (!table || !Object.values(table).some(k => k.milk !== null)) return null;
+    if (!cluster.hadABirth || (parseFloat(cluster.reproduction) || 0) >= 80) return 0;
+    const key = table[parseInt(cluster.monthsSinceLastBirth, 10) || 0];
+    return key && typeof key.milk === 'number' ? key.milk : 0;
+}
+
+module.exports = { readAnimalMods, easFoodFactor, easMilkFactor };

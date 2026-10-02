@@ -2,6 +2,22 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.8 — 2026-10-02
+
+**New**
+- **Day of the month in the header**: the month in the planner header shows the in-game day next to it (e.g. *March 2*), read from the savegame and refreshed by auto-sync. With one day per month only the month is shown.
+- **Predicted yields for past seasons**: the Predicted yields panel opens on the season shown in the planner, and a *‹ Season N ›* switcher steps through archived seasons. They are calculated from the fields as they were when the season was archived.
+- **EnhancedAnimalSystem milk**: milk output in the Animals view follows the mod's lactation curve. Milk depends on the months since the last birth (peak ×1.2 in month 2, falling to 0 by month 19). There is no milk before the first birth or from 80 % pregnancy (dry cows). Each herd group shows its current milk factor (*milk ×1.15* or *dry*).
+
+**Changed**
+- **New season and Reset seasons use in-app dialogs** instead of the system message boxes, in Polish or English: a confirmation that says what will happen, then a short result message. Reset is shown in red as a destructive action.
+- **Grassland stays sown across seasons**: with a new season, fields with grass, meadow, alfalfa or clover keep their crop, sowing month and tillage and stay marked as sown. Only that season's work (cuts, catch crop, rolling, manure, fertilizer) is cleared.
+- The Animals view's daily food need per barn now uses EnhancedAnimalSystem's lactation food factor, the same as the Feed planner.
+- Tutorial: the *New season* and lime steps mention the grassland that stays sown and the crops that don't lower pH.
+
+**Fixed**
+- Oilseed radish and rice no longer lower soil pH with a new season (`consumesLime="false"` in the game's crop files, like grassland).
+
 ## 0.9.7 — 2026-09-30
 
 **New**
