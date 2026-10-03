@@ -16,3 +16,6 @@ Desktop.ini
 
 # Private archives
 *.7z
+
+# KingMods release materials (kept locally, not in the repo)
+KingMods - */
