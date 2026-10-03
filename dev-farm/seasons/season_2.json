@@ -1,0 +1,102 @@
+{
+  "season": 2,
+  "dateArchived": "2026-09-03T15:25:14.033Z",
+  "fields": [
+    {
+      "number": "30",
+      "area": "1.15",
+      "crop": "Canola",
+      "sowingMonth": "AUGUST",
+      "state": "Planted",
+      "harvestMonth": "JUNE",
+      "limeAppliedSeason": 2,
+      "manure": false,
+      "fertilizer": true
+    },
+    {
+      "number": "60",
+      "area": "0.84",
+      "crop": "Rye",
+      "sowingMonth": "SEPTEMBER",
+      "state": "Planted",
+      "harvestMonth": "JUNE",
+      "limeAppliedSeason": 2,
+      "manure": false,
+      "fertilizer": true
+    },
+    {
+      "number": "69-70-71",
+      "area": "1.81",
+      "crop": "Maize",
+      "sowingMonth": "APRIL",
+      "state": "Planted",
+      "harvestMonth": "SEPTEMBER",
+      "limeAppliedSeason": 2,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "115",
+      "area": "1.19",
+      "crop": "Greenrye",
+      "sowingMonth": "APRIL",
+      "state": "Planted",
+      "harvestMonth": "JULY",
+      "limeAppliedSeason": 2,
+      "manure": false,
+      "fertilizer": true
+    },
+    {
+      "number": "152",
+      "area": "1.10",
+      "crop": "Wheat",
+      "sowingMonth": "SEPTEMBER",
+      "state": "Planted",
+      "harvestMonth": "JUNE",
+      "limeAppliedSeason": 2,
+      "manure": false,
+      "fertilizer": true
+    },
+    {
+      "number": "159",
+      "area": "0.56",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "AUGUST",
+      "limeAppliedSeason": 2,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "159",
+      "area": "0.30",
+      "crop": "Potato",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "JULY",
+      "limeAppliedSeason": 2,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "168-169",
+      "area": "1.31",
+      "crop": "Rye",
+      "sowingMonth": "SEPTEMBER",
+      "state": "Planted",
+      "harvestMonth": "JUNE",
+      "limeAppliedSeason": 2,
+      "manure": false,
+      "fertilizer": true
+    }
+  ],
+  "trackedCrops": [
+    "Maize",
+    "Canola",
+    "Greenrye",
+    "Rye",
+    "Wheat",
+    "Potato"
+  ]
+}

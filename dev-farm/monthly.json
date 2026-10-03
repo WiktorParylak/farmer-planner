@@ -1,0 +1,384 @@
+[
+  {
+    "period": 30,
+    "month": "SEPTEMBER",
+    "gameYear": 3,
+    "gameDay": 31,
+    "appSeason": 3,
+    "recordedAt": "2026-09-08T11:06:33.225Z",
+    "balance": 48659,
+    "loan": 0,
+    "equipment": 50,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 16277.077148,
+      "STRAW": 22039.15625,
+      "MILK": 1079.847168
+    },
+    "updatedAt": "2026-09-08T11:43:59.001Z"
+  },
+  {
+    "period": 31,
+    "month": "OCTOBER",
+    "gameYear": 3,
+    "gameDay": 32,
+    "appSeason": 3,
+    "recordedAt": "2026-09-08T12:00:51.515Z",
+    "balance": 83548,
+    "loan": 0,
+    "equipment": 51,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "EGG": 1353.225586,
+      "STRAW": 16051.357422,
+      "LIQUIDMANURE": 22343.658203,
+      "MILK": 2761.888672
+    },
+    "updatedAt": "2026-09-09T18:59:37.453Z"
+  },
+  {
+    "period": 32,
+    "month": "NOVEMBER",
+    "gameYear": 3,
+    "gameDay": 33,
+    "appSeason": 3,
+    "recordedAt": "2026-09-09T21:23:15.097Z",
+    "balance": 44874,
+    "loan": 0,
+    "equipment": 49,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 22125.383789,
+      "LIQUIDMANURE": 26310.267578,
+      "MILK": 1565.666626
+    },
+    "updatedAt": "2026-09-11T10:36:19.977Z"
+  },
+  {
+    "period": 33,
+    "month": "DECEMBER",
+    "gameYear": 3,
+    "gameDay": 34,
+    "appSeason": 3,
+    "recordedAt": "2026-09-11T10:42:49.975Z",
+    "balance": 62445,
+    "loan": 0,
+    "equipment": 51,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 14057.535156999998,
+      "LIQUIDMANURE": 34178.15625,
+      "MILK": 3574.666504
+    },
+    "updatedAt": "2026-09-11T10:52:49.979Z"
+  },
+  {
+    "period": 34,
+    "month": "JANUARY",
+    "gameYear": 3,
+    "gameDay": 35,
+    "appSeason": 3,
+    "recordedAt": "2026-09-11T11:02:59.971Z",
+    "balance": 109504,
+    "loan": 0,
+    "equipment": 51,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 21415.694336,
+      "LIQUIDMANURE": 36875.449219,
+      "MILK": 1787.333252
+    },
+    "updatedAt": "2026-09-11T11:33:09.975Z"
+  },
+  {
+    "period": 35,
+    "month": "FEBRUARY",
+    "gameYear": 3,
+    "gameDay": 36,
+    "appSeason": 3,
+    "recordedAt": "2026-09-11T11:43:19.981Z",
+    "balance": 5116,
+    "loan": 0,
+    "equipment": 51,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 15627.505860000001,
+      "EGG": 1122.75,
+      "LIQUIDMANURE": 42475.371094,
+      "MILK": 1787.333252
+    }
+  },
+  {
+    "period": 36,
+    "month": "MARCH",
+    "gameYear": 4,
+    "gameDay": 37,
+    "appSeason": 3,
+    "recordedAt": "2026-09-11T12:03:32.282Z",
+    "balance": 1652,
+    "loan": 0,
+    "equipment": 49,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 9021.27063,
+      "EGG": 2736,
+      "LIQUIDMANURE": 48641.503906,
+      "MILK": 1787.333252
+    },
+    "updatedAt": "2026-09-12T09:03:30.112Z"
+  },
+  {
+    "period": 37,
+    "month": "APRIL",
+    "gameYear": 4,
+    "gameDay": 38,
+    "appSeason": 3,
+    "recordedAt": "2026-09-12T17:42:46.196Z",
+    "balance": 8813,
+    "loan": 0,
+    "equipment": 45,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 7802.604004,
+      "EGG": 4229.75,
+      "LIQUIDMANURE": 18556.664062,
+      "MILK": 2205
+    },
+    "updatedAt": "2026-09-13T16:32:37.179Z"
+  },
+  {
+    "period": 38,
+    "month": "MAY",
+    "gameYear": 4,
+    "gameDay": 39,
+    "appSeason": 3,
+    "recordedAt": "2026-09-13T17:14:21.834Z",
+    "balance": 15748,
+    "loan": 0,
+    "equipment": 50,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 11712.626465,
+      "LIQUIDMANURE": 23923.253906,
+      "MILK": 2450
+    },
+    "updatedAt": "2026-09-13T17:24:21.845Z"
+  },
+  {
+    "period": 39,
+    "month": "JUNE",
+    "gameYear": 4,
+    "gameDay": 40,
+    "appSeason": 3,
+    "recordedAt": "2026-09-13T18:36:21.712Z",
+    "balance": 24051,
+    "loan": 0,
+    "equipment": 52,
+    "animals": 259,
+    "avgHealth": 92.27799227799228,
+    "production": {
+      "STRAW": 15932.83252,
+      "LIQUIDMANURE": 27691.171875
+    },
+    "updatedAt": "2026-09-13T18:56:21.702Z"
+  },
+  {
+    "period": 40,
+    "month": "JULY",
+    "gameYear": 4,
+    "gameDay": 41,
+    "appSeason": 4,
+    "recordedAt": "2026-09-13T19:01:21.710Z",
+    "balance": 23826,
+    "loan": 0,
+    "equipment": 43,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "STRAW": 12459.461914,
+      "EGG": 58.555,
+      "LIQUIDMANURE": 35391.054688,
+      "MILK": 4879.583008
+    },
+    "updatedAt": "2026-09-16T09:40:33.202Z"
+  },
+  {
+    "period": 41,
+    "month": "AUGUST",
+    "gameYear": 4,
+    "gameDay": 42,
+    "appSeason": 4,
+    "recordedAt": "2026-09-17T19:37:49.960Z",
+    "balance": 19894,
+    "loan": 0,
+    "equipment": 46,
+    "animals": 259,
+    "avgHealth": 24.613899613899616,
+    "production": {
+      "LIQUIDMANURE": 466.660004
+    },
+    "updatedAt": "2026-09-18T19:58:54.981Z"
+  },
+  {
+    "period": 42,
+    "month": "SEPTEMBER",
+    "gameYear": 4,
+    "gameDay": 85,
+    "appSeason": 4,
+    "recordedAt": "2026-09-18T20:16:54.966Z",
+    "balance": 11242,
+    "loan": 0,
+    "equipment": 48,
+    "animals": 259,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 6066.580078,
+      "MILK": 1983.139893,
+      "STRAW": 9728.280517,
+      "EGG": 1123.193848
+    },
+    "updatedAt": "2026-09-23T18:25:38.969Z"
+  },
+  {
+    "period": 43,
+    "month": "OCTOBER",
+    "gameYear": 4,
+    "gameDay": 131,
+    "appSeason": 4,
+    "recordedAt": "2026-09-23T19:09:38.969Z",
+    "balance": 47689,
+    "loan": 0,
+    "equipment": 62,
+    "animals": 269,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 21991.802734,
+      "MILK": 458.699982,
+      "STRAW": 50669.465821,
+      "EGG": 4831.134277
+    },
+    "updatedAt": "2026-09-26T09:03:38.117Z"
+  },
+  {
+    "period": 46,
+    "month": "JANUARY",
+    "gameYear": 4,
+    "gameDay": 139,
+    "appSeason": 4,
+    "recordedAt": "2026-09-26T09:35:38.125Z",
+    "balance": 115884,
+    "loan": 0,
+    "equipment": 62,
+    "animals": 269,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 53875.238281,
+      "MILK": 324.073975,
+      "STRAW": 16545.818359,
+      "EGG": 15194.366211
+    }
+  },
+  {
+    "period": 48,
+    "month": "MARCH",
+    "gameYear": 5,
+    "gameDay": 147,
+    "appSeason": 4,
+    "recordedAt": "2026-09-26T10:01:18.117Z",
+    "balance": 69936,
+    "loan": 0,
+    "equipment": 62,
+    "animals": 31,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 63207.476562,
+      "STRAW": 20208.910156
+    },
+    "updatedAt": "2026-09-27T18:37:33.062Z"
+  },
+  {
+    "period": 49,
+    "month": "APRIL",
+    "gameYear": 5,
+    "gameDay": 150,
+    "appSeason": 4,
+    "recordedAt": "2026-09-27T18:47:33.062Z",
+    "balance": 81445,
+    "loan": 0,
+    "equipment": 59,
+    "animals": 232,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 36172.5,
+      "STRAW": 27136.525391,
+      "EGG": 25937.117188
+    },
+    "updatedAt": "2026-09-30T17:32:04.262Z"
+  },
+  {
+    "period": 50,
+    "month": "MAY",
+    "gameYear": 5,
+    "gameDay": 153,
+    "appSeason": 5,
+    "recordedAt": "2026-09-30T17:54:04.341Z",
+    "balance": 78838,
+    "loan": 0,
+    "equipment": 61,
+    "animals": 299,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 10142.112305,
+      "STRAW": 13512.586914,
+      "EGG": 5.146875
+    },
+    "updatedAt": "2026-09-30T20:04:28.755Z"
+  },
+  {
+    "period": 51,
+    "month": "JUNE",
+    "gameYear": 5,
+    "gameDay": 154,
+    "appSeason": 5,
+    "recordedAt": "2026-09-30T20:05:38.989Z",
+    "balance": 78465,
+    "loan": 0,
+    "equipment": 61,
+    "animals": 299,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 15244.5625,
+      "STRAW": 49590.078125,
+      "EGG": 5.75239
+    },
+    "updatedAt": "2026-09-30T20:16:48.973Z"
+  },
+  {
+    "period": 52,
+    "month": "JULY",
+    "gameYear": 5,
+    "gameDay": 159,
+    "appSeason": 5,
+    "recordedAt": "2026-09-30T20:31:09.089Z",
+    "balance": 26565,
+    "loan": 0,
+    "equipment": 61,
+    "animals": 295,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 39931.566406,
+      "STRAW": 29118.121094,
+      "EGG": 5.364375
+    },
+    "updatedAt": "2026-10-03T09:44:47.456Z"
+  }
+]

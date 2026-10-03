@@ -47,6 +47,8 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | `npm run build` | buduje instalator NSIS do `dist/` (`Farmer Planner Setup X.Y.Z.exe`) |
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
+| `node tools/dev-farm.js install` | wgrywa farmę testową z `dev-farm/` do `Documents\Farmer Planner` |
+| `node tools/dev-farm.js save` | zapisuje farmę testową z aplikacji z powrotem do `dev-farm/` (potem commit) |
 | `gh release list` | lista wydań |
 
 Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienionej funkcji.
@@ -106,6 +108,8 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Zużycie nasion/nawozu per działka: `savegame2/precisionFarming.xml <farmlandStatistics>`.
 - Format GRLE: nagłówek 21 B, szerokość = u16LE@6 × 256, wysokość = u16LE@10 × 256; RLE: bajt v, jeśli następny == v → run, licznik = suma bajtów 0xFF + bajt końcowy, emituj count+1 dodatkowych kopii.
 - `mods/FS25_sowingMachineRollerReady.zip` został spatchowany 2026-09-27 (wał nie potraja zużycia nasion); oryginał w `Documents\Farming - misc\mod_backups`.
+
+Farma testowa `DEV - farma testowa` (kopia Solka, id `1791058275537`) jest w repo w `dev-farm/` — na nowym komputerze `node tools/dev-farm.js install`, po zmianach w aplikacji `save` + commit. Testuj na niej, nie na prawdziwych farmach. Savegame'u (~136 MB) nie ma w repo.
 
 Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farmer Planner` (lub zrób eksport kopii zapasowej farmy w aplikacji) i, jeśli potrzebny jest sync, sam folder savegame'u.
 

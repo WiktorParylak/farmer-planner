@@ -1,0 +1,127 @@
+{
+  "season": 3,
+  "dateArchived": "2026-09-14T12:35:35.038Z",
+  "fields": [
+    {
+      "number": "7",
+      "area": "1.47",
+      "crop": "Wheat",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "tillage": "noTill",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "30",
+      "area": "0.87",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "tillage": "noTill",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "30",
+      "area": "0.28",
+      "crop": "Potato",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "tillage": "noTill",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "60",
+      "area": "0.84",
+      "crop": "Greenrye",
+      "sowingMonth": "APRIL",
+      "state": "Planted",
+      "tillage": "plowed",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "69-70-71",
+      "area": "1.81",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "tillage": "noTill",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "115-116",
+      "area": "1.74",
+      "crop": "Oat",
+      "sowingMonth": "OCTOBER",
+      "state": "Planted",
+      "tillage": "plowed",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": false,
+      "fertilizer": true
+    },
+    {
+      "number": "152",
+      "area": "1.10",
+      "crop": "Canola",
+      "sowingMonth": "AUGUST",
+      "state": "Planted",
+      "tillage": "plowed",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "159",
+      "area": "0.86",
+      "crop": "Wheat",
+      "sowingMonth": "OCTOBER",
+      "state": "Planted",
+      "tillage": "plowed",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "168-169",
+      "area": "1.31",
+      "crop": "Maize",
+      "sowingMonth": "APRIL",
+      "state": "Planted",
+      "tillage": "noTill",
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "manure": true,
+      "fertilizer": true
+    }
+  ],
+  "trackedCrops": [
+    "Maize",
+    "Canola",
+    "Greenrye",
+    "Rye",
+    "Wheat",
+    "Potato",
+    "Oat"
+  ],
+  "balance": "7209 €",
+  "loan": 0,
+  "animals": 259,
+  "avgHealth": 100
+}
