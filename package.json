@@ -27,5 +27,9 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1"
+  },
+  "allowScripts": {
+    "electron@40.4.1": true,
+    "electron-winstaller@5.4.0": true
   }
 }
