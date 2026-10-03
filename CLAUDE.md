@@ -17,7 +17,7 @@ Wszystko, co ma być wiadome na obu maszynach, trzymaj w tym pliku.
 git fetch --all --prune
 git status                      # czy nie ma niezacommitowanych zmian
 git branch -a                   # która gałąź vX.Y.Z jest najnowsza
-git checkout vX.Y.Z             # najnowsza gałąź wersji
+git switch vX.Y.Z               # najnowsza gałąź wersji (pierwszy raz: git switch -c vX.Y.Z --track origin/vX.Y.Z)
 git pull
 npm install                     # jeśli package-lock.json się zmienił
 ```
@@ -26,8 +26,12 @@ npm install                     # jeśli package-lock.json się zmienił
 ```bash
 git add -A
 git commit -m "..."
-git push -u origin vX.Y.Z       # tylko gałąź robocza — to synchronizacja, nie release
+git push -u origin refs/heads/vX.Y.Z   # tylko gałąź robocza — to synchronizacja, nie release
 ```
+
+Wydane wersje mają **tag o tej samej nazwie co gałąź** (`v0.9.8`), więc `git checkout vX.Y.Z` wybiera
+tag (detached HEAD), a `git push origin vX.Y.Z` kończy się błędem „src refspec matches more than one”.
+Dlatego `git switch` (zawsze gałąź) i pełna nazwa `refs/heads/...` przy pushu.
 Niezacommitowana praca zostaje na jednym komputerze — przypomnij o tym, jeśli sesja kończy się z brudnym drzewem.
 
 Pierwszy raz na nowym komputerze:
