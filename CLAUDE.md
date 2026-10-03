@@ -16,8 +16,8 @@ Wszystko, co ma być wiadome na obu maszynach, trzymaj w tym pliku.
 ```bash
 git fetch --all --prune
 git status                      # czy nie ma niezacommitowanych zmian
-git branch -a                   # która gałąź vX.Y.Z jest najnowsza
-git switch vX.Y.Z               # najnowsza gałąź wersji (pierwszy raz: git switch -c vX.Y.Z --track origin/vX.Y.Z)
+git branch -a                   # która gałąź dev/vX.Y.Z jest najnowsza
+git switch dev/vX.Y.Z           # najnowsza gałąź wersji (pierwszy raz: git switch -c dev/vX.Y.Z --track origin/dev/vX.Y.Z)
 git pull
 npm install                     # jeśli package-lock.json się zmienił
 ```
@@ -26,12 +26,14 @@ npm install                     # jeśli package-lock.json się zmienił
 ```bash
 git add -A
 git commit -m "..."
-git push -u origin refs/heads/vX.Y.Z   # tylko gałąź robocza — to synchronizacja, nie release
+git push -u origin dev/vX.Y.Z   # tylko gałąź robocza — to synchronizacja, nie release
 ```
 
-Wydane wersje mają **tag o tej samej nazwie co gałąź** (`v0.9.8`), więc `git checkout vX.Y.Z` wybiera
-tag (detached HEAD), a `git push origin vX.Y.Z` kończy się błędem „src refspec matches more than one”.
-Dlatego `git switch` (zawsze gałąź) i pełna nazwa `refs/heads/...` przy pushu.
+Gałęzie robocze mają prefiks `dev/` (`dev/v0.9.8`), a tagi wydań go nie mają (`v0.9.8`), więc nazwy
+się nie gryzą. Nigdy nie twórz gałęzi o nazwie `vX.Y.Z` bez `dev/` — koliduje z tagiem wydania
+(„src refspec matches more than one”, `git checkout` trafia w tag). Do 2026-10-03 gałęzie nazywały się
+`vX.Y.Z`; jeśli na drugim komputerze zostały lokalne `v0.9.7` / `v0.9.8`, po `git fetch --prune`
+usuń je (`git branch -D v0.9.7 v0.9.8`) i przełącz się na `dev/v0.9.8`.
 Niezacommitowana praca zostaje na jednym komputerze — przypomnij o tym, jeśli sesja kończy się z brudnym drzewem.
 
 Pierwszy raz na nowym komputerze:
@@ -59,8 +61,8 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 
 ## Gałęzie i wydania
 
-- Każda wersja ma swoją gałąź `vX.Y.Z`, odgałęzioną od **poprzedniej gałęzi wersji** (v0.9.8 z v0.9.7), nie od `main`.
-- `main` dostaje wersję przez merge PR (`Merge pull request #N from .../vX.Y.Z`) po wydaniu. Przed planowaniem sprawdź, czy `main` nie jest w tyle — czytaj kod z najnowszej gałęzi `vX.Y.Z`.
+- Każda wersja ma swoją gałąź `dev/vX.Y.Z`, odgałęzioną od **poprzedniej gałęzi wersji** (dev/v0.9.9 z dev/v0.9.8), nie od `main`.
+- `main` dostaje wersję przez merge PR z gałęzi `dev/vX.Y.Z` po wydaniu (starsze PR-y mają w nazwie `vX.Y.Z`). Przed planowaniem sprawdź, czy `main` nie jest w tyle — czytaj kod z najnowszej gałęzi `dev/vX.Y.Z`.
 - Na głównym komputerze praca bywa w worktree `.claude/worktrees/v0.9.6` (ma checkout najnowszej gałęzi wersji, nazwa katalogu jest historyczna). Na drugim komputerze tego worktree nie ma — wystarczy zwykły checkout gałęzi.
 - Wydania: GitHub Releases jako **Pre-release**, tag `vX.Y.Z`, tytuł `Farmer Planner X.Y.Z`, załącznik = instalator z `dist/`. Instalatory i zipy **nie trafiają do repo** (`dist/` jest w `.gitignore`).
 
@@ -73,7 +75,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 1. `package.json` + `package-lock.json` → nowy `version` (to jedyne miejsce z numerem wersji).
 2. `CHANGELOG.md` — nowa sekcja `## X.Y.Z — RRRR-MM-DD` z **New / Changed / Fixed**, w stylu poprzednich wpisów.
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
-4. Commit `Version X.Y.Z: ...` na gałęzi `vX.Y.Z`.
+4. Commit `Version X.Y.Z: ...` na gałęzi `dev/vX.Y.Z`.
 5. Dopiero na polecenie: push, `npm run build`, `gh release create vX.Y.Z --prerelease ...`, PR do `main`.
 
 ## Architektura
