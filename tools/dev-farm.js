@@ -15,10 +15,22 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execSync } = require('child_process');
+
+// Same folder as Electron's app.getPath('documents') — it may be redirected
+// (e.g. to OneDrive\Dokumenty), so %USERPROFILE%\Documents is not enough.
+function documentsDir() {
+    try {
+        const dir = execSync('powershell -NoProfile -Command "[Environment]::GetFolderPath(\'MyDocuments\')"',
+            { encoding: 'utf-8' }).trim();
+        if (dir) return dir;
+    } catch (err) { /* fall back below */ }
+    return path.join(os.homedir(), 'Documents');
+}
 
 const FARM_ID = '1791058275537';
 const REPO_DIR = path.join(__dirname, '..', 'dev-farm');
-const APP_DIR = path.join(os.homedir(), 'Documents', 'Farmer Planner', FARM_ID);
+const APP_DIR = path.join(documentsDir(), 'Farmer Planner', FARM_ID);
 
 // Post-edit backups are recreated by the app; they would only bloat the repo.
 const SKIP = new Set(['backups']);
