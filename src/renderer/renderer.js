@@ -598,9 +598,17 @@ const TRANSLATIONS = {
         feedScaleBase: "base game: monthly need doesn't depend on days/month ({d})",
         feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} days/month)",
         feedScaleEas: "EAS: more food after calving",
-        animalModsLabel: "Animal mods in this savegame:",
-        animalModsNoSave: "Link the savegame above to detect animal mods (AnimalFoodCalculator, EnhancedAnimalSystem).",
-        animalModsNone: "No feed-changing animal mods active — base game rules ({d} days/month doesn't change monthly feed).",
+        animalModsLabel: "Mods the app reads:",
+        modsNoSave: "Link the savegame above to see which of these mods it uses.",
+        modStatusActive: "in this savegame",
+        modStatusMissing: "not in this savegame",
+        modDesc_precisionFarming: "field soils from the soil map, variable seed rates by soil",
+        modDesc_afc: "animal feed, water and straw scaled to days per month",
+        modDesc_eas: "milk and feed by lactation after calving",
+        modDesc_animalPackage: "feed curves when AnimalFoodCalculator follows the Animal Package",
+        modDesc_bankCredit: "bank loans and monthly payment",
+        modDesc_els: "separate loans instead of the game's single loan",
+        fieldSoilImportNoPf: "Needs Precision Farming in the savegame (switched on in Settings).",
         afcModeLine: "mode {mode}: feed ×{x}; curves: {src}",
         afcMode_vanilla: "Basegame (off)",
         afcMode_auto: "Auto (× days/month)",
@@ -1181,9 +1189,17 @@ const TRANSLATIONS = {
         feedScaleBase: "gra podstawowa: zapotrzebowanie miesięczne nie zależy od dni w miesiącu ({d})",
         feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} dni w miesiącu)",
         feedScaleEas: "EAS: więcej paszy po porodzie",
-        animalModsLabel: "Mody zwierząt w tym zapisie gry:",
-        animalModsNoSave: "Podaj wyżej ścieżkę zapisu gry, żeby wykryć mody zwierząt (AnimalFoodCalculator, EnhancedAnimalSystem).",
-        animalModsNone: "Brak aktywnych modów zmieniających paszę — zasady gry podstawowej ({d} dni w miesiącu nie zmienia paszy na miesiąc).",
+        animalModsLabel: "Mody odczytywane przez aplikację:",
+        modsNoSave: "Podaj wyżej ścieżkę zapisu gry, żeby zobaczyć, których z tych modów używa.",
+        modStatusActive: "w tym zapisie",
+        modStatusMissing: "brak w tym zapisie",
+        modDesc_precisionFarming: "gleby pól z mapy gleb, zmienna dawka wysiewu wg gleby",
+        modDesc_afc: "pasza, woda i słoma zwierząt przeliczone na dni w miesiącu",
+        modDesc_eas: "mleko i pasza wg laktacji po porodzie",
+        modDesc_animalPackage: "krzywe paszy, gdy AnimalFoodCalculator korzysta z Animal Package",
+        modDesc_bankCredit: "kredyty bankowe i miesięczna rata",
+        modDesc_els: "osobne kredyty zamiast jednej pożyczki z gry",
+        fieldSoilImportNoPf: "Wymaga Precision Farming w zapisie gry (włączonego w Ustawieniach).",
         afcModeLine: "tryb {mode}: pasza ×{x}; krzywe: {src}",
         afcMode_vanilla: "Basegame (wyłączony)",
         afcMode_auto: "Auto (× dni w miesiącu)",
@@ -1472,7 +1488,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_i4_t: "Auto-sync",
     tut_i4_x: "On by default for a farm with a savegame: the planner updates by itself every time you save in the game. You can turn it off per farm. The option below also shows the whole land plot area (farmland), not just the field.",
     tut_i5_t: "Map crops & animals",
-    tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: animal mods found in this savegame.",
+    tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: every mod the app can read (Precision Farming, animal and loan mods) with whether it is in this savegame — switch one off to use base-game rules instead.",
     tut_i6_t: "Adjust rates",
     tut_i6_x: "Click \"Adjust rates\" to expand it.",
     tut_i7_t: "Rates",
@@ -1762,7 +1778,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_i4_t: "Automatyczna synchronizacja",
     tut_i4_x: "Domyślnie włączona dla farmy z zapisem gry: planer aktualizuje się sam po każdym zapisie gry. Można ją wyłączyć osobno dla każdej farmy. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
-    tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: mody zwierząt znalezione w tym zapisie.",
+    tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: wszystkie mody, które aplikacja potrafi odczytać (Precision Farming, mody zwierząt i kredytów), z informacją, czy są w tym zapisie — wyłącz mod, żeby liczyć wg zasad gry podstawowej.",
     tut_i6_t: "Dostosuj stawki",
     tut_i6_x: "Kliknij „Dostosuj stawki”, żeby je rozwinąć.",
     tut_i7_t: "Dawki",
@@ -3685,9 +3701,10 @@ function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
     }
 
     const hasSave = !!(farm && farm.saveGamePath);
+    const pfOn = hasSave && modEnabled('precisionFarming');
     html += `<div class="field-soil-import">
-            <button type="button" id="field-soil-import-btn" class="supply-fillplan-btn" ${hasSave ? '' : 'disabled'}>${t('fieldSoilImportBtn')}</button>
-            <span class="field-soil-import-hint">${hasSave ? t('fieldSoilImportHint') : t('fieldSoilImportNoPath')}</span>
+            <button type="button" id="field-soil-import-btn" class="supply-fillplan-btn" ${pfOn ? '' : 'disabled'}>${t('fieldSoilImportBtn')}</button>
+            <span class="field-soil-import-hint">${!hasSave ? t('fieldSoilImportNoPath') : (pfOn ? t('fieldSoilImportHint') : t('fieldSoilImportNoPf'))}</span>
         </div>`;
     if (fieldSoilImportMsg) {
         html += `<p class="hub-panel-note field-soil-import-msg">${fieldSoilImportMsg}</p>`;
@@ -3926,10 +3943,10 @@ function feedDaysPerYear(farm) {
     return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
 }
 function afcActive(farm) {
-    return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !(farm && farm.ignoreAfc));
+    return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !disabledModsOf(farm).has('afc'));
 }
 function easActive(farm) {
-    return !!(ANIMAL_MODS && ANIMAL_MODS.eas && !(farm && farm.ignoreEas));
+    return !!(ANIMAL_MODS && ANIMAL_MODS.eas && !disabledModsOf(farm).has('eas'));
 }
 // AFCConsumptionScaling:getScaleFactor — food, water and straw.
 function feedConsumptionScale(farm) {
@@ -6365,7 +6382,7 @@ function fieldNRate(crop, soilMix, rates) {
 function fieldSeedRate(crop, soilMix, rates) {
     const o = rates.crops[crop];
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
-    const pf = SUPPLY_SEED_RATES_PF[crop];
+    const pf = modEnabled('precisionFarming') ? SUPPLY_SEED_RATES_PF[crop] : null;
     if (!pf) return getCropSeedRate(crop, rates);
     const rateOn = id => pf.lha[pf.auto[id] !== undefined ? pf.auto[id] : 1];
     const entries = Object.entries(soilMix).filter(([, p]) => p > 0);
@@ -6920,7 +6937,8 @@ function loadFarmConfigs(farm) {
 
     // AnimalFoodCalculator's reference source decides whose food/water/straw
     // curves the barns actually follow.
-    ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath) : null;
+    useSaveFarm(farm);
+    ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
     if (afcActive(farm)) {
         const INPUTS = ['food', 'water', 'straw'];
         const applyInputs = (subType, src) => {
@@ -7331,12 +7349,64 @@ function buildCropsCalendarFromFiles(fileList) {
 // before reading.
 let SAVE_FARM_ID = '1';
 
+// Mods whose data the app reads. "Active" = listed in the savegame's
+// careerSavegame.xml (or, for ELS, its file is in the save); each can be
+// switched off per farm (farm.disabledMods) to fall back to base-game rules.
+const SUPPORTED_MODS = [
+    { id: 'precisionFarming', name: 'Precision Farming', modNames: ['FS25_precisionFarming'] },
+    { id: 'afc', name: 'AnimalFoodCalculator', modNames: ['FS25_AnimalFoodCalculator'] },
+    { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
+    { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
+    { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
+    { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
+];
+let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
+let SAVE_DISABLED_MODS = new Set();    // app mod ids switched off for the farm
+let SAVE_LINKED = false;
+
+function activeModsInSave(saveGamePath) {
+    try {
+        const career = fs.readFileSync(saveGamePath, 'utf-8');
+        return new Set([...career.matchAll(/<mod\b[^>]*\bmodName="([^"]+)"/g)].map(m => m[1]));
+    } catch (e) {
+        return new Set();
+    }
+}
+
+// farm.ignoreAfc / ignoreEas are the switches from before this list existed.
+function disabledModsOf(farm) {
+    const set = new Set((farm && Array.isArray(farm.disabledMods)) ? farm.disabledMods : []);
+    if (farm && farm.ignoreAfc) set.add('afc');
+    if (farm && farm.ignoreEas) set.add('eas');
+    return set;
+}
+
+function modActiveInSave(def, saveGamePath = null) {
+    if (def.modNames.some(n => SAVE_ACTIVE_MODS.has(n))) return true;
+    if (def.modPattern && [...SAVE_ACTIVE_MODS].some(n => def.modPattern.test(n))) return true;
+    const dir = saveGamePath ? path.dirname(saveGamePath) : null;
+    return !!(def.saveFile && dir && fs.existsSync(path.join(dir, def.saveFile)));
+}
+
+// Whether the app uses a mod's data for the open farm. Without a savegame
+// nothing can be detected — Precision Farming's seed rates stay on then
+// (the app's default before mods were detected).
+function modEnabled(id) {
+    if (SAVE_DISABLED_MODS.has(id)) return false;
+    if (!SAVE_LINKED) return id === 'precisionFarming';
+    const def = SUPPORTED_MODS.find(d => d.id === id);
+    return !!(def && modActiveInSave(def, SAVE_LINKED));
+}
+
 function gameFarmIdOf(farm) {
     return String((farm && farm.gameFarmId) || '1');
 }
 
 function useSaveFarm(farm) {
     SAVE_FARM_ID = gameFarmIdOf(farm);
+    SAVE_LINKED = (farm && farm.saveGamePath) || false;
+    SAVE_ACTIVE_MODS = SAVE_LINKED ? activeModsInSave(farm.saveGamePath) : new Set();
+    SAVE_DISABLED_MODS = disabledModsOf(farm);
 }
 
 // Farms in a savegame's farms.xml: [{ id, name, money }]. [] if unreadable.
@@ -7401,7 +7471,7 @@ function readGameSave(pathToFile) {
         // still outstanding (skip anything already paid off), per farm.
         let loanVal = null;
         const elsLoansPath = path.join(saveFolder, 'els_loans.xml');
-        if (fs.existsSync(elsLoansPath)) {
+        if (fs.existsSync(elsLoansPath) && !SAVE_DISABLED_MODS.has('els')) {
             try {
                 const elsXml = fs.readFileSync(elsLoansPath, 'utf-8');
                 const elsDoc = new DOMParser().parseFromString(elsXml, "text/xml");
@@ -7440,7 +7510,7 @@ function readGameSave(pathToFile) {
         // vanilla loan on load) — add whatever is still outstanding for the
         // farm. Only while the mod is active, so a stale file doesn't count.
         const bankCreditPath = path.join(saveFolder, 'bankCredit.xml');
-        if (/<mod\b[^>]*modName="FS25_BankCredit"/.test(careerText) && fs.existsSync(bankCreditPath)) {
+        if (/<mod\b[^>]*modName="FS25_BankCredit"/.test(careerText) && !SAVE_DISABLED_MODS.has('bankCredit') && fs.existsSync(bankCreditPath)) {
             try {
                 const bcDoc = new DOMParser().parseFromString(fs.readFileSync(bankCreditPath, 'utf-8'), "text/xml");
                 let bcTotal = 0, bcMonthly = 0, bcCount = 0;
@@ -9239,27 +9309,36 @@ if (resetSeasonsBtn) {
 let pendingCropFiles = null;
 let pendingAnimalDefFiles = null;
 
-// Settings → animal mods found in the savegame, each with an on/off switch
-// (on = the feed planner follows what the mod does in game).
+// Settings: every mod the app can read, whether it's active in the farm's
+// savegame, and a per-farm switch (off = base-game rules for that part).
+// AFC / EAS also show what they currently change.
 function renderAnimalModsInfo(farm) {
     const box = document.getElementById('animal-mods-info');
     if (!box) return;
-    if (!farm || !farm.saveGamePath) { box.innerHTML = `<p class="animal-mods-note">${t('animalModsNoSave')}</p>`; return; }
+    const hasSave = !!(farm && farm.saveGamePath);
+    const disabled = disabledModsOf(farm);
+    const prevActive = SAVE_ACTIVE_MODS;
+    SAVE_ACTIVE_MODS = hasSave ? activeModsInSave(farm.saveGamePath) : new Set();
     const mods = ANIMAL_MODS || {};
-    let html = '';
-    if (mods.afc) {
-        const afc = mods.afc;
-        const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
-        const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
-        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-afc-toggle" ${farm.ignoreAfc ? '' : 'checked'}>
-            <span><strong>AnimalFoodCalculator</strong> — ${t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src)}</span></label>`;
-    }
-    if (mods.eas) {
-        const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
-        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-eas-toggle" ${farm.ignoreEas ? '' : 'checked'}>
-            <span><strong>EnhancedAnimalSystem</strong> — ${t('easLine').replace('{list}', escapeHtml(species))}</span></label>`;
-    }
-    if (!html) html = `<p class="animal-mods-note">${t('animalModsNone').replace('{d}', feedDaysPerPeriod(farm))}</p>`;
+    let html = hasSave ? '' : `<p class="animal-mods-note">${t('modsNoSave')}</p>`;
+    SUPPORTED_MODS.forEach(def => {
+        const inSave = hasSave && modActiveInSave(def, farm.saveGamePath);
+        let detail = t('modDesc_' + def.id);
+        if (def.id === 'afc' && mods.afc) {
+            const afc = mods.afc;
+            const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
+            const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
+            detail += ' · ' + t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src);
+        }
+        if (def.id === 'eas' && mods.eas) {
+            const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
+            detail += ' · ' + t('easLine').replace('{list}', species);
+        }
+        html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
+            <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
+            <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
+    });
+    SAVE_ACTIVE_MODS = prevActive;
     box.innerHTML = html;
 }
 
@@ -9560,15 +9639,22 @@ if (saveSettingsBtn) {
             const farm = getCurrentFarm();
             if (farm) {
                 const flToggle = document.getElementById('farmland-area-toggle');
-                const afcToggle = document.getElementById('animal-mod-afc-toggle');
-                const easToggle = document.getElementById('animal-mod-eas-toggle');
-                const next = {
-                    showFarmlandArea: flToggle ? flToggle.checked : !!farm.showFarmlandArea,
-                    ignoreAfc: afcToggle ? !afcToggle.checked : !!farm.ignoreAfc,
-                    ignoreEas: easToggle ? !easToggle.checked : !!farm.ignoreEas
-                };
-                if (Object.keys(next).some(k => !!farm[k] !== next[k])) {
-                    Object.assign(farm, next);
+                const showFarmlandArea = flToggle ? flToggle.checked : !!farm.showFarmlandArea;
+                // Unchecked mods are off for this farm; a mod not in the save
+                // keeps whatever it was set to.
+                const off = new Set(disabledModsOf(farm));
+                document.querySelectorAll('#animal-mods-info .supported-mod-toggle').forEach(cb => {
+                    if (cb.disabled) return;
+                    if (cb.checked) off.delete(cb.dataset.mod); else off.add(cb.dataset.mod);
+                });
+                const disabledMods = SUPPORTED_MODS.map(d => d.id).filter(id => off.has(id));
+                const wasOff = SUPPORTED_MODS.map(d => d.id).filter(id => disabledModsOf(farm).has(id));
+                const modsChanged = disabledMods.join() !== wasOff.join();
+                if (showFarmlandArea !== !!farm.showFarmlandArea || modsChanged) {
+                    farm.showFarmlandArea = showFarmlandArea;
+                    farm.disabledMods = disabledMods;
+                    delete farm.ignoreAfc;
+                    delete farm.ignoreEas;
                     saveFarmData(farm);
                     loadFarmConfigs(farm);
                     refreshFarmlandInfo(farm);

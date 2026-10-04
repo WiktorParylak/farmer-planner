@@ -9,6 +9,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Multiplayer saves**: the app reads your own farm's data (money, loans, land, animals, feed, vehicles) instead of always farm 1. A save with several farms gets a *Your farm in this savegame* choice in Settings; single-player saves need nothing.
 - **Currency**: money is shown in the currency set in the game (€, $ or £, from `gameSettings.xml`), or one picked per farm in Settings. The balance is stored as a number; farms saved by older versions are read as before.
 - **Language on first start**: the very first time the app opens it asks for the language (Polski / English) before anything else, so the tutorial runs in the chosen language.
+- **Mods list in Settings**: every mod the app can read — Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit, Enhanced Loan System — with whether it is in the farm's savegame and a per-farm on/off switch. Off means base-game rules for that part (e.g. Precision Farming off: flat seed rates, no soil import). Replaces the animal-mods-only list.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.

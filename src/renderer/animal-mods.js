@@ -66,7 +66,8 @@ function readEasLactation(mod) {
 }
 
 // -> { daysPerPeriod, afc: null | {...}, eas: null | {...} }
-function readAnimalMods(careerSavegamePath) {
+// skip: Set of app mod ids switched off for the farm ('afc', 'eas', 'animalPackage').
+function readAnimalMods(careerSavegamePath, skip = new Set()) {
     const out = { daysPerPeriod: 1, afc: null, eas: null };
     if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return out;
     const saveDir = path.dirname(careerSavegamePath);
@@ -77,7 +78,7 @@ function readAnimalMods(careerSavegamePath) {
     const active = new Set([...career.matchAll(/<mod\b[^>]*\bmodName="([^"]+)"/g)].map(m => m[1]));
     const openSaveMod = name => { const dir = locateMod(careerSavegamePath, name); return dir ? openMod(dir, name) : null; };
 
-    if (active.has(AFC_MOD)) {
+    if (active.has(AFC_MOD) && !skip.has('afc')) {
         const afc = { enabled: false, autoScaleByDays: false, customMultiplier: 1, mode: 'vanilla', referenceSource: 'effective', referenceXml: [] };
         try {
             const s = fs.readFileSync(path.join(saveDir, 'afcConsumptionScaling.xml'), 'utf-8');
@@ -99,7 +100,7 @@ function readAnimalMods(careerSavegamePath) {
                 refMod = openSaveMod(AFC_MOD);
                 const xml = refMod && readText(refMod, 'xmls/animals.xml');
                 if (xml) afc.referenceXml.push(xml);
-            } else if (refSrc === 'animalpackage') {
+            } else if (refSrc === 'animalpackage' && !skip.has('animalPackage')) {
                 refMod = openSaveMod(ANIMAL_PACKAGE_MOD);
                 if (refMod) ANIMAL_PACKAGE_XMLS.forEach(rel => { const xml = readText(refMod, rel); if (xml) afc.referenceXml.push(xml); });
             }
@@ -108,7 +109,7 @@ function readAnimalMods(careerSavegamePath) {
         out.afc = afc;
     }
 
-    if (active.has(EAS_MOD)) {
+    if (active.has(EAS_MOD) && !skip.has('eas')) {
         let mod = null;
         try {
             mod = openSaveMod(EAS_MOD);
