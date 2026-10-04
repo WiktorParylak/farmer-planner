@@ -11,6 +11,8 @@ Rozmawiamy po polsku. Kod, komentarze, commity, CHANGELOG i README (EN) — po a
 Repo na GitHubie jest jedynym źródłem prawdy między komputerami. Pamięć Claude'a
 (`~/.claude/projects/.../memory`) i katalog `.claude/` są **lokalne** — nie synchronizują się.
 Wszystko, co ma być wiadome na obu maszynach, trzymaj w tym pliku.
+Wyjątek: `.claude/settings.json` jest w repo — są w nim pluginy Claude Code (`enabledPlugins` +
+`extraKnownMarketplaces`), więc na drugim komputerze Claude Code sam zaproponuje ich instalację.
 
 **Na początku sesji** (zanim cokolwiek zmienisz):
 ```bash
