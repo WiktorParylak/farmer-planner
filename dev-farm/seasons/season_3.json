@@ -17,26 +17,16 @@
     {
       "number": "30",
       "area": "0.87",
-      "crop": "Rye",
-      "sowingMonth": "MARCH",
+      "crop": "Grass",
+      "sowingMonth": "SEPTEMBER",
       "state": "Planted",
       "tillage": "noTill",
       "limeAppliedSeason": null,
       "limePh": null,
       "manure": true,
-      "fertilizer": true
-    },
-    {
-      "number": "30",
-      "area": "0.28",
-      "crop": "Potato",
-      "sowingMonth": "MARCH",
-      "state": "Planted",
-      "tillage": "noTill",
-      "limeAppliedSeason": null,
-      "limePh": null,
-      "manure": true,
-      "fertilizer": true
+      "fertilizer": true,
+      "catchCrop": "",
+      "catchSowingMonth": ""
     },
     {
       "number": "60",

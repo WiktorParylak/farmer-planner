@@ -380,5 +380,24 @@
       "EGG": 5.364375
     },
     "updatedAt": "2026-10-03T09:44:47.456Z"
+  },
+  {
+    "period": 53,
+    "month": "AUGUST",
+    "gameYear": 5,
+    "gameDay": 160,
+    "appSeason": 5,
+    "recordedAt": "2026-10-04T12:16:04.405Z",
+    "balance": 24545,
+    "loan": 38823,
+    "equipment": 61,
+    "animals": 326,
+    "avgHealth": 100,
+    "production": {
+      "LIQUIDMANURE": 42540.707031,
+      "MILK": 687.036987,
+      "STRAW": 26559.989258,
+      "EGG": 6.528075
+    }
   }
 ]

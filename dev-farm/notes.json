@@ -1,14 +1,60 @@
 [
   {
-    "id": "note_1790622378019_0mc8ue",
-    "title": "chuj",
-    "body": "",
+    "id": "note_dev_lime",
+    "title": "Wapno na pola 60 i 168-169",
+    "body": "pH spada poniżej 75%.\nKupić ok. 8000 l wapna.\nRozsiać przed siewem rzepaku.",
     "months": [
-      "NOVEMBER"
+      "JULY",
+      "AUGUST"
     ],
-    "tags": [],
+    "tags": [
+      "wapno",
+      "pola"
+    ],
+    "checklist": [
+      {
+        "text": "Kupić wapno",
+        "done": true
+      },
+      {
+        "text": "Rozsiać na 60",
+        "done": false
+      },
+      {
+        "text": "Rozsiać na 168-169",
+        "done": false
+      }
+    ],
+    "createdAt": "2026-10-04T12:15:48.348Z",
+    "updatedAt": "2026-10-04T12:15:48.348Z"
+  },
+  {
+    "id": "note_dev_sell",
+    "title": "Sprzedać rzepak",
+    "body": "Czekać na cenę powyżej 1000 €/1000 l.",
+    "months": [
+      "SEPTEMBER"
+    ],
+    "tags": [
+      "sprzedaż"
+    ],
     "checklist": [],
-    "createdAt": "2026-09-28T19:06:18.019Z",
-    "updatedAt": "2026-09-28T19:06:18.019Z"
+    "createdAt": "2026-10-04T12:15:48.348Z",
+    "updatedAt": "2026-10-04T12:15:48.348Z"
+  },
+  {
+    "id": "note_dev_lease",
+    "title": "Dzierżawa 69-70-71 się kończy",
+    "body": "Zdecydować: zdać czy przedłużyć.",
+    "months": [
+      "JULY"
+    ],
+    "tags": [
+      "dzierżawa",
+      "pola"
+    ],
+    "checklist": [],
+    "createdAt": "2026-10-04T12:15:48.348Z",
+    "updatedAt": "2026-10-04T12:15:48.348Z"
   }
 ]

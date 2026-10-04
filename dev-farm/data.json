@@ -3,7 +3,7 @@
   "name": "DEV - farma testowa",
   "folderName": "1791058275537",
   "lastEdited": "10/3/2026, 2:54:09 PM",
-  "balance": "26565 €",
+  "balance": 24545,
   "currentSeason": 5,
   "trackedCrops": [
     "Maize",
@@ -29,7 +29,8 @@
       "limePh": 0.8025,
       "cuts": [],
       "manure": false,
-      "fertilizer": false
+      "fertilizer": false,
+      "weeds": "needed"
     },
     {
       "number": "30",
@@ -78,7 +79,8 @@
       "limePh": null,
       "cuts": [],
       "manure": false,
-      "fertilizer": false
+      "fertilizer": false,
+      "weeds": "needed"
     },
     {
       "number": "69-70-71",
@@ -94,7 +96,12 @@
       "limePh": 0.8512500000000001,
       "cuts": [],
       "manure": true,
-      "fertilizer": false
+      "fertilizer": false,
+      "lease": {
+        "since": 2,
+        "seasons": 3,
+        "then": "return"
+      }
     },
     {
       "number": "115-116",
@@ -110,7 +117,8 @@
       "limePh": 0.8049999999999999,
       "cuts": [],
       "manure": true,
-      "fertilizer": false
+      "fertilizer": false,
+      "weeds": "needed"
     },
     {
       "number": "152",
@@ -126,7 +134,12 @@
       "limePh": 0.75,
       "cuts": [],
       "manure": true,
-      "fertilizer": false
+      "fertilizer": false,
+      "lease": {
+        "since": 3,
+        "seasons": 4,
+        "then": "buy"
+      }
     },
     {
       "number": "168-169",
@@ -142,7 +155,8 @@
       "limePh": null,
       "cuts": [],
       "manure": false,
-      "fertilizer": false
+      "fertilizer": false,
+      "weeds": "needed"
     },
     {
       "number": "181",
@@ -158,15 +172,49 @@
       "limePh": 0.87375,
       "cuts": [],
       "manure": false,
-      "fertilizer": false
+      "fertilizer": false,
+      "work": [
+        {
+          "step": "fertilize",
+          "done": true
+        },
+        {
+          "step": "mow",
+          "done": true
+        },
+        {
+          "step": "bale",
+          "done": false
+        },
+        {
+          "step": "harvestWrap",
+          "done": false
+        },
+        {
+          "step": "cultivate",
+          "done": false
+        },
+        {
+          "step": "sow",
+          "done": false
+        },
+        {
+          "step": "fertilize",
+          "done": false
+        },
+        {
+          "step": "weeds",
+          "done": false
+        }
+      ]
     }
   ],
   "saveGamePath": "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\savegame2\\careerSavegame.xml",
-  "month": "JULY",
-  "loan": 0,
+  "month": "AUGUST",
+  "loan": 38823,
   "equipment": 61,
-  "animals": 295,
-  "playTime": "299h 20m",
+  "animals": 326,
+  "playTime": "299h 27m",
   "fieldSizes": {
     "30": 1.15,
     "60": 0.84,
@@ -176,17 +224,18 @@
     "115-116": 1.19
   },
   "animalBreakdown": {
-    "COW_HOLSTEIN": 26,
-    "BULL_HOLSTEIN": 1,
+    "COW_HOLSTEIN": 28,
+    "BULL_HOLSTEIN": 5,
     "HEN_BOHUSDAL": 50,
-    "ROOSTER_PLYMOUTHROCK": 37,
-    "HEN_PLYMOUTHROCK": 81,
+    "ROOSTER_PLYMOUTHROCK": 50,
+    "HEN_PLYMOUTHROCK": 93,
     "HEN_LEGHORN": 100
   },
   "animalProduction": {
-    "LIQUIDMANURE": 39931.566406,
-    "STRAW": 29118.121094,
-    "EGG": 5.364375
+    "LIQUIDMANURE": 42540.707031,
+    "MILK": 687.036987,
+    "STRAW": 26559.989258,
+    "EGG": 6.528075
   },
   "animalBuildings": [
     {
@@ -196,7 +245,37 @@
         {
           "subType": "COW_HOLSTEIN",
           "numAnimals": 20,
-          "age": 12,
+          "age": 13,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 1,
+          "hadABirth": false
+        },
+        {
+          "subType": "COW_HOLSTEIN",
+          "numAnimals": 6,
+          "age": 28,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": true
+        },
+        {
+          "subType": "BULL_HOLSTEIN",
+          "numAnimals": 1,
+          "age": 16,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 1,
+          "hadABirth": false
+        },
+        {
+          "subType": "BULL_HOLSTEIN",
+          "numAnimals": 4,
+          "age": 0,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
@@ -205,18 +284,8 @@
         },
         {
           "subType": "COW_HOLSTEIN",
-          "numAnimals": 6,
-          "age": 27,
-          "health": 100,
-          "reproduction": 90,
-          "isInseminated": true,
-          "monthsSinceLastBirth": 9,
-          "hadABirth": false
-        },
-        {
-          "subType": "BULL_HOLSTEIN",
-          "numAnimals": 1,
-          "age": 15,
+          "numAnimals": 2,
+          "age": 0,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
@@ -227,17 +296,21 @@
       "food": [
         {
           "fillType": "FORAGE",
-          "level": 40083.222656
+          "level": 37209.828125
         }
       ],
       "production": [
         {
           "fillType": "LIQUIDMANURE",
-          "level": 39931.566406
+          "level": 42540.707031
+        },
+        {
+          "fillType": "MILK",
+          "level": 687.036987
         },
         {
           "fillType": "STRAW",
-          "level": 25014.884766
+          "level": 22656.398438
         }
       ]
     },
@@ -248,88 +321,118 @@
         {
           "subType": "HEN_BOHUSDAL",
           "numAnimals": 50,
-          "age": 10,
+          "age": 11,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
-          "monthsSinceLastBirth": 4,
+          "monthsSinceLastBirth": 5,
           "hadABirth": false
         },
         {
           "subType": "ROOSTER_PLYMOUTHROCK",
           "numAnimals": 36,
-          "age": 2,
+          "age": 3,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
-          "monthsSinceLastBirth": 2,
+          "monthsSinceLastBirth": 3,
           "hadABirth": false
         },
         {
           "subType": "HEN_PLYMOUTHROCK",
           "numAnimals": 31,
-          "age": 2,
+          "age": 3,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
-          "monthsSinceLastBirth": 2,
+          "monthsSinceLastBirth": 3,
           "hadABirth": false
         },
         {
           "subType": "HEN_LEGHORN",
           "numAnimals": 100,
-          "age": 10,
+          "age": 11,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
-          "monthsSinceLastBirth": 4,
+          "monthsSinceLastBirth": 5,
           "hadABirth": false
         },
         {
           "subType": "HEN_PLYMOUTHROCK",
           "numAnimals": 17,
-          "age": 10,
+          "age": 11,
           "health": 100,
-          "reproduction": 50,
-          "isInseminated": true,
-          "monthsSinceLastBirth": 2,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
           "hadABirth": true
         },
         {
           "subType": "HEN_PLYMOUTHROCK",
-          "numAnimals": 33,
-          "age": 10,
+          "numAnimals": 27,
+          "age": 11,
           "health": 100,
-          "reproduction": 0,
-          "isInseminated": false,
-          "monthsSinceLastBirth": 2,
+          "reproduction": 50,
+          "isInseminated": true,
+          "monthsSinceLastBirth": 3,
           "hadABirth": true
         },
         {
           "subType": "ROOSTER_PLYMOUTHROCK",
           "numAnimals": 1,
-          "age": 10,
+          "age": 11,
           "health": 100,
           "reproduction": 0,
           "isInseminated": false,
-          "monthsSinceLastBirth": 4,
+          "monthsSinceLastBirth": 5,
           "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 12,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        },
+        {
+          "subType": "ROOSTER_PLYMOUTHROCK",
+          "numAnimals": 13,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 6,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 3,
+          "hadABirth": true
         }
       ],
       "food": [
         {
           "fillType": "WHEAT",
-          "level": 5539.926758
+          "level": 5296.321289
         }
       ],
       "production": [
         {
           "fillType": "STRAW",
-          "level": 4103.236328
+          "level": 3903.59082
         },
         {
           "fillType": "EGG",
-          "level": 5.364375
+          "level": 6.528075
         }
       ]
     }
@@ -496,7 +599,7 @@
     },
     "defaultOverridesCleaned": true
   },
-  "yearNumber": 9,
+  "yearNumber": 5,
   "feedPlan": {
     "rations": {
       "COW": "forage"
@@ -554,7 +657,7 @@
     },
     "STRAW": {
       "bale": 225000,
-      "silo": 30618.121094
+      "silo": 28059.989258
     },
     "SILAGE": {
       "bale": 70000
@@ -610,9 +713,12 @@
   "ignoreAfc": false,
   "ignoreEas": false,
   "bankCredit": {
-    "count": 0,
-    "total": 0,
-    "monthly": 0
+    "count": 1,
+    "total": 38823,
+    "monthly": 1688
   },
-  "dayInPeriod": 3
+  "dayInPeriod": 1,
+  "gameFarmId": "1",
+  "monthlySavePath": "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\savegame2\\careerSavegame.xml",
+  "seasonStartedGameYear": 5
 }

@@ -5,13 +5,15 @@
     {
       "number": "30",
       "area": "1.15",
-      "crop": "Canola",
-      "sowingMonth": "AUGUST",
+      "crop": "Grass",
+      "sowingMonth": "SEPTEMBER",
       "state": "Planted",
       "harvestMonth": "JUNE",
       "limeAppliedSeason": 2,
       "manure": false,
-      "fertilizer": true
+      "fertilizer": true,
+      "catchCrop": "",
+      "catchSowingMonth": ""
     },
     {
       "number": "60",
