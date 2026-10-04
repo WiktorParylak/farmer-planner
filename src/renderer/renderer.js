@@ -6387,7 +6387,7 @@ function getSupplyRates() {
             if (legacy && typeof legacy === 'object') {
                 saved = legacy;
                 farm.supplyRates = legacy;
-                saveFarmData(farm);
+                saveFarmData(farm, { touch: false });
             }
         } catch { /* no legacy blob to adopt */ }
     }
@@ -6406,7 +6406,7 @@ function getSupplyRates() {
         });
         saved.defaultOverridesCleaned = true;
         farm.supplyRates = saved;
-        saveFarmData(farm);
+        saveFarmData(farm, { touch: false });
     }
     return {
         ...SUPPLY_GLOBAL_DEFAULTS, ...saved,
@@ -6818,11 +6818,13 @@ function getAllFarms() {
     return farms;
 }
 
-function saveFarmData(farmData) {
+// touch: false for writes that aren't the user's own edits (savegame sync,
+// migrations), so "Last edited" on the farm list stays meaningful.
+function saveFarmData(farmData, { touch = true } = {}) {
     if (!farmData.folderName) return;
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
-    farmData.lastEdited = new Date().toLocaleString();
+    if (touch) farmData.lastEdited = new Date().toISOString();
 
     try { fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8'); }
     catch (err) { alert("Error saving data!"); }
@@ -6831,6 +6833,15 @@ function saveFarmData(farmData) {
 // Absolute path to a farm's own data folder (named after its id).
 function farmDir(farm) {
     return path.join(appDataDir, farm.folderName || farm.id);
+}
+
+// lastEdited is ISO now; farms saved by older versions hold a string already
+// formatted in whatever locale the system had then — show those as they are.
+function formatLastEdited(value) {
+    if (!value) return '–';
+    if (!/^d{4}-d{2}-d{2}T/.test(value)) return value;
+    const d = new Date(value);
+    return isNaN(d) ? value : d.toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function getCurrentFarm() {
@@ -7618,18 +7629,21 @@ function applyGameSaveToFarm(farm) {
     if (JSON.stringify(bankCredit) !== JSON.stringify(farm.bankCredit || null)) { farm.bankCredit = bankCredit; changed = true; }
     if (gameData.equipment !== null && gameData.equipment !== farm.equipment) { farm.equipment = gameData.equipment; changed = true; }
     if (gameData.animals !== null && gameData.animals !== farm.animals) { farm.animals = gameData.animals; changed = true; }
-    if (gameData.animalBreakdown !== null) { farm.animalBreakdown = gameData.animalBreakdown; changed = true; }
-    if (gameData.animalProduction !== null) { farm.animalProduction = gameData.animalProduction; changed = true; }
-    if (gameData.animalBuildings !== null) { farm.animalBuildings = gameData.animalBuildings; changed = true; }
-    if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
-    if (gameData.feedBales !== null) { farm.feedBales = gameData.feedBales; changed = true; }
-    if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
+    // Structured values: only count them as changed when their content moved,
+    // otherwise every open/auto-sync tick would rewrite data.json and re-render.
+    const setIfMoved = (key) => {
+        if (gameData[key] === null || gameData[key] === undefined) return;
+        if (JSON.stringify(gameData[key]) === JSON.stringify(farm[key])) return;
+        farm[key] = gameData[key];
+        changed = true;
+    };
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
-    if (changed) saveFarmData(farm);
+    if (changed) saveFarmData(farm, { touch: false });
 
     // Log/refresh this in-game month's data point for the trend charts. Safe to
     // call every read — it only writes when the month rolls over or a value in
@@ -9570,7 +9584,7 @@ function renderFarmList(farms) {
         item.innerHTML = `
             <div class="farm-details">
                 <span class="farm-name">${farm.name}${farm.mapName ? ` <span class="farm-map">${farm.mapName}</span>` : ''}</span>
-                <span class="farm-dates">${t('lastEdited')}: ${farm.lastEdited}</span>
+                <span class="farm-dates">${t('lastEdited')}: ${escapeHtml(formatLastEdited(farm.lastEdited))}</span>
             </div>
             <div class="farm-item-actions">
                 <p class="export-btn-circle" onclick="exportFarmBackup('${farm.id}')" title="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></p>
@@ -9720,7 +9734,7 @@ window.importFarmBackup = async function () {
         ...bundle.farm,
         id: newId,
         folderName: newId,
-        lastEdited: new Date().toLocaleDateString()
+        lastEdited: new Date().toISOString()
     };
     fs.writeFileSync(path.join(newFolderPath, 'data.json'), JSON.stringify(restoredFarm, null, 2), 'utf-8');
 
@@ -9750,7 +9764,7 @@ if (confirmAddBtn) {
                 name: farmName,
                 mapName: newFarmMapInput ? newFarmMapInput.value.trim() : "",
                 folderName: newId,
-                lastEdited: new Date().toLocaleDateString(),
+                lastEdited: new Date().toISOString(),
                 balance: "0 €",
                 currentSeason: 1,
                 yearNumber: 1,
@@ -10144,7 +10158,7 @@ function createDemoFarm() {
         name: t('tutorialDemoFarmName'),
         mapName: "",
         folderName: id,
-        lastEdited: new Date().toLocaleDateString(),
+        lastEdited: new Date().toISOString(),
         fields: []
     };
     seedDemoFarm(farm);
