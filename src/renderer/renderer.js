@@ -4474,6 +4474,12 @@ function isFeedFillType(fillType) {
 // game's archives and can't be read, so only mod mixers are found.
 // Production rates: cyclesPerMonth, or legacy cyclesPerHour x 24 (the game
 // converts it the same way), so output per in-game month.
+// Text read from a mod's XML (shop names) goes into the UI's HTML — drop
+// markup characters so a mod can't inject HTML (the renderer has Node access).
+function plainModText(s) {
+    return String(s || '').replace(/[<>"'`]/g, '');
+}
+
 function readFeedMixersFromSave(saveFolder, modsDirs) {
     const p = path.join(saveFolder, 'placeables.xml');
     if (!fs.existsSync(p)) return [];
@@ -4520,7 +4526,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
         }
 
         const nameEl = def.querySelector('storeData > name');
-        const rawName = nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '';
+        const rawName = plainModText(nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '');
         const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
 
         // The mod's own translations: its name ("$l10n_shopItem_…") and its
@@ -4691,7 +4697,7 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
             const vx = new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml');
             if (!vx.querySelector('parsererror')) {
                 const name = vx.querySelector('storeData > name');
-                const nameText = name ? name.textContent.trim() : '';
+                const nameText = plainModText(name ? name.textContent.trim() : '');
                 if (nameText && !nameText.startsWith('$')) wagon.name = nameText;
                 const mw = vx.querySelector('mixerWagon');
                 const idx = Math.max(1, parseInt(mw && mw.getAttribute('fillUnitIndex')) || 1);

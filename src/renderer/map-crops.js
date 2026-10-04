@@ -112,7 +112,10 @@ function readModL10n(read, modDesc, langs) {
     const put = (k, lang, v) => {
         if (!k || !v) return;
         const key = k.toLowerCase();
-        (out[key] || (out[key] = {}))[lang] = decodeXmlText(v);
+        // Mod text ends up in the UI's HTML (crop and mixer names), so markup
+        // characters are dropped — a mod must not be able to inject HTML (the
+        // renderer has Node access).
+        (out[key] || (out[key] = {}))[lang] = decodeXmlText(v).replace(/[<>"'`]/g, '');
     };
     const prefix = attr((modDesc.match(/<l10n\b[^>]*filenamePrefix="[^"]*"[^>]*>/) || [''])[0], 'filenamePrefix');
     if (prefix) {
