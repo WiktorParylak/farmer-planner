@@ -2,6 +2,24 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.9 — unreleased
+
+**New**
+- **Cancel in Edit season**: a *Cancel* button next to *Save changes* leaves edit mode without saving. With unsaved changes it asks first — so do *Exit*, *New season* and *Reset seasons* while editing. *New season* is hidden during editing.
+
+**Changed**
+- **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
+- **Fertilizer shopping list**: a field marked *Synthetic fertilizer applied* drops off the list (it used to be the other way round). With *Count every crop field* off, only fields with a fertilization plan are listed.
+- **Fertilization plans start over each season**: *New season* stores them in the season archive and clears them, so last year's "N already in the soil" doesn't come back.
+- Opening a farm or an auto-sync with nothing new in the save no longer rewrites the farm data or shows the *synced* toast.
+- *Last edited* on the farm list changes only when you edit the farm (not on sync) and is shown in your language's date format.
+- Buttons on the start screen, the season header and the delete dialog are real buttons (keyboard and screen reader friendly).
+- Leftover English-only texts are translated: map data import summary, field tooltips, title bar buttons, save error.
+
+**Fixed**
+- A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
+- Nitrogen density and manure / slurry / digestate N used different fallback values in different places (0.22 vs 0.5, 0.005 vs 0.007); now one set everywhere.
+
 ## 0.9.8 — 2026-10-02
 
 **New**
