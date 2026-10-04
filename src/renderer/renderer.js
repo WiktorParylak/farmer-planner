@@ -122,6 +122,7 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        tillageClickHint: "Click to switch: plowed → no-till → none",
         leaseLabel: "Lease",
         leaseYes: "leased field",
         leaseSeasons: "For (seasons)",
@@ -805,6 +806,7 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        tillageClickHint: "Kliknij, żeby zmienić: orka → bezorka → brak",
         leaseLabel: "Dzierżawa",
         leaseYes: "pole dzierżawione",
         leaseSeasons: "Na ile sezonów",
@@ -1498,13 +1500,13 @@ Object.assign(TRANSLATIONS.en, {
     tut_c6_t: "Combined fields",
     tut_c6_x: "A number like \"5-6\" means several physical fields farmed as one row.",
     tut_c7_t: "Tillage",
-    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click an option to set it (again to clear), right in the table. The chip next to it is rolling — click it to plan or clear it.",
+    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click the chip to switch plowed → no-till → none, right in the table. The chip in the next column is rolling — click it to plan or clear it.",
     tut_c8_t: "Lime",
     tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c12_t: "Work list",
-    tut_c12_x: "The button with a list icon shows the field's next job. Dashed = suggested from the sowing month (before it: cultivate and lime, then sow and roll, after: fertilizer and weeds; a catch crop's jobs first). Click it to tick jobs off, reorder or add them — then it's the field's own list.",
+    tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate and lime, then sow and roll, after: fertilizer and weeds; a catch crop's jobs first). Click it to tick jobs off, reorder or add them — then it's the field's own list.",
     tut_c13_t: "Weeds",
     tut_c13_x: "The spray chip: nothing to do / to spray (red) / done (green) — click to switch. With a savegame it follows the game: live weeds on the field mark it red, dead ones green.",
     tut_i10_t: "Grassland & currency",
@@ -1798,13 +1800,13 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c6_t: "Pola łączone",
     tut_c6_x: "Numer w stylu „5-6” oznacza kilka fizycznych pól uprawianych jako jeden wiersz.",
     tut_c7_t: "Uprawa gleby",
-    tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem. Kliknij opcję, żeby ją ustawić (ponownie, żeby wyczyścić), od razu w tabeli. Chip obok to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
+    tut_c7_x: "Orka (bursztynowa) albo bezorka (zielona) — co planujesz zrobić przed siewem. Kliknij chip, żeby przełączyć orka → bezorka → brak, od razu w tabeli. Chip w następnej kolumnie to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
     tut_c8_t: "Wapno",
     tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone, poplon i ryż go nie obniżają. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c12_t: "Prace",
-    tut_c12_x: "Przycisk z ikoną listy pokazuje następną pracę na polu. Przerywana ramka = podpowiedź wg miesiąca siewu (przed: uprawa i wapno, potem siew i wałowanie, po: nawóz i chwasty; prace międzyplonu najpierw). Kliknij, żeby odhaczać prace, zmieniać ich kolejność albo dodawać — wtedy to własna lista pola.",
+    tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, potem siew i wałowanie, po: nawóz i chwasty; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność albo dodawać — wtedy to własna lista pola.",
     tut_c13_t: "Chwasty",
     tut_c13_x: "Chip z opryskiwaczem: nic / do oprysku (czerwony) / zrobione (zielony) — kliknij, żeby przełączyć. Z zapisem gry podąża za grą: żywe chwasty na polu = czerwony, martwe = zielony.",
     tut_i10_t: "Łąki i waluta",
@@ -8574,15 +8576,18 @@ window.openCutsModal = function (idx) {
 // State column: grassland gets a "Cuts" button (done / planned) that opens
 // the cuts timeline; everything else the sown / not sown badge (a toggle in
 // the current season).
-function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+// age: grasslandAge() result — "· season N" is added to the cuts badge.
+function stateCellHtml(field, idx, isPastSeason, stateDisplay, age) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
-        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        let text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        if (age) text += ` · <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span>`;
         const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
+        const title = age ? age.title : t('cutsOpenHint');
         return isPastSeason
-            ? `<span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
-            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${t('cutsOpenHint')}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+            ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
+            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
     }
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
@@ -8631,7 +8636,8 @@ function workCellHtml(field, idx, isPastSeason, currentMonth) {
     if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
     const { next, done, total, own } = nextWorkStep(field, currentMonth);
     const label = next ? t('work_' + next.step) : t('workAllDone');
-    return ` <button type="button" class="work-open${next ? '' : ' is-complete'}${own ? '' : ' is-suggested'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${escapeHtml(label)}${own ? ` <span class="work-count">${done}/${total}</span>` : ''}</button>`;
+    const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
 }
 
 let workFieldIdx = null;
@@ -8776,7 +8782,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         // none -> to do -> done -> none
         field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
     } else if (btn.classList.contains('tillage-toggle')) {
-        field.tillage = field.tillage === btn.dataset.value ? null : btn.dataset.value;
+        field.tillage = field.tillage === 'plowed' ? 'noTill' : (field.tillage === 'noTill' ? null : 'plowed');
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
@@ -8829,12 +8835,11 @@ function grasslandSeasonLimit(farm) {
     return v > 0 ? v : GRASSLAND_SEASONS_DEFAULT;
 }
 
-function grasslandAgeHtml(field, history, seasonNum, limit) {
-    if (!isPerennialCrop(field.crop)) return '';
+function grasslandAge(field, history, seasonNum, limit) {
+    if (!isPerennialCrop(field.crop)) return null;
     const n = grasslandSeasonCount(field, history, seasonNum);
     const over = n >= limit;
-    const title = t(over ? 'grassAgeOverHint' : 'grassAgeHint').replace('{n}', n).replace('{max}', limit);
-    return ` <span class="badge badge--grass-age${over ? ' is-over' : ''}" title="${title}">${t('grassAge').replace('{n}', n)}</span>`;
+    return { n, over, title: t(over ? 'grassAgeOverHint' : 'grassAgeHint').replace('{n}', n).replace('{max}', limit) };
 }
 
 // Sowing window = the run of months in the crop calendar that holds the
@@ -8872,11 +8877,14 @@ function soilMixBarHtml(key) {
 }
 
 // Tillage: a real switch in the current season (click again to clear).
+// Tillage: one chip — click cycles nothing -> plowed -> no-till.
 function tillageCellHtml(field, idx, isPastSeason) {
-    const opt = (value, cls, label) => isPastSeason
-        ? `<span class="tillage-switch-option ${cls} ${field.tillage === value ? 'is-active' : ''}">${label}</span>`
-        : `<button type="button" class="tillage-switch-option ${cls} tillage-toggle ${field.tillage === value ? 'is-active' : ''}" data-idx="${idx}" data-value="${value}">${label}</button>`;
-    return `<div class="tillage-switch${isPastSeason ? ' tillage-switch--readonly' : ''}">${opt('plowed', 'tillage-switch-option--plowed', t('tillagePlowed'))}${opt('noTill', 'tillage-switch-option--notill', t('tillageNoTill'))}</div>`;
+    const value = field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : '';
+    const label = value === 'plowed' ? t('tillagePlowed') : (value === 'noTill' ? t('tillageNoTill') : '–');
+    const cls = `tillage-chip${value ? ' tillage-chip--' + value : ''}`;
+    return isPastSeason
+        ? `<span class="${cls}">${label}</span>`
+        : `<button type="button" class="${cls} tillage-toggle" data-idx="${idx}" title="${t('tillageClickHint')}">${label}</button>`;
 }
 
 // Weeds: nothing / to spray / sprayed. Cycles on click in the current season;
@@ -8995,7 +9003,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${grasslandAgeHtml(field, seasonHistory, viewedSeason, grassLimit)}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
@@ -9586,13 +9594,13 @@ function leaseBadgeHtml(field, seasonNum) {
         const left = Math.max(0, min - months);
         const fee = finMoney(parseFloat(lease.monthlyFee) || 0);
         const title = t('leaseGameHint').replace('{fee}', fee) + ' ' + (left ? t('leaseGameMinLeft').replace('{n}', left) : t('leaseGameCanEnd'));
-        return `<span class="badge badge--lease${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months)}</span>`;
+        return `<span class="lease-caption${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months)}</span>`;
     }
     const n = Math.max(1, seasonNum - (lease.since || seasonNum) + 1);
     const over = lease.seasons && n >= lease.seasons;
     const text = lease.seasons ? t('leaseBadge').replace('{n}', n).replace('{m}', lease.seasons) : t('leaseBadgeOpen').replace('{n}', n);
     const title = over ? t(lease.then === 'buy' ? 'leaseEndBuy' : 'leaseEndReturn') : t('leaseBadgeHint').replace('{s}', lease.since || seasonNum);
-    return `<span class="badge badge--lease${over ? ' is-over' : ''}" title="${title}">${text}</span>`;
+    return `<span class="lease-caption${over ? ' is-over' : ''}" title="${title}">${text}</span>`;
 }
 
 // Reads the edit-mode table back into field objects. Rows that have data but
@@ -11391,7 +11399,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c5', () => tqa('#fields-body tr.field-split-row')),
             tutInfo('c6', () => { const s = tq('#fields-body .field-number-sep'); return s ? s.closest('tr') : null; }),
             tutInfo('c12', () => tq('#fields-body .work-open')),
-            tutInfo('c7', () => [tq('#fields-body .tillage-switch'), tq('#fields-body .rolling-toggle')]),
+            tutInfo('c7', () => [tq('#fields-body .tillage-chip'), tq('#fields-body .rolling-toggle')]),
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
             tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
