@@ -7265,8 +7265,12 @@ function refreshAnimalDefsFromSource(farm, animalsPath) {
 
 // Turns a raw fruitType "name" attribute (e.g. "SUGAR_BEET", "canola")
 // into a readable display name ("Sugar Beet", "Canola").
+// Crop names come from mod XML and the savegame and end up in the UI's HTML;
+// they're game identifiers, so anything but letters, digits, "_", "-" and
+// spaces is dropped (no markup can get through).
 function formatCropName(rawName) {
-    return rawName
+    return String(rawName || '')
+        .replace(/[^\p{L}\p{N}_\s-]/gu, '')
         .toLowerCase()
         .split(/[_\s]+/)
         .filter(Boolean)

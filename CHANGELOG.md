@@ -49,7 +49,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - A tag typed in a note but not confirmed with Enter is saved with the note (a comma also adds a tag).
 - The *same crop as last season* warning works for split fields (one number, two crops) — before, the second crop hid the first.
 - A new season no longer overwrites an existing archive with the same season number — the old file is kept under another name.
-- **Security**: names and translations read from mods (crops, feed mixers, mixer wagons) can no longer carry HTML into the app — markup characters are dropped when they're read.
+- **Security**: names and translations read from mods and the savegame (crop names and titles, feed mixers, mixer wagons) can no longer carry HTML into the app — markup characters are dropped when they're read.
 - **Narrow window**: below ~1180 px the planner no longer slides under the header — the table and crop list scroll together from the top, the header wraps, and the fields table scrolls sideways instead of being cut off.
 
 ## 0.9.8 — 2026-10-02
