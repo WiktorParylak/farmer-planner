@@ -197,6 +197,13 @@
                     <p data-i18n="gameFarmLabel">Your farm in this savegame:</p>
                     <select id="game-farm-select"></select>
                 </div>
+                <p data-i18n="currencyLabel">Currency:</p>
+                <select id="currency-select">
+                    <option value="auto" data-i18n="currencyAuto">Same as in the game</option>
+                    <option value="€">€</option>
+                    <option value="$">$</option>
+                    <option value="£">£</option>
+                </select>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
                     <input type="checkbox" id="auto-sync-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>

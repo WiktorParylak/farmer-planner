@@ -63,6 +63,8 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        currencyLabel: "Currency:",
+        currencyAuto: "Same as in the game",
         gameFarmLabel: "Your farm in this savegame:",
         gameFarmUnnamed: "Farm",
         openFarmTitle: "Open farm",
@@ -106,7 +108,7 @@ const TRANSLATIONS = {
         totalPlantedArea: "Total planted area",
         detailBalance: "Balance",
         detailCredit: "Credit",
-        bankCreditValue: "{n} active loan(s) · {m} € / month",
+        bankCreditValue: "{n} active loan(s) · {m} / month",
         finNoLoan: "no loan",
         finVsPrevMonth: "vs last month",
         finNoHistory: "history builds up as you play",
@@ -640,6 +642,8 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        currencyLabel: "Waluta:",
+        currencyAuto: "Taka jak w grze",
         gameFarmLabel: "Twoja farma w tym zapisie gry:",
         gameFarmUnnamed: "Farma",
         openFarmTitle: "Otwórz farmę",
@@ -683,7 +687,7 @@ const TRANSLATIONS = {
         totalPlantedArea: "Łączna obsiana powierzchnia",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
-        bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
+        bankCreditValue: "aktywne kredyty: {n} · rata {m} / mies.",
         finNoLoan: "brak kredytu",
         finVsPrevMonth: "wobec poprzedniego miesiąca",
         finNoHistory: "historia zbiera się w trakcie gry",
@@ -2160,12 +2164,6 @@ function getSeasonBalanceHistory(farm) {
     const history = [];
     if (!farm || !farm.folderName) return history;
 
-    const parseMoney = (v) => {
-        if (v === undefined || v === null) return 0;
-        const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-        return isNaN(n) ? 0 : n;
-    };
-
     const seasonsDir = path.join(appDataDir, farm.folderName, 'seasons');
     if (fs.existsSync(seasonsDir)) {
         fs.readdirSync(seasonsDir).forEach(fileName => {
@@ -2285,11 +2283,6 @@ function monthlyRowFingerprint(row) {
 // Builds the row for the current in-game month from freshly-read save data
 // (gameData) merged onto `farm`.
 function buildMonthlyRow(farm, gameData) {
-    const parseMoney = (v) => {
-        if (v === undefined || v === null) return 0;
-        const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-        return isNaN(n) ? 0 : n;
-    };
     return {
         period: gameData.gamePeriod,
         month: FS_PERIOD_TO_MONTH[gameData.gamePeriod % 12],
@@ -2656,7 +2649,43 @@ function wireBarnPanel(bodyEl) {
 // =============================================================
 const FIN_LOCALE = () => (currentLang === 'pl' ? 'pl-PL' : 'en-US');
 function finMoney(v) {
-    return `${Math.round(v).toLocaleString(FIN_LOCALE())} €`;
+    const n = Math.round(v).toLocaleString(FIN_LOCALE());
+    return CURRENCY === '€' ? `${n} €` : `${CURRENCY}${n}`;
+}
+
+// Money amounts: farm.balance is a number now, but farms, archives and the
+// demo data from older versions hold text like "1234 €" — accept both.
+function parseMoney(v) {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+}
+
+// Currency symbol of the open farm: chosen in Settings, or the game's own
+// setting (gameSettings.xml <units><money>: 1 euro, 2 dollar, 3 pound).
+// Only the symbol changes — amounts in the save are the same.
+const GAME_MONEY_UNITS = { '1': '€', '2': '$', '3': '£' };
+let CURRENCY = '€';
+
+function readGameCurrency(saveGamePath) {
+    try {
+        const gameDir = path.dirname(path.dirname(saveGamePath));
+        const gs = fs.readFileSync(path.join(gameDir, 'gameSettings.xml'), 'utf-8');
+        const m = gs.match(/<units>[\s\S]*?<money>\s*(\d+)\s*<\/money>/);
+        return m ? (GAME_MONEY_UNITS[m[1]] || null) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function currencyOf(farm) {
+    if (farm && farm.currency && farm.currency !== 'auto') return farm.currency;
+    return (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+}
+
+function useCurrency(farm) {
+    CURRENCY = currencyOf(farm);
 }
 function finCompact(v) {
     return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
@@ -2686,9 +2715,8 @@ function finDeltaHtml(delta, label) {
 
 // KPI row: balance (hero), loan, change this season, play time.
 function renderFinanceKpis(farm, monthly, history) {
-    const parse = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
-    const balance = parse(farm && farm.balance);
-    const loan = parse(farm && farm.loan);
+    const balance = parseMoney(farm && farm.balance);
+    const loan = parseMoney(farm && farm.loan);
     const prevMonth = monthly.length > 1 ? monthly[monthly.length - 2] : null;
     const season = (farm && farm.currentSeason) || 1;
     // Season start: the last archived season's end balance, else this season's first month.
@@ -2697,7 +2725,7 @@ function renderFinanceKpis(farm, monthly, history) {
     const seasonStart = prevSeason ? prevSeason.balance : (firstThisSeason ? firstThisSeason.balance : null);
     const bc = farm && farm.bankCredit;
     const loanSub = bc && bc.count
-        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString(FIN_LOCALE()))
+        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', finMoney(bc.monthly))
         : (loan > 0 ? '' : t('finNoLoan'));
     return `<div class="fin-kpis">
         <div class="fin-kpi fin-kpi--hero">
@@ -2931,14 +2959,14 @@ function renderFinancePanel(bodyEl, farm) {
         const hasLoan = monthly.some(r => r.loan > 0);
         const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
         if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
-        const opts = { format: (v, end) => finCompact(v) + (end ? ' €' : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
         html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
             w => buildTrendChart(monthly, w, series, opts), width);
     }
     if (history.length > 1) {
         html += `<section class="fin-card fin-chart">
             <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
-            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' €' : ''), t('finChartSeasons'))}
+            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), t('finChartSeasons'))}
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
@@ -7306,7 +7334,7 @@ function readGameSave(pathToFile) {
             const own = listSaveFarms(pathToFile).find(f => f.id === SAVE_FARM_ID);
             if (own && !isNaN(own.money)) moneyVal = own.money;
         }
-        if (moneyVal !== null && moneyVal !== '') result.balance = parseInt(moneyVal) + " €";
+        if (moneyVal !== null && moneyVal !== '' && !isNaN(parseInt(moneyVal))) result.balance = parseInt(moneyVal);
 
         // Enhanced Loan System (mod) keeps its own list of separate loans
         // instead of the base game's single "loan" value — sum whatever's
@@ -7561,7 +7589,7 @@ function applyGameSaveToFarm(farm) {
     useSaveFarm(farm);
     const gameData = readGameSave(farm.saveGamePath);
 
-    if (gameData.balance && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
+    if (gameData.balance !== null && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
     if (gameData.gameYear !== null && gameData.gameYear !== farm.yearNumber) {
         // The game's own year (from currentDay). It turns over in March, with
         // the game's first period — same as the Finances charts.
@@ -7612,7 +7640,8 @@ function applyGameSaveToFarm(farm) {
 // without resetting edit mode or the viewed season.
 function refreshPlannerHeader(farm) {
     if (!farm) return;
-    if (plannerBalance) plannerBalance.innerText = farm.balance || "0 €";
+    useCurrency(farm);
+    if (plannerBalance) plannerBalance.innerText = finMoney(parseMoney(farm.balance));
     if (plannerMonth) {
         // Day of the in-game month next to its name ("MARCH 2") — only when a
         // month has more than one day, otherwise it'd always read "1".
@@ -9217,6 +9246,8 @@ if (settingsBtn) {
         }
         renderAnimalModsInfo(farm);
         renderGameFarmChoice(farm);
+        const currencySelect = document.getElementById('currency-select');
+        if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         if (cropsLoadedInfo) {
@@ -9433,6 +9464,16 @@ if (saveSettingsBtn) {
             pendingAnimalDefFiles = null;
         }
 
+        {
+            const currencySelect = document.getElementById('currency-select');
+            const farm = getCurrentFarm();
+            if (currencySelect && farm && (farm.currency || 'auto') !== currencySelect.value) {
+                farm.currency = currencySelect.value;
+                saveFarmData(farm);
+                refreshPlannerHeader(farm);
+            }
+        }
+
         if (autoSyncToggle) {
             const farm = getCurrentFarm();
             if (farm && farm.autoSync !== autoSyncToggle.checked) {
@@ -9495,7 +9536,7 @@ if (saveSettingsBtn) {
                     }
                     useSaveFarm(target);
                     const newData = readGameSave(pathToFile);
-                    if (newData.balance) allFarms[idx].balance = newData.balance;
+                    if (newData.balance !== null) allFarms[idx].balance = newData.balance;
                     if (newData.month) allFarms[idx].month = newData.month;
                     if (newData.loan !== null) allFarms[idx].loan = newData.loan;
                     saveFarmData(allFarms[idx]);
@@ -9737,7 +9778,7 @@ if (confirmAddBtn) {
                 mapName: newFarmMapInput ? newFarmMapInput.value.trim() : "",
                 folderName: newId,
                 lastEdited: new Date().toISOString(),
-                balance: "0 €",
+                balance: 0,
                 currentSeason: 1,
                 yearNumber: 1,
                 fields: [],
@@ -9975,7 +10016,7 @@ function seedDemoFarm(farm) {
 
     Object.assign(farm, {
         isTutorialDemo: true,
-        balance: "185 400 €",
+        balance: 185400,
         loan: "60 000",
         playTime: "42h 15m",
         equipment: 14,
@@ -10070,7 +10111,7 @@ function seedDemoFarm(farm) {
                 field("4", 4.5, "Maize", "APRIL", "Planted", "plowed"),
                 field("5-6", 6.8, "Wheat", "OCTOBER", "Planted", "plowed")
             ],
-            balance: "142 000 €",
+            balance: 142000,
             loan: 90000,
             animals: 84,
             avgHealth: 90

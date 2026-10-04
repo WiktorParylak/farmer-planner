@@ -704,6 +704,7 @@ body {
 }
 
 .modal-content input,
+#settings-modal select,
 :where(.hub-view) input {
   font-family: var(--font-body);
   font-weight: 400;
@@ -718,6 +719,7 @@ body {
 }
 
 .modal-content input:focus,
+#settings-modal select:focus,
 :where(.hub-view) input:focus {
   outline: none;
   border-color: var(--color-primary);

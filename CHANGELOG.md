@@ -7,6 +7,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **New**
 - **Cancel in Edit season**: a *Cancel* button next to *Save changes* leaves edit mode without saving. With unsaved changes it asks first — so do *Exit*, *New season* and *Reset seasons* while editing. *New season* is hidden during editing.
 - **Multiplayer saves**: the app reads your own farm's data (money, loans, land, animals, feed, vehicles) instead of always farm 1. A save with several farms gets a *Your farm in this savegame* choice in Settings; single-player saves need nothing.
+- **Currency**: money is shown in the currency set in the game (€, $ or £, from `gameSettings.xml`), or one picked per farm in Settings. The balance is stored as a number; farms saved by older versions are read as before.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
