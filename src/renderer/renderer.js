@@ -10353,7 +10353,11 @@ if (settingsBtn) {
             wireSettingsSupplyAdjust(supplyAdjustContainer);
         }
 
-        if (settingsModal) settingsModal.style.display = 'flex';
+        if (settingsModal) {
+            settingsModal.style.display = 'flex';
+            const content = settingsModal.querySelector('.modal-content');
+            if (content) content.scrollTop = 0;
+        }
     });
 }
 

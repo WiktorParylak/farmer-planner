@@ -674,6 +674,9 @@ body {
   width: 100%;
   max-width: 680px;
   align-items: stretch;
+  /* Not centred: a centred column taller than the modal spills over the top,
+     where it can't be scrolled to. */
+  justify-content: flex-start;
   text-align: left;
   gap: 14px;
 }
