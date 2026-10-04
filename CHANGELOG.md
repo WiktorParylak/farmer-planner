@@ -11,6 +11,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Language on first start**: the very first time the app opens it asks for the language (Polski / English) before anything else, so the tutorial runs in the chosen language.
 - **Mods list in Settings**: every mod the app can read — Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit, Enhanced Loan System — with whether it is in the farm's savegame and a per-farm on/off switch. Off means base-game rules for that part (e.g. Precision Farming off: flat seed rates, no soil import). Replaces the animal-mods-only list.
 - **Hire Purchasing** (FS25_HirePurchasing): vehicles bought on hire purchase count as loans — what is still owed (remaining monthly payments plus the final fee, calculated like the mod does) is added to the credit, and the Finance tile shows the deals and their monthly payment. Listed in the mods list with its own switch.
+- **Update notice**: at start-up the app checks GitHub Releases and, when a newer version is out, shows a popup with a button that opens its download page (*Later* closes it until the next start). App settings have *Check now*, the installed version and a switch to turn the start-up check off. Not shown while the tutorial runs.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.

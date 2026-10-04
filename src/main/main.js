@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const DiscordPresence = require('./discord-presence');
@@ -53,6 +53,18 @@ function resolveDataDir() {
 // rest of renderer.js can stay simple).
 ipcMain.on('get-data-dir', (event) => {
   event.returnValue = dataDir;
+});
+
+ipcMain.on('get-app-version', (event) => {
+  event.returnValue = app.getVersion();
+});
+
+// Update popup -> release page in the browser. Only this repo's releases.
+ipcMain.handle('open-release-page', (event, url) => {
+  if (typeof url === 'string' && url.startsWith('https://github.com/WiktorParylak/farmer-planner/releases/')) {
+    return shell.openExternal(url);
+  }
+  return null;
 });
 
 // Where we remember the window's last size/position/maximized state.

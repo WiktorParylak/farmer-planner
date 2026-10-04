@@ -277,6 +277,15 @@
                     <input type="checkbox" id="discord-rpc-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="discordSettingHint">Show your current farm on your Discord profile.</span>
                 </label>
+                <p data-i18n="updateSettingLabel" style="margin-bottom:4px;">Updates</p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="update-check-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="updateSettingHint">Check for a new version when the app starts.</span>
+                </label>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                    <button type="button" id="check-updates-btn" class="replay-tutorial-btn" data-i18n="updateCheckNow">Check now</button>
+                    <span id="app-version-label" class="animal-mods-note"></span>
+                </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
                 <div class="modal-buttons">

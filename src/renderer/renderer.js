@@ -63,6 +63,18 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        updateSettingLabel: "Updates",
+        updateSettingHint: "Check for a new version when the app starts.",
+        updateCheckNow: "Check now",
+        updateCurrentVersion: "Installed: {v}",
+        updateAvailableTitle: "Update available",
+        updateAvailableBody: "Farmer Planner {v} is out (you have {c}). Download the installer from the release page and run it — your farms stay where they are.",
+        updateDownload: "Open the download page",
+        updateLater: "Later",
+        updateNoneTitle: "Up to date",
+        updateNone: "You have the newest version ({v}).",
+        updateErrorTitle: "Couldn't check for updates",
+        updateError: "GitHub didn't answer — check your internet connection and try again.",
         historyNewCareerTitle: "New career in this savegame?",
         historyNewCareerBody: "The savegame is earlier in time than the monthly history of this farm (another save, or the career started over). Continue the history with it, or start a new one? The old history is kept in a file next to it.",
         historyStartNew: "Start a new history",
@@ -655,6 +667,18 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        updateSettingLabel: "Aktualizacje",
+        updateSettingHint: "Sprawdzaj nową wersję przy uruchomieniu aplikacji.",
+        updateCheckNow: "Sprawdź teraz",
+        updateCurrentVersion: "Zainstalowana: {v}",
+        updateAvailableTitle: "Dostępna aktualizacja",
+        updateAvailableBody: "Wyszedł Farmer Planner {v} (masz {c}). Pobierz instalator ze strony wydania i uruchom go — Twoje farmy zostaną na miejscu.",
+        updateDownload: "Otwórz stronę pobierania",
+        updateLater: "Później",
+        updateNoneTitle: "Masz najnowszą wersję",
+        updateNone: "Zainstalowana wersja ({v}) jest najnowsza.",
+        updateErrorTitle: "Nie udało się sprawdzić aktualizacji",
+        updateError: "GitHub nie odpowiedział — sprawdź połączenie z internetem i spróbuj ponownie.",
         historyNewCareerTitle: "Nowa kariera w tym zapisie?",
         historyNewCareerBody: "Zapis gry jest wcześniej w czasie niż historia miesięczna tej farmy (inny zapis albo kariera od nowa). Kontynuować z nim historię czy zacząć nową? Stara historia zostanie zachowana w pliku obok.",
         historyStartNew: "Zacznij nową historię",
@@ -2118,6 +2142,10 @@ const discordRpcToggle = document.getElementById('discord-rpc-toggle');
 if (appSettingsBtn && appSettingsModal) {
     appSettingsBtn.addEventListener('click', () => {
         if (discordRpcToggle) discordRpcToggle.checked = isDiscordRpcEnabled();
+        const updToggle = document.getElementById('update-check-toggle');
+        if (updToggle) updToggle.checked = isUpdateCheckEnabled();
+        const versionLabel = document.getElementById('app-version-label');
+        if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         appSettingsModal.style.display = 'flex';
     });
 }
@@ -11083,6 +11111,81 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 // =============================================================
+// UPDATE CHECK
+// =============================================================
+// Asks GitHub Releases (pre-releases included — every version is published as
+// one) whether a newer version exists. Only informs: "Download" opens the
+// release page; the installer is run by the user.
+const APP_VERSION = ipcRenderer.sendSync('get-app-version') || '0.0.0';
+const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/releases?per_page=20';
+const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
+
+function isUpdateCheckEnabled() {
+    return localStorage.getItem(CONFIG_KEY_UPDATE_CHECK) !== '0';
+}
+
+// "v0.9.10" vs "0.9.9" -> 1 / 0 / -1, number by number.
+function compareVersions(a, b) {
+    const pa = String(a).replace(/^v/i, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
+    const pb = String(b).replace(/^v/i, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] || 0) - (pb[i] || 0);
+        if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
+}
+
+// manual: from the Settings button — then "up to date" and errors are shown
+// too; the start-up check stays silent unless there is something new.
+async function checkForUpdates({ manual = false } = {}) {
+    let newest = null;
+    try {
+        const res = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const releases = await res.json();
+        (Array.isArray(releases) ? releases : []).forEach(r => {
+            if (r.draft || !r.tag_name) return;
+            if (!newest || compareVersions(r.tag_name, newest.tag_name) > 0) newest = r;
+        });
+    } catch (err) {
+        console.warn('Update check failed', err);
+        if (manual) await showSeasonNotice(t('updateErrorTitle'), t('updateError'), true);
+        return;
+    }
+
+    const latest = newest ? newest.tag_name.replace(/^v/i, '') : null;
+    if (!latest || compareVersions(latest, APP_VERSION) <= 0) {
+        if (manual) await showSeasonNotice(t('updateNoneTitle'), t('updateNone').replace('{v}', APP_VERSION));
+        return;
+    }
+
+    const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
+    const download = await showSeasonModal({
+        title: fill(t('updateAvailableTitle')),
+        body: fill(t('updateAvailableBody')),
+        confirmText: t('updateDownload'),
+        cancelText: t('updateLater'),
+        icon: 'fa-circle-arrow-up'
+    });
+    if (download) ipcRenderer.invoke('open-release-page', newest.html_url);
+}
+
+const updateCheckToggle = document.getElementById('update-check-toggle');
+if (updateCheckToggle) {
+    updateCheckToggle.addEventListener('change', () => {
+        localStorage.setItem(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
+    });
+}
+const checkUpdatesBtn = document.getElementById('check-updates-btn');
+if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener('click', async () => {
+        checkUpdatesBtn.disabled = true;
+        try { await checkForUpdates({ manual: true }); }
+        finally { checkUpdatesBtn.disabled = false; }
+    });
+}
+
+// =============================================================
 // SECTION 11: INITIALIZATION
 // =============================================================
 // First start (no language saved yet): a modal that can only be closed by
@@ -11125,4 +11228,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFarmList(getAllFarms());
     }
     if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
+    else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });
