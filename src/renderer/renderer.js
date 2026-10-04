@@ -102,7 +102,6 @@ const TRANSLATIONS = {
         thSoil: "Soil",
         thHa: "Ha",
         totalPlantedArea: "Total planted area",
-        farmDetails: "Farm Details",
         detailBalance: "Balance",
         detailCredit: "Credit",
         bankCreditValue: "{n} active loan(s) · {m} € / month",
@@ -125,11 +124,7 @@ const TRANSLATIONS = {
         animChartSeasons: "Animals at the end of each season",
         animKpiLowFeed: "low feed: {list}",
         animKpiFeedOk: "every building has feed",
-        detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
-        detailFields: "Fields",
-        detailCrops: "Crops",
-        detailEquipment: "Equipment",
         detailAnimals: "Animals",
         cropsListTitle: "List of all crops that are being farmed",
         resetSeasons: "RESET SEASONS",
@@ -682,7 +677,6 @@ const TRANSLATIONS = {
         thSoil: "Gleba",
         thHa: "Ha",
         totalPlantedArea: "Łączna obsiana powierzchnia",
-        farmDetails: "Szczegóły Farmy",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
         bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
@@ -705,11 +699,7 @@ const TRANSLATIONS = {
         animChartSeasons: "Zwierzęta na koniec każdego sezonu",
         animKpiLowFeed: "mało paszy: {list}",
         animKpiFeedOk: "każdy budynek ma paszę",
-        detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
-        detailFields: "Pola",
-        detailCrops: "Uprawy",
-        detailEquipment: "Sprzęt",
         detailAnimals: "Zwierzęta",
         cropsListTitle: "Lista wszystkich uprawianych roślin",
         resetSeasons: "RESETUJ SEZONY",
@@ -2159,9 +2149,6 @@ if (closeHubPanelBtn && hubPanelModal) {
     });
 }
 
-// Reads a value straight off the already-rendered Farm Details card,
-// so the hub panels never show a number that could drift out of sync
-// with what's on screen there.
 // Reads balance/loan from every archived season (older archives made before
 // this feature won't have them and are skipped) plus the live current
 // season, giving a season-by-season trend rather than one static number.
@@ -2656,11 +2643,6 @@ function wireBarnPanel(bodyEl) {
     });
 }
 
-function getDetailValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.textContent : '-';
-}
-
 // =============================================================
 // FINANCE VIEW — KPI tiles, monthly balance chart (crosshair tooltip),
 // season-end bars, table view. Colors: balance #3B7542 / loan #C97A2B,
@@ -2731,7 +2713,7 @@ function renderFinanceKpis(farm, monthly, history) {
         </div>
         <div class="fin-kpi">
             <span class="fin-kpi-label">${t('detailFarmAge')}</span>
-            <span class="fin-kpi-value">${escapeHtml(getDetailValue('detail-age'))}</span>
+            <span class="fin-kpi-value">${escapeHtml((farm && farm.playTime) || '0h 0m')}</span>
         </div>
     </div>`;
 }
@@ -5613,7 +5595,6 @@ const plannerBalance = document.getElementById('planner-balance');
 const plannerMonth = document.getElementById('planner-month');
 const plannerYear = document.getElementById('planner-year');
 const exitBtn = document.getElementById('exit-btn');
-const backBtn = document.getElementById('back-btn');
 
 // Year shown next to the month — not the same thing as farm.currentSeason
 // (which drives NEW SEASON / field archiving). A synced farm takes it from the
@@ -5637,12 +5618,6 @@ const fieldsBody = document.getElementById('fields-body');
 const fieldsTable = document.getElementById('fields-table');
 const totalSumEl = document.getElementById('total-ha-sum');
 
-const detailHa = document.getElementById('detail-ha');
-const detailFields = document.getElementById('detail-fields');
-const detailCrops = document.getElementById('detail-crops');
-const detailAge = document.getElementById('detail-age');
-const detailEquipment = document.getElementById('detail-equipment');
-const detailAnimals = document.getElementById('detail-animals');
 
 const cropsBody = document.getElementById('crops-body');
 
@@ -6333,7 +6308,7 @@ function fieldYieldFactor(soilMix) {
 // the 3rd), so each field's application is sized to 3 harvests of decay:
 //   loamySand / sandyLoam : -0.125 pH/harvest -> 3 x 730  = 2190 l/ha
 //   loam / siltyClay      : -0.250 pH/harvest -> 3 x 1460 = 4380 l/ha
-// A flat "Lime application" rate in the Adjust panel overrides the whole thing.
+// Nothing calls limeRateForSoil / fieldLimeRate yet — kept for a lime shopping list.
 const LIME_L_PER_PH_STATE = 730;     // l/ha to raise pH by one 0.125 step
 const LIME_CYCLE_HARVESTS = 3;       // an application is sized to last this many seasons
 const LIME_PH_DROP_PER_HARVEST = { loamySand: 0.125, sandyLoam: 0.125, loam: 0.250, siltyClay: 0.250 };
@@ -6471,12 +6446,6 @@ function getCropSeedRate(crop, rates) {
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
     return SUPPLY_SEED_RATES[crop] !== undefined ? SUPPLY_SEED_RATES[crop] : null;
 }
-function getCropNRate(crop, rates) {
-    const o = rates.crops[crop];
-    if (o && o.n !== undefined && o.n !== '' && !isNaN(o.n)) return parseFloat(o.n);
-    return SUPPLY_N_RATES[crop] !== undefined ? SUPPLY_N_RATES[crop] : null;
-}
-
 // --- Zaopatrzenie (Supplies panel) row builders -----------------------------
 // Both read farm.fields[] directly — no savegame path, no per-crop
 // aggregation. One row per field, matching how the field itself is edited
@@ -6608,77 +6577,6 @@ function buildYieldForecastRows(fields, rates) {
     };
 }
 
-// Shared tail for both supply calculators (manual fields + savegame): turns the
-// per-field list into seed / fertilizer / lime rows + buffered totals.
-// In PF mode each fertilizer row's rate is the soil-mix-weighted kg N/ha for
-// that field's crop; in basic mode it's the flat litres/ha rate.
-function finalizeSupplies(cropFields, extra, rates) {
-    const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
-    const pf = rates.mode === 'pf';
-    const basicRate = parseFloat(rates.basicFertRate) || 0;
-    const flatLimeRate = parseFloat(rates.limeRate) || 0;   // >0 => flat override on every field
-
-    const seedRows = [];
-    const fertRows = [];
-    const orgPlanRows = [];
-    const limeRows = [];
-    let plannedArea = 0;
-    let fieldsToSow = 0;
-    let limeArea = 0;
-
-    cropFields.forEach(f => {
-        if (f.crop && f.area > 0) plannedArea += f.area;
-
-        if (f.sow) {
-            fieldsToSow++;
-            const rate = fieldSeedRate(f.crop, getFieldSoilMix(f.key, rates), rates);
-            const known = rate !== null;
-            const r = known ? rate : SUPPLY_SEED_FALLBACK;
-            const need = f.area * r;
-            seedRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, rate: r, known, need, buffered: need * buffer });
-        }
-
-        if (f.fertilize) {
-            const factor = f.fertFactor != null ? f.fertFactor : 1;
-            const soilMix = getFieldSoilMix(f.key, rates);
-            // A field's own fertilization plan (existing-N / natural-N already
-            // entered) overrides the flat "whole target still unmet" guess with
-            // the actual remaining mineral need.
-            const rate = f.planMineralRate != null ? f.planMineralRate : (pf ? fieldNRate(f.crop, soilMix, rates) : basicRate);
-            const need = f.area * rate * factor;
-            fertRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate, factor, need, buffered: need * buffer, planned: !!f.planned });
-
-            if (f.planOrgRate > 0) {
-                const orgNeed = f.area * f.planOrgRate * factor;
-                orgPlanRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate: f.planOrgRate, need: orgNeed, buffered: orgNeed * buffer });
-            }
-        }
-
-        if (f.limeDue) {
-            limeArea += f.area;
-            const soilMix = getFieldSoilMix(f.key, rates);
-            const rate = flatLimeRate > 0 ? flatLimeRate : fieldLimeRate(soilMix);   // l/ha
-            const need = f.area * rate;
-            limeRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate, need, buffered: need * buffer });
-        }
-    });
-
-    return {
-        season: extra.season,
-        plannedArea, fieldsToSow,
-        source: extra.source || 'manual',
-        savedFieldCount: extra.savedFieldCount || 0,
-        savedAreaHa: extra.savedAreaHa || 0,
-        skippedNoArea: extra.skippedNoArea || 0,
-        seedRows, seedTotal: seedRows.reduce((s, r) => s + r.buffered, 0),
-        fertRows, fertTotal: fertRows.reduce((s, r) => s + r.buffered, 0),
-        orgPlanRows, orgPlanTotal: orgPlanRows.reduce((s, r) => s + r.buffered, 0),
-        limeRows, limeArea, limeTotal: limeRows.reduce((s, r) => s + r.buffered, 0),
-        limeFields: limeRows.map(r => r.number).filter(Boolean),
-        hasAnything: seedRows.length > 0 || fertRows.length > 0 || limeRows.length > 0
-    };
-}
-
 // Maps a savegame fruit token ("WHEAT", "SUGARBEET", "OILSEEDRADISH") to the
 // crop key the rest of the app uses. FALLOW / UNKNOWN mean "nothing planned".
 function saveFruitToCropKey(raw) {
@@ -6692,9 +6590,9 @@ function saveFruitToCropKey(raw) {
 //   farmland.xml            -> which farmlandIds belong to farm 1
 //   precisionFarming.xml    -> real field area (m², from the <tillage> block)
 //   fields.xml             -> planned crop + current spray/lime level per field
-// Returns { ok, fields:[...], hasArea } — everything the "from savegame"
-// branch of the supply calculator needs. Fails quietly (ok:false) so the panel
-// can fall back to the manually entered fields.
+// Returns { ok, fields:[...], hasArea }; fails quietly (ok:false) when the
+// save folder or its files are missing. Also carries weedState etc. for the
+// per-field sync planned next.
 function readSaveFields(farm) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
@@ -6744,44 +6642,6 @@ function readSaveFields(farm) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
     }
-}
-
-// Same output shape as computeSeasonSupplies, but sourced from the savegame.
-// "Buy" is the REMAINING need: seed only for unsown fields, fertilizer scaled
-// by how far each field's sprayLevel still is from full, lime only where the
-// field currently has none.
-function computeSeasonSuppliesFromSave(farm, rates, save) {
-    const SPRAY_MAX = 2;   // fields.xml buckets fertilization into 0..2
-    let savedAreaHa = 0, skippedNoArea = 0;
-
-    const cropFields = [];
-    save.fields.forEach(f => {
-        const crop = saveFruitToCropKey(f.plannedFruit) || saveFruitToCropKey(f.fruitType);
-        const limeDue = f.limeLevel < 1;
-        if (!crop && !limeDue) return;
-        if (f.areaHa == null) { if (crop) skippedNoArea++; return; }
-
-        const area = f.areaHa;
-        if (crop) savedAreaHa += area;
-        const remFrac = Math.max(0, (SPRAY_MAX - f.sprayLevel) / SPRAY_MAX);
-
-        cropFields.push({
-            key: String(f.id),
-            number: '#' + f.id,
-            crop: crop || '', area,
-            sow: !!crop && !f.sown,
-            fertilize: !!crop && remFrac > 0,
-            fertFactor: remFrac,
-            limeDue
-        });
-    });
-
-    return finalizeSupplies(cropFields, {
-        season: (farm && farm.currentSeason) || 1,
-        source: 'save',
-        savedFieldCount: save.fields.length - skippedNoArea,
-        savedAreaHa, skippedNoArea
-    }, rates);
 }
 
 let ANIMAL_NEEDS_DATA = {};
@@ -7715,15 +7575,6 @@ function refreshPlannerHeader(farm) {
         plannerYear.title = fromGame ? t('yearFromGameHint') : t('yearManualHint');
     }
 
-    const loanInput = document.getElementById('detail-loan');
-    if (loanInput) loanInput.innerText = farm.loan ? `${farm.loan} €` : "0 €";
-
-    const sidebarBalance = document.getElementById('details-balance');
-    if (sidebarBalance) sidebarBalance.innerText = farm.balance || "0 €";
-
-    if (detailEquipment) detailEquipment.innerText = farm.equipment !== undefined ? farm.equipment : "-";
-    if (detailAnimals) detailAnimals.innerText = farm.animals !== undefined ? farm.animals : "-";
-    if (detailAge) detailAge.innerText = farm.playTime !== undefined ? farm.playTime : "0h 0m";
 }
 
 // =============================================================
@@ -7833,7 +7684,6 @@ function showAutoSyncToast() {
 }
 
 if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
-if (backBtn) backBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
 // Fields of one season: the archive (seasons/season_N.json) for a past
 // season, the live farm.fields for the current one. [] if the archive is
@@ -8423,8 +8273,6 @@ function renderFieldsTable(fields) {
             farmlandSumEl.textContent = t('farmlandTotal').replace('{ha}', plotsHa.toFixed(2)).replace('{n}', owned.length);
         }
     }
-    if (detailHa) detailHa.innerText = totalArea.toFixed(2) + " ha";
-    if (detailFields) detailFields.innerText = fields ? fields.length : 0;
 }
 
 function generateMonthOptionsHtml(cropName, selectedMonth) {
@@ -8992,7 +8840,6 @@ function updateCropsSummary(fields) {
     const mainRows = sumCropArea(fields, 'crop');
     const catchRows = sumCropArea(fields, 'catchCrop');
 
-    if (detailCrops) detailCrops.innerText = mainRows.length;
     updateCropsSortHeaders();
 
     if (mainRows.length === 0 && catchRows.length === 0) {

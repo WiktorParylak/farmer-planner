@@ -1125,24 +1125,6 @@ tbody tr:hover {
   gap: 12px;
 }
 
-/* --- Sidebar Section (Details) --- */
-.details-container[hidden] {
-  display: none;
-}
-
-.details-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background-color: var(--color-surface-alt);
-  border-radius: var(--radius-large);
-  padding: 22px 28px;
-  border: 1px solid var(--color-border);
-  width: 100%;
-  margin-top: 16px;
-  position: relative;
-}
-
 .fertplan-cell {
   text-align: center;
   white-space: nowrap;
@@ -1639,26 +1621,7 @@ tbody tr:hover {
   fill: var(--color-ink-faint);
 }
 
-.details-container h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--color-ink);
-  margin: 0 0 8px 0;
-}
-
-.details-categories {
-  display: flex;
-  flex-direction: row;
-  gap: 40px;
-}
-
-.details-categories-column {
-  flex: 1;
-}
-
+/* Label / value rows (fertilization plan, Supplies summary) */
 .details-category {
   display: flex;
   justify-content: space-between;
