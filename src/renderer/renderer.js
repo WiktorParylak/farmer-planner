@@ -122,6 +122,18 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        undoNewSeason: "UNDO NEW SEASON {n}",
+        undoNewSeasonTitle: "Take back season {n}?",
+        undoNewSeasonBody: "The farm goes back to season {c} with its fields and fertilization plans as they were before the new season. Anything changed in season {n} since then is lost.",
+        undoNewSeasonConfirm: "Back to season {c}",
+        undoNewSeasonDoneTitle: "Back in season {c}",
+        undoNewSeasonDone: "Season {n} was taken back.",
+        newSeasonYearHint: "A year has gone by in the game (year {y}; this season started in year {s}) — time for a new season?",
+        dangerZoneLabel: "Danger zone",
+        resetSeasonsHint: "Deletes every archived season of this farm; the current fields stay.",
+        seasonNavLocked: "Save or cancel the edit to switch seasons",
+        seasonPrev: "Previous season",
+        seasonNext: "Next season",
         grasslandLimitLabel: "Plough up grassland after (seasons):",
         cutsGrassAge: "Grassland here for {n} season(s) in a row (plough up after {max}).",
         sownAreaSum: "sown {ha} ha",
@@ -738,6 +750,18 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        undoNewSeason: "COFNIJ NOWY SEZON {n}",
+        undoNewSeasonTitle: "Cofnąć sezon {n}?",
+        undoNewSeasonBody: "Farma wróci do sezonu {c} z polami i planami nawożenia sprzed nowego sezonu. Wszystko, co zmieniono od tego czasu w sezonie {n}, przepadnie.",
+        undoNewSeasonConfirm: "Wróć do sezonu {c}",
+        undoNewSeasonDoneTitle: "Z powrotem w sezonie {c}",
+        undoNewSeasonDone: "Sezon {n} został cofnięty.",
+        newSeasonYearHint: "W grze minął rok (rok {y}; ten sezon zaczął się w roku {s}) — pora na nowy sezon?",
+        dangerZoneLabel: "Strefa niebezpieczna",
+        resetSeasonsHint: "Usuwa wszystkie zarchiwizowane sezony tej farmy; bieżące pola zostają.",
+        seasonNavLocked: "Zapisz albo anuluj edycję, żeby przełączyć sezon",
+        seasonPrev: "Poprzedni sezon",
+        seasonNext: "Następny sezon",
         grasslandLimitLabel: "Przeorać użytek zielony po (sezonach):",
         cutsGrassAge: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max}).",
         sownAreaSum: "obsiane {ha} ha",
@@ -1347,7 +1371,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_b8_t: "New season",
     tut_b8_x: "After the harvest: archives the current season, clears crops, sowing months and tillage (grass, meadow, alfalfa and clover stay sown), lowers lime pH by one step (depending on soil; not after grassland, oilseed radish or rice) and keeps field numbers and areas. It asks for confirmation — don't click it now.",
     tut_b9_t: "Reset seasons",
-    tut_b9_x: "Deletes the whole season archive and starts counting from season 1 again. Your current fields stay as they are.",
+    tut_b9_x: "Reset seasons — deleting the whole season archive and counting from season 1 again — is in Settings, in the danger zone at the bottom. Your current fields stay as they are.",
 
     tut_c1_t: "Fields table",
     tut_c1_x: "One row per field (or part of a field). Rows to sow this month jump to the top, the rest are sorted by field number.",
@@ -1637,7 +1661,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_b8_t: "Nowy sezon",
     tut_b8_x: "Po żniwach: archiwizuje bieżący sezon, czyści uprawy, miesiące siewu i uprawę gleby (trawa, łąka, lucerna i koniczyna zostają zasiane), obniża pH wapna o jeden krok (zależnie od gleby; nie po użytkach zielonych, poplonie i ryżu) i zachowuje numery oraz powierzchnie pól. Pyta o potwierdzenie — nie klikaj teraz.",
     tut_b9_t: "Reset sezonów",
-    tut_b9_x: "Usuwa całe archiwum sezonów i liczy od sezonu 1. Bieżące pola zostają bez zmian.",
+    tut_b9_x: "Resetowanie sezonów — usunięcie całego archiwum i liczenie od sezonu 1 — jest w Ustawieniach, w strefie niebezpiecznej na dole. Bieżące pola zostają bez zmian.",
 
     tut_c1_t: "Tabela pól",
     tut_c1_x: "Jeden wiersz na pole (lub część pola). Pola do obsiania w tym miesiącu są na górze, reszta według numeru.",
@@ -7831,6 +7855,7 @@ window.openPlanner = function (id) {
         viewedSeason = farm.currentSeason || 1;
         renderSeasonView();
         showPlannerView('plan');
+        maybeSuggestNewSeason(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
         if (plannerView) plannerView.style.display = 'flex';
@@ -8034,6 +8059,7 @@ function runAutoSyncTick() {
         refreshPlannerHeader(farm);
         renderSeasonView();
         showAutoSyncToast();
+        maybeSuggestNewSeason(getCurrentFarm());
     }
 }
 
@@ -8081,13 +8107,11 @@ window.renderSeasonView = function () {
     updateCropsSummary(fieldsToDisplay);
 
     if (seasonNumberEl) {
-        const leftArrow = viewedSeason > 1
-            ? `<span id="prev-season-btn" style="cursor:pointer; color: var(--color-primary); padding-right: 15px;"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></span>`
-            : `<span style="opacity:0.2; padding-right: 15px;"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></span>`;
+        // Disabled while editing (the edit table belongs to the current season).
+        const lock = isEditMode ? ` disabled title="${t('seasonNavLocked')}"` : '';
+        const leftArrow = `<button type="button" id="prev-season-btn" class="season-nav-btn" aria-label="${t('seasonPrev')}"${viewedSeason > 1 ? lock : ' disabled'}><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>`;
 
-        const rightArrow = viewedSeason < currentActiveSeason
-            ? `<span id="next-season-btn" style="cursor:pointer; color: var(--color-primary); padding-left: 15px;"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>`
-            : `<span style="opacity:0.2; padding-left: 15px;"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>`;
+        const rightArrow = `<button type="button" id="next-season-btn" class="season-nav-btn" aria-label="${t('seasonNext')}"${viewedSeason < currentActiveSeason ? lock : ' disabled'}><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`;
 
         seasonNumberEl.innerHTML = `${leftArrow} ${t('season')} ${viewedSeason} ${rightArrow}`;
 
@@ -9143,6 +9167,11 @@ function setEditModeUi(on) {
     // Starting a new season mid-edit would throw the edits away.
     if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
     if (!on) editSnapshot = null;
+    document.querySelectorAll('.season-nav-btn').forEach(b => {
+        const reachable = b.id === 'prev-season-btn' ? viewedSeason > 1 : viewedSeason < ((getCurrentFarm() || {}).currentSeason || 1);
+        b.disabled = on || !reachable;
+        b.title = on ? t('seasonNavLocked') : '';
+    });
 }
 
 // Leaves edit mode without saving. Asks first when something was changed.
@@ -9421,8 +9450,14 @@ function cropKeepsLime(crop) {
     return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }
 
-if (newSeasonBtn) {
-    newSeasonBtn.addEventListener('click', async () => {
+if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
+
+// New season: archive the current one, clear the fields for the next. Keeps
+// what's needed to take it back (seasons/undo_new_season.json, see
+// undoLastNewSeason). intro: optional text shown above the usual confirmation
+// (the in-game year reminder).
+async function runNewSeason({ intro = '' } = {}) {
+    {
         if (!currentFarmId) return;
         if (!(await discardEditsIfConfirmed())) return;
 
@@ -9432,7 +9467,7 @@ if (newSeasonBtn) {
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
         const confirmNew = await showSeasonModal({
             title: fill(t('newSeasonTitle')),
-            body: fill(t('newSeasonBody')),
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')),
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
             icon: 'fa-seedling'
@@ -9451,6 +9486,20 @@ if (newSeasonBtn) {
             if (!fs.existsSync(seasonsDirPath)) fs.mkdirSync(seasonsDirPath, { recursive: true });
 
             const archivePath = path.join(seasonsDirPath, `season_${currentSeasonNum}.json`);
+            // An archive for this season number already exists (e.g. left over
+            // after an undo or a manual copy) — keep it under another name
+            // instead of overwriting it.
+            if (fs.existsSync(archivePath)) {
+                fs.renameSync(archivePath, archivePath.replace(/\.json$/, `_replaced_${Date.now()}.json`));
+            }
+            // Everything needed to take this new season back.
+            const undoData = {
+                season: currentSeasonNum,
+                fields: JSON.parse(JSON.stringify(farm.fields || [])),
+                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {})),
+                seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
+                createdAt: new Date().toISOString()
+            };
             let archivedAvgHealth = null;
             {
                 let weightedSum = 0, headCount = 0;
@@ -9512,7 +9561,10 @@ if (newSeasonBtn) {
             if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
             farm.currentSeason = currentSeasonNum + 1;
+            farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
+            fs.writeFileSync(path.join(seasonsDirPath, 'undo_new_season.json'), JSON.stringify(undoData, null, 2), 'utf-8');
+            refreshUndoSeasonButton(farm);
 
             setEditModeUi(false);
             viewedSeason = farm.currentSeason;
@@ -9524,12 +9576,101 @@ if (newSeasonBtn) {
             console.error(err);
             await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
         }
+    }
+}
+
+function undoSeasonPath(farm) {
+    return path.join(appDataDir, farm.folderName, 'seasons', 'undo_new_season.json');
+}
+
+// The undo is only valid right after that new season: same season number.
+function readUndoSeason(farm) {
+    try {
+        const p = farm && farm.folderName ? undoSeasonPath(farm) : null;
+        if (!p || !fs.existsSync(p)) return null;
+        const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        return data && data.season + 1 === (parseInt(farm.currentSeason, 10) || 1) ? data : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function refreshUndoSeasonButton(farm) {
+    const btn = document.getElementById('undo-season-btn');
+    if (!btn) return;
+    const undo = readUndoSeason(farm);
+    btn.hidden = !undo;
+    if (undo) btn.textContent = t('undoNewSeason').replace('{n}', undo.season + 1).replace('{c}', undo.season);
+}
+
+// Takes the last new season back: fields, fertilization plans and the season
+// number as they were; the archive written for it is removed. Work done in the
+// new season is lost, so it asks first.
+async function undoLastNewSeason() {
+    const farm = getCurrentFarm();
+    const undo = readUndoSeason(farm);
+    if (!farm || !undo) return;
+    const settingsModalEl = document.getElementById('settings-modal');
+    if (settingsModalEl) settingsModalEl.style.display = 'none';
+    const fill = s => s.replace(/{n}/g, undo.season + 1).replace(/{c}/g, undo.season);
+    const ok = await showSeasonModal({
+        title: fill(t('undoNewSeasonTitle')),
+        body: fill(t('undoNewSeasonBody')),
+        confirmText: fill(t('undoNewSeasonConfirm')),
+        cancelText: t('cancel'),
+        danger: true,
+        icon: 'fa-rotate-left'
     });
+    if (!ok) return;
+    if (!(await discardEditsIfConfirmed())) return;
+    try {
+        farm.fields = undo.fields;
+        if (!farm.supplyRates) farm.supplyRates = {};
+        farm.supplyRates.fertPlan = undo.fertPlan || {};
+        farm.currentSeason = undo.season;
+        farm.seasonStartedGameYear = undo.seasonStartedGameYear;
+        saveFarmData(farm);
+        const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${undo.season}.json`);
+        if (fs.existsSync(archivePath)) fs.rmSync(archivePath);
+        fs.rmSync(undoSeasonPath(farm));
+        refreshUndoSeasonButton(farm);
+        viewedSeason = farm.currentSeason;
+        if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason}`;
+        renderSeasonView();
+        await showSeasonNotice(fill(t('undoNewSeasonDoneTitle')), fill(t('undoNewSeasonDone')));
+    } catch (err) {
+        console.error('Undo new season failed', err);
+        await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
+    }
+}
+
+const undoSeasonBtn = document.getElementById('undo-season-btn');
+if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeason());
+
+// A year went by in the game since this season started — offer a new season
+// once per in-game year (farm.seasonHintYear). The first sync only notes the
+// year the season is in.
+function maybeSuggestNewSeason(farm) {
+    if (!farm || !farm.saveGamePath || isEditMode) return;
+    const year = parseInt(farm.yearNumber, 10);
+    if (!(year > 0)) return;
+    if (!(parseInt(farm.seasonStartedGameYear, 10) > 0)) {
+        farm.seasonStartedGameYear = year;
+        saveFarmData(farm, { touch: false });
+        return;
+    }
+    if (year <= farm.seasonStartedGameYear || farm.seasonHintYear === year) return;
+    farm.seasonHintYear = year;
+    saveFarmData(farm, { touch: false });
+    const intro = t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
+    setTimeout(() => runNewSeason({ intro }), 600);
 }
 
 if (resetSeasonsBtn) {
     resetSeasonsBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
+        const settingsModalEl = document.getElementById('settings-modal');
+        if (settingsModalEl) settingsModalEl.style.display = 'none';
         if (!(await discardEditsIfConfirmed())) return;
 
         const confirmReset = await showSeasonModal({
@@ -9652,6 +9793,7 @@ if (settingsBtn) {
         }
         renderAnimalModsInfo(farm);
         renderGameFarmChoice(farm);
+        refreshUndoSeasonButton(farm);
         const grassLimitInput = document.getElementById('grassland-limit-input');
         if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
         const currencySelect = document.getElementById('currency-select');
@@ -10727,7 +10869,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('b6', '#fields-table'),
             tutClick('b7', '#next-season-btn', () => { const f = getCurrentFarm(); return !!f && viewedSeason === (f.currentSeason || 1); }),
             tutInfo('b8', '.new-season-btn'),
-            tutInfo('b9', '#reset-seasons-btn')
+            tutInfo('b9', '#settings-btn')
         ]
     },
     {

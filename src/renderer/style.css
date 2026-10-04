@@ -795,6 +795,10 @@ body {
 }
 
 /* New season / reset seasons modal */
+#season-modal-body {
+  white-space: pre-line;
+}
+
 .season-modal-content {
   max-width: 420px;
 }
@@ -6266,6 +6270,32 @@ button.tillage-switch-option {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-surface);
+}
+
+.season-nav-btn {
+  border: 0;
+  background: none;
+  padding: 0 15px;
+  font-size: inherit;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.season-nav-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.settings-danger-zone {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--color-rust);
+  border-radius: var(--radius-medium);
+}
+
+.settings-danger-zone > p:first-child {
+  color: var(--color-rust);
+  font-weight: 700;
 }
 
 .field-number.is-invalid {

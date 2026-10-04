@@ -107,10 +107,6 @@
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="settings">SETTINGS</span>
                     </button>
-                    <button type="button" id="reset-seasons-btn" class="sidebar-item sidebar-item--util sidebar-item--danger">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="resetSeasons">RESET SEASONS</span>
-                    </button>
                     <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="exit">EXIT</span>
@@ -260,6 +256,13 @@
                 <div id="animal-mods-info" class="animal-mods-info"></div>
 
                 <div id="settings-supply-adjust"></div>
+
+                <div class="settings-danger-zone">
+                    <p data-i18n="dangerZoneLabel">Danger zone</p>
+                    <button type="button" id="undo-season-btn" class="reset-btn" hidden></button>
+                    <button type="button" id="reset-seasons-btn" class="reset-btn" data-i18n="resetSeasons">RESET SEASONS</button>
+                    <p class="animal-mods-note" data-i18n="resetSeasonsHint">Deletes every archived season of this farm; the current fields stay.</p>
+                </div>
 
                 <div class="modal-buttons">
                     <button id="save-settings-btn" data-i18n="saveAndImport">SAVE & IMPORT</button>

@@ -16,6 +16,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Grassland age**: grass, meadow, alfalfa and clover show how many seasons in a row they've been on the field (*season 3*), highlighted once it's time to plough up — after 4 seasons by default, set per farm in Settings. The cuts window shows it too.
 - **Overdue**: a field that isn't sown when its crop's sowing window has just ended (up to 3 months ago, from the map's crop calendar) shows a red *Overdue* instead of *To plant*.
 - **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known), with the percentages on hover.
+- **New season reminder**: when a year has gone by in the game since the current season started, the app offers to start a new season (once per in-game year).
+- **Undo new season**: right after a new season, Settings (danger zone) has *Undo new season N* — it brings back the fields and fertilization plans from before and removes the archive it wrote.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
@@ -31,6 +33,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - The *Soil* column is now *Treatments* (it holds lime, rolling and weeds). Tillage (plowed / no-till) can be clicked straight in the table like the other chips, no Edit season needed.
 - The table footer shows the **planned** area (fields with a crop) and how much of it is **sown**, instead of one total of every row.
 - The cuts window no longer has a sowing month — only the cuts.
+- **Reset seasons** moved from the side menu to the farm Settings, into a *danger zone* at the bottom — it no longer sits right above *Exit*.
+- The season arrows are real buttons (keyboard works); while editing they're greyed out with a hint to save or cancel first.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
@@ -39,6 +43,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Peas (PEA, e.g. on the Krajów map) are called *Zielony groszek* in Polish, not *Groch* — the game's crop is green peas.
 - A tag typed in a note but not confirmed with Enter is saved with the note (a comma also adds a tag).
 - The *same crop as last season* warning works for split fields (one number, two crops) — before, the second crop hid the first.
+- A new season no longer overwrites an existing archive with the same season number — the old file is kept under another name.
 
 ## 0.9.8 — 2026-10-02
 
