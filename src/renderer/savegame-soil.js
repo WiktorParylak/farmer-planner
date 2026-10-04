@@ -291,10 +291,10 @@ function readFieldSoilFromSave(careerSavegamePath) {
 // Whole-farmland (land plot) area — what the game shows when buying land:
 // field plus margins, meadows, yards. Not stored anywhere; counted from the
 // map's "farmlands" info layer like the game does. Owned plots come from the
-// savegame's farmland.xml (farmId 1).
+// savegame's farmland.xml (the player's farmId, 1 in single player).
 // Returns { ok:true, mapId, areas: { "<farmlandId>": ha }, owned: [ids] } or
 // { ok:false, reason } (same reasons as readFieldSoilFromSave).
-function readFarmlandAreas(careerSavegamePath) {
+function readFarmlandAreas(careerSavegamePath, farmId = '1') {
     let mod = null;
     try {
         if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return { ok: false, reason: 'nosave' };
@@ -332,7 +332,7 @@ function readFarmlandAreas(careerSavegamePath) {
         const owned = [];
         try {
             const fl = fs.readFileSync(path.join(saveDir, 'farmland.xml'), 'utf-8');
-            for (const m of fl.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) if (m[2] === '1') owned.push(m[1]);
+            for (const m of fl.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) if (m[2] === String(farmId)) owned.push(m[1]);
         } catch { /* no farmland.xml yet */ }
         return { ok: true, mapId, modName, areas, owned };
     } catch (e) {

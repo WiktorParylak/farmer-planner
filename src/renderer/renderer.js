@@ -63,6 +63,8 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        gameFarmLabel: "Your farm in this savegame:",
+        gameFarmUnnamed: "Farm",
         openFarmTitle: "Open farm",
         deleteFarmTitle: "Delete farm",
         importNoFarmOpen: "no farm open — open a farm before importing map data",
@@ -638,6 +640,8 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        gameFarmLabel: "Twoja farma w tym zapisie gry:",
+        gameFarmUnnamed: "Farma",
         openFarmTitle: "Otwórz farmę",
         deleteFarmTitle: "Usuń farmę",
         importNoFarmOpen: "żadna farma nie jest otwarta — otwórz farmę przed importem danych mapy",
@@ -4196,7 +4200,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
     const defCache = {};
     const l10nCache = {};
     const mixers = [];
-    doc.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+    doc.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`).forEach(pl => {
         const saved = pl.querySelector(':scope > productionPoint');
         if (!saved) return;
         const filename = pl.getAttribute('filename') || '';
@@ -4321,7 +4325,7 @@ function readFeedStockFromSave(saveFolder) {
 
     const placeables = parse('placeables.xml');
     if (placeables) {
-        placeables.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+        placeables.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`).forEach(pl => {
             pl.querySelectorAll('node[fillType]').forEach(node => {
                 if (!node.closest('silo, siloExtension, husbandry')) return;
                 add(node.getAttribute('fillType'), 'silo', parseFloat(node.getAttribute('fillLevel')));
@@ -4333,12 +4337,12 @@ function readFeedStockFromSave(saveFolder) {
     }
     const items = parse('items.xml');
     if (items) {
-        items.querySelectorAll('item[className="Bale"][farmId="1"]').forEach(b =>
+        items.querySelectorAll(`item[className="Bale"][farmId="${SAVE_FARM_ID}"]`).forEach(b =>
             add(baleFillType(b), 'bale', parseFloat(b.getAttribute('fillLevel'))));
     }
     const vehicles = parse('vehicles.xml');
     if (vehicles) {
-        vehicles.querySelectorAll('vehicle[farmId="1"]').forEach(v => {
+        vehicles.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`).forEach(v => {
             if (!v.querySelector(':scope > pallet')) return;
             v.querySelectorAll(':scope > fillUnit > unit[fillType]').forEach(u =>
                 add(u.getAttribute('fillType'), 'pallet', parseFloat(u.getAttribute('fillLevel'))));
@@ -4372,10 +4376,10 @@ function readFeedBalesFromSave(saveFolder) {
         return doc.querySelector('parsererror') ? null : doc;
     };
     const items = parse('items.xml');
-    if (items) items.querySelectorAll('item[className="Bale"][farmId="1"]').forEach(add);
+    if (items) items.querySelectorAll(`item[className="Bale"][farmId="${SAVE_FARM_ID}"]`).forEach(add);
     const placeables = parse('placeables.xml');
     if (placeables) {
-        placeables.querySelectorAll('placeable[farmId="1"] objectStorage > object[className="Bale"]').forEach(add);
+        placeables.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"] objectStorage > object[className="Bale"]`).forEach(add);
     }
     return Object.values(groups).sort((a, b) => b.count - a.count);
 }
@@ -4390,7 +4394,7 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
     const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
     if (doc.querySelector('parsererror')) return [];
     const wagons = [];
-    doc.querySelectorAll('vehicle[farmId="1"]').forEach(v => {
+    doc.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`).forEach(v => {
         if (!v.querySelector(':scope > mixerWagon')) return;
         const filename = v.getAttribute('filename') || '';
         const wagon = {
@@ -6604,7 +6608,7 @@ function readSaveFields(farm) {
         const flText = fs.readFileSync(farmlandPath, 'utf-8');
         const owned = new Set();
         for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
-            if (m[2] === '1') owned.add(m[1]);
+            if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
         }
 
         const areaById = {};
@@ -7233,6 +7237,48 @@ function buildCropsCalendarFromFiles(fileList) {
     return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors };
 }
 
+// The player's farm inside the savegame. Single player is always farmId 1;
+// in a multiplayer save the farm is picked in Settings (farm.gameFarmId).
+// The save readers below filter by SAVE_FARM_ID — set it with useSaveFarm()
+// before reading.
+let SAVE_FARM_ID = '1';
+
+function gameFarmIdOf(farm) {
+    return String((farm && farm.gameFarmId) || '1');
+}
+
+function useSaveFarm(farm) {
+    SAVE_FARM_ID = gameFarmIdOf(farm);
+}
+
+// Farms in a savegame's farms.xml: [{ id, name, money }]. [] if unreadable.
+function listSaveFarms(pathToFile) {
+    try {
+        const xml = fs.readFileSync(path.join(path.dirname(pathToFile), 'farms.xml'), 'utf-8');
+        const out = [];
+        for (const m of xml.matchAll(/<farm\s[^>]*>/g)) {
+            const attr = name => (m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1];
+            const id = attr('farmId');
+            if (!id || id === '0') continue;   // 0 = spectator / nobody
+            out.push({ id, name: attr('name') || '', money: parseFloat(attr('money')) });
+        }
+        return out;
+    } catch (e) {
+        return [];
+    }
+}
+
+// Fills in farm.gameFarmId the first time a save is read: the only farm in
+// the save, else farm 1 if it exists, else the first one. Returns true if set.
+function resolveGameFarmId(farm) {
+    if (!farm || !farm.saveGamePath || farm.gameFarmId) return false;
+    const farms = listSaveFarms(farm.saveGamePath);
+    if (!farms.length) return false;
+    const pick = farms.length === 1 ? farms[0] : (farms.find(f => f.id === '1') || farms[0]);
+    farm.gameFarmId = pick.id;
+    return true;
+}
+
 function readGameSave(pathToFile) {
     const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
@@ -7253,8 +7299,14 @@ function readGameSave(pathToFile) {
             envText = fs.readFileSync(envPath, 'utf-8');
         }
 
-        const moneyVal = findValueInRawText(careerText, 'money');
-        if (moneyVal) result.balance = parseInt(moneyVal) + " €";
+        // careerSavegame's <money> is farm 1's; any other farm reads its own
+        // money from farms.xml.
+        let moneyVal = SAVE_FARM_ID === '1' ? findValueInRawText(careerText, 'money') : null;
+        if (moneyVal === null) {
+            const own = listSaveFarms(pathToFile).find(f => f.id === SAVE_FARM_ID);
+            if (own && !isNaN(own.money)) moneyVal = own.money;
+        }
+        if (moneyVal !== null && moneyVal !== '') result.balance = parseInt(moneyVal) + " €";
 
         // Enhanced Loan System (mod) keeps its own list of separate loans
         // instead of the base game's single "loan" value — sum whatever's
@@ -7265,7 +7317,7 @@ function readGameSave(pathToFile) {
             try {
                 const elsXml = fs.readFileSync(elsLoansPath, 'utf-8');
                 const elsDoc = new DOMParser().parseFromString(elsXml, "text/xml");
-                const farmLoansEl = elsDoc.querySelector('farmId[farmId="1"]') || elsDoc.querySelector('farmId');
+                const farmLoansEl = elsDoc.querySelector(`farmId[farmId="${SAVE_FARM_ID}"]`) || (SAVE_FARM_ID === '1' ? elsDoc.querySelector('farmId') : null);
                 if (farmLoansEl) {
                     let total = 0;
                     let foundAny = false;
@@ -7289,7 +7341,7 @@ function readGameSave(pathToFile) {
             if (fs.existsSync(farmsPath)) {
                 const farmsXml = fs.readFileSync(farmsPath, 'utf-8');
                 const farmsDoc = new DOMParser().parseFromString(farmsXml, "text/xml");
-                const farmEl = farmsDoc.querySelector('farm[farmId="1"]') || farmsDoc.querySelector('farm');
+                const farmEl = farmsDoc.querySelector(`farm[farmId="${SAVE_FARM_ID}"]`) || (SAVE_FARM_ID === '1' ? farmsDoc.querySelector('farm') : null);
                 if (farmEl) loanVal = farmEl.getAttribute('loan');
             }
             if (!loanVal) loanVal = findValueInRawText(careerText, 'loan');
@@ -7305,7 +7357,7 @@ function readGameSave(pathToFile) {
                 const bcDoc = new DOMParser().parseFromString(fs.readFileSync(bankCreditPath, 'utf-8'), "text/xml");
                 let bcTotal = 0, bcMonthly = 0, bcCount = 0;
                 bcDoc.querySelectorAll('bankcredit > loan').forEach(loanEl => {
-                    if (loanEl.getAttribute('farmId') !== '1' || loanEl.getAttribute('paidOff') === 'true') return;
+                    if (loanEl.getAttribute('farmId') !== SAVE_FARM_ID || loanEl.getAttribute('paidOff') === 'true') return;
                     const rest = parseFloat(loanEl.getAttribute('restAmount'));
                     if (isNaN(rest) || rest <= 0) return;
                     bcTotal += rest;
@@ -7351,7 +7403,7 @@ function readGameSave(pathToFile) {
         if (fs.existsSync(vehiclesPath)) {
             const vehiclesXml = fs.readFileSync(vehiclesPath, 'utf-8');
             const vehiclesDoc = new DOMParser().parseFromString(vehiclesXml, "text/xml");
-            const playerVehicles = vehiclesDoc.querySelectorAll('vehicle[farmId="1"]');
+            const playerVehicles = vehiclesDoc.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`);
             result.equipment = playerVehicles.length;
         }
 
@@ -7363,7 +7415,7 @@ function readGameSave(pathToFile) {
             const bySpecies = {};
             const production = {};
             const buildings = [];
-            const playerPlaceables = placeablesDoc.querySelectorAll('placeable[farmId="1"]');
+            const playerPlaceables = placeablesDoc.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`);
 
             playerPlaceables.forEach(placeable => {
                 const clustersEl = placeable.querySelector('husbandryAnimals');
@@ -7505,8 +7557,9 @@ window.openPlanner = function (id) {
 // Shared by openPlanner (one-shot on open) and the real-time auto-sync loop.
 function applyGameSaveToFarm(farm) {
     if (!farm || !farm.saveGamePath) return false;
+    let changed = resolveGameFarmId(farm);
+    useSaveFarm(farm);
     const gameData = readGameSave(farm.saveGamePath);
-    let changed = false;
 
     if (gameData.balance && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
     if (gameData.gameYear !== null && gameData.gameYear !== farm.yearNumber) {
@@ -9119,8 +9172,21 @@ function renderAnimalModsInfo(farm) {
     box.innerHTML = html;
 }
 
+// Settings: which farm of a multiplayer save is yours. Hidden for a save
+// with a single farm (single player).
+function renderGameFarmChoice(farm) {
+    const row = document.getElementById('game-farm-row');
+    const select = document.getElementById('game-farm-select');
+    if (!row || !select) return;
+    const farms = farm && farm.saveGamePath ? listSaveFarms(farm.saveGamePath) : [];
+    row.hidden = farms.length < 2;
+    const current = gameFarmIdOf(farm);
+    select.innerHTML = farms.map(f =>
+        `<option value="${escapeHtml(f.id)}" ${f.id === current ? 'selected' : ''}>${escapeHtml(f.name || t('gameFarmUnnamed'))} (#${escapeHtml(f.id)})</option>`).join('');
+}
+
 function refreshFarmlandInfo(farm) {
-    FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath) : null;
+    FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath, gameFarmIdOf(farm)) : null;
 }
 
 // Land plot area behind a field key ("12" or combined "12-13"), or null.
@@ -9148,6 +9214,7 @@ if (settingsBtn) {
             modsDirInfo.title = dirs.join('\n');
         }
         renderAnimalModsInfo(farm);
+        renderGameFarmChoice(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         if (cropsLoadedInfo) {
@@ -9406,11 +9473,22 @@ if (saveSettingsBtn) {
         if (gameSavePathInput) {
             const pathToFile = gameSavePathInput.value.trim().replace(/"/g, '');
             if (pathToFile && fs.existsSync(pathToFile)) {
-                const newData = readGameSave(pathToFile);
                 const allFarms = getAllFarms();
                 const idx = allFarms.findIndex(f => f.id === currentFarmId);
                 if (idx > -1) {
-                    allFarms[idx].saveGamePath = pathToFile;
+                    const target = allFarms[idx];
+                    const gameFarmRow = document.getElementById('game-farm-row');
+                    const gameFarmSelect = document.getElementById('game-farm-select');
+                    if (target.saveGamePath !== pathToFile) {
+                        // Another save: pick its farm again from scratch.
+                        delete target.gameFarmId;
+                        target.saveGamePath = pathToFile;
+                        resolveGameFarmId(target);
+                    } else if (gameFarmRow && !gameFarmRow.hidden && gameFarmSelect && gameFarmSelect.value) {
+                        target.gameFarmId = gameFarmSelect.value;
+                    }
+                    useSaveFarm(target);
+                    const newData = readGameSave(pathToFile);
                     if (newData.balance) allFarms[idx].balance = newData.balance;
                     if (newData.month) allFarms[idx].month = newData.month;
                     if (newData.loan !== null) allFarms[idx].loan = newData.loan;
