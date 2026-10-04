@@ -122,6 +122,12 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        loadFieldsFromGame: "FIELDS FROM GAME",
+        loadFieldsFromGameHint: "Add your fields from the savegame, fill in their area and mark what's already sown",
+        loadFieldsTitle: "Fields from the game",
+        loadFieldsNoSave: "Couldn't read the fields from the savegame (fields.xml / farmland.xml).",
+        loadFieldsDone: "Added fields: {a}. Area filled in from the game: {h}. Marked sown: {s}.",
+        loadFieldsKeptManual: "{n} field(s) keep the area you typed (it differs from the game's).",
         restoreFieldsLabel: "Earlier versions of the fields table:",
         restoreFieldsBtn: "RESTORE",
         restoreFieldsTitle: "Restore the fields table?",
@@ -131,6 +137,7 @@ const TRANSLATIONS = {
         "backupAction_pre-edit": "before editing",
         "backupAction_post-edit": "after saving",
         "backupAction_pre-restore": "before a restore",
+        "backupAction_pre-import": "before fields from game",
         undoNewSeason: "UNDO NEW SEASON {n}",
         undoNewSeasonTitle: "Take back season {n}?",
         undoNewSeasonBody: "The farm goes back to season {c} with its fields and fertilization plans as they were before the new season. Anything changed in season {n} since then is lost.",
@@ -759,6 +766,12 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        loadFieldsFromGame: "POLA Z GRY",
+        loadFieldsFromGameHint: "Dodaj swoje pola z zapisu gry, uzupełnij ich powierzchnię i zaznacz, co już obsiane",
+        loadFieldsTitle: "Pola z gry",
+        loadFieldsNoSave: "Nie udało się odczytać pól z zapisu gry (fields.xml / farmland.xml).",
+        loadFieldsDone: "Dodane pola: {a}. Powierzchnia uzupełniona z gry: {h}. Oznaczone jako obsiane: {s}.",
+        loadFieldsKeptManual: "Pola z wpisaną ręcznie powierzchnią (inną niż w grze) zostają bez zmian: {n}.",
         restoreFieldsLabel: "Wcześniejsze wersje tabeli pól:",
         restoreFieldsBtn: "PRZYWRÓĆ",
         restoreFieldsTitle: "Przywrócić tabelę pól?",
@@ -768,6 +781,7 @@ const TRANSLATIONS = {
         "backupAction_pre-edit": "przed edycją",
         "backupAction_post-edit": "po zapisie",
         "backupAction_pre-restore": "przed przywróceniem",
+        "backupAction_pre-import": "przed polami z gry",
         undoNewSeason: "COFNIJ NOWY SEZON {n}",
         undoNewSeasonTitle: "Cofnąć sezon {n}?",
         undoNewSeasonBody: "Farma wróci do sezonu {c} z polami i planami nawożenia sprzed nowego sezonu. Wszystko, co zmieniono od tego czasu w sezonie {n}, przepadnie.",
@@ -8151,6 +8165,7 @@ window.renderSeasonView = function () {
 
     const displayStyle = isPastSeason ? 'none' : 'inline-block';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
+    if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
@@ -8870,7 +8885,7 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <div class="fc-cell fc-cell--area">
                             <span class="fc-label">${t('thFieldHa')}</span>
-                            <input type="text" class="edit-input field-area" value="${field.area || ''}" placeholder="0.00">
+                            <input type="text" class="edit-input field-area" value="${field.area || ''}" data-orig="${escapeHtml(String(field.area || ''))}" placeholder="0.00">
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
@@ -9161,6 +9176,75 @@ async function restoreFieldsBackup() {
 const restoreFieldsBtn = document.getElementById('restore-fields-btn');
 if (restoreFieldsBtn) restoreFieldsBtn.addEventListener('click', () => restoreFieldsBackup());
 
+// "Fields from game": fills the fields table from the savegame. Owned fields
+// missing from the table are added (number + area); rows whose area is empty
+// or came from the game get the game's area (Precision Farming's field area,
+// summed for joined numbers like "12-13"); a row whose planned crop is what's
+// growing in the game is marked sown. A hand-typed area stays — it overrides.
+// The planned crop itself is never touched: planning is the point.
+async function loadFieldsFromGame() {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    if (!farm || isEditMode) return;
+    useSaveFarm(farm);
+    const save = readSaveFields(farm);
+    if (!save.ok) { await showSeasonNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
+
+    const byId = {};
+    save.fields.forEach(f => { byId[f.id] = f; });
+    const usePfArea = modEnabled('precisionFarming');
+    const partsOf = num => String(num || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+    const counts = {};
+    (farm.fields || []).forEach(f => { const k = String(f.number || '').trim(); counts[k] = (counts[k] || 0) + 1; });
+
+    const covered = new Set();
+    let added = 0, areas = 0, sown = 0, keptManual = 0;
+    writeFieldsBackup(farm, farm.fields || [], 'pre-import');
+    (farm.fields || []).forEach(field => {
+        const ids = partsOf(field.number);
+        ids.forEach(id => covered.add(id));
+        const games = ids.map(id => byId[id]).filter(Boolean);
+        if (!games.length || games.length !== ids.length) return;
+        // Area: whole (not split) rows only — the game knows the plot, not your split.
+        const key = String(field.number || '').trim();
+        const gameHa = usePfArea && games.every(g => g.areaHa != null) ? games.reduce((s, g) => s + g.areaHa, 0) : null;
+        if (gameHa != null && counts[key] === 1) {
+            const cur = parseFloat(field.area) || 0;
+            if (!cur || field.areaSource === 'game') {
+                if (Math.abs(cur - gameHa) > 0.005 || field.areaSource !== 'game') { field.area = gameHa.toFixed(2); field.areaSource = 'game'; areas++; }
+            } else if (Math.abs(cur - gameHa) > 0.005) {
+                keptManual++;
+            }
+        }
+        // Sown: the planned crop is what's growing there in the game.
+        if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
+            field.state = 'Planted';
+            sown++;
+        }
+    });
+    save.fields.forEach(g => {
+        if (covered.has(String(g.id))) return;
+        farm.fields = farm.fields || [];
+        farm.fields.push({
+            number: String(g.id),
+            area: usePfArea && g.areaHa != null ? g.areaHa.toFixed(2) : '0',
+            areaSource: usePfArea && g.areaHa != null ? 'game' : undefined,
+            crop: '', sowingMonth: '', state: 'To Plant', tillage: null,
+            catchCrop: '', catchSowingMonth: '', rolling: false, cuts: [], manure: false, fertilizer: false
+        });
+        added++;
+    });
+    syncWeedsFromSave(farm);
+    saveFarmData(farm);
+    renderSeasonView();
+    const msg = t('loadFieldsDone').replace('{a}', added).replace('{h}', areas).replace('{s}', sown)
+        + (keptManual ? ' ' + t('loadFieldsKeptManual').replace('{n}', keptManual) : '');
+    await showSeasonNotice(t('loadFieldsTitle'), msg);
+}
+
+const loadFieldsBtn = document.getElementById('load-fields-btn');
+if (loadFieldsBtn) loadFieldsBtn.addEventListener('click', () => loadFieldsFromGame());
+
 // Reads the edit-mode table back into field objects. Rows that have data but
 // no field number come back in missingNumber (their number inputs) instead of
 // being silently dropped.
@@ -9182,6 +9266,9 @@ function collectEditedFields(farm) {
         }
         let rawArea = row.querySelector('.field-area').value || "0";
         rawArea = rawArea.replace(',', '.');
+        // An area typed by hand overrides the one from the game.
+        const areaInput = row.querySelector('.field-area');
+        const areaEdited = areaInput && areaInput.dataset.orig !== undefined && areaInput.value !== areaInput.dataset.orig;
 
         const checkbox = row.querySelector('.field-state');
         const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
@@ -9233,7 +9320,8 @@ function collectEditedFields(farm) {
             cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
             manure: row.dataset.manure === '1',
             fertilizer: row.dataset.fertilizer === '1',
-            ...(() => { try { return JSON.parse(row.dataset.extra || '{}'); } catch { return {}; } })()
+            ...(() => { try { return JSON.parse(row.dataset.extra || '{}'); } catch { return {}; } })(),
+            ...(areaEdited ? { areaSource: 'manual' } : {})
         });
 
         const sizeInput = row.querySelector('.field-size-input');
@@ -9262,6 +9350,8 @@ function setEditModeUi(on) {
     }
     const cancelBtn = document.getElementById('cancel-edit-btn');
     if (cancelBtn) cancelBtn.hidden = !on;
+    const loadBtn = document.getElementById('load-fields-btn');
+    if (loadBtn && on) loadBtn.hidden = true;
     // Starting a new season mid-edit would throw the edits away.
     if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
     if (!on) editSnapshot = null;

@@ -19,6 +19,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **New season reminder**: when a year has gone by in the game since the current season started, the app offers to start a new season (once per in-game year).
 - **Undo new season**: right after a new season, Settings (danger zone) has *Undo new season N* — it brings back the fields and fertilization plans from before and removes the archive it wrote.
 - **Restore an earlier fields table**: Settings (danger zone) lists the saved versions of the fields table (before editing / after saving, with date and field count) and puts the chosen one back; the current one is backed up first.
+- **Fields from game** button next to *Edit*: adds the fields you own in the savegame that aren't in the table yet (number and area), fills in empty areas from the game (Precision Farming's field area, summed for joined numbers like *12-13*) and marks a field sown when its planned crop is what's growing there. An area you typed yourself stays and overrides the game's; split fields keep theirs. The planned crop is never changed. The table is backed up first.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
