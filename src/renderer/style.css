@@ -463,6 +463,8 @@ body {
   text-align: center;
   padding: 0;
   margin: 0;
+  border: 0;
+  font-size: inherit;
   border-radius: var(--radius-pill);
   color: var(--color-surface);
   background-color: var(--color-primary);

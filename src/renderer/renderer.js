@@ -63,6 +63,24 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        openFarmTitle: "Open farm",
+        deleteFarmTitle: "Delete farm",
+        importNoFarmOpen: "no farm open — open a farm before importing map data",
+        importCropsDone: "{n} crop(s) from {d} growth definition(s)",
+        importCropsSaveError: "could not save the crops config ({e})",
+        importAnimalsDone: "{n} animal breed(s) with feed/water/straw needs",
+        importAnimalsSaveError: "could not save the animal needs config ({e})",
+        importReadErrors: "{n} file(s) could not be read (details in the console)",
+        importSummary: "Imported: {parts} (out of {n} XML files scanned).",
+        importNothingFound: "No crop or animal definition files found among {n} scanned XML file(s). Make sure you picked the right folder(s).",
+        filesSelected: "{n} file(s) selected",
+        saveDataError: "Couldn't save the farm data.",
+        fieldSizeHint: "Total ha of this physical field — lets the app tell you how much is left to sow",
+        addRowSplitHint: "Tip: reuse the same field number on two rows to split one field between two crops",
+        titlebarMinimize: "Minimize",
+        titlebarMaximize: "Maximize",
+        titlebarRestore: "Restore",
+        titlebarClose: "Close",
         yearFromGameHint: "In-game year, read from the savegame",
         yearManualHint: "Year counter — no savegame linked, so set it by hand",
         cancelEdit: "CANCEL",
@@ -625,6 +643,24 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        openFarmTitle: "Otwórz farmę",
+        deleteFarmTitle: "Usuń farmę",
+        importNoFarmOpen: "żadna farma nie jest otwarta — otwórz farmę przed importem danych mapy",
+        importCropsDone: "upraw: {n} z {d} definicji wzrostu",
+        importCropsSaveError: "nie udało się zapisać konfiguracji upraw ({e})",
+        importAnimalsDone: "ras zwierząt z zapotrzebowaniem na paszę/wodę/słomę: {n}",
+        importAnimalsSaveError: "nie udało się zapisać zapotrzebowania zwierząt ({e})",
+        importReadErrors: "nie udało się odczytać plików: {n} (szczegóły w konsoli)",
+        importSummary: "Zaimportowano: {parts} (przeskanowano plików XML: {n}).",
+        importNothingFound: "Wśród przeskanowanych plików XML ({n}) nie ma definicji upraw ani zwierząt. Sprawdź, czy wybrano właściwe foldery.",
+        filesSelected: "Wybrane pliki: {n}",
+        saveDataError: "Nie udało się zapisać danych farmy.",
+        fieldSizeHint: "Łączna powierzchnia tego pola w ha — dzięki niej aplikacja pokaże, ile zostało do obsiania",
+        addRowSplitHint: "Wskazówka: wpisz ten sam numer pola w dwóch wierszach, żeby podzielić pole na dwie uprawy",
+        titlebarMinimize: "Minimalizuj",
+        titlebarMaximize: "Maksymalizuj",
+        titlebarRestore: "Przywróć",
+        titlebarClose: "Zamknij",
         yearFromGameHint: "Rok w grze, odczytany z zapisu gry",
         yearManualHint: "Licznik lat — farma nie ma zapisu gry, więc ustaw go ręcznie",
         cancelEdit: "ANULUJ",
@@ -2021,7 +2057,8 @@ if (titlebarDragArea) titlebarDragArea.addEventListener('dblclick', () => ipcRen
 ipcRenderer.on('window-maximized-change', (event, isMaximized) => {
     if (!titlebarMaxBtn) return;
     titlebarMaxBtn.innerHTML = isMaximized ? '<i class="fa-solid fa-window-restore" aria-hidden="true"></i>' : '<i class="fa-solid fa-window-maximize" aria-hidden="true"></i>';
-    titlebarMaxBtn.title = isMaximized ? 'Restore' : 'Maximize';
+    titlebarMaxBtn.dataset.i18nTitle = isMaximized ? 'titlebarRestore' : 'titlebarMaximize';
+    titlebarMaxBtn.title = t(titlebarMaxBtn.dataset.i18nTitle);
 });
 
 // =============================================================
@@ -3530,7 +3567,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
         if (fert.missingPlanCount > 0) {
             html += `<p class="hub-panel-note">${t('suppliesNoPlanNote').replace('{n}', fert.missingPlanCount)}</p>`;
         }
-        const density = (parseFloat(rates.nDensity) > 0) ? parseFloat(rates.nDensity) : 0.5;
+        const density = supplyRate(rates, 'nDensity');
         html += `<p class="hub-panel-note">${t('suppliesNDensityNote').replace('{d}', density)}</p>`;
         html += `<p class="hub-panel-note">${t('suppliesSoilHint')}</p>`;
     } else {
@@ -5366,7 +5403,7 @@ function findFertPlanField(farm, planKey) {
 }
 
 function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
-    const density = (parseFloat(rates.nDensity) > 0) ? parseFloat(rates.nDensity) : 0.5;
+    const density = supplyRate(rates, 'nDensity');
     const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
     const soilMix = getFieldSoilMix(soilKey, rates);
     const targetRate = fieldNRate(cropKey, soilMix, rates);
@@ -5378,9 +5415,9 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
 
     // How many litres of manure / slurry / digestate the entered natural-N dose
     // is equivalent to, at this farm's N content per litre (Supplies rates).
-    const mN = parseFloat(rates.manureN) > 0 ? parseFloat(rates.manureN) : 0.007;
-    const sN = parseFloat(rates.slurryN) > 0 ? parseFloat(rates.slurryN) : 0.004;
-    const dN = parseFloat(rates.digestateN) > 0 ? parseFloat(rates.digestateN) : 0.0055;
+    const mN = supplyRate(rates, 'manureN');
+    const sN = supplyRate(rates, 'slurryN');
+    const dN = supplyRate(rates, 'digestateN');
     const orgVol = { manure: orgRate / mN, slurry: orgRate / sN, digestate: orgRate / dN };
 
     return {
@@ -6357,11 +6394,8 @@ function soilMixLabel(mix) {
 }
 
 const SUPPLY_GLOBAL_DEFAULTS = {
-    mode: 'pf',              // 'pf' = nitrogen in kg N; 'basic' = plain litres/ha
     bufferPct: 5,            // reserve added on top of every total
-    limeRate: '',            // flat l/ha of lime per application; blank => per-soil (fieldLimeRate)
     nDensity: 0.22,          // kg of N per litre of the fertilizer you buy (PF)
-    basicFertRate: 400,      // litres/ha of generic fertilizer when mode = basic
     assumeAllFertilized: true,
     // kg of nitrogen per litre of organic fertilizer — tuned to this farm's
     // actual products (solid manure 5 kg N/t, slurry 4 kg N/m³, digestate
@@ -6372,6 +6406,13 @@ const SUPPLY_GLOBAL_DEFAULTS = {
     slurryN: 0.004,
     digestateN: 0.0055
 };
+
+// A positive number from the farm's rates, or the built-in default when the
+// setting is blank / zero — the one fallback every calculation shares.
+function supplyRate(rates, key) {
+    const v = parseFloat(rates && rates[key]);
+    return v > 0 ? v : SUPPLY_GLOBAL_DEFAULTS[key];
+}
 
 // Supply-rate overrides (per-crop seed/N, per-field soil mixes, the global
 // knobs) are per-farm — stored on the farm's data.json so they ride along with
@@ -6827,7 +6868,7 @@ function saveFarmData(farmData, { touch = true } = {}) {
     if (touch) farmData.lastEdited = new Date().toISOString();
 
     try { fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8'); }
-    catch (err) { alert("Error saving data!"); }
+    catch (err) { console.error('saveFarmData failed', err); alert(t('saveDataError')); }
 }
 
 // Absolute path to a farm's own data folder (named after its id).
@@ -8508,7 +8549,7 @@ function buildFieldEditCard(field, opts) {
                         </div>
                     </div>
                     <div class="field-card-foot">
-                        <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="Total ha of this physical field — lets the app tell you how much is left to sow" style="display:none;">
+                        <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="${t('fieldSizeHint')}" style="display:none;">
                         <span class="split-hint"></span>
                     </div>
                 </div>
@@ -8537,7 +8578,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="Tip: reuse the same field number on two rows to split one field between two crops">
+            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
@@ -9319,7 +9360,7 @@ if (browseCropsBtn && cropsFolderPicker && cropsFolderInput) {
 
         // Best-effort friendly label for the picked root folder — purely
         // cosmetic, falls back to a file count if it can't be derived.
-        let rootLabel = `${files.length} file(s) selected`;
+        let rootLabel = t('filesSelected').replace('{n}', files.length);
         try {
             const first = files[0];
             const absPath = first.path || (webUtils ? webUtils.getPathForFile(first) : "");
@@ -9348,7 +9389,7 @@ if (browseAnimalDefsBtn && animalDefsFolderPicker && animalDefsFolderInput) {
         if (!files || files.length === 0) return;
         pendingAnimalDefFiles = files;
 
-        let rootLabel = `${files.length} file(s) selected`;
+        let rootLabel = t('filesSelected').replace('{n}', files.length);
         try {
             const first = files[0];
             const absPath = first.path || (webUtils ? webUtils.getPathForFile(first) : "");
@@ -9407,7 +9448,7 @@ if (saveSettingsBtn) {
             const importFarm = getCurrentFarm();
 
             if (!importFarm) {
-                summaryParts.push(`no farm open — open a farm before importing map data`);
+                summaryParts.push(t('importNoFarmOpen'));
             } else {
                 if (cropCount > 0) {
                     const generatedPath = path.join(farmDir(importFarm), 'crops_config.json');
@@ -9428,9 +9469,9 @@ if (saveSettingsBtn) {
                         });
                         fs.writeFileSync(generatedPath, JSON.stringify(merged, null, 2), 'utf-8');
                         importFarm.cropsSourceLabel = cropsFolderInput ? cropsFolderInput.value : "";
-                        summaryParts.push(`${cropCount} crop(s) from ${cropsFound} growth definition(s)`);
+                        summaryParts.push(t('importCropsDone').replace('{n}', cropCount).replace('{d}', cropsFound));
                     } catch (err) {
-                        summaryParts.push(`could not save crops config (${err.message || err})`);
+                        summaryParts.push(t('importCropsSaveError').replace('{e}', err.message || err));
                         console.error('Could not save crops_config.json', err);
                     }
                 }
@@ -9448,9 +9489,9 @@ if (saveSettingsBtn) {
                         importFarm.animalDefsSourceLabel = animalDefsFolderInput ? animalDefsFolderInput.value : "";
                         // Remembered so they're re-read on every start (see refreshAnimalDefsFromSource).
                         importFarm.animalDefsFiles = [...new Set([...(importFarm.animalDefsFiles || []), ...animalFiles])];
-                        summaryParts.push(`${animalDefCount} animal breed(s) with feed/water/straw needs`);
+                        summaryParts.push(t('importAnimalsDone').replace('{n}', animalDefCount));
                     } catch (err) {
-                        summaryParts.push(`could not save animal needs config (${err.message || err})`);
+                        summaryParts.push(t('importAnimalsSaveError').replace('{e}', err.message || err));
                         console.error('Could not save animal_needs_config.json', err);
                     }
                 }
@@ -9464,13 +9505,13 @@ if (saveSettingsBtn) {
             }
 
             if (readErrors.length > 0) {
-                summaryParts.push(`${readErrors.length} file(s) could not be read (see console for details)`);
+                summaryParts.push(t('importReadErrors').replace('{n}', readErrors.length));
             }
 
             if (summaryParts.length > 0) {
-                alert(`Imported: ${summaryParts.join('; ')} (out of ${xmlCount} XML files scanned).`);
+                alert(t('importSummary').replace('{parts}', summaryParts.join('; ')).replace('{n}', xmlCount));
             } else {
-                alert(`No recognizable crop or animal definition files found among ${xmlCount} XML file(s) scanned. Make sure you selected the right folder(s).`);
+                alert(t('importNothingFound').replace('{n}', xmlCount));
             }
             pendingCropFiles = null;
             pendingAnimalDefFiles = null;
@@ -9578,8 +9619,8 @@ function renderFarmList(farms) {
         const item = document.createElement('div');
         item.className = 'farm-item';
         const actionButton = deleteMode
-            ? `<p class="delete-btn-circle" onclick="prepareDelete('${farm.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></p>`
-            : `<p class="select-btn" onclick="openPlanner('${farm.id}')"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></p>`;
+            ? `<button type="button" class="delete-btn-circle" onclick="prepareDelete('${farm.id}')" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+            : `<button type="button" class="select-btn" onclick="openPlanner('${farm.id}')" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
 
         item.innerHTML = `
             <div class="farm-details">
@@ -9797,7 +9838,7 @@ window.prepareDelete = function (id) {
     if (modal) {
         modal.style.display = 'flex';
     } else {
-        alert("Błąd. Nie znaleziono modalu usunięcia w index.html. Ustaw ID okienka na 'confirm-delete-modal'.");
+        console.error('prepareDelete: #confirm-delete-modal is missing from index.html');
     }
 };
 
