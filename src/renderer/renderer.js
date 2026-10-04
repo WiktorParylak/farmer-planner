@@ -63,6 +63,13 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        cancelEdit: "CANCEL",
+        discardEditsTitle: "Discard changes?",
+        discardEditsBody: "You have unsaved changes in the fields table. They will be lost.",
+        discardEditsConfirm: "Discard changes",
+        discardEditsKeep: "Keep editing",
+        missingFieldNumberTitle: "Field number missing",
+        missingFieldNumberBody: "Some rows have a crop or area but no field number — they're highlighted. Enter a number or remove those rows, then save again.",
         season: "Season",
         thFieldNo: "Field No.",
         thFieldHa: "Field Ha",
@@ -616,6 +623,13 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        cancelEdit: "ANULUJ",
+        discardEditsTitle: "Odrzucić zmiany?",
+        discardEditsBody: "Masz niezapisane zmiany w tabeli pól. Zostaną utracone.",
+        discardEditsConfirm: "Odrzuć zmiany",
+        discardEditsKeep: "Edytuj dalej",
+        missingFieldNumberTitle: "Brak numeru pola",
+        missingFieldNumberBody: "Niektóre wiersze mają uprawę albo powierzchnię, ale nie mają numeru pola — są podświetlone. Wpisz numer albo usuń te wiersze i zapisz ponownie.",
         season: "Sezon",
         thFieldNo: "Nr Pola",
         thFieldHa: "Ha Pola",
@@ -7553,8 +7567,7 @@ window.openPlanner = function (id) {
 
         if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason || 1}`;
 
-        isEditMode = false;
-        if (editSeasonBtn) { editSeasonBtn.innerText = t('edit'); editSeasonBtn.style.backgroundColor = ""; editSeasonBtn.style.color = ""; }
+        setEditModeUi(false);
 
         viewedSeason = farm.currentSeason || 1;
         renderSeasonView();
@@ -7744,7 +7757,7 @@ function showAutoSyncToast() {
     }, 2500);
 }
 
-if (exitBtn) exitBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
+if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 if (backBtn) backBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
 // Fields of one season: the archive (seasons/season_N.json) for a past
@@ -7803,7 +7816,7 @@ window.renderSeasonView = function () {
 
     const displayStyle = isPastSeason ? 'none' : 'inline-block';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
-    if (newSeasonBtn) newSeasonBtn.style.display = displayStyle;
+    if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
     updateDiscordPresence();
@@ -8624,6 +8637,133 @@ window.addNewFieldRow = function () {
     if (numInput) numInput.focus();
 };
 
+// Reads the edit-mode table back into field objects. Rows that have data but
+// no field number come back in missingNumber (their number inputs) instead of
+// being silently dropped.
+function collectEditedFields(farm) {
+    const fields = [];
+    const fieldSizes = { ...(farm.fieldSizes || {}) };
+    const missingNumber = [];
+
+    fieldsBody.querySelectorAll('tr').forEach(row => {
+        const numInput = row.querySelector('.field-number');
+        if (!numInput) return;
+        if (!numInput.value.trim()) {
+            // A row with something filled in but no field number would be
+            // dropped on save — report it instead of losing it silently.
+            const cropSel = row.querySelector('.field-crop');
+            const areaInput = row.querySelector('.field-area');
+            if ((cropSel && cropSel.value) || (areaInput && areaInput.value.trim())) missingNumber.push(numInput);
+            return;
+        }
+        let rawArea = row.querySelector('.field-area').value || "0";
+        rawArea = rawArea.replace(',', '.');
+
+        const checkbox = row.querySelector('.field-state');
+        const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
+
+        const limeChip = row.querySelector('.treatment-chip--lime');
+        const plowedChip = row.querySelector('.tillage-switch-option--plowed');
+        const noTillChip = row.querySelector('.tillage-switch-option--notill');
+
+        let tillage = null;
+        if (plowedChip && plowedChip.classList.contains('is-active')) tillage = 'plowed';
+        else if (noTillChip && noTillChip.classList.contains('is-active')) tillage = 'noTill';
+
+        // If the lime chip is on (active or still showing the red
+        // warning), keep whichever season/pH it was originally
+        // applied at — don't reset the clock just because the
+        // season got saved. Only a fresh off->on click resets both
+        // to "now, ideal pH".
+        let limeAppliedSeason = null;
+        let limePh = null;
+        if (limeChip && (limeChip.classList.contains('is-active') || limeChip.classList.contains('is-warning'))) {
+            const original = limeChip.dataset.limeSeason ? parseInt(limeChip.dataset.limeSeason) : null;
+            const isFresh = original === null || isNaN(original);
+            limeAppliedSeason = isFresh ? (farm.currentSeason || 1) : original;
+            // dataset.limePh was stamped from resolveLimePh() at render time, so
+            // it's already correct even for a field that predates this pH model.
+            const originalPh = limeChip.dataset.limePh !== '' ? parseFloat(limeChip.dataset.limePh) : null;
+            limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
+        }
+
+        const catchCropSelect = row.querySelector('.field-catch-crop');
+        const catchCrop = catchCropSelect ? catchCropSelect.value : '';
+
+        fields.push({
+            number: numInput.value,
+            area: rawArea,
+            crop: row.querySelector('.field-crop').value,
+            sowingMonth: row.querySelector('.field-sow').value,
+            rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
+            catchCrop: catchCrop,
+            catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
+            state: stateValue,
+            tillage: tillage,
+            limeAppliedSeason: limeAppliedSeason,
+            limePh: limePh,
+            // Manure/fertilizer toggles moved to the per-field fertilization
+            // plan; the edit card no longer shows them, so just carry
+            // through whatever was already on the field when edit mode
+            // opened (stamped onto the row as data attributes).
+            cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
+            manure: row.dataset.manure === '1',
+            fertilizer: row.dataset.fertilizer === '1'
+        });
+
+        const sizeInput = row.querySelector('.field-size-input');
+        if (sizeInput && sizeInput.value) {
+            const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
+            if (!isNaN(parsedSize)) fieldSizes[numInput.value.trim()] = parsedSize;
+        }
+    });
+    return { fields, fieldSizes, missingNumber };
+}
+
+// JSON of the edit table as it was right after entering edit mode — Cancel and
+// leaving the planner only ask for confirmation when the table differs from it.
+let editSnapshot = null;
+
+function editTableSnapshot(farm) {
+    const { fields, fieldSizes } = collectEditedFields(farm);
+    return JSON.stringify({ fields, fieldSizes });
+}
+
+function setEditModeUi(on) {
+    isEditMode = on;
+    if (editSeasonBtn) {
+        editSeasonBtn.innerText = t(on ? 'saveChanges' : 'edit');
+        editSeasonBtn.classList.toggle('is-saving', on);
+    }
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) cancelBtn.hidden = !on;
+    // Starting a new season mid-edit would throw the edits away.
+    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
+    if (!on) editSnapshot = null;
+}
+
+// Leaves edit mode without saving. Asks first when something was changed.
+// Resolves false if the user chose to keep editing.
+async function discardEditsIfConfirmed() {
+    if (!isEditMode) return true;
+    const farm = getCurrentFarm();
+    const dirty = farm && editSnapshot !== null && editTableSnapshot(farm) !== editSnapshot;
+    if (dirty) {
+        const ok = await showSeasonModal({
+            title: t('discardEditsTitle'),
+            body: t('discardEditsBody'),
+            confirmText: t('discardEditsConfirm'),
+            cancelText: t('discardEditsKeep'),
+            danger: true,
+            icon: 'fa-triangle-exclamation'
+        });
+        if (!ok) return false;
+    }
+    setEditModeUi(false);
+    renderSeasonView();
+    return true;
+}
+
 if (editSeasonBtn) {
     editSeasonBtn.addEventListener('click', () => {
         if (!currentFarmId) return;
@@ -8672,75 +8812,14 @@ if (editSeasonBtn) {
         if (isEditMode) {
             // >>> WYJŚCIE Z EDYCJI (ZAPIS) <<<
 
-            const rows = fieldsBody.querySelectorAll('tr');
-            const newFields = [];
-            const newFieldSizes = { ...(allFarms[idx].fieldSizes || {}) };
-
-            rows.forEach(row => {
-                const numInput = row.querySelector('.field-number');
-                if (numInput && numInput.value) {
-                    let rawArea = row.querySelector('.field-area').value || "0";
-                    rawArea = rawArea.replace(',', '.');
-
-                    const checkbox = row.querySelector('.field-state');
-                    const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
-
-                    const limeChip = row.querySelector('.treatment-chip--lime');
-                    const plowedChip = row.querySelector('.tillage-switch-option--plowed');
-                    const noTillChip = row.querySelector('.tillage-switch-option--notill');
-
-                    let tillage = null;
-                    if (plowedChip && plowedChip.classList.contains('is-active')) tillage = 'plowed';
-                    else if (noTillChip && noTillChip.classList.contains('is-active')) tillage = 'noTill';
-
-                    // If the lime chip is on (active or still showing the red
-                    // warning), keep whichever season/pH it was originally
-                    // applied at — don't reset the clock just because the
-                    // season got saved. Only a fresh off->on click resets both
-                    // to "now, ideal pH".
-                    let limeAppliedSeason = null;
-                    let limePh = null;
-                    if (limeChip && (limeChip.classList.contains('is-active') || limeChip.classList.contains('is-warning'))) {
-                        const original = limeChip.dataset.limeSeason ? parseInt(limeChip.dataset.limeSeason) : null;
-                        const isFresh = original === null || isNaN(original);
-                        limeAppliedSeason = isFresh ? (allFarms[idx].currentSeason || 1) : original;
-                        // dataset.limePh was stamped from resolveLimePh() at render time, so
-                        // it's already correct even for a field that predates this pH model.
-                        const originalPh = limeChip.dataset.limePh !== '' ? parseFloat(limeChip.dataset.limePh) : null;
-                        limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
-                    }
-
-                    const catchCropSelect = row.querySelector('.field-catch-crop');
-                    const catchCrop = catchCropSelect ? catchCropSelect.value : '';
-
-                    newFields.push({
-                        number: numInput.value,
-                        area: rawArea,
-                        crop: row.querySelector('.field-crop').value,
-                        sowingMonth: row.querySelector('.field-sow').value,
-                        rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
-                        catchCrop: catchCrop,
-                        catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
-                        state: stateValue,
-                        tillage: tillage,
-                        limeAppliedSeason: limeAppliedSeason,
-                        limePh: limePh,
-                        // Manure/fertilizer toggles moved to the per-field fertilization
-                        // plan; the edit card no longer shows them, so just carry
-                        // through whatever was already on the field when edit mode
-                        // opened (stamped onto the row as data attributes).
-                        cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
-                        manure: row.dataset.manure === '1',
-                        fertilizer: row.dataset.fertilizer === '1'
-                    });
-
-                    const sizeInput = row.querySelector('.field-size-input');
-                    if (sizeInput && sizeInput.value) {
-                        const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
-                        if (!isNaN(parsedSize)) newFieldSizes[numInput.value.trim()] = parsedSize;
-                    }
-                }
-            });
+            const { fields: newFields, fieldSizes: newFieldSizes, missingNumber } = collectEditedFields(allFarms[idx]);
+            fieldsBody.querySelectorAll('.field-number.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            if (missingNumber.length) {
+                missingNumber.forEach(el => el.classList.add('is-invalid'));
+                missingNumber[0].focus();
+                showSeasonNotice(t('missingFieldNumberTitle'), t('missingFieldNumberBody'), true);
+                return;
+            }
 
             // 1. Zapisz nowe dane do farmy
             allFarms[idx].fields = newFields;
@@ -8750,12 +8829,8 @@ if (editSeasonBtn) {
             // 2. ZRÓB BACKUP "POST-EDIT" (stan po zmianach)
             createBackup(newFields, "post-edit");
 
+            setEditModeUi(false);
             renderSeasonView();
-
-            isEditMode = false;
-            editSeasonBtn.innerText = t('edit');
-            editSeasonBtn.style.backgroundColor = "transparent";
-            editSeasonBtn.style.color = "var(--color-black)";
 
         } else {
             // >>> WEJŚCIE W TRYB EDYCJI <<<
@@ -8765,14 +8840,17 @@ if (editSeasonBtn) {
             createBackup(farm.fields || [], "pre-edit");
 
             renderEditTableWithDropdowns(farm.fields || []);
-            isEditMode = true;
-
-            editSeasonBtn.innerText = t('saveChanges');
-            editSeasonBtn.style.backgroundColor = "var(--color-black)";
-            editSeasonBtn.style.color = "var(--color-white)";
+            setEditModeUi(true);
+            editSnapshot = editTableSnapshot(farm);
         }
     });
 }
+
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+if (cancelEditBtn) cancelEditBtn.addEventListener('click', () => { discardEditsIfConfirmed(); });
+if (fieldsBody) fieldsBody.addEventListener('input', e => {
+    if (e.target.classList && e.target.classList.contains('field-number')) e.target.classList.remove('is-invalid');
+});
 
 // =============================================================
 // SECTION 7: CROPS SUMMARY SIDEBAR
@@ -8926,15 +9004,6 @@ function showSeasonNotice(title, body, isError = false) {
     });
 }
 
-function resetEditSeasonButton() {
-    isEditMode = false;
-    if (editSeasonBtn) {
-        editSeasonBtn.innerText = t('edit');
-        editSeasonBtn.style.backgroundColor = "transparent";
-        editSeasonBtn.style.color = "var(--color-black)";
-    }
-}
-
 // Crops that keep growing for years once sown — "New Season" carries them
 // over (still planted) instead of clearing the field.
 const PERENNIAL_CROPS = FEED_GRASSLAND_CROPS;
@@ -8953,6 +9022,7 @@ function cropKeepsLime(crop) {
 if (newSeasonBtn) {
     newSeasonBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
+        if (!(await discardEditsIfConfirmed())) return;
 
         const startFarm = getAllFarms().find(f => f.id === currentFarmId);
         if (!startFarm) return;
@@ -9037,7 +9107,7 @@ if (newSeasonBtn) {
             farm.currentSeason = currentSeasonNum + 1;
             saveFarmData(farm);
 
-            resetEditSeasonButton();
+            setEditModeUi(false);
             viewedSeason = farm.currentSeason;
             renderSeasonView();
 
@@ -9053,6 +9123,7 @@ if (newSeasonBtn) {
 if (resetSeasonsBtn) {
     resetSeasonsBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
+        if (!(await discardEditsIfConfirmed())) return;
 
         const confirmReset = await showSeasonModal({
             title: t('resetSeasonsTitle'),
@@ -9085,7 +9156,7 @@ if (resetSeasonsBtn) {
         saveFarmData(farm);
 
         viewedSeason = 1;
-        resetEditSeasonButton();
+        setEditModeUi(false);
         renderSeasonView();
 
         await showSeasonNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));

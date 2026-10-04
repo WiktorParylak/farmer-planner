@@ -578,6 +578,9 @@ body {
 }
 
 .import-backup-link {
+  background: none;
+  border: 0;
+  padding: 0;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
@@ -1869,6 +1872,17 @@ th.is-sortable[aria-sort="descending"]::after {
   border: 1.5px solid var(--color-border-strong);
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+/* Edit mode: the Edit button turns into a filled "Save changes". */
+.edit-season-btn.is-saving {
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  border-color: var(--color-ink);
+}
+
+.cancel-edit-btn[hidden] {
+  display: none;
 }
 
 .reset-btn {
@@ -6167,4 +6181,10 @@ button.table-chip-toggle:hover {
 
 .anim-view .barn-tile-grid {
   margin: 0;
+}
+
+/* Edit mode: row with data but no field number (save refused). */
+.field-number.is-invalid {
+  border-color: var(--color-rust);
+  box-shadow: 0 0 0 2px rgba(166, 69, 43, 0.25);
 }
