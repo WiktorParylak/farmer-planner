@@ -180,83 +180,85 @@
             <div class="modal-content">
                 <h3 data-i18n="settingsTitle">Settings</h3>
 
-                <p data-i18n="farmMapLabel">Map for this farm:</p>
-                <input type="text" id="settings-map-name" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                <section class="settings-group">
+                    <h4 data-i18n="settingsGroupSave">Savegame</h4>
+                    <label class="settings-field">
+                        <span data-i18n="farmMapLabel">Map for this farm:</span>
+                        <input type="text" id="settings-map-name" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                    </label>
+                    <div class="settings-field">
+                        <span data-i18n="gameSavePathLabel">Game Save Path (careerSavegame.xml):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml">
+                            <button id="browse-save-btn" class="settings-btn settings-browse" type="button">...</button>
+                        </div>
+                        <p id="mods-dir-info" class="settings-hint"></p>
+                    </div>
+                    <div id="game-farm-row" class="settings-field" hidden>
+                        <span data-i18n="gameFarmLabel">Your farm in this savegame:</span>
+                        <select id="game-farm-select"></select>
+                    </div>
+                    <label class="settings-check">
+                        <input type="checkbox" id="auto-sync-toggle">
+                        <span><span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
+                            <small id="auto-sync-hint" data-i18n="autoSyncHint">The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.</small></span>
+                    </label>
+                </section>
 
-                <p data-i18n="gameSavePathLabel">Game Save Path (careerSavegame.xml):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml"
-                        style="margin: 0; flex-grow: 1;">
-                    <button id="browse-save-btn" class="settings-btn" type="button"
-                        style="min-width: 40px; cursor: pointer;">...</button>
-                </div>
-                <p id="mods-dir-info" class="animal-mods-note" style="margin-top: 4px;"></p>
-                <div id="game-farm-row" hidden>
-                    <p data-i18n="gameFarmLabel">Your farm in this savegame:</p>
-                    <select id="game-farm-select"></select>
-                </div>
-                <p data-i18n="grasslandLimitLabel">Plough up grassland after (seasons):</p>
-                <input type="number" id="grassland-limit-input" min="1" max="30" step="1" value="4">
-                <p data-i18n="currencyLabel">Currency:</p>
-                <select id="currency-select">
-                    <option value="auto" data-i18n="currencyAuto">Same as in the game</option>
-                    <option value="€">€</option>
-                    <option value="$">$</option>
-                    <option value="£">£</option>
-                </select>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
-                    <input type="checkbox" id="auto-sync-toggle" style="width:auto; margin:0; flex:0 0 auto;">
-                    <span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
-                </label>
-                <p id="auto-sync-hint" data-i18n="autoSyncHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
-                    The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.
-                </p>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
-                    <input type="checkbox" id="farmland-area-toggle" style="width:auto; margin:0; flex:0 0 auto;">
-                    <span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
-                </label>
-                <p data-i18n="farmlandAreaHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
-                    Counted from the map like the game does (field plus margins); needs the savegame and the map mod.
-                </p>
-                <p data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="crops-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
-                        style="margin: 0; flex-grow: 1;">
+                <section class="settings-group">
+                    <h4 data-i18n="settingsGroupPlanner">Planner</h4>
+                    <div class="settings-grid">
+                        <label class="settings-field">
+                            <span data-i18n="grasslandLimitLabel">Plough up grassland after (seasons):</span>
+                            <input type="number" id="grassland-limit-input" min="1" max="30" step="1" value="4">
+                        </label>
+                        <label class="settings-field">
+                            <span data-i18n="currencyLabel">Currency:</span>
+                            <select id="currency-select">
+                                <option value="auto" data-i18n="currencyAuto">Same as in the game</option>
+                                <option value="€">€</option>
+                                <option value="$">$</option>
+                                <option value="£">£</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="settings-check">
+                        <input type="checkbox" id="farmland-area-toggle">
+                        <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
+                            <small data-i18n="farmlandAreaHint">Counted from the map like the game does (field plus margins); needs the savegame and the map mod.</small></span>
+                    </label>
+                </section>
 
-                    <button id="browse-crops-btn" class="settings-btn"
-                        style="min-width: 40px; cursor: pointer;">...</button>
+                <section class="settings-group">
+                    <h4 data-i18n="animalModsLabel">Mods the app reads:</h4>
+                    <div id="animal-mods-info" class="animal-mods-info"></div>
+                </section>
 
-                    <input type="file" id="crops-folder-picker" webkitdirectory directory multiple
-                        style="display: none;">
-                </div>
-                <p id="crops-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
-                <p data-i18n="cropsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
-                    Pick the map's root folder (or any folder above the crop files) — subfolders are scanned
-                    automatically, so it doesn't matter whether the crop XML files sit together or scattered
-                    across separate folders.
-                </p>
+                <details id="settings-advanced" class="settings-group settings-advanced">
+                    <summary data-i18n="settingsAdvanced">Advanced: map and animal folders</summary>
+                    <div class="settings-field">
+                        <span data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="crops-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly>
+                            <button id="browse-crops-btn" class="settings-btn settings-browse" type="button">...</button>
+                            <input type="file" id="crops-folder-picker" webkitdirectory directory multiple style="display: none;">
+                        </div>
+                        <p id="crops-loaded-info" class="settings-hint"></p>
+                        <p class="settings-hint" data-i18n="cropsFolderHint">Pick the map's root folder — subfolders are scanned automatically.</p>
+                    </div>
+                    <div class="settings-field">
+                        <span data-i18n="animalDefsFolderLabel">Animal definitions folder (game's animals.xml):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="animal-defs-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly>
+                            <button id="browse-animal-defs-btn" class="settings-btn settings-browse" type="button">...</button>
+                            <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple style="display: none;">
+                        </div>
+                        <p id="animal-defs-loaded-info" class="settings-hint"></p>
+                        <p class="settings-hint" data-i18n="animalDefsFolderHint">Usually in the base game's install folder, not your map folder.</p>
+                    </div>
+                </details>
 
-                <p data-i18n="animalDefsFolderLabel">Animal definitions folder (game's animals.xml):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="animal-defs-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
-                        style="margin: 0; flex-grow: 1;">
-
-                    <button id="browse-animal-defs-btn" class="settings-btn"
-                        style="min-width: 40px; cursor: pointer;">...</button>
-
-                    <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple
-                        style="display: none;">
-                </div>
-                <p id="animal-defs-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
-                <p data-i18n="animalDefsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
-                    This is usually in the base game's install folder, not your map folder — separate from
-                    Crops above since they're often in completely different places.
-                </p>
-
-                <p data-i18n="animalModsLabel">Animal mods in this savegame:</p>
-                <div id="animal-mods-info" class="animal-mods-info"></div>
-
-                <div id="settings-supply-adjust"></div>
+                <div id="settings-supply-adjust" class="settings-group"></div>
 
                 <div class="settings-danger-zone">
                     <p data-i18n="dangerZoneLabel">Danger zone</p>
