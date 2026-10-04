@@ -137,7 +137,7 @@ const TRANSLATIONS = {
         add: "Add",
         areYouSure: "Are you sure?",
         newSeasonTitle: "Start season {n}?",
-        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown.",
+        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown. Fertilization plans start over.",
         newSeasonConfirm: "Start season {n}",
         newSeasonDoneTitle: "Season {n}",
         newSeasonDone: "Season {c} is archived. Welcome to season {n}!",
@@ -345,7 +345,7 @@ const TRANSLATIONS = {
         suppliesAdjust: "Adjust rates",
         suppliesBuffer: "Reserve buffer (%)",
         suppliesNDensity: "Fertilizer N content (kg N / l)",
-        suppliesAssumeAllFert: "Assume every crop gets fertilized",
+        suppliesAssumeAllFert: "Count every crop field, not only fields with a fertilization plan",
         suppliesPerCropRates: "Per-crop rates",
         suppliesResetRates: "Reset to defaults",
         suppliesEstimateNote: "Defaults are estimates for a full season at high yield. Tune them to your map, mods and Precision Farming's on-field readout.",
@@ -376,7 +376,7 @@ const TRANSLATIONS = {
         fertPlanTreatmentsTitle: "Treatments",
         fertPlanManureApplied: "Manure / slurry applied",
         fertPlanFertilizerApplied: "Synthetic fertilizer applied",
-        fertPlanTreatmentsNote: "These checkmarks feed the Supplies shopping list — they don't change the nitrogen numbers above.",
+        fertPlanTreatmentsNote: "Once synthetic fertilizer is applied, the field drops off the Supplies shopping list. These checkmarks don't change the nitrogen numbers above.",
 
         hubNotes: "Notes",
         notesTitle: "Notes",
@@ -697,7 +697,7 @@ const TRANSLATIONS = {
         add: "Dodaj",
         areYouSure: "Czy na pewno?",
         newSeasonTitle: "Rozpocząć sezon {n}?",
-        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane.",
+        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane. Plany nawożenia zaczynają się od nowa.",
         newSeasonConfirm: "Rozpocznij sezon {n}",
         newSeasonDoneTitle: "Sezon {n}",
         newSeasonDone: "Sezon {c} zarchiwizowany. Witaj w sezonie {n}!",
@@ -905,7 +905,7 @@ const TRANSLATIONS = {
         suppliesAdjust: "Dostosuj stawki",
         suppliesBuffer: "Zapas bezpieczeństwa (%)",
         suppliesNDensity: "Zawartość N w nawozie (kg N / l)",
-        suppliesAssumeAllFert: "Zakładaj nawożenie każdej uprawy",
+        suppliesAssumeAllFert: "Licz każde pole z uprawą, nie tylko pola z planem nawożenia",
         suppliesPerCropRates: "Stawki per uprawa",
         suppliesResetRates: "Przywróć domyślne",
         suppliesEstimateNote: "Domyślne wartości to szacunki dla pełnego sezonu przy wysokim plonie. Dostosuj je do swojej mapy, modów i odczytu Precision Farming na polu.",
@@ -936,7 +936,7 @@ const TRANSLATIONS = {
         fertPlanTreatmentsTitle: "Zabiegi",
         fertPlanManureApplied: "Zastosowano obornik / gnojówkę",
         fertPlanFertilizerApplied: "Zastosowano nawóz sztuczny",
-        fertPlanTreatmentsNote: "Te znaczniki zasilają listę zakupów w Zaopatrzeniu — nie zmieniają wyliczeń azotu powyżej.",
+        fertPlanTreatmentsNote: "Po zastosowaniu nawozu sztucznego pole znika z listy zakupów w Zaopatrzeniu. Te znaczniki nie zmieniają wyliczeń azotu powyżej.",
 
         hubNotes: "Notatki",
         notesTitle: "Notatki",
@@ -6477,13 +6477,16 @@ function buildSuppliesFertRows(farm, rates) {
         const area = parseFloat(f.area) || 0;
         const displayNumber = (f.number || '').toString().trim() || ('#' + (i + 1));
         const hasCrop = !!crop && area > 0;
-        const eligible = hasCrop && (rates.assumeAllFertilized || f.fertilizer);
-        if (!eligible) return;
-
         const soilKey = fertPlanSoilKey(f, i);
         const planKey = fertPlanKey(f, i);
         const saved = rates.fertPlan && rates.fertPlan[planKey];
         const hasPlan = !!(saved && ((parseFloat(saved.existingN) > 0) || (parseFloat(saved.orgN) > 0)));
+
+        // f.fertilizer = synthetic fertilizer already applied this season, so
+        // there's nothing left to buy for it. Otherwise every crop field counts,
+        // or — with "assume every crop" off — only fields with a plan filled in.
+        const eligible = hasCrop && !f.fertilizer && (rates.assumeAllFertilized || hasPlan);
+        if (!eligible) return;
 
         if (!hasPlan) {
             rows.push({ number: displayNumber, crop, area, hasPlan: false, planKey, soilKey, displayNumber });
@@ -9066,7 +9069,8 @@ if (newSeasonBtn) {
                 balance: farm.balance,
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
-                avgHealth: archivedAvgHealth
+                avgHealth: archivedAvgHealth,
+                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}))
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
@@ -9103,6 +9107,9 @@ if (newSeasonBtn) {
                 field.manure = false;
                 field.fertilizer = false;
             });
+            // Fertilization plans ("N already in the soil", natural N) belong to
+            // the season just archived — a new crop on the same field starts clean.
+            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
             farm.currentSeason = currentSeasonNum + 1;
             saveFarmData(farm);
