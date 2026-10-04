@@ -138,7 +138,7 @@ const TRANSLATIONS = {
         cropsFolderLabel: "Crops folder (map's uprawaX.xml / fruitType files):",
         cropsFolderHint: "Usually not needed — when the farm is linked to a savegame, the map mod's crops (and their order in the game menu) are read automatically. Pick a folder only for a map the app can't read (base-game map, missing mod) or to override a crop's calendar; subfolders are scanned automatically.",
         noFolderSelected: "No folder selected",
-        autoSyncLabel: "Auto-sync with the savegame while playing",
+        autoSyncLabel: "Auto-sync this farm with the savegame while playing",
         autoSyncHint: "The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously. Lower the autosave interval in-game for fresher data.",
         autoSyncedToast: "Synced from savegame",
         saveAndImport: "SAVE & IMPORT",
@@ -715,7 +715,7 @@ const TRANSLATIONS = {
         cropsFolderLabel: "Folder upraw (pliki uprawaX.xml / fruitType mapy):",
         cropsFolderHint: "Zwykle niepotrzebne — gdy farma jest połączona z zapisem gry, uprawy z moda mapy (i ich kolejność z menu gry) wczytują się automatycznie. Wybierz folder tylko dla mapy, której aplikacja nie odczyta (mapa podstawowa, brak moda), albo żeby nadpisać kalendarz uprawy; podfoldery są skanowane automatycznie.",
         noFolderSelected: "Nie wybrano folderu",
-        autoSyncLabel: "Automatyczna synchronizacja z zapisem gry podczas grania",
+        autoSyncLabel: "Automatyczna synchronizacja tej farmy z zapisem gry podczas grania",
         autoSyncHint: "Gra zapisuje stan na dysk tylko przy ręcznym zapisie / autozapisie, więc planer odświeża się przy każdym (auto)zapisie — nie na bieżąco. Skróć interwał autozapisu w grze, aby dane były świeższe.",
         autoSyncedToast: "Zsynchronizowano z zapisem gry",
         saveAndImport: "ZAPISZ I IMPORTUJ",
@@ -1458,7 +1458,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_i3_t: "Savegame",
     tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment, animals, feed stock, bales, mixer wagons and feed mixers. Below it shows the mods folder the app found — FSG Mod Assistant collections included.",
     tut_i4_t: "Auto-sync",
-    tut_i4_x: "Turn on to update the planner automatically every time you save in the game. The option below also shows the whole land plot area (farmland), not just the field.",
+    tut_i4_x: "On by default for a farm with a savegame: the planner updates by itself every time you save in the game. You can turn it off per farm. The option below also shows the whole land plot area (farmland), not just the field.",
     tut_i5_t: "Map crops & animals",
     tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: animal mods found in this savegame.",
     tut_i6_t: "Adjust rates",
@@ -1748,7 +1748,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_i3_t: "Zapis gry",
     tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt, zwierzęta, zapasy paszy, bele, paszowozy i mieszalnie pasz są pobierane z gry. Pod spodem widać znaleziony folder modów — także kolekcje FSG Mod Assistanta.",
     tut_i4_t: "Automatyczna synchronizacja",
-    tut_i4_x: "Włącz, żeby planer aktualizował się sam po każdym zapisie gry. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
+    tut_i4_x: "Domyślnie włączona dla farmy z zapisem gry: planer aktualizuje się sam po każdym zapisie gry. Można ją wyłączyć osobno dla każdej farmy. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
     tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: mody zwierząt znalezione w tym zapisie.",
     tut_i6_t: "Dostosuj stawki",
@@ -7649,8 +7649,11 @@ let autoSyncSeenSig = null;     // signature we've already imported
 let autoSyncPendingSig = null;  // changed-but-not-yet-stable signature
 let autoSyncToastTimer = null;
 
-function isAutoSyncEnabled() {
-    return localStorage.getItem(CONFIG_KEY_AUTO_SYNC) === '1';
+// Per farm (farm.autoSync), on by default. Farms from before this was per
+// farm follow the old app-wide switch only if it was explicitly turned off.
+function autoSyncSetting(farm) {
+    if (farm && typeof farm.autoSync === 'boolean') return farm.autoSync;
+    return localStorage.getItem(CONFIG_KEY_AUTO_SYNC) !== '0';
 }
 
 // A cheap fingerprint of the save folder: mtime + size of each relevant file.
@@ -7681,9 +7684,8 @@ function stopAutoSync() {
 
 function startAutoSync(farmId) {
     stopAutoSync();
-    if (!isAutoSyncEnabled()) return;
     const farm = getAllFarms().find(f => f.id === farmId);
-    if (!farm || !farm.saveGamePath || !fs.existsSync(farm.saveGamePath)) return;
+    if (!farm || !autoSyncSetting(farm) || !farm.saveGamePath || !fs.existsSync(farm.saveGamePath)) return;
 
     autoSyncFarmId = farmId;
     autoSyncSavePath = farm.saveGamePath;
@@ -9202,7 +9204,7 @@ if (settingsBtn) {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
         if (gameSavePathInput) gameSavePathInput.value = farm ? (farm.saveGamePath || "") : "";
         if (settingsMapNameInput) settingsMapNameInput.value = farm ? (farm.mapName || "") : "";
-        if (autoSyncToggle) autoSyncToggle.checked = isAutoSyncEnabled();
+        if (autoSyncToggle) autoSyncToggle.checked = autoSyncSetting(farm);
         const flToggle = document.getElementById('farmland-area-toggle');
         if (flToggle) flToggle.checked = !!(farm && farm.showFarmlandArea);
         const modsDirInfo = document.getElementById('mods-dir-info');
@@ -9432,7 +9434,11 @@ if (saveSettingsBtn) {
         }
 
         if (autoSyncToggle) {
-            localStorage.setItem(CONFIG_KEY_AUTO_SYNC, autoSyncToggle.checked ? '1' : '0');
+            const farm = getCurrentFarm();
+            if (farm && farm.autoSync !== autoSyncToggle.checked) {
+                farm.autoSync = autoSyncToggle.checked;
+                saveFarmData(farm);
+            }
         }
 
         if (settingsMapNameInput) {

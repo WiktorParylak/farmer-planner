@@ -16,6 +16,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - *Last edited* on the farm list changes only when you edit the farm (not on sync) and is shown in your language's date format.
 - Buttons on the start screen, the season header and the delete dialog are real buttons (keyboard and screen reader friendly).
 - Leftover English-only texts are translated: map data import summary, field tooltips, title bar buttons, save error.
+- **Auto-sync is per farm and on by default** for a farm with a savegame (it used to be one app-wide switch, off by default). A farm where you had switched it off stays off.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
