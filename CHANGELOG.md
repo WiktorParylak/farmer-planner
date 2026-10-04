@@ -22,6 +22,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
 - Nitrogen density and manure / slurry / digestate N used different fallback values in different places (0.22 vs 0.5, 0.005 vs 0.007); now one set everywhere.
+- **Monthly history after a new career**: when the farm's savegame goes back in time by a year or more (or the farm is linked to another save), the app asks whether to continue the Finance / Animals history with it or start a new one (the old one is kept in a file). Before, the charts silently stopped updating.
 
 ## 0.9.8 — 2026-10-02
 

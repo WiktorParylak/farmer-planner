@@ -63,6 +63,10 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        historyNewCareerTitle: "New career in this savegame?",
+        historyNewCareerBody: "The savegame is earlier in time than the monthly history of this farm (another save, or the career started over). Continue the history with it, or start a new one? The old history is kept in a file next to it.",
+        historyStartNew: "Start a new history",
+        historyContinue: "Continue the history",
         currencyLabel: "Currency:",
         currencyAuto: "Same as in the game",
         gameFarmLabel: "Your farm in this savegame:",
@@ -642,6 +646,10 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        historyNewCareerTitle: "Nowa kariera w tym zapisie?",
+        historyNewCareerBody: "Zapis gry jest wcześniej w czasie niż historia miesięczna tej farmy (inny zapis albo kariera od nowa). Kontynuować z nim historię czy zacząć nową? Stara historia zostanie zachowana w pliku obok.",
+        historyStartNew: "Zacznij nową historię",
+        historyContinue: "Kontynuuj historię",
         currencyLabel: "Waluta:",
         currencyAuto: "Taka jak w grze",
         gameFarmLabel: "Twoja farma w tym zapisie gry:",
@@ -2284,7 +2292,9 @@ function monthlyRowFingerprint(row) {
 // (gameData) merged onto `farm`.
 function buildMonthlyRow(farm, gameData) {
     return {
-        period: gameData.gamePeriod,
+        // monthlyPeriodOffset: set when a new career continues an existing
+        // history (see recordMonthlySnapshot), so its months follow on.
+        period: gameData.gamePeriod + (parseInt(farm.monthlyPeriodOffset, 10) || 0),
         month: FS_PERIOD_TO_MONTH[gameData.gamePeriod % 12],
         gameYear: gameData.gameYear,
         gameDay: gameData.gameDay,
@@ -2301,9 +2311,15 @@ function buildMonthlyRow(farm, gameData) {
     };
 }
 
+// A jump back of at least this many in-game months (or a different savegame
+// file) means a new career rather than an older save of the same one.
+const NEW_CAREER_PERIOD_DROP = 12;
+let monthlyHistoryPrompting = false;
+
 // Append a new month, or refresh the current month's row in place as values
-// move during that month. Never rewrites older rows and ignores a save that
-// jumped backwards in time (older save loaded) so the log can't be corrupted.
+// move during that month. Never rewrites older rows. A save that jumped
+// backwards a little (older save loaded) is ignored; a new career asks whether
+// to continue the history or start a new one.
 function recordMonthlySnapshot(farm, gameData) {
     if (!farm || !farm.folderName) return;
     if (!gameData || gameData.gamePeriod === null || gameData.gamePeriod === undefined) return;
@@ -2311,6 +2327,16 @@ function recordMonthlySnapshot(farm, gameData) {
     const rows = loadMonthlyHistory(farm);
     const last = rows[rows.length - 1];
     const row = buildMonthlyRow(farm, gameData);
+
+    if (last && row.period < last.period) {
+        const otherSave = !!farm.monthlySavePath && farm.monthlySavePath !== farm.saveGamePath;
+        if (otherSave || last.period - row.period >= NEW_CAREER_PERIOD_DROP) askAboutMonthlyHistory(farm, gameData, last);
+        return;   // older save of the same career: leave history untouched
+    }
+    if (farm.monthlySavePath !== farm.saveGamePath) {
+        farm.monthlySavePath = farm.saveGamePath;
+        saveFarmData(farm, { touch: false });
+    }
 
     if (!last || row.period > last.period) {
         rows.push(row);
@@ -2324,7 +2350,41 @@ function recordMonthlySnapshot(farm, gameData) {
             saveMonthlyHistory(farm, rows);
         }
     }
-    // row.period < last.period -> older save loaded, leave history untouched
+}
+
+// New career (or another savegame) behind a farm with a monthly history:
+// either its months continue the charts, or the old history is set aside
+// (monthly_<date>.json next to it) and the charts start over.
+async function askAboutMonthlyHistory(farm, gameData, last) {
+    if (monthlyHistoryPrompting) return;
+    monthlyHistoryPrompting = true;
+    try {
+        const startNew = await showSeasonModal({
+            title: t('historyNewCareerTitle'),
+            body: t('historyNewCareerBody'),
+            confirmText: t('historyStartNew'),
+            cancelText: t('historyContinue'),
+            icon: 'fa-chart-line'
+        });
+        const fresh = getAllFarms().find(f => f.id === farm.id);
+        if (!fresh) return;
+        if (startNew) {
+            const p = monthlyHistoryPath(fresh);
+            const stamp = new Date().toISOString().slice(0, 10);
+            try { if (p && fs.existsSync(p)) fs.renameSync(p, p.replace(/\.json$/, `_until_${stamp}.json`)); }
+            catch (err) { console.error('Could not set the monthly history aside:', err); }
+            fresh.monthlyPeriodOffset = 0;
+        } else {
+            // The new career's current month becomes the month after the last one logged.
+            fresh.monthlyPeriodOffset = last.period + 1 - gameData.gamePeriod;
+        }
+        fresh.monthlySavePath = fresh.saveGamePath;
+        saveFarmData(fresh, { touch: false });
+        recordMonthlySnapshot(fresh, gameData);
+        if (currentFarmId === fresh.id && currentPlannerView && currentPlannerView !== 'plan') openHubPanel(currentPlannerView);
+    } finally {
+        monthlyHistoryPrompting = false;
+    }
 }
 
 // Short, localized month label for a monthly row ("Aug", "Sty", ...).
