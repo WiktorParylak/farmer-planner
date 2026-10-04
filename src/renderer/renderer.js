@@ -119,9 +119,21 @@ const TRANSLATIONS = {
         thTillage: "Tillage",
         tillagePlowed: "Plowed",
         tillageNoTill: "No-till",
-        thSoil: "Soil",
+        thSoil: "Treatments",
         thHa: "Ha",
-        totalPlantedArea: "Total planted area",
+        totalPlantedArea: "Planned area",
+        grasslandLimitLabel: "Plough up grassland after (seasons):",
+        cutsGrassAge: "Grassland here for {n} season(s) in a row (plough up after {max}).",
+        sownAreaSum: "sown {ha} ha",
+        overdue: "Overdue",
+        overdueHint: "The sowing window for this crop is over and the field isn't sown",
+        grassAge: "season {n}",
+        grassAgeHint: "Grassland on this field for {n} season(s) in a row (plough it up after {max})",
+        grassAgeOverHint: "Grassland on this field for {n} seasons in a row — time to plough it up (set to {max} in Settings)",
+        weedsNone: "Weeds: nothing to do",
+        weedsNeeded: "Weeds: spray / weed this field",
+        weedsDone: "Weeds: done",
+        weedsClickHint: "click to switch",
         detailBalance: "Balance",
         detailCredit: "Credit",
         bankCreditValue: "{n} active loan(s) · {m} / month",
@@ -191,7 +203,7 @@ const TRANSLATIONS = {
         plantNow: "Plant now",
         toPlant: "To plant",
         split: "Split",
-        rotationWarning: "Same crop as last season on this field — consider rotating to keep the soil healthy",
+        rotationWarning: "Same crop as last season on this field",
         haNotAssigned: "ha not yet assigned",
         overBy: "over by",
         limeTitle: "Lime",
@@ -287,7 +299,6 @@ const TRANSLATIONS = {
         cutsTitle: "Cuts · field {field}",
         cutsIntro: "Plan each cut: month, what it's for and what's done. About {l} l per cut on this field — the feed planner counts every cut into its use.",
         cutsIntroNoYield: "Plan each cut: month, what it's for and what's done.",
-        cutsSowing: "Sowing",
         cutsCutN: "Cut {n}",
         cutsRemove: "Remove cut",
         cutsAdd: "Add cut",
@@ -724,9 +735,21 @@ const TRANSLATIONS = {
         thTillage: "Orka/Bezorka",
         tillagePlowed: "Orka",
         tillageNoTill: "Bezorka",
-        thSoil: "Gleba",
+        thSoil: "Zabiegi",
         thHa: "Ha",
-        totalPlantedArea: "Łączna obsiana powierzchnia",
+        totalPlantedArea: "Zaplanowana powierzchnia",
+        grasslandLimitLabel: "Przeorać użytek zielony po (sezonach):",
+        cutsGrassAge: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max}).",
+        sownAreaSum: "obsiane {ha} ha",
+        overdue: "Po terminie",
+        overdueHint: "Termin siewu tej uprawy minął, a pole nie jest obsiane",
+        grassAge: "{n}. sezon",
+        grassAgeHint: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max})",
+        grassAgeOverHint: "Użytek zielony na tym polu od {n} sezonów z rzędu — pora przeorać (ustawione na {max} w Ustawieniach)",
+        weedsNone: "Chwasty: nic do zrobienia",
+        weedsNeeded: "Chwasty: do oprysku / pielenia",
+        weedsDone: "Chwasty: zrobione",
+        weedsClickHint: "kliknij, żeby zmienić",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
         bankCreditValue: "aktywne kredyty: {n} · rata {m} / mies.",
@@ -796,7 +819,7 @@ const TRANSLATIONS = {
         plantNow: "Siej teraz",
         toPlant: "Do obsiania",
         split: "Podział",
-        rotationWarning: "Ta sama uprawa co w zeszłym sezonie na tym polu — rozważ zmianę dla dobra gleby",
+        rotationWarning: "Ta sama uprawa co w zeszłym sezonie na tym polu",
         haNotAssigned: "ha jeszcze nieprzypisane",
         overBy: "przekroczono o",
         limeTitle: "Wapno",
@@ -892,7 +915,6 @@ const TRANSLATIONS = {
         cutsTitle: "Pokosy · pole {field}",
         cutsIntro: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione. Z tego pola ok. {l} l z pokosu — planer pasz liczy każdy pokos do jego przeznaczenia.",
         cutsIntroNoYield: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione.",
-        cutsSowing: "Siew",
         cutsCutN: "{n}. pokos",
         cutsRemove: "Usuń pokos",
         cutsAdd: "Dodaj pokos",
@@ -6771,8 +6793,7 @@ function saveFruitToCropKey(raw) {
 //   precisionFarming.xml    -> real field area (m², from the <tillage> block)
 //   fields.xml             -> planned crop + current spray/lime level per field
 // Returns { ok, fields:[...], hasArea }; fails quietly (ok:false) when the
-// save folder or its files are missing. Also carries weedState etc. for the
-// per-field sync planned next.
+// save folder or its files are missing. weedState feeds syncWeedsFromSave.
 function readSaveFields(farm) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
@@ -6814,7 +6835,8 @@ function readSaveFields(farm) {
                 growthState,
                 sown: fruitType !== 'UNKNOWN' && fruitType !== '' && fruitType !== 'FALLOW' && growthState > 0,
                 sprayLevel: parseInt(attrOf(tag, 'sprayLevel')) || 0,
-                limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0
+                limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
+                weedState: parseInt(attrOf(tag, 'weedState')) || 0
             });
         }
         return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0 };
@@ -7818,6 +7840,28 @@ window.openPlanner = function (id) {
     }
 };
 
+// Weeds from the save (fields.xml weedState = the weed foliage state:
+// 0 none, 1-6 growing / alive, 7-9 dead after herbicide or weeding — see
+// data/foliage/weed/weed.xml). A planner field (its number may join several
+// game fields, "12-13") gets "to spray" while any of them has live weeds and
+// "done" once they're all dead. Fields without weeds keep what you set.
+// Returns true if any field changed.
+function syncWeedsFromSave(farm) {
+    const save = readSaveFields(farm);
+    if (!save.ok) return false;
+    const byId = {};
+    save.fields.forEach(f => { byId[f.id] = f.weedState; });
+    let changed = false;
+    (farm.fields || []).forEach(field => {
+        const ids = String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+        const states = ids.map(id => byId[id]).filter(s => s > 0);
+        if (!states.length) return;
+        const next = states.some(s => s <= 6) ? 'needed' : 'done';
+        if (field.weeds !== next) { field.weeds = next; changed = true; }
+    });
+    return changed;
+}
+
 // Reads the live savegame and merges any changed values into `farm`, persisting
 // to disk when something actually moved. Returns true if a field changed.
 // Shared by openPlanner (one-shot on open) and the real-time auto-sync loop.
@@ -7862,6 +7906,8 @@ function applyGameSaveToFarm(farm) {
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
+
+    if (syncWeedsFromSave(farm)) changed = true;
 
     if (changed) saveFarmData(farm, { touch: false });
 
@@ -8162,10 +8208,11 @@ window.toggleLimeChip = function (btn) {
     }
 };
 
-// Reads which crop was on each field in the season right before the one
-// being viewed, so we can flag "same crop as last season" (soil depletion
-// warning). Returns {} if there's no previous season or its archive can't
-// be read — the warning simply doesn't show rather than breaking anything.
+// Reads which crops were on each field number in the season right before the
+// one being viewed (a split field has several), so we can flag "same crop as
+// last season". FS25 has no crop-rotation bonus, so a repeat is the only
+// thing worth flagging. Returns {} if there's no previous season or its
+// archive can't be read — the warning simply doesn't show then.
 function getPreviousSeasonCropMap(farm, seasonNum) {
     const map = {};
     if (!farm || !farm.folderName || seasonNum <= 1) return map;
@@ -8177,7 +8224,7 @@ function getPreviousSeasonCropMap(farm, seasonNum) {
         const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
         (archiveData.fields || []).forEach(f => {
             const key = (f.number || '').toString().trim();
-            if (key && f.crop) map[key] = f.crop;
+            if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
         });
     } catch (err) {
         // Unreadable/corrupt archive — just skip the warning, don't crash the table.
@@ -8274,18 +8321,16 @@ function renderCutsModal() {
     document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
     const area = parseFloat(field.area) || 0;
     const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
-    document.getElementById('cuts-intro').textContent = perCut > 0
+    const ageN = grasslandSeasonCount(field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1);
+    document.getElementById('cuts-intro').textContent = (perCut > 0
         ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))
-        : t('cutsIntroNoYield');
+        : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
     const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
-    let html = `<div class="cuts-node cuts-node--sow">
-        <span class="cuts-node-label">${t('cutsSowing')}</span>
-        <select class="feed-input cuts-month" data-cut="sow">${cutsMonthOptions((field.sowingMonth || '').toUpperCase())}</select>
-    </div>`;
+    let html = '';
     cuts.forEach((c, i) => {
-        html += `<span class="cuts-link" aria-hidden="true"></span>
+        html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <div class="cuts-node${c.harvested ? ' is-done' : ''}">
             <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
             <button type="button" class="cuts-remove" data-cut="${i}" title="${t('cutsRemove')}" aria-label="${t('cutsRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -8294,7 +8339,7 @@ function renderCutsModal() {
             <div class="cuts-checks">${checks.map(([k, lbl]) => `<label><input type="checkbox" class="cuts-check" data-cut="${i}" data-key="${k}" ${c[k] ? 'checked' : ''}> ${t(lbl)}</label>`).join('')}</div>
         </div>`;
     });
-    html += `<span class="cuts-link" aria-hidden="true"></span>
+    html += `${cuts.length ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <button type="button" class="cuts-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('cutsAdd')}</button>`;
     body.innerHTML = html;
     const add = body.querySelector('.cuts-add');
@@ -8330,7 +8375,7 @@ window.openCutsModal = function (idx) {
         const el = e.target;
         const i = el.dataset.cut;
         if (el.classList.contains('cuts-month')) {
-            updateCutsField(f => { if (i === 'sow') f.sowingMonth = el.value; else f.cuts[+i].month = el.value; });
+            updateCutsField(f => { f.cuts[+i].month = el.value; });
         } else if (el.classList.contains('cuts-use')) {
             updateCutsField(f => { f.cuts[+i].use = el.value; });
         } else if (el.classList.contains('cuts-check')) {
@@ -8421,7 +8466,7 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
-    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle');
+    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
     const farm = allFarms.find(f => f.id === currentFarmId);
@@ -8433,6 +8478,11 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
     } else if (btn.classList.contains('rolling-toggle')) {
         field.rolling = !field.rolling;
+    } else if (btn.classList.contains('weeds-toggle')) {
+        // none -> to do -> done -> none
+        field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
+    } else if (btn.classList.contains('tillage-toggle')) {
+        field.tillage = field.tillage === btn.dataset.value ? null : btn.dataset.value;
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
@@ -8458,6 +8508,94 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     renderSeasonView();
 });
 
+// Fields of every archived season before `seasonNum` -> { [season]: fields }.
+function loadSeasonHistory(farm, seasonNum) {
+    const out = {};
+    for (let s = 1; s < seasonNum; s++) out[s] = loadSeasonFields(farm, s);
+    return out;
+}
+
+// Seasons in a row the same grassland crop has been on this field number,
+// counting the viewed one (1 = sown this season).
+function grasslandSeasonCount(field, history, seasonNum) {
+    const key = (field.number || '').toString().trim();
+    let n = 1;
+    for (let s = seasonNum - 1; s >= 1; s--) {
+        const prev = (history[s] || []).some(f => (f.number || '').toString().trim() === key && cropOrderKey(f.crop) === cropOrderKey(field.crop));
+        if (!prev) break;
+        n++;
+    }
+    return n;
+}
+
+// Farm setting: after how many seasons grassland should be ploughed up (default 4).
+const GRASSLAND_SEASONS_DEFAULT = 4;
+function grasslandSeasonLimit(farm) {
+    const v = parseInt(farm && farm.grasslandMaxSeasons, 10);
+    return v > 0 ? v : GRASSLAND_SEASONS_DEFAULT;
+}
+
+function grasslandAgeHtml(field, history, seasonNum, limit) {
+    if (!isPerennialCrop(field.crop)) return '';
+    const n = grasslandSeasonCount(field, history, seasonNum);
+    const over = n >= limit;
+    const title = t(over ? 'grassAgeOverHint' : 'grassAgeHint').replace('{n}', n).replace('{max}', limit);
+    return ` <span class="badge badge--grass-age${over ? ' is-over' : ''}" title="${title}">${t('grassAge').replace('{n}', n)}</span>`;
+}
+
+// Sowing window = the run of months in the crop calendar that holds the
+// planned month. Overdue: not sown and the window ended at most
+// SOWING_OVERDUE_MONTHS ago (and we're closer to its end than to its next
+// start) — further out it's more likely a plan for the next round.
+const SOWING_OVERDUE_MONTHS = 3;
+function isSowingOverdue(field, currentMonth) {
+    if (!field.crop || field.state === 'Planted' || !currentMonth) return false;
+    const cal = CROP_CALENDAR[field.crop];
+    const sow = (field.sowingMonth || '').toUpperCase();
+    if (!cal || !sow || !cal[sow]) return false;
+    const idx = m => ALL_MONTHS.indexOf(m);
+    const inWindow = m => !!cal[ALL_MONTHS[(m + 12) % 12]];
+    const cur = idx(currentMonth);
+    if (cur < 0 || inWindow(cur)) return false;
+    let end = idx(sow), start = idx(sow);
+    for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
+    for (let i = 0; i < 11 && inWindow(start - 1); i++) start--;
+    const sinceEnd = (cur - end + 24) % 12;
+    const untilStart = (start - cur + 24) % 12;
+    return sinceEnd <= SOWING_OVERDUE_MONTHS && sinceEnd <= untilStart;
+}
+
+// Small stacked bar of the field's soil types (only when its soil is known).
+const SOIL_BAR_COLORS = { loamySand: '#d9b56c', sandyLoam: '#b98a4e', loam: '#8a6141', siltyClay: '#5c4a3d' };
+function soilMixBarHtml(key) {
+    const rates = getSupplyRates();
+    if (!key || !rates.fieldSoil || !rates.fieldSoil[key]) return '';
+    const mix = getFieldSoilMix(key, rates);
+    const total = Object.values(mix).reduce((s, v) => s + v, 0);
+    if (!total) return '';
+    const parts = Object.entries(mix).map(([id, v]) => `<span style="flex:${v}; background:${SOIL_BAR_COLORS[id] || '#999'}"></span>`).join('');
+    return `<span class="soil-mix-bar" title="${escapeHtml(soilMixLabel(mix))}">${parts}</span>`;
+}
+
+// Tillage: a real switch in the current season (click again to clear).
+function tillageCellHtml(field, idx, isPastSeason) {
+    const opt = (value, cls, label) => isPastSeason
+        ? `<span class="tillage-switch-option ${cls} ${field.tillage === value ? 'is-active' : ''}">${label}</span>`
+        : `<button type="button" class="tillage-switch-option ${cls} tillage-toggle ${field.tillage === value ? 'is-active' : ''}" data-idx="${idx}" data-value="${value}">${label}</button>`;
+    return `<div class="tillage-switch${isPastSeason ? ' tillage-switch--readonly' : ''}">${opt('plowed', 'tillage-switch-option--plowed', t('tillagePlowed'))}${opt('noTill', 'tillage-switch-option--notill', t('tillageNoTill'))}</div>`;
+}
+
+// Weeds: nothing / to spray / sprayed. Cycles on click in the current season;
+// the savegame sync sets "to spray" when the game has live weeds on the field.
+function weedsChipHtml(field, idx, isPastSeason) {
+    const state = field.weeds === 'needed' || field.weeds === 'done' ? field.weeds : '';
+    const title = t(state === 'needed' ? 'weedsNeeded' : (state === 'done' ? 'weedsDone' : 'weedsNone'));
+    const cls = `treatment-chip treatment-chip--weeds${state ? ' is-' + state : ''}`;
+    const icon = '<i class="fa-solid fa-spray-can-sparkles" aria-hidden="true"></i>';
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
+}
+
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
     if (!fieldsBody) return;
@@ -8470,7 +8608,10 @@ function renderFieldsTable(fields) {
     const isPastSeason = viewedSeason < ((farm && farm.currentSeason) || 1);
 
     let htmlString = "";
-    let totalArea = 0;
+    let totalArea = 0;     // rows with a crop planned
+    let sownArea = 0;      // ...of which already sown
+    const seasonHistory = loadSeasonHistory(farm, viewedSeason);
+    const grassLimit = grasslandSeasonLimit(farm);
 
     if (fields && fields.length > 0) {
         const numberTotals = getFieldNumberTotals(fields);
@@ -8478,13 +8619,14 @@ function renderFieldsTable(fields) {
 
         sortedFields.forEach(field => {
             const area = parseFloat(field.area || 0);
-            totalArea += area;
+            if (field.crop) totalArea += area;
+            if (field.crop && field.state === 'Planted') sownArea += area;
 
             const key = (field.number || '').toString().trim();
             const group = numberTotals[key];
             const isSplit = group && group.count > 1;
 
-            const isRotationRepeat = field.crop && prevCropMap[key] && prevCropMap[key] === field.crop;
+            const isRotationRepeat = !!(field.crop && prevCropMap[key] && prevCropMap[key].some(c => cropOrderKey(c) === cropOrderKey(field.crop)));
             const rotationBadge = isRotationRepeat
                 ? ` <span class="badge badge--rotation-warn" title="${t('rotationWarning')}"><i class="fa-solid fa-rotate" aria-hidden="true"></i></span>`
                 : '';
@@ -8507,6 +8649,7 @@ function renderFieldsTable(fields) {
             }
             const plotHa = farmlandAreaForKey(key);
             if (plotHa !== null) areaCell += `<span class="ha-caption ha-caption--farmland">${t('farmlandPlot')}: ${plotHa.toFixed(2)} ha</span>`;
+            areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
 
@@ -8516,6 +8659,8 @@ function renderFieldsTable(fields) {
                 const sowMonth = field.sowingMonth ? field.sowingMonth.toUpperCase() : "";
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
+                } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
+                    stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
                 }
@@ -8556,13 +8701,8 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
-                    <td>
-                        <div class="tillage-switch tillage-switch--readonly">
-                            <span class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}">${t('tillagePlowed')}</span>
-                            <span class="tillage-switch-option tillage-switch-option--notill ${field.tillage === 'noTill' ? 'is-active' : ''}">${t('tillageNoTill')}</span>
-                        </div>
-                    </td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${grasslandAgeHtml(field, seasonHistory, viewedSeason, grassLimit)}</td>
+                    <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
@@ -8575,7 +8715,7 @@ function renderFieldsTable(fields) {
                             const rollingHtml = isPastSeason
                                 ? (field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : '')
                                 : `<button${btnAttrs} class="treatment-chip treatment-chip--rolling table-chip-toggle rolling-toggle${field.rolling ? ' is-active' : ''}" title="${t(field.rolling ? 'rollingPlanned' : 'rollingOff')} · ${t('rollingClickHint')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>`;
-                            return limeHtml + rollingHtml;
+                            return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
                     ${fertPlanCell}
@@ -8586,6 +8726,8 @@ function renderFieldsTable(fields) {
     fieldsBody.innerHTML = htmlString;
 
     if (totalSumEl) totalSumEl.innerText = totalArea.toFixed(2) + " ha";
+    const sownSumEl = document.getElementById('sown-ha-sum');
+    if (sownSumEl) sownSumEl.textContent = t('sownAreaSum').replace('{ha}', sownArea.toFixed(2));
     const farmlandSumEl = document.getElementById('farmland-ha-sum');
     if (farmlandSumEl) {
         const owned = (FARMLAND_INFO && FARMLAND_INFO.ok) ? FARMLAND_INFO.owned.filter(id => FARMLAND_INFO.areas[id] !== undefined) : [];
@@ -8631,6 +8773,14 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // single full-width <td> with a card inside. Keeping it inside a <tr> means all
 // the existing save / split-hint logic (which walks `#fields-body tr` and
 // `row.querySelector('.field-*')`) keeps working unchanged.
+// Field data the edit card has no inputs for — carried through edit mode as is.
+const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource'];
+function fieldExtras(field) {
+    const out = {};
+    FIELD_EXTRA_KEYS.forEach(k => { if (field && field[k] !== undefined) out[k] = field[k]; });
+    return out;
+}
+
 function buildFieldEditCard(field, opts) {
     opts = opts || {};
     field = field || {};
@@ -8664,7 +8814,7 @@ function buildFieldEditCard(field, opts) {
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -8960,7 +9110,8 @@ function collectEditedFields(farm) {
             // opened (stamped onto the row as data attributes).
             cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
             manure: row.dataset.manure === '1',
-            fertilizer: row.dataset.fertilizer === '1'
+            fertilizer: row.dataset.fertilizer === '1',
+            ...(() => { try { return JSON.parse(row.dataset.extra || '{}'); } catch { return {}; } })()
         });
 
         const sizeInput = row.querySelector('.field-size-input');
@@ -9354,6 +9505,7 @@ if (newSeasonBtn) {
                 field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
                 field.fertilizer = false;
+                field.weeds = null;
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
@@ -9500,6 +9652,8 @@ if (settingsBtn) {
         }
         renderAnimalModsInfo(farm);
         renderGameFarmChoice(farm);
+        const grassLimitInput = document.getElementById('grassland-limit-input');
+        if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
         const currencySelect = document.getElementById('currency-select');
         if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
@@ -9716,6 +9870,17 @@ if (saveSettingsBtn) {
             }
             pendingCropFiles = null;
             pendingAnimalDefFiles = null;
+        }
+
+        {
+            const grassLimitInput = document.getElementById('grassland-limit-input');
+            const farm = getCurrentFarm();
+            const v = grassLimitInput ? parseInt(grassLimitInput.value, 10) : NaN;
+            if (farm && v > 0 && v !== grasslandSeasonLimit(farm)) {
+                farm.grasslandMaxSeasons = v;
+                saveFarmData(farm);
+                if (!isEditMode) renderSeasonView();
+            }
         }
 
         {

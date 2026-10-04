@@ -6220,6 +6220,54 @@ button.table-chip-toggle:hover {
 }
 
 /* Edit mode: row with data but no field number (save refused). */
+.badge--overdue {
+  background-color: var(--color-rust);
+  color: var(--color-surface);
+}
+
+.badge--grass-age {
+  margin-left: 6px;
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink-soft);
+}
+
+.badge--grass-age.is-over {
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.soil-mix-bar {
+  display: flex;
+  width: 70px;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+button.tillage-switch-option {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.treatment-chip--weeds {
+  color: var(--color-ink-faint);
+}
+
+.treatment-chip--weeds.is-needed {
+  background-color: var(--color-rust);
+  border-color: var(--color-rust);
+  color: var(--color-surface);
+}
+
+.treatment-chip--weeds.is-done {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
 .field-number.is-invalid {
   border-color: var(--color-rust);
   box-shadow: 0 0 0 2px rgba(166, 69, 43, 0.25);

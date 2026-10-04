@@ -12,6 +12,10 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Mods list in Settings**: every mod the app can read — Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit, Enhanced Loan System — with whether it is in the farm's savegame and a per-farm on/off switch. Off means base-game rules for that part (e.g. Precision Farming off: flat seed rates, no soil import). Replaces the animal-mods-only list.
 - **Hire Purchasing** (FS25_HirePurchasing): vehicles bought on hire purchase count as loans — what is still owed (remaining monthly payments plus the final fee, calculated like the mod does) is added to the credit, and the Finance tile shows the deals and their monthly payment. Listed in the mods list with its own switch.
 - **Update notice**: at start-up the app checks GitHub Releases and, when a newer version is out, shows a popup with a button that opens its download page (*Later* closes it until the next start). App settings have *Check now*, the installed version and a switch to turn the start-up check off. Not shown while the tutorial runs.
+- **Weeds** (Zabiegi column): a chip per field — nothing / to spray / done, click to switch. Synced from the savegame: live weeds on the field (fields.xml *weedState* 1–6) mark it *to spray*, dead ones (7–9) *done*. Cleared with a new season.
+- **Grassland age**: grass, meadow, alfalfa and clover show how many seasons in a row they've been on the field (*season 3*), highlighted once it's time to plough up — after 4 seasons by default, set per farm in Settings. The cuts window shows it too.
+- **Overdue**: a field that isn't sown when its crop's sowing window has just ended (up to 3 months ago, from the map's crop calendar) shows a red *Overdue* instead of *To plant*.
+- **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known), with the percentages on hover.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
@@ -24,6 +28,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Auto-sync is per farm and on by default** for a farm with a savegame (it used to be one app-wide switch, off by default). A farm where you had switched it off stays off.
 - **Catch crop list** offers only real catch crops — green rye, oilseed radish and grass — instead of every crop. A catch crop saved before stays selectable.
 - **Notes fold and unfold**: a note shows its title, months, tags and checklist progress; click the title to unfold the text and checklist (notes for the current month start unfolded). Line breaks in the text are kept. Clicking a tag shows only notes with that tag.
+- The *Soil* column is now *Treatments* (it holds lime, rolling and weeds). Tillage (plowed / no-till) can be clicked straight in the table like the other chips, no Edit season needed.
+- The table footer shows the **planned** area (fields with a crop) and how much of it is **sown**, instead of one total of every row.
+- The cuts window no longer has a sowing month — only the cuts.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
@@ -31,6 +38,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Monthly history after a new career**: when the farm's savegame goes back in time by a year or more (or the farm is linked to another save), the app asks whether to continue the Finance / Animals history with it or start a new one (the old one is kept in a file). Before, the charts silently stopped updating.
 - Peas (PEA, e.g. on the Krajów map) are called *Zielony groszek* in Polish, not *Groch* — the game's crop is green peas.
 - A tag typed in a note but not confirmed with Enter is saved with the note (a comma also adds a tag).
+- The *same crop as last season* warning works for split fields (one number, two crops) — before, the second crop hid the first.
 
 ## 0.9.8 — 2026-10-02
 

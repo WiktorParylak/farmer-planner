@@ -149,6 +149,7 @@
                         <div class="table-footer-controls">
                             <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
                             <span id="total-ha-sum">0.00 ha</span>
+                            <span id="sown-ha-sum" class="farmland-ha-sum"></span>
                             <span id="farmland-ha-sum" class="farmland-ha-sum" hidden></span>
                         </div>
                     </div>
@@ -197,6 +198,8 @@
                     <p data-i18n="gameFarmLabel">Your farm in this savegame:</p>
                     <select id="game-farm-select"></select>
                 </div>
+                <p data-i18n="grasslandLimitLabel">Plough up grassland after (seasons):</p>
+                <input type="number" id="grassland-limit-input" min="1" max="30" step="1" value="4">
                 <p data-i18n="currencyLabel">Currency:</p>
                 <select id="currency-select">
                     <option value="auto" data-i18n="currencyAuto">Same as in the game</option>
