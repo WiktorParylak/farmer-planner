@@ -378,6 +378,7 @@ const TRANSLATIONS = {
         cutsOpenHint: "Open the cuts plan",
         feedUseCuts: "by cuts ({n})",
         rollingOff: "No rolling planned",
+        rollingDone: "Rolled",
         rollingClickHint: "click to switch",
         limeClickHint: "click to lime / undo",
         limeConfirmTitle: "Lime field {field}?",
@@ -1062,6 +1063,7 @@ const TRANSLATIONS = {
         cutsOpenHint: "Otwórz plan pokosów",
         feedUseCuts: "wg pokosów ({n})",
         rollingOff: "Wałowanie niezaplanowane",
+        rollingDone: "Wałowanie zrobione",
         rollingClickHint: "kliknij, żeby przełączyć",
         limeClickHint: "kliknij, żeby wapnować / cofnąć",
         limeConfirmTitle: "Wapnowanie pola {field}",
@@ -1500,7 +1502,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c6_t: "Combined fields",
     tut_c6_x: "A number like \"5-6\" means several physical fields farmed as one row.",
     tut_c7_t: "Tillage",
-    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click the chip to switch plowed → no-till → none, right in the table. The chip in the next column is rolling — click it to plan or clear it.",
+    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click the chip to switch plowed → no-till → none, right in the table. The chip in the next column is rolling — like weeds, a click switches it: to roll (red) → rolled (green) → none.",
     tut_c8_t: "Lime",
     tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
@@ -1800,7 +1802,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c6_t: "Pola łączone",
     tut_c6_x: "Numer w stylu „5-6” oznacza kilka fizycznych pól uprawianych jako jeden wiersz.",
     tut_c7_t: "Uprawa gleby",
-    tut_c7_x: "Orka (bursztynowa) albo bezorka (zielona) — co planujesz zrobić przed siewem. Kliknij chip, żeby przełączyć orka → bezorka → brak, od razu w tabeli. Chip w następnej kolumnie to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
+    tut_c7_x: "Orka (bursztynowa) albo bezorka (zielona) — co planujesz zrobić przed siewem. Kliknij chip, żeby przełączyć orka → bezorka → brak, od razu w tabeli. Chip w następnej kolumnie to wałowanie — jak chwasty, kliknięcie przełącza: do zrobienia (czerwony) → zrobione (zielony) → brak.",
     tut_c8_t: "Wapno",
     tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone, poplon i ryż go nie obniżają. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
     tut_c9_t: "Przycisk nawożenia",
@@ -8552,7 +8554,7 @@ window.openCutsModal = function (idx) {
                 f.cuts[+i][el.dataset.key] = el.checked;
                 // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
                 if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
-                if (el.dataset.key === 'rolled') f.rolling = f.cuts.some(c => c.rolled);
+                if (el.dataset.key === 'rolled') { f.rolling = f.cuts.some(c => c.rolled); f.rollingDone = f.rolling; }
             });
         }
     });
@@ -8696,7 +8698,7 @@ window.openWorkModal = function (idx) {
             // Sowing done = the field is sown.
             if (work[i].step === 'sow') field.state = e.target.checked ? 'Planted' : 'To Plant';
             if (work[i].step === 'weeds') field.weeds = e.target.checked ? 'done' : field.weeds;
-            if (work[i].step === 'roll' && e.target.checked) field.rolling = true;
+            if (work[i].step === 'roll') { if (e.target.checked) field.rolling = true; field.rollingDone = e.target.checked; }
         });
     });
     listEl.addEventListener('click', e => {
@@ -8777,7 +8779,10 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     if (btn.classList.contains('state-toggle')) {
         field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
     } else if (btn.classList.contains('rolling-toggle')) {
-        field.rolling = !field.rolling;
+        // none -> to roll -> rolled -> none
+        if (!field.rolling) { field.rolling = true; field.rollingDone = false; }
+        else if (!field.rollingDone) field.rollingDone = true;
+        else { field.rolling = false; field.rollingDone = false; }
     } else if (btn.classList.contains('weeds-toggle')) {
         // none -> to do -> done -> none
         field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
@@ -8885,6 +8890,17 @@ function tillageCellHtml(field, idx, isPastSeason) {
     return isPastSeason
         ? `<span class="${cls}">${label}</span>`
         : `<button type="button" class="${cls} tillage-toggle" data-idx="${idx}" title="${t('tillageClickHint')}">${label}</button>`;
+}
+
+// Rolling: nothing / to roll (field.rolling) / rolled (field.rollingDone) —
+// same three states and colours as weeds. Cycles on click in the current season.
+function rollingChipHtml(field, idx, isPastSeason) {
+    const state = field.rolling ? (field.rollingDone ? 'done' : 'needed') : '';
+    const title = t(state === 'needed' ? 'rollingPlanned' : (state === 'done' ? 'rollingDone' : 'rollingOff'));
+    const cls = `treatment-chip treatment-chip--rolling${state ? ' is-' + state : ''}`;
+    const icon = '<i class="fa-solid fa-grip-lines" aria-hidden="true"></i>';
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle rolling-toggle" data-idx="${idx}" title="${title} · ${t('rollingClickHint')}">${icon}</button>`;
 }
 
 // Weeds: nothing / to spray / sprayed. Cycles on click in the current season;
@@ -9014,9 +9030,7 @@ function renderFieldsTable(fields) {
                                 <span class="lime-fill"></span>
                                 <span class="lime-letter">${t('limeLetter')}</span>
                             </${tag}>`;
-                            const rollingHtml = isPastSeason
-                                ? (field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : '')
-                                : `<button${btnAttrs} class="treatment-chip treatment-chip--rolling table-chip-toggle rolling-toggle${field.rolling ? ' is-active' : ''}" title="${t(field.rolling ? 'rollingPlanned' : 'rollingOff')} · ${t('rollingClickHint')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>`;
+                            const rollingHtml = rollingChipHtml(field, origIdx, isPastSeason);
                             return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
@@ -9076,7 +9090,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // the existing save / split-hint logic (which walks `#fields-body tr` and
 // `row.querySelector('.field-*')`) keeps working unchanged.
 // Field data the edit card has no inputs for — carried through edit mode as is.
-const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource'];
+const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource', 'rollingDone'];
 function fieldExtras(field) {
     const out = {};
     FIELD_EXTRA_KEYS.forEach(k => { if (field && field[k] !== undefined) out[k] = field[k]; });
@@ -9682,6 +9696,8 @@ function collectEditedFields(farm) {
             ...(areaEdited ? { areaSource: 'manual' } : {}),
             lease: readLeaseInputs(row, farm)
         });
+        const added = fields[fields.length - 1];
+        if (!added.rolling) added.rollingDone = false;
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {
@@ -10052,6 +10068,7 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
                 field.rolling = false;
+                field.rollingDone = false;
                 field.cuts = [];
                 // limeAppliedSeason is intentionally left untouched — it's
                 // display-only metadata now (see limePh below for the actual

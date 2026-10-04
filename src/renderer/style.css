@@ -5735,11 +5735,17 @@ select:focus-visible,
   outline-offset: 2px;
 }
 
-/* Rolling planned chip next to lime. */
-.treatment-chip--rolling.is-active {
-  background-color: var(--color-primary-soft);
+/* Rolling: to roll (rust) / rolled (green) — same as the weeds chip. */
+.treatment-chip--rolling.is-needed {
+  background-color: var(--color-rust);
+  border-color: var(--color-rust);
+  color: var(--color-surface);
+}
+
+.treatment-chip--rolling.is-done {
+  background-color: var(--color-primary);
   border-color: var(--color-primary);
-  color: var(--color-primary-dark);
+  color: var(--color-surface);
 }
 
 /* Lime chip switched on in Edit season: make the "on" state obvious. */
