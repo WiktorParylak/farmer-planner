@@ -1,6 +1,6 @@
 FARMER PLANNER — ANALIZA UX, LOGIKI I ROZWIĄZAŃ BEZ SENSU
 ========================================================
-Data: 2026-10-03
+Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04)
 Wersja kodu: gałąź v0.9.8 (src/ identyczne z main)
 Metoda: przeczytany kod (renderer.js, index.html, main.js, moduły pomocnicze).
 Aplikacja NIE była uruchamiana — wszystko poniżej wynika z kodu. Numery linii
@@ -11,36 +11,25 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 
 
 ----------------------------------------------------------------------------
-0. NAJWAŻNIEJSZE (TOP 12)
+0. NAJWAŻNIEJSZE (TOP 7)
 ----------------------------------------------------------------------------
  1. Aplikacja czyta savegame, ale samej tabeli pól z niego NIE wypełnia.
     Uprawa, stan, powierzchnia i numer pola wpisuje się ręcznie co sezon,
     chociaż kod do czytania fields.xml / farmland.xml / precisionFarming.xml
     już istnieje — jest martwy (readSaveFields, l. 6636).
- 2. Tryb edycji sezonu nie ma przycisku „Anuluj”. Jedyne wyjście to „Zapisz”.
-    Kliknięcie „Nowy sezon” w trakcie edycji po cichu wyrzuca niezapisane zmiany.
- 3. Pole bez numeru jest po cichu usuwane przy zapisie edycji (l. 8687).
- 4. Flaga „nawóz sztuczny zastosowany” działa odwrotnie, niż sugeruje UI:
-    przy wyłączonym „zakładaj, że wszystko nawożone” lista zakupów pokazuje
-    TYLKO pola już nawiezione (l. 6466).
- 5. Plany nawożenia (rates.fertPlan) nie są czyszczone przy nowym sezonie.
-    Ta sama uprawa na tym samym polu za rok dziedziczy stare „N już w glebie”.
- 6. Wapno: aplikacja liczy pH własnym, sztucznym modelem 0–100 % („100 % pH”),
+ 2. Wapno: aplikacja liczy pH własnym, sztucznym modelem 0–100 % („100 % pH”),
     a dawki wapna nigdzie nie trafiają na listę zakupów (kod jest, ale martwy).
- 7. Licznik „ROK” w nagłówku jest ręczny i podbijany tylko wtedy, gdy aplikacja
-    akurat „zobaczy” przejście grudzień → styczeń. Prawdziwy rok gry jest
-    wyliczany z savegame'u (gameYear) i nieużywany w nagłówku.
- 8. Racja paszowa wybierana „w oborze” jest w rzeczywistości globalna dla
+ 3. Racja paszowa wybierana „w oborze” jest w rzeczywistości globalna dla
     gatunku — zmiana w oborze A zmienia oborę B bez ostrzeżenia.
- 9. Ustawienia farmy to jeden olbrzymi modal: ścieżka save'a, mapa, auto-sync
+ 4. Ustawienia farmy to jeden olbrzymi modal: ścieżka save'a, mapa, auto-sync
     (globalny, nie per farma!), foldery upraw/zwierząt, mody, stawki nawozów —
     wszystko pod jednym „ZAPISZ I IMPORTUJ”.
-10. getAllFarms() czyta z dysku i parsuje data.json WSZYSTKICH farm przy każdym
+ 5. getAllFarms() czyta z dysku i parsuje data.json WSZYSTKICH farm przy każdym
     wywołaniu; getCurrentFarm() woła je dziesiątki razy na jeden render.
-11. Dane farmy są rozsiane po 5 miejscach i spięte tekstowym numerem pola —
+ 6. Dane farmy są rozsiane po 5 miejscach i spięte tekstowym numerem pola —
     zmiana numeru lub uprawy osieraca glebę, plan nawożenia, przeznaczenie
     paszowe i ostrzeżenie o płodozmianie.
-12. Wiele wartości domyślnych jest z mapy Solek / Twojej farmy („tuned to this
+ 7. Wiele wartości domyślnych jest z mapy Solek / Twojej farmy („tuned to this
     farm”) — dla innych map i graczy liczby są po prostu nieprawdziwe.
 
 
@@ -65,30 +54,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     dostęp do totalFieldArea z PF. Import gleb nawet ostrzega, że wpisane ha
     różni się od mapy (l. 3641).
     Propozycja: domyślnie brać ha z gry, ręczna wartość jako nadpisanie.
-
-1.3 „ROK” w nagłówku
-    Co: plannerYear (index.html:64) to ręczny input; podbijany w
-    applyGameSaveToFarm tylko przy zaobserwowanym DECEMBER→JANUARY
-    (l. 7578). Jeśli aplikacja była zamknięta w grudniu, rok się nie zmieni.
-    Tymczasem readGameSave liczy gameYear z currentDay (l. 7409).
-    Do tego mamy trzecią oś czasu: „sezon” aplikacji.
-    Propozycja: rok wyłącznie z gry (read-only), ręczny tylko bez save'a.
-    Rozważ powiązanie „sezonu” z rokiem gry albo jasne wyjaśnienie różnicy.
-
-1.4 „Zmieniono” zawsze = true
-    Co: applyGameSaveToFarm ustawia changed = true dla animalBreakdown,
-    animalBuildings, feedStock, feedBales, mixerWagons bez porównania
-    (l. ~7590). Skutek: każde otwarcie farmy i każdy tick auto-sync po
-    zapisie gry = zapis data.json + toast „zsynchronizowano” + pełny render.
-    Propozycja: porównywać jak przy feedMixers (JSON.stringify) albo hash.
-
-1.5 „Ostatnia edycja” na liście farm kłamie
-    Co: saveFarmData nadpisuje lastEdited przy KAŻDYM zapisie (l. 6804),
-    a zapis dzieje się przy każdym otwarciu farmy (pkt 1.4) i każdej
-    synchronizacji. Do tego to toLocaleString() zapisany jako tekst — format
-    zależy od języka systemu w chwili zapisu.
-    Propozycja: ISO w danych, formatowanie przy wyświetlaniu, aktualizacja
-    tylko przy edycji użytkownika (lub nazwać to „Ostatnio otwarta”).
 
 1.6 Historia miesięczna zamarza po nowej karierze
     Co: recordMonthlySnapshot ignoruje wiersz z period < ostatni (l. 2288).
@@ -120,18 +85,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 2. TABELA PÓL I SEZONY — UX
 ----------------------------------------------------------------------------
-
-2.1 Brak „Anuluj” w trybie edycji
-    Co: editSeasonBtn przełącza Edytuj ↔ Zapisz zmiany (l. 8627). Nie ma
-    wyjścia bez zapisu. „Nowy sezon” i „Wyjście” w trakcie edycji po cichu
-    porzucają zmiany (resetEditSeasonButton, l. 8929).
-    Propozycja: przycisk „Anuluj” + pytanie „Masz niezapisane zmiany” przy
-    wyjściu, nowym sezonie i przełączaniu widoku. Ukryć „Nowy sezon” w edycji.
-
-2.2 Ciche gubienie danych przy zapisie
-    Co: wiersz bez numeru pola jest pomijany (l. 8687). Dodajesz pole,
-    zapominasz numeru → znika bez śladu.
-    Propozycja: walidacja z podświetleniem pola zamiast pomijania.
 
 2.3 Dwa tryby edycji naraz
     Co: w widoku tylko-do-odczytu część rzeczy klika się od razu (stan
@@ -194,23 +147,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
 ----------------------------------------------------------------------------
 
-3.1 Odwrócona logika „nawóz zastosowany”
-    Co: pole trafia na listę nawozów, jeśli assumeAllFertilized || f.fertilizer
-    (l. 6466). f.fertilizer znaczy „nawóz sztuczny ZASTOSOWANY” (tekst
-    fertPlanFertilizerApplied). Czyli:
-      - przy domyślnym „zakładaj wszystko” checkboxy nic nie zmieniają,
-        mimo że modal mówi, że „zasilają listę zakupów”;
-      - po wyłączeniu opcji na liście są tylko pola już nawiezione.
-    Propozycja: pole z f.fertilizer = true usuwać z listy (już zrobione),
-    albo zmienić znaczenie flagi na „planuję nawozić”.
-
-3.2 Plany nawożenia przeżywają sezony
-    Co: rates.fertPlan jest kluczowany "numer::uprawa" (l. 5335) i nie jest
-    czyszczony w nowym sezonie (l. ~9030 czyści tylko manure/fertilizer).
-    „N już w glebie” z zeszłego roku wróci przy tej samej uprawie.
-    Propozycja: plan nawożenia trzymać w samym obiekcie pola (sezonowo),
-    a nie w globalnych supplyRates.
-
 3.3 Wapno nie ma listy zakupów
     Co: fieldLimeRate / limeRateForSoil liczą dawki tylko dla martwego
     finalizeSupplies. Komentarz w l. 5482 przyznaje, że tabelę wapna
@@ -230,12 +166,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     Co: fertPlan.existingN to ręczne pole. PF zapisuje mapę azotu — ten sam
     mechanizm co gleby i pH.
     Propozycja: import z gry jak w 3.4.
-
-3.6 Niespójne wartości awaryjne
-    - gęstość N: domyślnie 0.22 (l. 6345), fallback w obliczeniach 0.5
-      (l. 3515, 5351) — dwukrotna różnica, gdy pole jest puste/0.
-    - obornik: domyślnie 0.005 (l. 6353), fallback 0.007 (l. 5362).
-    Propozycja: jedno źródło prawdy (SUPPLY_GLOBAL_DEFAULTS) wszędzie.
 
 3.7 Stawki „pod Solek” jako domyślne dla wszystkich
     Co: SUPPLY_SEED_RATES, CROP_YIELD_L_PER_HA, FEED_STRAW_L_PER_HA
@@ -296,13 +226,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     Propozycja: pokazywać produkcję szacowaną z krzywych (już liczona jako
     „szacowana dzienna produkcja”) albo nazwać wykres „Stan zbiornika”.
 
-4.5 Ukryta tabela jako źródło danych
-    Co: index.html:154-179 — „Farm Details” jest ukryte, ale nadal
-    wypełniane, a Finanse czytają z niego tekst (getDetailValue('detail-age'),
-    l. 2679). Ten sam stan istnieje w obiekcie farmy (farm.playTime).
-    Propozycja: usunąć ukryty blok, czytać z farmy.
-
-
 ----------------------------------------------------------------------------
 5. EKRAN STARTOWY, USTAWIENIA, ONBOARDING
 ----------------------------------------------------------------------------
@@ -342,19 +265,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     eksport, import, import upraw, błędy).
     Propozycja: jeden komponent showConfirm/showNotice.
 
-5.6 Teksty bez tłumaczeń
-    - podsumowanie importu upraw/zwierząt — po angielsku, alert (l. 9365-9372),
-    - prepareDelete — po polsku, z instrukcją dla programisty (l. 9693),
-    - tytuły „Tip: reuse the same field number…” (l. 8486),
-      „Total ha of this physical field…” (l. 8447), „Restore/Maximize”
-      w pasku tytułu (l. 2006), „N file(s) selected” (l. 9238).
-
-5.7 Przyciski, które nie są przyciskami
-    Co: „DODAJ FARMĘ”, „USUŃ FARMĘ”, „IMPORTUJ”, „NOWY SEZON”, „EDYTUJ”,
-    przyciski modala usuwania to <p> (index.html:42-45, 126-127, 376-377).
-    Nie działają z klawiatury (Tab/Enter), czytniki ekranu ich nie widzą.
-    Propozycja: <button type="button">.
-
 5.8 Notatki
     - „Bieżący miesiąc” notatek pochodzi z historii miesięcznej, nie z
       farm.month (l. 5639) — bez save'a nagłówek pokazuje miesiąc, a notatki
@@ -376,16 +286,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     feedRationOptionsHtml kilka razy na opcję). Przy farmie z dużym
     animal_needs/feedStock i kilku farmach to setki odczytów na jeden render.
     Propozycja: jedna kopia farmy w pamięci (currentFarm), zapis przy zmianie.
-
-6.2 Martwy kod
-    - finalizeSupplies, computeSeasonSuppliesFromSave, readSaveFields
-      (l. 6553-6723) — nigdzie nie wywoływane,
-    - getCropNRate (l. 6415) — tylko definicja,
-    - limeRate, basicFertRate, mode w SUPPLY_GLOBAL_DEFAULTS — komentarz
-      w l. 5482 sam mówi, że usunięte,
-    - ukryty blok „Farm Details” (pkt 4.5),
-    - backBtn (l. 5575) — elementu #back-btn nie ma w HTML.
-    Propozycja: usunąć albo (lepiej, pkt 1.1) podłączyć readSaveFields.
 
 6.3 Powielone obliczenia
     - parseMoney ×3 (l. 2117, 2242, 2648),
@@ -446,17 +346,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 8. CO BYM ZROBIŁ I W JAKIEJ KOLEJNOŚCI
 ----------------------------------------------------------------------------
-Szybkie (godzina–dwie każde, duży zysk):
-  a) „Anuluj” w edycji + ostrzeżenie o niezapisanych zmianach (2.1),
-     walidacja pustego numeru (2.2).
-  b) Naprawić odwróconą flagę nawozu (3.1) i czyścić plany N w nowym sezonie
-     (3.2).
-  c) Rok z gry zamiast ręcznego licznika (1.3).
-  d) Porównywanie zmian w applyGameSaveToFarm + sensowne lastEdited (1.4, 1.5).
-  e) Ujednolicić wartości awaryjne (3.6), przetłumaczyć brakujące teksty (5.6),
-     <p> → <button> (5.7).
-  f) Usunąć martwy kod i ukryty blok (6.2, 4.5).
-
 Średnie:
   g) Farma w pamięci zamiast getAllFarms() przy każdym dostępie (6.1).
   h) Stałe id pól i dane per pole pod tym id (6.4) — warunek dla i) i j).
