@@ -1,6 +1,6 @@
 FARMER PLANNER — ANALIZA UX, LOGIKI I ROZWIĄZAŃ BEZ SENSU
 ========================================================
-Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04)
+Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04, druga tura tego samego dnia)
 Wersja kodu: gałąź v0.9.8 (src/ identyczne z main)
 Metoda: przeczytany kod (renderer.js, index.html, main.js, moduły pomocnicze).
 Aplikacja NIE była uruchamiana — wszystko poniżej wynika z kodu. Numery linii
@@ -11,75 +11,28 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 
 
 ----------------------------------------------------------------------------
-0. NAJWAŻNIEJSZE (TOP 7)
+0. NAJWAŻNIEJSZE (TOP 6)
 ----------------------------------------------------------------------------
- 1. Aplikacja czyta savegame, ale samej tabeli pól z niego NIE wypełnia.
-    Uprawa, stan, powierzchnia i numer pola wpisuje się ręcznie co sezon,
-    chociaż kod do czytania fields.xml / farmland.xml / precisionFarming.xml
-    już istnieje — jest martwy (readSaveFields, l. 6636).
- 2. Wapno: aplikacja liczy pH własnym, sztucznym modelem 0–100 % („100 % pH”),
+ 1. Wapno: aplikacja liczy pH własnym, sztucznym modelem 0–100 % („100 % pH”),
     a dawki wapna nigdzie nie trafiają na listę zakupów (kod jest, ale martwy).
- 3. Racja paszowa wybierana „w oborze” jest w rzeczywistości globalna dla
+ 2. Racja paszowa wybierana „w oborze” jest w rzeczywistości globalna dla
     gatunku — zmiana w oborze A zmienia oborę B bez ostrzeżenia.
- 4. Ustawienia farmy to jeden olbrzymi modal: ścieżka save'a, mapa, auto-sync
-    (globalny, nie per farma!), foldery upraw/zwierząt, mody, stawki nawozów —
+ 3. Ustawienia farmy to jeden olbrzymi modal: ścieżka save'a, mapa, auto-sync,
+    foldery upraw/zwierząt, mody, stawki nawozów —
     wszystko pod jednym „ZAPISZ I IMPORTUJ”.
- 5. getAllFarms() czyta z dysku i parsuje data.json WSZYSTKICH farm przy każdym
+ 4. getAllFarms() czyta z dysku i parsuje data.json WSZYSTKICH farm przy każdym
     wywołaniu; getCurrentFarm() woła je dziesiątki razy na jeden render.
- 6. Dane farmy są rozsiane po 5 miejscach i spięte tekstowym numerem pola —
+ 5. Dane farmy są rozsiane po 5 miejscach i spięte tekstowym numerem pola —
     zmiana numeru lub uprawy osieraca glebę, plan nawożenia, przeznaczenie
     paszowe i ostrzeżenie o płodozmianie.
- 7. Wiele wartości domyślnych jest z mapy Solek / Twojej farmy („tuned to this
+ 6. Wiele wartości domyślnych jest z mapy Solek / Twojej farmy („tuned to this
     farm”) — dla innych map i graczy liczby są po prostu nieprawdziwe.
 
 
 ----------------------------------------------------------------------------
 1. SYNCHRONIZACJA Z SAVEGAME'EM — CO SIĘ CZYTA, A CO NIE
 ----------------------------------------------------------------------------
-
-1.1 Tabela pól nie korzysta z save'a (najpoważniejsza luka)
-    Co: readSaveFields (l. 6636), computeSeasonSuppliesFromSave (l. 6691)
-    i finalizeSupplies (l. 6553) nie są nigdzie wywoływane. Pola, uprawy,
-    stan zasiewu i ha są wyłącznie ręczne.
-    Dlaczego źle: główny wyróżnik aplikacji („zsynchronizowany z savegame'em”)
-    nie obejmuje głównego widoku. Gracz przepisuje do planera to, co gra już wie.
-    Propozycja: przycisk „Wczytaj pola z gry” (jak „Wczytaj gleby z gry”):
-    numery z farmland.xml, ha z precisionFarming.xml (totalFieldArea),
-    obecna uprawa / growthState z fields.xml → podpowiedź stanu „zasiane”.
-    Plan (przyszła uprawa) dalej ręczny — to jest sens planera.
-
-1.2 Powierzchnia pola wpisywana ręcznie, a obok pokazywana wyliczona
-    Co: pole „ha” w edycji jest ręczne; jednocześnie aplikacja potrafi
-    policzyć powierzchnię działki z mapy (farmlandAreaForKey, l. 9130) i ma
-    dostęp do totalFieldArea z PF. Import gleb nawet ostrzega, że wpisane ha
-    różni się od mapy (l. 3641).
-    Propozycja: domyślnie brać ha z gry, ręczna wartość jako nadpisanie.
-
-1.6 Historia miesięczna zamarza po nowej karierze
-    Co: recordMonthlySnapshot ignoruje wiersz z period < ostatni (l. 2288).
-    Jeśli gracz podepnie farmę pod nowy savegame (albo zacznie od nowa),
-    wykresy finansów/stada już nigdy się nie zaktualizują — bez komunikatu.
-    Propozycja: wykryć „inny save” (np. zmiana ścieżki / gameYear spadł o dużo)
-    i zapytać: kontynuować historię czy zacząć nową.
-
-1.7 Wiele rzeczy na sztywno dla farmId="1"
-    Co: 19 miejsc w renderer.js + savegame-soil.js:335. W multiplayerze lub
-    przy farmie o innym id aplikacja pokaże puste / cudze dane.
-    Propozycja: wykryć farmId gracza (careerSavegame / farms.xml) i trzymać
-    w farm.gameFarmId.
-
-1.8 Waluta zawsze „€”
-    Co: saldo zapisywane jako tekst „1234 €” (l. 7325), potem parsowane
-    z powrotem regexem w trzech miejscach. finMoney zawsze dokleja €.
-    Gracz grający w $ / zł widzi złą walutę.
-    Propozycja: trzymać liczbę, walutę czytać z ustawień gry
-    (gameSettings.xml / careerSavegame) lub dać wybór.
-
-1.9 Auto-sync domyślnie wyłączony i ukryty
-    Co: włącznik siedzi w ustawieniach farmy, ale zapisuje się globalnie
-    w localStorage (l. 7660). Bez niego dane są aktualne tylko przy otwarciu.
-    Propozycja: włączony domyślnie, gdy jest ścieżka save'a; przenieść do
-    ustawień aplikacji albo zrobić naprawdę per farma.
+(wszystko zrobione w 0.9.9)
 
 
 ----------------------------------------------------------------------------
@@ -93,55 +46,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     przełącznik, ale nie reaguje.
     Propozycja: wybrać jeden model. Najprościej: edycja inline per wiersz
     (klik w komórkę), bez globalnego trybu edycji.
-
-2.4 Kolumna „Gleba” nie pokazuje gleby
-    Co: nagłówek thSoil, a w środku chip wapna i wału (l. 8293). Gleba
-    (typy PF) jest w osobnym widoku „Typ gleby pola”.
-    Propozycja: nazwać kolumnę „Zabiegi”, a skład gleby pokazać w tabeli
-    (np. mały pasek proporcji) — to kluczowa informacja przy planowaniu.
-
-2.5 „Łączna powierzchnia obsiana” liczy wszystko
-    Co: totalArea sumuje każdy wiersz, także bez uprawy i niezasiany
-    (l. 8222). Etykieta mówi „planted area”.
-    Propozycja: dwie liczby — „zaplanowane” i „zasiane” — albo zmienić etykietę.
-
-2.6 Brak stanu „spóźnione”
-    Co: „Siej teraz” pojawia się tylko, gdy miesiąc siewu == bieżący
-    (l. 8255). Gdy okno minęło, a pole niezasiane, wraca do zwykłego
-    „Do zasiewu”. Najważniejsza informacja („przegapiłeś”) jest niewidoczna.
-    Propozycja: stan „Po terminie” (czerwony), na podstawie kalendarza uprawy
-    (ostatni dozwolony miesiąc), a nie jednego wybranego miesiąca.
-
-2.7 Ostrzeżenie o płodozmianie psuje się przy polach dzielonych
-    Co: getPreviousSeasonCropMap (l. 7909) mapuje numer → JEDNA uprawa;
-    przy dwóch uprawach na jednym polu ostatnia nadpisuje pierwszą.
-    Porównuje też tylko dokładnie tę samą uprawę (pszenica po pszenicy),
-    a nie bonus płodozmianu z FS25.
-
-2.8 Nowy sezon jest nieodwracalny i niejasny
-    Co: archiwizuje i czyści pola bez cofnięcia; nadpisuje season_N.json bez
-    sprawdzenia, czy istnieje. „Sezon” nie jest powiązany z czasem w grze —
-    użytkownik musi sam pamiętać, kiedy kliknąć.
-    Propozycja: podpowiedź „W grze minął rok od ostatniego sezonu — zacząć
-    nowy?” na podstawie gameYear; możliwość cofnięcia ostatniego nowego sezonu.
-
-2.9 „RESETUJ SEZONY” tuż nad „WYJŚCIE”
-    Co: index.html:110-117. Akcja niszcząca całą historię jest stałym
-    elementem bocznego menu, obok najczęściej klikanego przycisku.
-    Propozycja: przenieść do ustawień farmy (strefa „niebezpieczne”).
-
-2.10 Strzałki sezonów milkną w edycji
-    Co: w trybie edycji klik w strzałkę nic nie robi (l. 7789), bez
-    informacji dlaczego. Strzałki mają też inline style, nie są przyciskami
-    (brak obsługi klawiaturą).
-
-2.11 Kopie zapasowe, których nie da się użyć
-    Co: każde wejście w edycję i każdy zapis tworzą plik w backups/
-    (l. 8636-8670) — bez limitu, bez UI do przywrócenia. Trafiają też do
-    eksportu farmy, który rośnie bez końca.
-    Propozycja: trzymać np. 20 ostatnich i dodać „Przywróć poprzednią wersję
-    pól”. Albo usunąć, skoro i tak nikt ich nie użyje.
-
 
 ----------------------------------------------------------------------------
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
@@ -348,8 +252,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 Średnie:
   g) Farma w pamięci zamiast getAllFarms() przy każdym dostępie (6.1).
-  h) Stałe id pól i dane per pole pod tym id (6.4) — warunek dla i) i j).
-  i) „Wczytaj pola z gry” (1.1, 1.2).
+  h) Stałe id pól i dane per pole pod tym id (6.4) — warunek dla j).
   j) Widok szczegółów pola zamiast 5 rozproszonych miejsc (3.8).
   k) Kreator nowej farmy z wyborem savegame'u (5.1), podział ustawień (5.2).
 
