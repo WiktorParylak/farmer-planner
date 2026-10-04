@@ -607,6 +607,7 @@ const TRANSLATIONS = {
         modDesc_eas: "milk and feed by lactation after calving",
         modDesc_animalPackage: "feed curves when AnimalFoodCalculator follows the Animal Package",
         modDesc_bankCredit: "bank loans and monthly payment",
+        modDesc_hirePurchasing: "vehicles bought on hire purchase — what is still owed counts as a loan",
         modDesc_els: "separate loans instead of the game's single loan",
         fieldSoilImportNoPf: "Needs Precision Farming in the savegame (switched on in Settings).",
         afcModeLine: "mode {mode}: feed ×{x}; curves: {src}",
@@ -1198,6 +1199,7 @@ const TRANSLATIONS = {
         modDesc_eas: "mleko i pasza wg laktacji po porodzie",
         modDesc_animalPackage: "krzywe paszy, gdy AnimalFoodCalculator korzysta z Animal Package",
         modDesc_bankCredit: "kredyty bankowe i miesięczna rata",
+        modDesc_hirePurchasing: "maszyny kupione na raty — pozostała do spłaty kwota liczy się jako kredyt",
         modDesc_els: "osobne kredyty zamiast jednej pożyczki z gry",
         fieldSoilImportNoPf: "Wymaga Precision Farming w zapisie gry (włączonego w Ustawieniach).",
         afcModeLine: "tryb {mode}: pasza ×{x}; krzywe: {src}",
@@ -7358,6 +7360,7 @@ const SUPPORTED_MODS = [
     { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
+    { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -7526,6 +7529,42 @@ function readGameSave(pathToFile) {
                 result.bankCredit = { count: bcCount, total: Math.round(bcTotal), monthly: Math.round(bcMonthly) };
             } catch (err) {
                 console.warn('Could not read bankCredit.xml', err);
+            }
+        }
+        // Hire Purchasing (FS25_HirePurchasing) finances vehicles: each deal in
+        // leaseDeals.xml is paid monthly (annuity at a rate set by the deposit
+        // share, LeaseDeal:getInterestRate / getMonthlyPayment) plus a final
+        // fee. What's still owed (LeaseDeal:getRemainingCost) counts as a loan.
+        const leaseDealsPath = path.join(saveFolder, 'leaseDeals.xml');
+        if (/<mod\b[^>]*modName="FS25_HirePurchasing"/.test(careerText) && !SAVE_DISABLED_MODS.has('hirePurchasing') && fs.existsSync(leaseDealsPath)) {
+            try {
+                const hpXml = fs.readFileSync(leaseDealsPath, 'utf-8');
+                let hpTotal = 0, hpMonthly = 0, hpCount = 0;
+                for (const m of hpXml.matchAll(/<deal\s[^>]*>/g)) {
+                    const num = name => parseFloat((m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1]);
+                    if (String(num('farmId')) !== SAVE_FARM_ID) continue;
+                    const cost = num('baseCost'), deposit = num('deposit') || 0, months = num('durationMonths');
+                    const finalFee = num('finalFee') || 0, paid = num('monthsPaid') || 0;
+                    if (!(cost > 0) || !(months > 0)) continue;
+                    const share = deposit / cost;
+                    const rate = share <= 0.051 ? 0.05 : share <= 0.11 ? 0.04 : share <= 0.21 ? 0.035 : share <= 0.31 ? 0.0295 : 0.025;
+                    const r = rate / 12, g = Math.pow(1 + r, months);
+                    const monthly = (cost - deposit - finalFee / g) * (r * g) / (g - 1);
+                    const left = Math.max(0, months - paid);
+                    const remaining = monthly * left + finalFee;
+                    if (remaining <= 0) continue;
+                    hpTotal += remaining;
+                    if (left > 0) hpMonthly += monthly;
+                    hpCount++;
+                }
+                if (hpCount) {
+                    loanVal = (parseFloat(loanVal) || 0) + hpTotal;
+                    const prev = result.bankCredit || { count: 0, total: 0, monthly: 0 };
+                    // bankCredit holds every mod loan summed (Finance tile: count · monthly).
+                    result.bankCredit = { count: prev.count + hpCount, total: prev.total + Math.round(hpTotal), monthly: prev.monthly + Math.round(hpMonthly) };
+                }
+            } catch (err) {
+                console.warn('Could not read leaseDeals.xml', err);
             }
         }
         if (loanVal !== null && loanVal !== undefined && loanVal !== "") result.loan = Math.round(parseFloat(loanVal));
@@ -7798,7 +7837,7 @@ function refreshPlannerHeader(farm) {
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
     'careerSavegame.xml', 'environment.xml', 'farms.xml',
-    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml'
+    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml'
 ];
 
 let autoSyncTimer = null;
