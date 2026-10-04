@@ -1863,7 +1863,7 @@ const CROP_NAME_TRANSLATIONS = {
         "Sunflower": "Słonecznik", "Soybean": "Soja", "Soybeans": "Soja", "Corn": "Kukurydza", "Maize": "Kukurydza", "Beetroot": "Burak czerwony", "Buckwheat": "Gryka",
         "Potato": "Ziemniaki", "Potatoes": "Ziemniaki", "Sugar Beet": "Burak Cukrowy", "Sugarbeet": "Burak Cukrowy", "Clover": "Koniczyna", "Greenbean": "Fasolka zielona",
         "Cotton": "Bawełna", "Grape": "Winogrona", "Grapes": "Winogrona", "Olive": "Oliwki", "Olives": "Oliwki", "Meadow": "Łąka", "Millet": "Proso", "Oilseedradish": "Poplon",
-        "Poplar": "Topola", "Rice": "Ryż", "Rye": "Żyto", "Triticale": "Pszenżyto", "Pea": "Groch", "Silagemaize": "Kukurydza na kiszonkę",
+        "Poplar": "Topola", "Rice": "Ryż", "Rye": "Żyto", "Triticale": "Pszenżyto", "Pea": "Zielony groszek", "Silagemaize": "Kukurydza na kiszonkę",
         "Green Beans": "Fasola Szparagowa", "Spinach": "Szpinak", "Sugarcane": "Trzcina Cukrowa",
         "Sugar Cane": "Trzcina Cukrowa", "Parsnip": "Pasternak", "Parsnips": "Pasternak", "Carrot": "Marchew",
         "Long Grain Rice": "Ryż Długoziarnisty", "Rice Long Grain": "Ryż długoziarnisty", "Ricelonggrain": "Ryż długoziarnisty",
@@ -8569,8 +8569,15 @@ function generateMonthOptionsHtml(cropName, selectedMonth) {
 
 // Every crop the farm's map offers, in the game's own menu order — plus the
 // currently selected one, so a field keeps a crop the map no longer lists.
-function cropOptionsHtml(selected, emptyLabel) {
-    const crops = [...AVAILABLE_CROPS];
+// Crops that make sense as a catch crop (międzyplon) before the main crop.
+const CATCH_CROPS = ['Greenrye', 'Oilseedradish', 'Grass'];
+function isCatchCropChoice(crop) {
+    return CATCH_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+
+// onlyCatch: list just the catch crops (a saved choice outside it stays listed).
+function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
+    const crops = AVAILABLE_CROPS.filter(c => !onlyCatch || isCatchCropChoice(c));
     if (selected && !crops.includes(selected)) crops.push(selected);
     let html = `<option value="">${emptyLabel}</option>`;
     crops.forEach(c => {
@@ -8591,7 +8598,7 @@ function buildFieldEditCard(field, opts) {
     const isSplit = !!opts.isSplit;
 
     const cropOptions = cropOptionsHtml(field.crop, t('selectPlaceholder'));
-    const catchCropOptions = cropOptionsHtml(field.catchCrop, t('catchCropNone'));
+    const catchCropOptions = cropOptionsHtml(field.catchCrop, t('catchCropNone'), true);
 
     const monthOptions = isNew
         ? `<option value="">${t('selectCropFirst')}</option>`
