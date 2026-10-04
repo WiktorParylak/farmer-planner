@@ -3134,6 +3134,10 @@ tr.field-split-row.field-lease-row {
   color: var(--color-ink);
 }
 
+.badge--lease.is-free {
+  background-color: var(--color-primary-soft);
+}
+
 .badge--lease.is-over {
   background-color: var(--color-rust);
   color: var(--color-surface);

@@ -694,6 +694,11 @@ const TRANSLATIONS = {
         modDesc_animalPackage: "feed curves when AnimalFoodCalculator follows the Animal Package",
         modDesc_bankCredit: "bank loans and monthly payment",
         modDesc_hirePurchasing: "vehicles bought on hire purchase — what is still owed counts as a loan",
+        modDesc_fieldLeasing: "leased plots marked on their fields with months, minimum term and monthly fee",
+        leaseGameBadge: "Lease · {n} mo.",
+        leaseGameHint: "Leased with Field Leasing, {fee} a month.",
+        leaseGameMinLeft: "Minimum term: {n} more month(s).",
+        leaseGameCanEnd: "Minimum term over — can be given back.",
         modDesc_els: "separate loans instead of the game's single loan",
         fieldSoilImportNoPf: "Needs Precision Farming in the savegame (switched on in Settings).",
         afcModeLine: "mode {mode}: feed ×{x}; curves: {src}",
@@ -1372,6 +1377,11 @@ const TRANSLATIONS = {
         modDesc_animalPackage: "krzywe paszy, gdy AnimalFoodCalculator korzysta z Animal Package",
         modDesc_bankCredit: "kredyty bankowe i miesięczna rata",
         modDesc_hirePurchasing: "maszyny kupione na raty — pozostała do spłaty kwota liczy się jako kredyt",
+        modDesc_fieldLeasing: "dzierżawione działki oznaczone na polach: miesiące, minimalny okres i opłata miesięczna",
+        leaseGameBadge: "Dzierżawa · {n} mies.",
+        leaseGameHint: "Dzierżawa z Field Leasing, {fee} miesięcznie.",
+        leaseGameMinLeft: "Minimalny okres: jeszcze {n} mies.",
+        leaseGameCanEnd: "Minimalny okres minął — można zdać.",
         modDesc_els: "osobne kredyty zamiast jednej pożyczki z gry",
         fieldSoilImportNoPf: "Wymaga Precision Farming w zapisie gry (włączonego w Ustawieniach).",
         afcModeLine: "tryb {mode}: pasza ×{x}; krzywe: {src}",
@@ -7586,6 +7596,7 @@ const SUPPORTED_MODS = [
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
+    { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -8043,6 +8054,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
     if (syncWeedsFromSave(farm)) changed = true;
+    if (syncLeasesFromSave(farm)) changed = true;
 
     if (changed) saveFarmData(farm, { touch: false });
 
@@ -8087,7 +8099,7 @@ function refreshPlannerHeader(farm) {
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
     'careerSavegame.xml', 'environment.xml', 'farms.xml',
-    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml'
+    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml', 'fieldLeasingAgreements.xml'
 ];
 
 let autoSyncTimer = null;
@@ -9476,11 +9488,71 @@ function readLeaseInputs(row, farm) {
     let prev = null;
     try { prev = JSON.parse(row.dataset.extra || '{}').lease || null; } catch (e) { /* none */ }
     const seasons = parseInt(row.querySelector('.field-lease-seasons').value, 10);
-    return {
+    const out = {
         since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
         seasons: seasons > 0 ? seasons : null,
         then: row.querySelector('.field-lease-then').value === 'buy' ? 'buy' : 'return'
     };
+    // A lease read from Field Leasing keeps the game's numbers (next sync refreshes them).
+    if (prev && prev.source === 'game') ['source', 'months', 'minMonths', 'monthlyFee'].forEach(k => { out[k] = prev[k]; });
+    return out;
+}
+
+// Field Leasing (FS25_FieldLeasing): <savegame>/fieldLeasingAgreements.xml
+//   <fieldLeasingAgreements priceMultiplier="%" minDuration="months">
+//     <fieldLeaseAgreement farmlandId farmId price duration="months so far"/>
+// Monthly fee = price × priceMultiplier / 100 / 12 (FieldLeasingManager:
+// getPriceMultiplier); the lease can't be ended before minDuration months.
+// -> { minMonths, byFarmland: { id: { months, monthlyFee } } } for SAVE_FARM_ID.
+function parseFieldLeasing(xml) {
+    const root = (xml.match(/<fieldLeasingAgreements\b[^>]*>/) || [''])[0];
+    const num = (tag, name) => parseFloat((tag.match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1]);
+    const mult = num(root, 'priceMultiplier');
+    const out = { minMonths: num(root, 'minDuration') || 12, byFarmland: {} };
+    for (const m of xml.matchAll(/<fieldLeaseAgreement\s[^>]*>/g)) {
+        if (String(num(m[0], 'farmId')) !== SAVE_FARM_ID) continue;
+        const id = String(num(m[0], 'farmlandId'));
+        out.byFarmland[id] = {
+            months: num(m[0], 'duration') || 0,
+            monthlyFee: (num(m[0], 'price') || 0) * ((isNaN(mult) ? 1 : mult) / 100) / 12
+        };
+    }
+    return out;
+}
+
+// Marks planner fields whose plots are leased in the game (any of the plots
+// of a joined number like "12-13"); a lease that came from the game and ended
+// there is cleared. Leases you typed in yourself stay. Returns true if changed.
+function syncLeasesFromSave(farm) {
+    if (!farm.saveGamePath || !modEnabled('fieldLeasing')) return false;
+    let leasing;
+    try {
+        leasing = parseFieldLeasing(fs.readFileSync(path.join(path.dirname(farm.saveGamePath), 'fieldLeasingAgreements.xml'), 'utf-8'));
+    } catch (e) {
+        return false;
+    }
+    let changed = false;
+    (farm.fields || []).forEach(field => {
+        const ids = String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+        const leased = ids.map(id => leasing.byFarmland[id]).filter(Boolean);
+        const prev = field.lease || null;
+        let next = prev;
+        if (leased.length) {
+            next = {
+                since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
+                seasons: prev ? prev.seasons || null : null,
+                then: prev ? prev.then || 'return' : 'return',
+                source: 'game',
+                months: Math.max(...leased.map(l => l.months)),
+                minMonths: leasing.minMonths,
+                monthlyFee: Math.round(leased.reduce((s, l) => s + l.monthlyFee, 0))
+            };
+        } else if (prev && prev.source === 'game') {
+            next = null;
+        }
+        if (JSON.stringify(next) !== JSON.stringify(prev)) { field.lease = next; changed = true; }
+    });
+    return changed;
 }
 
 // Table badge: "Lease 2/5" — season of the lease out of its length; red with
@@ -9488,6 +9560,14 @@ function readLeaseInputs(row, farm) {
 function leaseBadgeHtml(field, seasonNum) {
     const lease = field.lease;
     if (!lease) return '';
+    if (lease.source === 'game') {
+        const months = parseInt(lease.months, 10) || 0;
+        const min = parseInt(lease.minMonths, 10) || 0;
+        const left = Math.max(0, min - months);
+        const fee = finMoney(parseFloat(lease.monthlyFee) || 0);
+        const title = t('leaseGameHint').replace('{fee}', fee) + ' ' + (left ? t('leaseGameMinLeft').replace('{n}', left) : t('leaseGameCanEnd'));
+        return `<span class="badge badge--lease${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months)}</span>`;
+    }
     const n = Math.max(1, seasonNum - (lease.since || seasonNum) + 1);
     const over = lease.seasons && n >= lease.seasons;
     const text = lease.seasons ? t('leaseBadge').replace('{n}', n).replace('{m}', lease.seasons) : t('leaseBadgeOpen').replace('{n}', n);
