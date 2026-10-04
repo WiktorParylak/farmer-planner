@@ -4045,6 +4045,44 @@ select:focus-visible,
   background-color: var(--color-accent-soft);
 }
 
+.note-card.has-details .note-card-header {
+  cursor: pointer;
+}
+
+.note-card-caret {
+  font-size: 12px;
+  margin-right: 8px;
+  color: var(--color-ink-faint);
+  transition: transform 0.15s ease;
+}
+
+.note-card.is-open .note-card-caret {
+  transform: rotate(90deg);
+}
+
+.note-card-count {
+  margin-left: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-faint);
+}
+
+.note-card-details {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-card.is-open .note-card-details {
+  display: flex;
+}
+
+.note-tag-filter {
+  border: 0;
+  cursor: pointer;
+}
+
 .note-card-header {
   display: flex;
   align-items: flex-start;
@@ -4103,6 +4141,7 @@ select:focus-visible,
 }
 
 .note-card-body {
+  white-space: pre-wrap;
   font-size: 13px;
   color: var(--color-ink-soft);
   margin: 0;

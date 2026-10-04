@@ -435,7 +435,8 @@ const TRANSLATIONS = {
         notesBodyPlaceholder: "Any extra detail...",
         notesMonthsLabel: "Months",
         notesTagsLabel: "Tags",
-        notesTagsPlaceholder: "Type a tag and press Enter",
+        notesTagsPlaceholder: "Type a tag and press Enter (or a comma)",
+        notesFilterByTag: "Show only notes with this tag",
         notesChecklistLabel: "Checklist",
         notesAddChecklistItem: "+ Add item",
         notesChecklistItemPlaceholder: "Checklist item",
@@ -1039,7 +1040,8 @@ const TRANSLATIONS = {
         notesBodyPlaceholder: "Dodatkowe informacje...",
         notesMonthsLabel: "Miesiące",
         notesTagsLabel: "Tagi",
-        notesTagsPlaceholder: "Wpisz tag i naciśnij Enter",
+        notesTagsPlaceholder: "Wpisz tag i naciśnij Enter (albo przecinek)",
+        notesFilterByTag: "Pokaż tylko notatki z tym tagiem",
         notesChecklistLabel: "Checklista",
         notesAddChecklistItem: "+ Dodaj punkt",
         notesChecklistItemPlaceholder: "Punkt checklisty",
@@ -5832,8 +5834,9 @@ function renderNoteCard(note, currentMonth) {
     const monthsHtml = (note.months || []).map(m =>
         `<span class="note-month-chip${m === currentMonth ? ' note-month-chip--current' : ''}">${translateMonth(m)}</span>`
     ).join('');
+    // Tags filter the list on click (see wireNotesPanel).
     const tagsHtml = (note.tags || []).map(tg =>
-        `<span class="note-tag-chip" style="--tag-color:${noteTagColor(tg)}">${escapeHtml(tg)}</span>`
+        `<button type="button" class="note-tag-chip note-tag-filter" data-tag="${escapeHtml(tg)}" title="${t('notesFilterByTag')}" style="--tag-color:${noteTagColor(tg)}">${escapeHtml(tg)}</button>`
     ).join('');
 
     const checklist = note.checklist || [];
@@ -5848,10 +5851,15 @@ function renderNoteCard(note, currentMonth) {
                 </label>`).join('')}
         </div>` : '';
 
+    // Collapsed: title, months, tags and the checklist count. Click the title
+    // row to unfold the text and checklist. Notes for the current month start open.
+    const open = noteOpenIds.has(note.id) || (isCurrent && !noteClosedIds.has(note.id));
+    const hasDetails = !!(note.body || checklist.length);
+    const summary = checklist.length ? `<span class="note-card-count">${doneCount}/${checklist.length}</span>` : '';
     return `
-        <div class="note-card${isCurrent ? ' note-card--current-month' : ''}">
+        <div class="note-card${isCurrent ? ' note-card--current-month' : ''}${open ? ' is-open' : ''}${hasDetails ? ' has-details' : ''}" data-note-id="${escapeHtml(note.id)}">
             <div class="note-card-header">
-                <h4 class="note-card-title">${escapeHtml(note.title)}</h4>
+                <h4 class="note-card-title">${hasDetails ? '<i class="fa-solid fa-chevron-right note-card-caret" aria-hidden="true"></i>' : ''}${escapeHtml(note.title)}${open ? '' : summary}</h4>
                 <div class="note-card-actions">
                     <button type="button" class="note-card-action" title="${t('notesEdit')}" onclick="window.openNoteEditModal('${note.id}')"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
                     <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" onclick="window.deleteNote('${note.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
@@ -5859,11 +5867,18 @@ function renderNoteCard(note, currentMonth) {
             </div>
             ${isCurrent ? `<span class="note-current-badge">${t('notesCurrentMonthBadge')}</span>` : ''}
             ${monthsHtml ? `<div class="note-chip-row">${monthsHtml}</div>` : ''}
-            ${note.body ? `<p class="note-card-body">${escapeHtml(note.body)}</p>` : ''}
             ${tagsHtml ? `<div class="note-chip-row">${tagsHtml}</div>` : ''}
-            ${checklistHtml}
+            <div class="note-card-details">
+                ${note.body ? `<p class="note-card-body">${escapeHtml(note.body)}</p>` : ''}
+                ${checklistHtml}
+            </div>
         </div>`;
 }
+
+// Notes unfolded / folded by hand in this session (by id), so a re-render of
+// the list keeps them as they were.
+const noteOpenIds = new Set();
+const noteClosedIds = new Set();
 
 function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag) {
     const filtered = notes.filter(n => {
@@ -5895,6 +5910,22 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
     };
     if (monthSel) monthSel.addEventListener('change', refresh);
     if (tagSel) tagSel.addEventListener('change', refresh);
+    listEl.addEventListener('click', e => {
+        const tagBtn = e.target.closest('.note-tag-filter');
+        if (tagBtn) {
+            if (tagSel) { tagSel.value = tagSel.value === tagBtn.dataset.tag ? '' : tagBtn.dataset.tag; refresh(); }
+            return;
+        }
+        if (e.target.closest('button, input, label')) return;
+        const header = e.target.closest('.note-card-header');
+        const card = header && header.closest('.note-card.has-details');
+        if (!card) return;
+        const id = card.dataset.noteId;
+        const nowOpen = !card.classList.contains('is-open');
+        if (nowOpen) { noteOpenIds.add(id); noteClosedIds.delete(id); }
+        else { noteClosedIds.add(id); noteOpenIds.delete(id); }
+        refresh();
+    });
     if (thisMonthBtn) thisMonthBtn.addEventListener('click', () => {
         if (monthSel) monthSel.value = thisMonthBtn.dataset.month;
         refresh();
@@ -6059,17 +6090,24 @@ function closeNoteEditModal() {
 }
 
 const noteEditTagInput = document.getElementById('note-edit-tag-input');
+
+// Adds whatever is in the tag box (comma-separated allowed) to the note.
+function commitNoteTagInput() {
+    if (!noteEditTagInput || !noteEditState) return;
+    noteEditTagInput.value.split(',').map(v => v.trim()).filter(Boolean).forEach(val => {
+        if (!noteEditState.tags.includes(val)) noteEditState.tags.push(val);
+    });
+    noteEditTagInput.value = '';
+    renderNoteEditTags();
+}
+
 if (noteEditTagInput) {
     noteEditTagInput.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
+        if (e.key !== 'Enter' && e.key !== ',') return;
         e.preventDefault();
-        const val = noteEditTagInput.value.trim();
-        if (val && noteEditState && !noteEditState.tags.includes(val)) {
-            noteEditState.tags.push(val);
-            renderNoteEditTags();
-        }
-        noteEditTagInput.value = '';
+        commitNoteTagInput();
     });
+    noteEditTagInput.addEventListener('blur', commitNoteTagInput);
 }
 
 const noteEditAddItemBtn = document.getElementById('note-edit-add-item-btn');
@@ -6101,6 +6139,9 @@ if (noteEditSaveBtn) {
         const body = (bodyInput ? bodyInput.value : '').trim();
 
         const months = Array.from(document.querySelectorAll('#note-edit-months input[type="checkbox"]:checked')).map(cb => cb.value);
+
+        // A tag typed but not confirmed with Enter is still meant to be saved.
+        commitNoteTagInput();
 
         syncChecklistStateFromDom();
         const checklist = noteEditState.checklist

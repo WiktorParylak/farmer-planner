@@ -23,12 +23,14 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Leftover English-only texts are translated: map data import summary, field tooltips, title bar buttons, save error.
 - **Auto-sync is per farm and on by default** for a farm with a savegame (it used to be one app-wide switch, off by default). A farm where you had switched it off stays off.
 - **Catch crop list** offers only real catch crops — green rye, oilseed radish and grass — instead of every crop. A catch crop saved before stays selectable.
+- **Notes fold and unfold**: a note shows its title, months, tags and checklist progress; click the title to unfold the text and checklist (notes for the current month start unfolded). Line breaks in the text are kept. Clicking a tag shows only notes with that tag.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
 - Nitrogen density and manure / slurry / digestate N used different fallback values in different places (0.22 vs 0.5, 0.005 vs 0.007); now one set everywhere.
 - **Monthly history after a new career**: when the farm's savegame goes back in time by a year or more (or the farm is linked to another save), the app asks whether to continue the Finance / Animals history with it or start a new one (the old one is kept in a file). Before, the charts silently stopped updating.
 - Peas (PEA, e.g. on the Krajów map) are called *Zielony groszek* in Polish, not *Groch* — the game's crop is green peas.
+- A tag typed in a note but not confirmed with Enter is saved with the note (a comma also adds a tag).
 
 ## 0.9.8 — 2026-10-02
 
