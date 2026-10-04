@@ -355,9 +355,6 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Catch crop sowing",
         catchCropHint: "A crop grown on the same field before or after the main crop (green rye, oilseed radish…). Listed separately in the crops summary so its area isn't counted twice.",
         catchCropShort: "catch crop",
-        thRolling: "Rolling",
-        rollingWant: "I want to roll",
-        rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
         rollingPlanned: "Rolling planned",
         cutsTitle: "Cuts · field {field}",
         cutsIntro: "Plan each cut: month, what it's for and what's done. About {l} l per cut on this field — the feed planner counts every cut into its use.",
@@ -1040,9 +1037,6 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Siew międzyplonu",
         catchCropHint: "Uprawa na tym samym polu przed lub po uprawie głównej (zielone żyto, poplon…). W podsumowaniu upraw liczona osobno, żeby areał nie liczył się podwójnie.",
         catchCropShort: "międzyplon",
-        thRolling: "Wałowanie",
-        rollingWant: "chcę wałować",
-        rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
         rollingPlanned: "Wałowanie zaplanowane",
         cutsTitle: "Pokosy · pole {field}",
         cutsIntro: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione. Z tego pola ok. {l} l z pokosu — planer pasz liczy każdy pokos do jego przeznaczenia.",
@@ -8760,7 +8754,7 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
-// toggles "I want to roll" straight away; the lime chip asks first in a small
+// cycles rolling (none / to roll / rolled) straight away; the lime chip asks first in a small
 // dialog — lime a field, lime it again when it's running low, or take a
 // mistaken liming back.
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
@@ -9090,7 +9084,8 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // the existing save / split-hint logic (which walks `#fields-body tr` and
 // `row.querySelector('.field-*')`) keeps working unchanged.
 // Field data the edit card has no inputs for — carried through edit mode as is.
-const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource', 'rollingDone'];
+// Rolling is set with the chip in the table, so it rides along here too.
+const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
 function fieldExtras(field) {
     const out = {};
     FIELD_EXTRA_KEYS.forEach(k => { if (field && field[k] !== undefined) out[k] = field[k]; });
@@ -9150,10 +9145,6 @@ function buildFieldEditCard(field, opts) {
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
                             <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
-                        </label>
-                        <label class="fc-cell fc-cell--state" title="${t('rollingHint')}">
-                            <span class="fc-label">${t('thRolling')}</span>
-                            <span class="fc-check"><input type="checkbox" class="edit-input field-rolling" ${field.rolling ? 'checked' : ''}> <span class="fc-check-text">${t('rollingWant')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -9678,7 +9669,6 @@ function collectEditedFields(farm) {
             area: rawArea,
             crop: row.querySelector('.field-crop').value,
             sowingMonth: row.querySelector('.field-sow').value,
-            rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
             catchCrop: catchCrop,
             catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
             state: stateValue,
@@ -9696,8 +9686,6 @@ function collectEditedFields(farm) {
             ...(areaEdited ? { areaSource: 'manual' } : {}),
             lease: readLeaseInputs(row, farm)
         });
-        const added = fields[fields.length - 1];
-        if (!added.rolling) added.rollingDone = false;
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {

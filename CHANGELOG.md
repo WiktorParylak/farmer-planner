@@ -43,7 +43,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Field backups are capped at the newest 20 per farm (they used to pile up forever and bloat farm exports).
 - **Tutorial refreshed** for 0.9.9: new steps for the work list, weeds, grassland & currency settings, the danger zone and the update check; the table, edit, notes and new-season steps describe overdue sowing, the soil bar, leases, *Fields from game*, Cancel, folding notes and the year reminder.
 - **Simpler fields table**: the next job is a small line under the state instead of a second badge, grassland age is part of the cuts badge (*Cuts 1/2 · season 4*), a lease is a small caption under the field number, tillage is one chip that cycles plowed → no-till → none, and the plot area fits on one line — rows are lower and calmer.
-- **Rolling has three states like weeds**: the chip switches nothing → to roll (red) → rolled (green) → nothing. *I want to roll* in Edit season plans it; a cut marked *rolled* or the *Roll* job ticked in the work list marks it done. Cleared with a new season.
+- **Rolling has three states like weeds**: the chip switches nothing → to roll (red) → rolled (green) → nothing. The *I want to roll* checkbox is gone from Edit season — the chip is the only switch. A cut marked *rolled* or the *Roll* job ticked in the work list marks it done. Cleared with a new season.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
