@@ -63,6 +63,8 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        yearFromGameHint: "In-game year, read from the savegame",
+        yearManualHint: "Year counter — no savegame linked, so set it by hand",
         cancelEdit: "CANCEL",
         discardEditsTitle: "Discard changes?",
         discardEditsBody: "You have unsaved changes in the fields table. They will be lost.",
@@ -623,6 +625,8 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        yearFromGameHint: "Rok w grze, odczytany z zapisu gry",
+        yearManualHint: "Licznik lat — farma nie ma zapisu gry, więc ustaw go ręcznie",
         cancelEdit: "ANULUJ",
         discardEditsTitle: "Odrzucić zmiany?",
         discardEditsBody: "Masz niezapisane zmiany w tabeli pól. Zostaną utracone.",
@@ -1223,7 +1227,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_b2_t: "Balance & month",
     tut_b2_x: "Balance and current in-game month. Once you link a savegame (farm settings), they are read from the game automatically. \"Plant now\" badges use this month.",
     tut_b3_t: "Year",
-    tut_b3_x: "The in-game year is editable and goes up by itself when the game rolls from December to January. Change it to 3.",
+    tut_b3_x: "On a farm linked to a savegame the year comes from the game (it turns over in March, like in the game). The demo farm has no save, so here you can edit it — change it to 3.",
     tut_b4_t: "Seasons",
     tut_b4_x: "A season is one planting/harvest cycle — independent of the year. The demo farm is in season 2; season 1 is archived.",
     tut_b5_t: "Previous season",
@@ -1513,7 +1517,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_b2_t: "Saldo i miesiąc",
     tut_b2_x: "Saldo i bieżący miesiąc w grze. Po podpięciu zapisu gry (ustawienia farmy) są odczytywane automatycznie. Oznaczenia „Siej teraz” opierają się na tym miesiącu.",
     tut_b3_t: "Rok",
-    tut_b3_x: "Rok w grze można edytować, a przy przejściu z grudnia na styczeń zwiększa się sam. Zmień go na 3.",
+    tut_b3_x: "Na farmie połączonej z zapisem gry rok pochodzi z gry (zmienia się w marcu, tak jak w grze). Farma demo nie ma zapisu, więc tu można go edytować — zmień go na 3.",
     tut_b4_t: "Sezony",
     tut_b4_x: "Sezon to jeden cykl siewu i zbioru — niezależny od roku. Farma demo jest w sezonie 2, a sezon 1 jest w archiwum.",
     tut_b5_t: "Poprzedni sezon",
@@ -5574,14 +5578,14 @@ const plannerYear = document.getElementById('planner-year');
 const exitBtn = document.getElementById('exit-btn');
 const backBtn = document.getElementById('back-btn');
 
-// Independent, user-editable year counter shown next to the month — not the
-// same thing as farm.currentSeason (which drives NEW SEASON / field archiving).
-// Bumped automatically on a December -> January rollover in applyGameSaveToFarm;
-// manual edits here just overwrite the stored value directly.
+// Year shown next to the month — not the same thing as farm.currentSeason
+// (which drives NEW SEASON / field archiving). A synced farm takes it from the
+// savegame in applyGameSaveToFarm (the input is read-only then); a farm without
+// a save keeps this hand-edited counter.
 if (plannerYear) {
     plannerYear.addEventListener('change', () => {
         const farm = getCurrentFarm();
-        if (!farm) return;
+        if (!farm || farm.saveGamePath) return;
         const n = Math.max(1, parseInt(plannerYear.value, 10) || 1);
         plannerYear.value = n;
         farm.yearNumber = n;
@@ -7593,10 +7597,16 @@ function applyGameSaveToFarm(farm) {
     let changed = false;
 
     if (gameData.balance && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
+    if (gameData.gameYear !== null && gameData.gameYear !== farm.yearNumber) {
+        // The game's own year (from currentDay). It turns over in March, with
+        // the game's first period — same as the Finances charts.
+        farm.yearNumber = gameData.gameYear;
+        changed = true;
+    }
     if (gameData.month && gameData.month !== farm.month) {
-        // December -> January is a new in-game year — bump the user-facing
-        // year counter shown next to the month (independent of farm.currentSeason).
-        if (farm.month === 'DECEMBER' && gameData.month === 'JANUARY') {
+        // Older saves without currentDay: no year from the game, so count a
+        // December -> January rollover instead.
+        if (gameData.gameYear === null && farm.month === 'DECEMBER' && gameData.month === 'JANUARY') {
             farm.yearNumber = (parseInt(farm.yearNumber, 10) || 1) + 1;
             changed = true;
         }
@@ -7641,7 +7651,14 @@ function refreshPlannerHeader(farm) {
         const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
         plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
     }
-    if (plannerYear) plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
+    if (plannerYear) {
+        plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
+        // Synced farms take the year from the save; only a farm without one
+        // keeps the hand-edited counter.
+        const fromGame = !!farm.saveGamePath;
+        plannerYear.readOnly = fromGame;
+        plannerYear.title = fromGame ? t('yearFromGameHint') : t('yearManualHint');
+    }
 
     const loanInput = document.getElementById('detail-loan');
     if (loanInput) loanInput.innerText = farm.loan ? `${farm.loan} €` : "0 €";
