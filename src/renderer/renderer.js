@@ -122,6 +122,15 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        restoreFieldsLabel: "Earlier versions of the fields table:",
+        restoreFieldsBtn: "RESTORE",
+        restoreFieldsTitle: "Restore the fields table?",
+        restoreFieldsBody: "The current season's fields are replaced with the version from {when}. The current version is kept as a backup first.",
+        restoreFieldsConfirm: "Restore",
+        backupFields: "{n} fields",
+        "backupAction_pre-edit": "before editing",
+        "backupAction_post-edit": "after saving",
+        "backupAction_pre-restore": "before a restore",
         undoNewSeason: "UNDO NEW SEASON {n}",
         undoNewSeasonTitle: "Take back season {n}?",
         undoNewSeasonBody: "The farm goes back to season {c} with its fields and fertilization plans as they were before the new season. Anything changed in season {n} since then is lost.",
@@ -750,6 +759,15 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        restoreFieldsLabel: "Wcześniejsze wersje tabeli pól:",
+        restoreFieldsBtn: "PRZYWRÓĆ",
+        restoreFieldsTitle: "Przywrócić tabelę pól?",
+        restoreFieldsBody: "Pola bieżącego sezonu zostaną zastąpione wersją z {when}. Obecna wersja najpierw trafi do kopii zapasowej.",
+        restoreFieldsConfirm: "Przywróć",
+        backupFields: "pól: {n}",
+        "backupAction_pre-edit": "przed edycją",
+        "backupAction_post-edit": "po zapisie",
+        "backupAction_pre-restore": "przed przywróceniem",
         undoNewSeason: "COFNIJ NOWY SEZON {n}",
         undoNewSeasonTitle: "Cofnąć sezon {n}?",
         undoNewSeasonBody: "Farma wróci do sezonu {c} z polami i planami nawożenia sprzed nowego sezonu. Wszystko, co zmieniono od tego czasu w sezonie {n}, przepadnie.",
@@ -9063,6 +9081,86 @@ window.addNewFieldRow = function () {
     if (numInput) numInput.focus();
 };
 
+// --- Field backups (backups/*.json) ---------------------------------------
+// Written on entering and saving Edit season (and before a restore); only the
+// newest FIELD_BACKUPS_KEPT stay, so the farm folder and its export don't grow
+// forever. Settings -> danger zone can put one of them back.
+const FIELD_BACKUPS_KEPT = 20;
+
+function fieldBackupsDir(farm) {
+    return path.join(appDataDir, farm.folderName, 'backups');
+}
+
+function writeFieldsBackup(farm, fieldsData, prefix) {
+    try {
+        const dir = fieldBackupsDir(farm);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const now = new Date();
+        const stamp = now.toISOString().replace(/[:.]/g, '-');
+        const file = path.join(dir, `${prefix}_backup-${stamp}.json`);
+        fs.writeFileSync(file, JSON.stringify({ action: prefix, timestamp: now.toISOString(), fields: fieldsData }, null, 2), 'utf-8');
+        listFieldBackups(farm).slice(FIELD_BACKUPS_KEPT).forEach(b => {
+            try { fs.rmSync(b.file); } catch (e) { /* locked — try again next time */ }
+        });
+    } catch (err) {
+        console.error('Could not write a fields backup:', err);
+    }
+}
+
+// Newest first: [{ file, action, timestamp, count }]
+function listFieldBackups(farm) {
+    const dir = farm && farm.folderName ? fieldBackupsDir(farm) : null;
+    if (!dir || !fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter(n => n.endsWith('.json')).map(n => {
+        const file = path.join(dir, n);
+        try {
+            const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            return { file, action: data.action || '', timestamp: data.timestamp || fs.statSync(file).mtime.toISOString(), count: (data.fields || []).length };
+        } catch (e) {
+            return null;
+        }
+    }).filter(Boolean).sort((x, y) => y.timestamp.localeCompare(x.timestamp));
+}
+
+function renderFieldBackupChoice(farm) {
+    const select = document.getElementById('fields-backup-select');
+    const row = document.getElementById('fields-backup-row');
+    if (!select || !row) return;
+    const list = listFieldBackups(farm);
+    row.hidden = !list.length;
+    select.innerHTML = list.map(b => {
+        const when = new Date(b.timestamp).toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
+        return `<option value="${escapeHtml(b.file)}">${escapeHtml(when)} · ${escapeHtml(t('backupAction_' + b.action) || b.action)} · ${t('backupFields').replace('{n}', b.count)}</option>`;
+    }).join('');
+}
+
+async function restoreFieldsBackup() {
+    const farm = getCurrentFarm();
+    const select = document.getElementById('fields-backup-select');
+    if (!farm || !select || !select.value) return;
+    let data;
+    try { data = JSON.parse(fs.readFileSync(select.value, 'utf-8')); } catch (e) { return; }
+    const settingsModalEl = document.getElementById('settings-modal');
+    if (settingsModalEl) settingsModalEl.style.display = 'none';
+    const ok = await showSeasonModal({
+        title: t('restoreFieldsTitle'),
+        body: t('restoreFieldsBody').replace('{when}', select.options[select.selectedIndex].text),
+        confirmText: t('restoreFieldsConfirm'),
+        cancelText: t('cancel'),
+        danger: true,
+        icon: 'fa-clock-rotate-left'
+    });
+    if (!ok || !(await discardEditsIfConfirmed())) return;
+    writeFieldsBackup(farm, farm.fields || [], 'pre-restore');
+    farm.fields = Array.isArray(data.fields) ? data.fields : [];
+    saveFarmData(farm);
+    viewedSeason = farm.currentSeason || 1;
+    renderSeasonView();
+}
+
+const restoreFieldsBtn = document.getElementById('restore-fields-btn');
+if (restoreFieldsBtn) restoreFieldsBtn.addEventListener('click', () => restoreFieldsBackup());
+
 // Reads the edit-mode table back into field objects. Rows that have data but
 // no field number come back in missingNumber (their number inputs) instead of
 // being silently dropped.
@@ -9205,41 +9303,7 @@ if (editSeasonBtn) {
         if (idx === -1) return;
         const farm = allFarms[idx];
 
-        // --- FUNKCJA POMOCNICZA DO TWORZENIA BACKUPU ---
-        const createBackup = (fieldsData, prefix) => {
-            try {
-                const farmFolder = farm.folderName;
-                const backupsDir = path.join(appDataDir, farmFolder, 'backups');
-                if (!fs.existsSync(backupsDir)) {
-                    fs.mkdirSync(backupsDir, { recursive: true });
-                }
-
-                const now = new Date();
-                const h = String(now.getHours()).padStart(2, '0');
-                const m = String(now.getMinutes()).padStart(2, '0');
-                const s = String(now.getSeconds()).padStart(2, '0');
-                const d = String(now.getDate()).padStart(2, '0');
-                const mo = String(now.getMonth() + 1).padStart(2, '0');
-                const y = now.getFullYear();
-
-                // Nazwa pliku np.: pre-edit_backup-18-30-05_19-02-2026.json
-                const backupFileName = `${prefix}_backup-${h}-${m}-${s}_${d}-${mo}-${y}.json`;
-                const backupFilePath = path.join(backupsDir, backupFileName);
-
-                const backupData = {
-                    action: prefix,
-                    timestamp: now.toISOString(),
-                    fields: fieldsData
-                };
-
-                fs.writeFileSync(backupFilePath, JSON.stringify(backupData, null, 2), 'utf-8');
-                console.log(`Utworzono backup (${prefix}):`, backupFileName);
-
-            } catch (err) {
-                console.error("Błąd zapisu kopii zapasowej:", err);
-            }
-        };
-        // ------------------------------------------------
+        const createBackup = (fieldsData, prefix) => writeFieldsBackup(farm, fieldsData, prefix);
 
         if (isEditMode) {
             // >>> WYJŚCIE Z EDYCJI (ZAPIS) <<<
@@ -9794,6 +9858,7 @@ if (settingsBtn) {
         renderAnimalModsInfo(farm);
         renderGameFarmChoice(farm);
         refreshUndoSeasonButton(farm);
+        renderFieldBackupChoice(farm);
         const grassLimitInput = document.getElementById('grassland-limit-input');
         if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
         const currencySelect = document.getElementById('currency-select');

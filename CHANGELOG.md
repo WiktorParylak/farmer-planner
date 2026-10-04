@@ -18,6 +18,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known), with the percentages on hover.
 - **New season reminder**: when a year has gone by in the game since the current season started, the app offers to start a new season (once per in-game year).
 - **Undo new season**: right after a new season, Settings (danger zone) has *Undo new season N* — it brings back the fields and fertilization plans from before and removes the archive it wrote.
+- **Restore an earlier fields table**: Settings (danger zone) lists the saved versions of the fields table (before editing / after saving, with date and field count) and puts the chosen one back; the current one is backed up first.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
@@ -35,6 +36,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - The cuts window no longer has a sowing month — only the cuts.
 - **Reset seasons** moved from the side menu to the farm Settings, into a *danger zone* at the bottom — it no longer sits right above *Exit*.
 - The season arrows are real buttons (keyboard works); while editing they're greyed out with a hint to save or cancel first.
+- Field backups are capped at the newest 20 per farm (they used to pile up forever and bloat farm exports).
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.

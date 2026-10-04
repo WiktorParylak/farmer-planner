@@ -259,8 +259,15 @@
 
                 <div class="settings-danger-zone">
                     <p data-i18n="dangerZoneLabel">Danger zone</p>
-                    <button type="button" id="undo-season-btn" class="reset-btn" hidden></button>
-                    <button type="button" id="reset-seasons-btn" class="reset-btn" data-i18n="resetSeasons">RESET SEASONS</button>
+                    <div id="fields-backup-row" hidden>
+                        <p data-i18n="restoreFieldsLabel">Earlier versions of the fields table:</p>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <select id="fields-backup-select" style="flex:1;"></select>
+                            <button type="button" id="restore-fields-btn" class="settings-btn reset-btn" data-i18n="restoreFieldsBtn">RESTORE</button>
+                        </div>
+                    </div>
+                    <button type="button" id="undo-season-btn" class="settings-btn reset-btn" hidden></button>
+                    <button type="button" id="reset-seasons-btn" class="settings-btn reset-btn" data-i18n="resetSeasons">RESET SEASONS</button>
                     <p class="animal-mods-note" data-i18n="resetSeasonsHint">Deletes every archived season of this farm; the current fields stay.</p>
                 </div>
 
