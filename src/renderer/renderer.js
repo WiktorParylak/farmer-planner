@@ -10960,9 +10960,30 @@ document.addEventListener('keydown', (e) => {
 // =============================================================
 // SECTION 11: INITIALIZATION
 // =============================================================
-document.addEventListener('DOMContentLoaded', () => {
+// First start (no language saved yet): a modal that can only be closed by
+// picking Polski or English — before the tutorial, so it runs in that language.
+function askFirstLanguage() {
+    const modal = document.getElementById('first-lang-modal');
+    if (!modal) return Promise.resolve();
+    return new Promise(resolve => {
+        modal.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.remove('is-selected');   // no language preselected
+            btn.addEventListener('click', () => {
+                applyLanguage(btn.getAttribute('data-lang'));
+                modal.style.display = 'none';
+                resolve();
+            }, { once: true });
+        });
+        modal.style.display = 'flex';
+        const first = modal.querySelector('.lang-btn');
+        if (first) first.focus();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
     // Crop calendar / animal-needs are per-farm now — loaded by loadFarmConfigs()
     // when a farm is opened, not here (no farm is active on the dashboard).
+    const languageChosen = !!localStorage.getItem(CONFIG_KEY_LANG);
     applyLanguage(currentLang);
 
     // Leftover from a tutorial that was interrupted by closing the app.
@@ -10974,5 +10995,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateDiscordPresence();
 
+    if (!languageChosen) {
+        await askFirstLanguage();
+        renderFarmList(getAllFarms());
+    }
     if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
 });
