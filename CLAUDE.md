@@ -51,7 +51,7 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 
 | Komenda | Co robi |
 |---|---|
-| `npm start` | uruchamia aplikację (`electron .`) |
+| `npm start` | uruchamia aplikację (`tools/start.js`): z głównego folderu repo odpala worktree z najnowszą gałęzią `dev/vX.Y.Z` z `.claude/worktrees/`, w innym wypadku `electron .` |
 | `npm run build` | buduje instalator NSIS do `dist/` (`Farmer Planner Setup X.Y.Z.exe`) |
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
