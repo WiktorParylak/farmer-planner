@@ -122,6 +122,29 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        workTitle: "Work · field {field}",
+        workIntro: "Your steps in order — tick what's done; the button in the table shows the next one.",
+        workIntroSuggested: "Suggested from the sowing month. Change anything (tick, move, add) and it becomes this field's own list.",
+        workAdd: "Add step",
+        workSuggest: "Suggest by month",
+        workUp: "Move up",
+        workDown: "Move down",
+        workRemove: "Remove step",
+        workAllDone: "All done",
+        workOpenHint: "Open the work list for this field",
+        workSuggestedHint: "Next step suggested from the sowing month — click for the full list",
+        work_fertilize: "Fertilize",
+        work_manure: "Manure / slurry",
+        work_lime: "Lime",
+        work_mow: "Mow",
+        work_bale: "Bale",
+        work_harvestWrap: "Collect & wrap",
+        work_harvest: "Harvest",
+        work_cultivate: "Cultivate",
+        work_plow: "Plow",
+        work_sow: "Sow",
+        work_roll: "Roll",
+        work_weeds: "Weeds",
         loadFieldsFromGame: "FIELDS FROM GAME",
         loadFieldsFromGameHint: "Add your fields from the savegame, fill in their area and mark what's already sown",
         loadFieldsTitle: "Fields from the game",
@@ -766,6 +789,29 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        workTitle: "Prace · pole {field}",
+        workIntro: "Twoje kroki po kolei — zaznacz, co zrobione; przycisk w tabeli pokazuje następny.",
+        workIntroSuggested: "Podpowiedź według miesiąca siewu. Zmień cokolwiek (zaznacz, przesuń, dodaj), a stanie się własną listą tego pola.",
+        workAdd: "Dodaj krok",
+        workSuggest: "Podpowiedz wg miesiąca",
+        workUp: "W górę",
+        workDown: "W dół",
+        workRemove: "Usuń krok",
+        workAllDone: "Gotowe",
+        workOpenHint: "Otwórz listę prac tego pola",
+        workSuggestedHint: "Następny krok podpowiedziany wg miesiąca siewu — kliknij, żeby zobaczyć całą listę",
+        work_fertilize: "Nawóz",
+        work_manure: "Obornik / gnojowica",
+        work_lime: "Wapno",
+        work_mow: "Koszenie",
+        work_bale: "Belowanie",
+        work_harvestWrap: "Zbieranie i owijanie",
+        work_harvest: "Zbiór",
+        work_cultivate: "Uprawa",
+        work_plow: "Orka",
+        work_sow: "Siew",
+        work_roll: "Wałowanie",
+        work_weeds: "Chwasty",
         loadFieldsFromGame: "POLA Z GRY",
         loadFieldsFromGameHint: "Dodaj swoje pola z zapisu gry, uzupełnij ich powierzchnię i zaznacz, co już obsiane",
         loadFieldsTitle: "Pola z gry",
@@ -8477,6 +8523,131 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
 
+// --- Field work queue ("Prace") ----------------------------------------------
+// field.work = [{ step, done }] in the order you do them — catch crop and main
+// crop in one list (e.g. green rye: fertilize, mow, bale, wrap; then beet:
+// cultivate, sow, fertilize, weeds). The button next to the state shows the
+// next step. Without a list of your own it suggests one from the sowing month:
+// before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
+const WORK_STEPS = ['fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+
+function suggestedWork(field, currentMonth) {
+    const steps = [];
+    if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
+    const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
+    const cur = ALL_MONTHS.indexOf((currentMonth || '').toUpperCase());
+    // Months until the sowing month (0 = this month), wrapping round the year.
+    const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
+    const sown = field.state === 'Planted';
+    if (!sown) {
+        steps.push(field.tillage === 'plowed' ? 'plow' : 'cultivate');
+        if (until > 0 && !(field.limeAppliedSeason != null && field.limePh != null && field.limePh > 0.75)) steps.push('lime');
+        steps.push('sow');
+        if (field.rolling) steps.push('roll');
+    }
+    steps.push('fertilize', 'weeds');
+    return steps.map(step => ({ step, done: false }));
+}
+
+function fieldWork(field) {
+    return Array.isArray(field.work) && field.work.length ? field.work : null;
+}
+
+// Next step for the table button: your list, else the month-based suggestion.
+function nextWorkStep(field, currentMonth) {
+    const list = fieldWork(field) || suggestedWork(field, currentMonth).map(w => {
+        if (w.step === 'sow' && field.state === 'Planted') return { ...w, done: true };
+        return w;
+    });
+    const next = list.find(w => !w.done);
+    return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
+}
+
+function workCellHtml(field, idx, isPastSeason, currentMonth) {
+    if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
+    const { next, done, total, own } = nextWorkStep(field, currentMonth);
+    const label = next ? t('work_' + next.step) : t('workAllDone');
+    return ` <button type="button" class="work-open${next ? '' : ' is-complete'}${own ? '' : ' is-suggested'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${escapeHtml(label)}${own ? ` <span class="work-count">${done}/${total}</span>` : ''}</button>`;
+}
+
+let workFieldIdx = null;
+
+function renderWorkModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[workFieldIdx];
+    if (!field) return;
+    const label = [(field.number || '').toString().trim(), translateCropName(field.crop), field.catchCrop ? '+ ' + translateCropName(field.catchCrop) : ''].filter(Boolean).join(' · ');
+    document.getElementById('work-title').textContent = t('workTitle').replace('{field}', label);
+    const own = fieldWork(field);
+    document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
+    const list = own || suggestedWork(field, farm.month);
+    const listEl = document.getElementById('work-list');
+    listEl.innerHTML = list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
+        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
+        <span class="work-item-btns">
+            <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
+            <button type="button" class="work-remove" data-i="${i}" aria-label="${t('workRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </span></li>`).join('');
+    document.getElementById('work-add-select').innerHTML = WORK_STEPS.map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
+}
+
+// Any change turns the shown list (suggested or own) into the field's own list.
+function updateWorkField(fn) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[workFieldIdx];
+    if (!field) return;
+    field.work = (fieldWork(field) || suggestedWork(field, farm.month)).map(w => ({ ...w }));
+    fn(field.work, field, farm);
+    saveFarmData(farm);
+    renderWorkModal();
+}
+
+window.openWorkModal = function (idx) {
+    workFieldIdx = idx;
+    renderWorkModal();
+    document.getElementById('work-modal').style.display = 'flex';
+};
+
+(function wireWorkModal() {
+    const modal = document.getElementById('work-modal');
+    const listEl = document.getElementById('work-list');
+    if (!modal || !listEl) return;
+    const close = () => { modal.style.display = 'none'; workFieldIdx = null; renderSeasonView(); };
+    document.getElementById('work-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    listEl.addEventListener('change', e => {
+        if (!e.target.classList.contains('work-check')) return;
+        const i = +e.target.dataset.i;
+        updateWorkField((work, field) => {
+            work[i].done = e.target.checked;
+            // Sowing done = the field is sown.
+            if (work[i].step === 'sow') field.state = e.target.checked ? 'Planted' : 'To Plant';
+            if (work[i].step === 'weeds') field.weeds = e.target.checked ? 'done' : field.weeds;
+            if (work[i].step === 'roll' && e.target.checked) field.rolling = true;
+        });
+    });
+    listEl.addEventListener('click', e => {
+        const mv = e.target.closest('.work-move');
+        if (mv) {
+            const i = +mv.dataset.i, j = i + (+mv.dataset.dir);
+            updateWorkField(work => { [work[i], work[j]] = [work[j], work[i]]; });
+            return;
+        }
+        const rm = e.target.closest('.work-remove');
+        if (rm) updateWorkField(work => { work.splice(+rm.dataset.i, 1); });
+    });
+    document.getElementById('work-add-btn').addEventListener('click', () => {
+        const step = document.getElementById('work-add-select').value;
+        if (step) updateWorkField(work => { work.push({ step, done: false }); });
+    });
+    document.getElementById('work-suggest-btn').addEventListener('click', () => {
+        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, farm.month)); });
+    });
+})();
+
 // Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
 // cancels, Enter confirms.
 function showSmallConfirm({ title, text, ok, icon, danger }) {
@@ -8523,6 +8694,8 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
+    const workBtn = e.target.closest('.work-open');
+    if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
@@ -8758,7 +8931,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${grasslandAgeHtml(field, seasonHistory, viewedSeason, grassLimit)}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${grasslandAgeHtml(field, seasonHistory, viewedSeason, grassLimit)}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
@@ -9709,6 +9882,7 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.manure = false;
                 field.fertilizer = false;
                 field.weeds = null;
+                field.work = [];
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
