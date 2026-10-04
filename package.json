@@ -3,7 +3,7 @@
   "version": "0.9.8",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "node tools/start.js",
     "build": "electron-builder"
   },
   "build": {
