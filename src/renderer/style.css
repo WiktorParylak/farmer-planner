@@ -3111,6 +3111,42 @@ tr.field-split-row {
   box-shadow: inset 3px 0 0 var(--color-sky);
 }
 
+/* Leased field — its own stripe (amber); with a split field both show. */
+tr.field-lease-row {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+tr.field-split-row.field-lease-row {
+  box-shadow: inset 3px 0 0 var(--color-sky), inset 6px 0 0 var(--color-accent);
+}
+
+.field-edit-tr.field-lease-row .field-card {
+  border-right: 4px solid var(--color-accent);
+}
+
+.badge--lease {
+  display: inline-block;
+  margin-top: 4px;
+  background-color: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+.badge--lease.is-over {
+  background-color: var(--color-rust);
+  color: var(--color-surface);
+}
+
+.lease-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.lease-check input {
+  width: auto;
+}
+
 /* ========================================================= */
 /* 8. ANIMATIONS                                              */
 /* ========================================================= */

@@ -122,6 +122,17 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        leaseLabel: "Lease",
+        leaseYes: "leased field",
+        leaseSeasons: "For (seasons)",
+        leaseThen: "Then",
+        leaseReturn: "give back",
+        leaseBuy: "buy out",
+        leaseBadge: "Lease {n}/{m}",
+        leaseBadgeOpen: "Lease · season {n}",
+        leaseBadgeHint: "Leased since season {s}",
+        leaseEndBuy: "Lease term reached — time to buy the field out",
+        leaseEndReturn: "Lease term reached — time to give the field back",
         workTitle: "Work · field {field}",
         workIntro: "Your steps in order — tick what's done; the button in the table shows the next one.",
         workIntroSuggested: "Suggested from the sowing month. Change anything (tick, move, add) and it becomes this field's own list.",
@@ -789,6 +800,17 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        leaseLabel: "Dzierżawa",
+        leaseYes: "pole dzierżawione",
+        leaseSeasons: "Na ile sezonów",
+        leaseThen: "Potem",
+        leaseReturn: "zdać",
+        leaseBuy: "wykupić",
+        leaseBadge: "Dzierżawa {n}/{m}",
+        leaseBadgeOpen: "Dzierżawa · {n}. sezon",
+        leaseBadgeHint: "Dzierżawione od sezonu {s}",
+        leaseEndBuy: "Koniec dzierżawy — pora wykupić pole",
+        leaseEndReturn: "Koniec dzierżawy — pora zdać pole",
         workTitle: "Prace · pole {field}",
         workIntro: "Twoje kroki po kolei — zaznacz, co zrobione; przycisk w tabeli pokazuje następny.",
         workIntroSuggested: "Podpowiedź według miesiąca siewu. Zmień cokolwiek (zaznacz, przesuń, dodaj), a stanie się własną listą tego pola.",
@@ -8926,8 +8948,8 @@ function renderFieldsTable(fields) {
             }
 
             htmlString += `
-                <tr class="${isSplit ? 'field-split-row' : ''}">
-                    <td class="field-number-cell"${numberCellTitle}><span class="field-number-chips">${numberChipsHtml}</span></td>
+                <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
+                    <td class="field-number-cell"${numberCellTitle}><span class="field-number-chips">${numberChipsHtml}</span>${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
@@ -9027,6 +9049,7 @@ function buildFieldEditCard(field, opts) {
     const catchMonthOptions = generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth);
 
     const isChecked = field.state === 'Planted' ? 'checked' : '';
+    const lease = field.lease || null;
     const key = (field.number || '').toString().trim();
     const savedSize = (farm && farm.fieldSizes && key && farm.fieldSizes[key] !== undefined) ? farm.fieldSizes[key] : '';
     // opts.origIdx = this field's real index in farm.fields (not a position in
@@ -9044,7 +9067,7 @@ function buildFieldEditCard(field, opts) {
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -9103,6 +9126,23 @@ function buildFieldEditCard(field, opts) {
                         <div class="fc-cell">
                             <span class="fc-label">${t('thCatchSowingMth')}</span>
                             <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
+                        </div>
+                    </div>
+                    <div class="field-card-row field-card-row--grid field-card-row--lease">
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseLabel')}</span>
+                            <label class="lease-check"><input type="checkbox" class="field-lease" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
+                        </div>
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseSeasons')}</span>
+                            <input type="number" min="1" max="50" step="1" class="edit-input field-lease-seasons" value="${lease ? lease.seasons || '' : ''}" placeholder="–">
+                        </div>
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseThen')}</span>
+                            <select class="edit-input field-lease-then">
+                                <option value="return" ${lease && lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
+                                <option value="buy" ${lease && lease.then === 'buy' ? 'selected' : ''}>${t('leaseBuy')}</option>
+                            </select>
                         </div>
                     </div>
                     <div class="field-card-foot">
@@ -9418,6 +9458,33 @@ async function loadFieldsFromGame() {
 const loadFieldsBtn = document.getElementById('load-fields-btn');
 if (loadFieldsBtn) loadFieldsBtn.addEventListener('click', () => loadFieldsFromGame());
 
+// Lease (dzierżawa) from an edit card: { since, seasons, then } or null.
+// "since" is the season it was first marked leased — kept across edits.
+function readLeaseInputs(row, farm) {
+    const on = row.querySelector('.field-lease');
+    if (!on || !on.checked) return null;
+    let prev = null;
+    try { prev = JSON.parse(row.dataset.extra || '{}').lease || null; } catch (e) { /* none */ }
+    const seasons = parseInt(row.querySelector('.field-lease-seasons').value, 10);
+    return {
+        since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
+        seasons: seasons > 0 ? seasons : null,
+        then: row.querySelector('.field-lease-then').value === 'buy' ? 'buy' : 'return'
+    };
+}
+
+// Table badge: "Lease 2/5" — season of the lease out of its length; red with
+// what to do (buy / give back) once the term is reached.
+function leaseBadgeHtml(field, seasonNum) {
+    const lease = field.lease;
+    if (!lease) return '';
+    const n = Math.max(1, seasonNum - (lease.since || seasonNum) + 1);
+    const over = lease.seasons && n >= lease.seasons;
+    const text = lease.seasons ? t('leaseBadge').replace('{n}', n).replace('{m}', lease.seasons) : t('leaseBadgeOpen').replace('{n}', n);
+    const title = over ? t(lease.then === 'buy' ? 'leaseEndBuy' : 'leaseEndReturn') : t('leaseBadgeHint').replace('{s}', lease.since || seasonNum);
+    return `<span class="badge badge--lease${over ? ' is-over' : ''}" title="${title}">${text}</span>`;
+}
+
 // Reads the edit-mode table back into field objects. Rows that have data but
 // no field number come back in missingNumber (their number inputs) instead of
 // being silently dropped.
@@ -9494,7 +9561,8 @@ function collectEditedFields(farm) {
             manure: row.dataset.manure === '1',
             fertilizer: row.dataset.fertilizer === '1',
             ...(() => { try { return JSON.parse(row.dataset.extra || '{}'); } catch { return {}; } })(),
-            ...(areaEdited ? { areaSource: 'manual' } : {})
+            ...(areaEdited ? { areaSource: 'manual' } : {}),
+            lease: readLeaseInputs(row, farm)
         });
 
         const sizeInput = row.querySelector('.field-size-input');
