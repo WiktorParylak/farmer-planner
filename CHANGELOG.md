@@ -64,6 +64,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Security**: names and translations read from mods and the savegame (crop names and titles, feed mixers, mixer wagons) can no longer carry HTML into the app — markup characters are dropped when they're read.
 - **Narrow window**: below ~1180 px the planner no longer slides under the header — the table and crop list scroll together from the top, the header wraps, and the fields table scrolls sideways instead of being cut off.
 - The Animals view and the Feed planner count the daily feed need the same way (the Animals view left out EnhancedAnimalSystem's lactation factor).
+- **Changing a field's number or crop no longer orphans its data**: every field now has a stable id (added automatically to existing farms), and when Edit season renumbers a field or changes its crop, its soil mix, field size, fertilization plan, feed use and straw setting move to the new number / crop.
 
 ## 0.9.8 — 2026-10-02
 

@@ -7298,6 +7298,7 @@ function loadFarmConfigs(farm) {
     // below, per subType.
     ANIMAL_NEEDS_DATA = JSON.parse(JSON.stringify(DEFAULT_ANIMALS));
     if (!farm) { AVAILABLE_CROPS = sortedAvailableCrops(null); return; }
+    if (ensureFieldIds(farm)) saveFarmData(farm, { touch: false });
 
     // The map mod's own crop list (if the savegame points at a mod map):
     // decides which crops exist on this farm and their menu order.
@@ -9266,8 +9267,60 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // the existing save / split-hint logic (which walks `#fields-body tr` and
 // `row.querySelector('.field-*')`) keeps working unchanged.
 // Field data the edit card has no inputs for — carried through edit mode as is.
-// Rolling is set with the chip in the table, so it rides along here too.
-const FIELD_EXTRA_KEYS = ['weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+// Rolling is set with the chip in the table, so it rides along here too; id
+// is the field's stable identity (see ensureFieldIds).
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+
+// --- Stable field ids --------------------------------------------------------
+// Soil, field size, fertilization plan, feed use and straw are stored under
+// the field's number ("12") or number + crop ("12::Wheat"). Every field row
+// also has a stable id, so when Edit season changes a number or a crop that
+// data is moved to the new key instead of being left behind.
+function newFieldId() {
+    return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// Gives every field of the farm an id. Returns true if any was added.
+function ensureFieldIds(farm) {
+    let added = false;
+    (farm && farm.fields || []).forEach(f => { if (!f.id) { f.id = newFieldId(); added = true; } });
+    return added;
+}
+
+// Moves per-field data from old keys to new ones for fields (matched by id)
+// whose number or crop changed in an edit. A key still used by another field
+// is copied, not moved; an existing value under the new key wins.
+function migrateFieldKeys(farm, oldFields, newFields) {
+    const byId = {};
+    (oldFields || []).forEach(f => { if (f.id) byId[f.id] = f; });
+    const num = f => (f.number || '').toString().trim();
+    const planKey = f => num(f) + '::' + (f.crop || '');
+    const stillUsed = (key, kind) => newFields.some(f => (kind === 'num' ? num(f) : planKey(f)) === key);
+    const move = (store, from, to, kind) => {
+        if (!store || from === to || store[from] === undefined) return;
+        if (store[to] === undefined) store[to] = JSON.parse(JSON.stringify(store[from]));
+        if (!stillUsed(from, kind)) delete store[from];
+    };
+    const rates = farm.supplyRates || null;
+    const plan = farm.feedPlan || null;
+    newFields.forEach(f => {
+        const old = f.id && byId[f.id];
+        if (!old) return;
+        if (num(old) && num(old) !== num(f)) {
+            if (rates) move(rates.fieldSoil, num(old), num(f), 'num');
+            move(farm.fieldSizes, num(old), num(f), 'num');
+        }
+        if (num(old) && planKey(old) !== planKey(f)) {
+            if (rates) move(rates.fertPlan, planKey(old), planKey(f), 'plan');
+            if (plan) {
+                [['', ''], [':catch', ':catch']].forEach(([a, b]) => {
+                    move(plan.fieldUse, planKey(old) + a, planKey(f) + b, 'plan');
+                    move(plan.strawFields, planKey(old) + a, planKey(f) + b, 'plan');
+                });
+            }
+        }
+    });
+}
 function fieldExtras(field) {
     const out = {};
     FIELD_EXTRA_KEYS.forEach(k => { if (field && field[k] !== undefined) out[k] = field[k]; });
@@ -9680,7 +9733,8 @@ async function loadFieldsFromGame() {
             area: usePfArea && g.areaHa != null ? g.areaHa.toFixed(2) : '0',
             areaSource: usePfArea && g.areaHa != null ? 'game' : undefined,
             crop: '', sowingMonth: '', state: 'To Plant', tillage: null,
-            catchCrop: '', catchSowingMonth: '', rolling: false, cuts: [], manure: false, fertilizer: false
+            catchCrop: '', catchSowingMonth: '', rolling: false, cuts: [], manure: false, fertilizer: false,
+            id: newFieldId()
         });
         added++;
     });
@@ -9868,6 +9922,8 @@ function collectEditedFields(farm) {
             ...(areaEdited ? { areaSource: 'manual' } : {}),
             lease: readLeaseInputs(row, farm)
         });
+        const added = fields[fields.length - 1];
+        if (!added.id) added.id = newFieldId();
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {
@@ -9953,6 +10009,7 @@ if (editSeasonBtn) {
             }
 
             // 1. Zapisz nowe dane do farmy
+            migrateFieldKeys(allFarms[idx], allFarms[idx].fields || [], newFields);
             allFarms[idx].fields = newFields;
             allFarms[idx].fieldSizes = newFieldSizes;
             saveFarmData(allFarms[idx]);
