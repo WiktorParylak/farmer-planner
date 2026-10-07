@@ -122,6 +122,17 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        settingsTabMods: "Mods",
+        settingsTabRates: "Rates",
+        settingsTabAdvanced: "Advanced",
+        savePathMissing: "No file at this path — pick careerSavegame.xml (or its savegame folder).",
+        savePathNotSave: "This file isn't an FS25 career savegame.",
+        savePathFound: "Found: {name} · {map} · {money}",
+        newFarmSaveLabel: "Savegame:",
+        newFarmNoSave: "No savegame",
+        newFarmNoSaveHint: "plan by hand; link one later in Settings",
+        newFarmSaveUnnamed: "Savegame",
+        newFarmNoSavesFound: "No savegames found in Documents\\My Games\\FarmingSimulator2025 — you can link one later in Settings.",
         limeTitlePf: "Soil pH {ph} (optimum for this soil {opt}) — from Precision Farming",
         limeTitlePfNeed: "lime to reach it: {l} l",
         fertPlanExistingFromGame: "From Precision Farming's nitrogen map — type a number to override it.",
@@ -815,6 +826,17 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        settingsTabMods: "Mody",
+        settingsTabRates: "Stawki",
+        settingsTabAdvanced: "Zaawansowane",
+        savePathMissing: "Pod tą ścieżką nie ma pliku — wskaż careerSavegame.xml (albo folder zapisu).",
+        savePathNotSave: "Ten plik nie jest zapisem kariery FS25.",
+        savePathFound: "Znaleziono: {name} · {map} · {money}",
+        newFarmSaveLabel: "Zapis gry:",
+        newFarmNoSave: "Bez zapisu gry",
+        newFarmNoSaveHint: "planujesz ręcznie; zapis podepniesz później w Ustawieniach",
+        newFarmSaveUnnamed: "Zapis gry",
+        newFarmNoSavesFound: "Nie znaleziono zapisów w Dokumenty\\My Games\\FarmingSimulator2025 — zapis podepniesz później w Ustawieniach.",
         limeTitlePf: "pH gleby {ph} (optimum dla tej gleby {opt}) — z Precision Farming",
         limeTitlePfNeed: "wapna do optimum: {l} l",
         fertPlanExistingFromGame: "Z mapy azotu Precision Farming — wpisz liczbę, żeby ją nadpisać.",
@@ -1702,9 +1724,9 @@ Object.assign(TRANSLATIONS.en, {
     tut_i4_t: "Auto-sync",
     tut_i4_x: "On by default for a farm with a savegame: the planner updates by itself every time you save in the game. You can turn it off per farm. The option below also shows the whole land plot area (farmland), not just the field.",
     tut_i5_t: "Map crops & animals",
-    tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: every mod the app can read (Precision Farming, animal and loan mods) with whether it is in this savegame — switch one off to use base-game rules instead.",
-    tut_i6_t: "Adjust rates",
-    tut_i6_x: "Click \"Adjust rates\" to expand it.",
+    tut_i5_x: "The Mods tab: every mod the app can read (Precision Farming, animal, loan and lease mods), whether it is in this savegame, and a switch to use base-game rules instead. Crops and animals of the map are read from the savegame's mods by themselves — folders to pick by hand are under Advanced, only for when something is missing.",
+    tut_i6_t: "Rates",
+    tut_i6_x: "The Rates tab holds the numbers behind the Supplies list.",
     tut_i7_t: "Rates",
     tut_i7_x: "Buffer %, nitrogen density of the mineral fertilizer, nitrogen content of manure/slurry/digestate, and seed / nitrogen rates per crop. Empty = default.",
     tut_i8_t: "Save",
@@ -2002,9 +2024,9 @@ Object.assign(TRANSLATIONS.pl, {
     tut_i4_t: "Automatyczna synchronizacja",
     tut_i4_x: "Domyślnie włączona dla farmy z zapisem gry: planer aktualizuje się sam po każdym zapisie gry. Można ją wyłączyć osobno dla każdej farmy. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
-    tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: wszystkie mody, które aplikacja potrafi odczytać (Precision Farming, mody zwierząt i kredytów), z informacją, czy są w tym zapisie — wyłącz mod, żeby liczyć wg zasad gry podstawowej.",
-    tut_i6_t: "Dostosuj stawki",
-    tut_i6_x: "Kliknij „Dostosuj stawki”, żeby je rozwinąć.",
+    tut_i5_x: "Zakładka Mody: wszystkie mody, które aplikacja potrafi odczytać (Precision Farming, mody zwierząt, kredytów i dzierżaw), czy są w tym zapisie gry i przełącznik, żeby liczyć wg zasad gry podstawowej. Uprawy i zwierzęta mapy wczytują się same z modów zapisu — foldery do wskazania ręcznie są w zakładce Zaawansowane, tylko gdy czegoś brakuje.",
+    tut_i6_t: "Stawki",
+    tut_i6_x: "Zakładka Stawki: liczby, z których liczy się lista w Zaopatrzeniu.",
     tut_i7_t: "Dawki",
     tut_i7_x: "Bufor %, zawartość azotu w nawozie mineralnym, azot w oborniku/gnojowicy/pofermencie oraz dawki nasion i azotu dla każdej uprawy. Puste = wartość domyślna.",
     tut_i8_t: "Zapisz",
@@ -10431,6 +10453,48 @@ function renderAnimalModsInfo(farm) {
 
 // Settings: which farm of a multiplayer save is yours. Hidden for a save
 // with a single farm (single player).
+// Farm settings tabs (Savegame / Planner / Mods / Rates / Advanced).
+function showSettingsTab(name) {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    modal.querySelectorAll('.settings-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === name));
+    modal.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active-tab', el.dataset.settingsTab === name));
+    if (name === 'rates') {
+        const d = modal.querySelector('#settings-supply-adjust details');
+        if (d) d.open = true;
+    }
+    const content = modal.querySelector('.modal-content');
+    if (content) content.scrollTop = 0;
+}
+document.querySelectorAll('#settings-modal .settings-tab').forEach(b => b.addEventListener('click', () => showSettingsTab(b.dataset.tab)));
+
+// Live check of the savegame path: what's there, or why it won't work —
+// a wrong path used to be ignored without a word on save.
+function checkSavePathInput() {
+    const input = document.getElementById('game-save-path');
+    const out = document.getElementById('save-path-check');
+    if (!input || !out) return;
+    let p = input.value.trim().replace(/"/g, '');
+    if (p && fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'careerSavegame.xml');
+    out.classList.remove('is-ok', 'is-bad');
+    if (!p) { out.textContent = ''; return; }
+    if (!fs.existsSync(p)) { out.textContent = t('savePathMissing'); out.classList.add('is-bad'); return; }
+    try {
+        const xml = fs.readFileSync(p, 'utf-8');
+        const tag = name => decodeXmlEntities((xml.match(new RegExp('<' + name + '>([^<]*)</' + name + '>')) || [])[1] || '');
+        if (!/<careerSavegame\b/.test(xml)) throw new Error('not a career savegame');
+        const money = parseFloat(tag('money'));
+        out.textContent = t('savePathFound').replace('{name}', tag('savegameName') || '?').replace('{map}', tag('mapTitle') || '?')
+            .replace('{money}', isNaN(money) ? '–' : finMoney(money));
+        out.classList.add('is-ok');
+    } catch (e) {
+        out.textContent = t('savePathNotSave');
+        out.classList.add('is-bad');
+    }
+}
+const gameSavePathField = document.getElementById('game-save-path');
+if (gameSavePathField) gameSavePathField.addEventListener('input', checkSavePathInput);
+
 function renderGameFarmChoice(farm) {
     const row = document.getElementById('game-farm-row');
     const select = document.getElementById('game-farm-select');
@@ -10520,6 +10584,8 @@ if (settingsBtn) {
         renderAnimalModsInfo(farm);
         renderGameFarmChoice(farm);
         refreshUndoSeasonButton(farm);
+        showSettingsTab('save');
+        checkSavePathInput();
         renderFieldBackupChoice(farm);
         const grassLimitInput = document.getElementById('grassland-limit-input');
         if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
@@ -10572,6 +10638,7 @@ if (browseSaveBtn && gameSavePathInput) {
         });
         if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
         gameSavePathInput.value = result.filePaths[0];
+        checkSavePathInput();
     });
 }
 
@@ -10817,7 +10884,8 @@ if (saveSettingsBtn) {
         }
 
         if (gameSavePathInput) {
-            const pathToFile = gameSavePathInput.value.trim().replace(/"/g, '');
+            let pathToFile = gameSavePathInput.value.trim().replace(/"/g, '');
+            if (pathToFile && fs.existsSync(pathToFile) && fs.statSync(pathToFile).isDirectory()) pathToFile = path.join(pathToFile, 'careerSavegame.xml');
             if (pathToFile && fs.existsSync(pathToFile)) {
                 const allFarms = getAllFarms();
                 const idx = allFarms.findIndex(f => f.id === currentFarmId);
@@ -11056,7 +11124,66 @@ window.importFarmBackup = async function () {
 
 if (importBackupBtn) importBackupBtn.addEventListener('click', () => { window.importFarmBackup(); });
 
-if (addFarmBtn) addFarmBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'flex'; if (newFarmInput) newFarmInput.focus(); });
+// --- New farm: pick one of the game's savegames right away ----------------
+// <Documents>\My Games\FarmingSimulator2025\savegameN\careerSavegame.xml,
+// listed with the savegame's name, map and money. Picking one fills in the
+// map (and the farm name when it's still empty); the new farm opens linked to it.
+let newFarmSavePath = '';
+
+function listGameSaves() {
+    const gameDir = path.join(path.dirname(appDataDir), 'My Games', 'FarmingSimulator2025');
+    let names = [];
+    try { names = fs.readdirSync(gameDir).filter(n => /^savegame\d+$/.test(n)); } catch (e) { return []; }
+    return names.map(n => {
+        const file = path.join(gameDir, n, 'careerSavegame.xml');
+        try {
+            const xml = fs.readFileSync(file, 'utf-8');
+            const tag = name => decodeXmlEntities((xml.match(new RegExp('<' + name + '>([^<]*)</' + name + '>')) || [])[1] || '');
+            return { file, slot: parseInt(n.replace('savegame', ''), 10), name: tag('savegameName'), map: tag('mapTitle'), money: parseFloat(tag('money')), date: tag('saveDate') };
+        } catch (e) {
+            return null;
+        }
+    }).filter(Boolean).sort((a, b) => a.slot - b.slot);
+}
+
+function decodeXmlEntities(s) {
+    return String(s).replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+function renderNewFarmSaves() {
+    const box = document.getElementById('new-farm-saves');
+    if (!box) return;
+    const saves = listGameSaves();
+    const item = (pathValue, title, sub) => `<button type="button" class="save-choice${pathValue === newFarmSavePath ? ' is-selected' : ''}" data-path="${escapeHtml(pathValue)}">
+        <span class="save-choice-title">${escapeHtml(title)}</span>${sub ? `<span class="save-choice-sub">${escapeHtml(sub)}</span>` : ''}</button>`;
+    box.innerHTML = item('', t('newFarmNoSave'), t('newFarmNoSaveHint'))
+        + saves.map(s => item(s.file, `${s.name || t('newFarmSaveUnnamed')} · ${s.map || '?'}`,
+            [`savegame${s.slot}`, isNaN(s.money) ? '' : finMoney(s.money), s.date].filter(Boolean).join(' · '))).join('');
+    if (!saves.length) box.insertAdjacentHTML('beforeend', `<p class="settings-hint">${t('newFarmNoSavesFound')}</p>`);
+    box.dataset.saves = JSON.stringify(saves.map(s => ({ file: s.file, name: s.name, map: s.map })));
+}
+
+const newFarmSavesBox = document.getElementById('new-farm-saves');
+if (newFarmSavesBox) newFarmSavesBox.addEventListener('click', e => {
+    const btn = e.target.closest('.save-choice');
+    if (!btn) return;
+    newFarmSavePath = btn.dataset.path;
+    let saves = [];
+    try { saves = JSON.parse(newFarmSavesBox.dataset.saves || '[]'); } catch (err) { /* none */ }
+    const save = saves.find(s => s.file === newFarmSavePath);
+    if (save) {
+        if (newFarmMapInput && save.map) newFarmMapInput.value = save.map;
+        if (newFarmInput && !newFarmInput.value.trim() && save.name) newFarmInput.value = save.name;
+    }
+    newFarmSavesBox.querySelectorAll('.save-choice').forEach(b => b.classList.toggle('is-selected', b === btn));
+});
+
+if (addFarmBtn) addFarmBtn.addEventListener('click', () => {
+    newFarmSavePath = '';
+    renderNewFarmSaves();
+    if (addFarmModal) addFarmModal.style.display = 'flex';
+    if (newFarmInput) newFarmInput.focus();
+});
 if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'none'; if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
 
 if (confirmAddBtn) {
@@ -11083,11 +11210,16 @@ if (confirmAddBtn) {
                 fields: [],
                 fieldSizes: {}
             };
+            if (newFarmSavePath && fs.existsSync(newFarmSavePath)) newFarm.saveGamePath = newFarmSavePath;
             saveFarmData(newFarm);
             if (addFarmModal) addFarmModal.style.display = 'none';
             newFarmInput.value = "";
             if (newFarmMapInput) newFarmMapInput.value = "";
+            newFarmSavePath = '';
             renderFarmList(getAllFarms());
+            // Straight into the new farm — not during the tutorial, whose
+            // next steps happen on the farm list.
+            if (!tut.active) openPlanner(newId);
         }
     });
 }
@@ -11795,13 +11927,11 @@ const TUTORIAL_CHAPTERS = [
             tutInput('i2', '#settings-map-name', () => { const el = tq('#settings-map-name'); return !!el && el.value.trim() !== ''; }, 'Hutan Pantai'),
             tutInfo('i3', ['#game-save-path', '#browse-save-btn', '#mods-dir-info']),
             tutInfo('i4', () => ['#auto-sync-toggle', '#farmland-area-toggle'].map(s => { const el = tq(s); return el ? (el.closest('label') || el) : null; }).filter(Boolean)),
-            tutInfo('i5', ['#crops-folder-path', '#browse-crops-btn', '#animal-defs-folder-path', '#browse-animal-defs-btn', '#animal-mods-info'], {
-                enter: () => { const d = tq('#settings-advanced'); if (d) d.open = true; }
-            }),
-            tutInfo('i10', ['#grassland-limit-input', '#currency-select']),
-            tutClick('i6', '#settings-supply-adjust summary', () => { const d = tq('#settings-supply-adjust details'); return !!d && d.open; }),
+            tutInfo('i5', '#animal-mods-info', { enter: () => showSettingsTab('mods') }),
+            tutInfo('i10', ['#grassland-limit-input', '#currency-select'], { enter: () => showSettingsTab('planner') }),
+            tutInfo('i6', '#settings-supply-adjust', { enter: () => showSettingsTab('rates') }),
             tutInfo('i7', '#settings-supply-adjust details'),
-            tutInfo('i11', '#settings-modal .settings-danger-zone'),
+            tutInfo('i11', ['#settings-advanced', '#settings-modal .settings-danger-zone'], { enter: () => showSettingsTab('advanced') }),
             tutClick('i8', '#save-settings-btn', () => !tutModalOpen('settings-modal')),
             tutInfo('i9', '#planner-farm-name')
         ]

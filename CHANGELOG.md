@@ -25,6 +25,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Field Leasing** (FS25_FieldLeasing): plots leased in the game are marked on their fields automatically — *Lease · 7 mo.* with the monthly fee and whether the mod's minimum term is over (then it can be given back). A lease that ends in the game is cleared; leases you set yourself stay. Listed in the mods list with its own switch.
 - **Real soil pH and nitrogen from Precision Farming**: with PF in the save the lime chip shows each field's actual pH (from the save's pH map) against the optimum for its soil, with the lime needed on hover; the fertilization plan takes *N already in the soil* from PF's nitrogen map (type a number to override it), so fields get a mineral-N figure without filling anything in.
 - **Lime on the Supplies list**: a new *Lime* section lists every field below its soil's optimum pH with the litres to buy — exact from PF's pH map, or the app's estimate without it.
+- **New farm from a savegame**: *Add farm* lists the game's savegames (name, map, money, date); picking one fills in the map and the farm opens right away, already linked to it. *No savegame* keeps planning by hand.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
@@ -50,6 +51,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - Farm data is no longer read and parsed from disk on every lookup (dozens of times per screen refresh): each farm's file is cached while it's unchanged on disk and refreshed on save.
 - **Rations per barn**: the ration picked for a barn (in Animals or the Feed planner) now applies to that barn only — two cow barns can be fed differently. Barns without their own choice keep using the species' ration from before.
 - **Seed rates, yields and straw come from the farm's map**: read from the map's own crop files (and the base game's for crops the map doesn't redefine) instead of built-in tables tuned to the Solek map — on another map the predicted yields, feed planner and seed list use that map's numbers. The base game's values ship in `data/default-agronomy.json`.
+- **Farm settings in tabs**: *Savegame*, *Planner*, *Mods*, *Rates* and *Advanced* (map/animal folders and the danger zone) instead of one long page. The savegame path is checked as you type — *Found: name · map · money*, or why it won't work (a wrong path used to be ignored silently); a savegame folder works as well as its careerSavegame.xml.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.

@@ -180,7 +180,15 @@
             <div class="modal-content">
                 <h3 data-i18n="settingsTitle">Settings</h3>
 
-                <section class="settings-group">
+                <div class="settings-tabs" role="tablist">
+                    <button type="button" class="settings-tab" data-tab="save" data-i18n="settingsGroupSave">Savegame</button>
+                    <button type="button" class="settings-tab" data-tab="planner" data-i18n="settingsGroupPlanner">Planner</button>
+                    <button type="button" class="settings-tab" data-tab="mods" data-i18n="settingsTabMods">Mods</button>
+                    <button type="button" class="settings-tab" data-tab="rates" data-i18n="settingsTabRates">Rates</button>
+                    <button type="button" class="settings-tab" data-tab="advanced" data-i18n="settingsTabAdvanced">Advanced</button>
+                </div>
+
+                <section class="settings-group" data-settings-tab="save">
                     <h4 data-i18n="settingsGroupSave">Savegame</h4>
                     <label class="settings-field">
                         <span data-i18n="farmMapLabel">Map for this farm:</span>
@@ -192,6 +200,7 @@
                             <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml">
                             <button id="browse-save-btn" class="settings-btn settings-browse" type="button">...</button>
                         </div>
+                        <p id="save-path-check" class="settings-hint save-path-check"></p>
                         <p id="mods-dir-info" class="settings-hint"></p>
                     </div>
                     <div id="game-farm-row" class="settings-field" hidden>
@@ -203,9 +212,14 @@
                         <span><span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
                             <small id="auto-sync-hint" data-i18n="autoSyncHint">The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.</small></span>
                     </label>
+                    <label class="settings-check">
+                        <input type="checkbox" id="farmland-area-toggle">
+                        <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
+                            <small data-i18n="farmlandAreaHint">Counted from the map like the game does (field plus margins); needs the savegame and the map mod.</small></span>
+                    </label>
                 </section>
 
-                <section class="settings-group">
+                <section class="settings-group" data-settings-tab="planner">
                     <h4 data-i18n="settingsGroupPlanner">Planner</h4>
                     <div class="settings-grid">
                         <label class="settings-field">
@@ -222,19 +236,14 @@
                             </select>
                         </label>
                     </div>
-                    <label class="settings-check">
-                        <input type="checkbox" id="farmland-area-toggle">
-                        <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
-                            <small data-i18n="farmlandAreaHint">Counted from the map like the game does (field plus margins); needs the savegame and the map mod.</small></span>
-                    </label>
                 </section>
 
-                <section class="settings-group">
+                <section class="settings-group" data-settings-tab="mods">
                     <h4 data-i18n="animalModsLabel">Mods the app reads:</h4>
                     <div id="animal-mods-info" class="animal-mods-info"></div>
                 </section>
 
-                <details id="settings-advanced" class="settings-group settings-advanced">
+                <details id="settings-advanced" class="settings-group settings-advanced" data-settings-tab="advanced" open>
                     <summary data-i18n="settingsAdvanced">Advanced: map and animal folders</summary>
                     <div class="settings-field">
                         <span data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</span>
@@ -258,9 +267,9 @@
                     </div>
                 </details>
 
-                <div id="settings-supply-adjust" class="settings-group"></div>
+                <div id="settings-supply-adjust" class="settings-group" data-settings-tab="rates"></div>
 
-                <div class="settings-danger-zone">
+                <div class="settings-danger-zone" data-settings-tab="advanced">
                     <p data-i18n="dangerZoneLabel">Danger zone</p>
                     <div id="fields-backup-row" hidden>
                         <p data-i18n="restoreFieldsLabel">Earlier versions of the fields table:</p>
@@ -325,6 +334,8 @@
                 <input type="text" id="new-farm-name" data-i18n-placeholder="farmNamePlaceholder" placeholder="Farm name (e.g. Riverbend)">
                 <label for="new-farm-map" class="modal-field-label" data-i18n="farmMapLabel">Map for this farm:</label>
                 <input type="text" id="new-farm-map" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                <span class="modal-field-label" data-i18n="newFarmSaveLabel">Savegame:</span>
+                <div id="new-farm-saves" class="new-farm-saves"></div>
                 <div class="modal-buttons">
                     <button id="cancel-btn" data-i18n="cancel">Cancel</button>
                     <button id="confirm-btn" data-i18n="add">Add</button>
