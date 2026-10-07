@@ -1644,7 +1644,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_k8_t: "Days of feed left",
     tut_k8_x: "Feed in the trough ÷ what the herd eats per day. Amber below 7 days, red below 3 — time to restock.",
     tut_k20_t: "Ration",
-    tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner — change it in either place.",
+    tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner (change it in either place) and it's this barn's own — other barns with the same animals keep theirs.",
     tut_k9_t: "Low feed warning",
     tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the trough is below 15% of its capacity, below 80 L if you haven't entered a capacity, or when there's no feed at all.",
     tut_k10_t: "Enter the capacity",
@@ -1944,7 +1944,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k8_t: "Na ile dni wystarczy paszy",
     tut_k8_x: "Pasza w korycie ÷ ile stado zjada dziennie. Bursztynowy poniżej 7 dni, czerwony poniżej 3 — czas dosypać.",
     tut_k20_t: "Dawka",
-    tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz — zmienisz go w dowolnym miejscu.",
+    tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz (zmienisz go w dowolnym miejscu) i dotyczy tylko tego budynku — inne budynki z tymi samymi zwierzętami mają swój.",
     tut_k9_t: "Ostrzeżenie o paszy",
     tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy w korycie jest poniżej 15% pojemności, poniżej 80 L przy niepodanej pojemności albo gdy paszy nie ma wcale.",
     tut_k10_t: "Wpisz pojemność",
@@ -3416,8 +3416,8 @@ window.openHubPanel = function (type) {
             buildings.forEach(b => b.clusters.forEach(c => {
                 const type = animalTypeOf(c.subType);
                 if (!type || !ANIMAL_NEEDS_DATA[c.subType]) return;
-                const ration = resolveRation(type, feedPlan);
-                if (ration) splitByRecipe(getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals, ration, farmDailyByCat);
+                const ration = resolveRation(type, feedPlan, b.id);
+                if (ration) splitByRecipe(clusterDailyFood(farm, type, c), ration, farmDailyByCat);
                 farmDailyByCat.STRAW = (farmDailyByCat.STRAW || 0) + getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
             }));
             let anyProductionFound = false;
@@ -3446,12 +3446,12 @@ window.openHubPanel = function (type) {
                 building.clusters.forEach(c => {
                     if (!ANIMAL_NEEDS_DATA[c.subType]) { needsKnownForAll = false; return; }
                     const animalType = animalTypeOf(c.subType);
-                    const ration = animalType ? resolveRation(animalType, feedPlan) : null;
+                    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
                     // The ration's productionWeight scales milk/eggs/wool the way
                     // the game does; manure/slurry don't depend on the feed.
                     const outputFactor = ration ? ration.efficiency / 100 : 1;
                     // EAS lactation: same food factor as the feed planner.
-                    const clusterFood = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, animalType, c);
+                    const clusterFood = clusterDailyFood(farm, animalType, c);
                     if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
                     dailyNeed.food += clusterFood;
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
@@ -3573,12 +3573,12 @@ window.openHubPanel = function (type) {
                 // daily need split into its ingredients, with how long the
                 // farm's stock of each ingredient lasts.
                 Object.keys(foodByType).forEach(animalType => {
-                    const ration = resolveRation(animalType, feedPlan);
+                    const ration = resolveRation(animalType, feedPlan, building.id);
                     if (!ration) return;
                     const parts = {};
                     splitByRecipe(foodByType[animalType], ration, parts);
                     card += `<div class="barn-subtitle">${t('hubRation')}${Object.keys(foodByType).length > 1 ? ' · ' + t('feedAnimal_' + animalType) : ''}</div>
-                        <select class="pen-ration-select barn-ration-select" data-type="${animalType}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
+                        <select class="pen-ration-select barn-ration-select" data-type="${animalType}" data-barn="${escapeHtml(String(building.id))}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
                         <div class="ration-list">`;
                     Object.keys(parts).filter(cat => parts[cat] > 0).forEach(cat => {
                         const stockL = feedStockCat[cat] || 0;
@@ -3758,7 +3758,7 @@ window.openHubPanel = function (type) {
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
                 const plan = getFeedPlan(getCurrentFarm());
-                plan.rations[el.dataset.type] = el.value;
+                setBarnRation(plan, el.dataset.barn, el.dataset.type, el.value);
                 saveFeedPlan(plan);
                 const scroll = modalEl ? modalEl.scrollTop : 0;
                 openHubPanel('animals');
@@ -4280,6 +4280,9 @@ function getFeedPlan(farm) {
     const saved = (farm && farm.feedPlan && typeof farm.feedPlan === 'object') ? farm.feedPlan : {};
     return {
         rations: { ...(saved.rations || {}) },
+        // Ration per barn and species: { [barnId]: { [type]: rationId } }.
+        // A barn without its own choice uses the species' ration above.
+        barnRations: JSON.parse(JSON.stringify(saved.barnRations || {})),
         customFeeds: Array.isArray(saved.customFeeds) ? saved.customFeeds : [],
         // Fixed to the game's default recipe — it's no longer editable, so an
         // older saved recipe is ignored.
@@ -4314,11 +4317,13 @@ function saveFeedPlan(plan) {
     saveFarmData(farm);
 }
 
-// The recipe ({ingredients, efficiency}) a species is fed with. Unknown or
+// The recipe ({ingredients, efficiency}) a species is fed with — in one barn
+// when barnId is given (its own choice, else the species' ration). Unknown or
 // deleted custom feeds fall back to the species' first built-in ration.
-function resolveRation(type, plan) {
+function resolveRation(type, plan, barnId) {
     const groups = ANIMAL_FOOD_GROUPS[type] || {};
-    let id = plan.rations[type] || defaultRationFor(type);
+    const own = barnId != null && plan.barnRations && plan.barnRations[barnId] ? plan.barnRations[barnId][type] : null;
+    let id = own || plan.rations[type] || defaultRationFor(type);
     if (id.startsWith('mixer:')) {
         const mixer = feedMixersFor(getCurrentFarm(), type).find(m => 'mixer:' + m.id === id);
         if (mixer) return mixerRation(mixer, type);
@@ -4414,6 +4419,27 @@ function feedStockCategoriesFor(farm, plan) {
     return feedStockByCategory(farm && farm.feedStock, override);
 }
 
+// Picks a barn's ration for one species (the other barns keep theirs).
+function setBarnRation(plan, barnId, type, rationId) {
+    if (!plan.barnRations) plan.barnRations = {};
+    plan.barnRations[barnId] = { ...(plan.barnRations[barnId] || {}), [type]: rationId };
+}
+
+// Drops a ration id everywhere it's chosen (a deleted custom feed). type:
+// only for that species.
+function forgetRation(plan, rationId, type) {
+    Object.keys(plan.rations).forEach(tp => { if ((!type || tp === type) && plan.rations[tp] === rationId) delete plan.rations[tp]; });
+    Object.values(plan.barnRations || {}).forEach(byType => Object.keys(byType).forEach(tp => {
+        if ((!type || tp === type) && byType[tp] === rationId) delete byType[tp];
+    }));
+}
+
+// A cluster's daily food in litres — the one formula behind the Animals view
+// and the feed planner (EAS lactation factor included).
+function clusterDailyFood(farm, type, c) {
+    return getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, type, c);
+}
+
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
@@ -4434,14 +4460,17 @@ function buildFeedDemand(farm, plan) {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
+        const food = clusterDailyFood(farm, type, c) * yearFactor;
         s.head += c.numAnimals;
-        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        s.food += food;
         s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
+        // Each barn's own ration splits its food into ingredients.
+        const ration = resolveRation(type, plan, b.id);
+        if (ration) splitByRecipe(food, ration, byCategory);
     }));
     Object.keys(bySpecies).forEach(type => {
         const s = bySpecies[type];
         s.ration = resolveRation(type, plan);
-        if (s.ration) splitByRecipe(s.food, s.ration, byCategory);
         byCategory.STRAW = (byCategory.STRAW || 0) + s.straw;   // bedding, whatever the ration
     });
     return { byCategory, bySpecies, unknownSubTypes };
@@ -4909,8 +4938,8 @@ function buildBarnFeedNeed(building, plan, farm) {
         if (!type) return;
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
-        const ration = resolveRation(type, plan);
-        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        const ration = resolveRation(type, plan, building.id);
+        const f = clusterDailyFood(farm, type, c) * yearFactor;
         const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
         food += f;
         bedding += b;
@@ -5089,7 +5118,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
         // --- 2. Feed per species in this barn ---
         Object.keys(barnNeed.heads).forEach(type => {
-            const ration = resolveRation(type, plan);
+            const ration = resolveRation(type, plan, barn.id);
             const current = ration ? ration.id : '';
             html += `<div class="hub-panel-subtitle">${t('feedPickRation')}${Object.keys(barnNeed.heads).length > 1 ? ' · ' + t('feedAnimal_' + type) : ''}</div><div class="feed-ration-row">`;
             Object.keys(ANIMAL_FOOD_GROUPS[type] || {}).forEach(id => {
@@ -5119,7 +5148,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         if (feedEditorDraft && !feedEditorDraft.id) html += renderFeedEditor(feedEditorDraft);
 
         // --- 2b. Mixer wagon, for barns fed TMR (the only thing a mixer makes) ---
-        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan); return r && r.tmr; });
+        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan, barn.id); return r && r.tmr; });
         if (barnUsesTmr) html += renderMixerSection(farm, plan, barnNeed, num);
 
         // --- 3. Ingredient tiles ---
@@ -5651,7 +5680,7 @@ function wireFeedPlanPanel(bodyEl) {
         rerenderFeedPlan();
     }));
     bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => el.addEventListener('click', () =>
-        update(p => { p.rations[el.dataset.type] = el.dataset.ration; })));
+        update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); })));
     const settings = bodyEl.querySelector('.feed-settings');
     if (settings) settings.addEventListener('toggle', () => { feedSettingsOpen = settings.open; });
     bodyEl.querySelectorAll('.feed-use-select').forEach(el => el.addEventListener('change', () =>
@@ -5671,7 +5700,7 @@ function wireFeedPlanPanel(bodyEl) {
         if (!confirm(t('feedCustomDeleteConfirm'))) return;
         update(p => {
             p.customFeeds = p.customFeeds.filter(f => f.id !== el.dataset.id);
-            Object.keys(p.rations).forEach(type => { if (p.rations[type] === 'custom:' + el.dataset.id) delete p.rations[type]; });
+            forgetRation(p, 'custom:' + el.dataset.id);
         });
     }));
     bodyEl.querySelectorAll('.feed-custom-new').forEach(el => el.addEventListener('click', () => {
@@ -5716,7 +5745,7 @@ function wireFeedPlanPanel(bodyEl) {
             if (idx >= 0) {
                 // Species changed: a ration pointing at it for the old species no longer applies.
                 const old = p.customFeeds[idx];
-                if (old.animalType !== feed.animalType && p.rations[old.animalType] === 'custom:' + feed.id) delete p.rations[old.animalType];
+                if (old.animalType !== feed.animalType) forgetRation(p, 'custom:' + feed.id, old.animalType);
                 p.customFeeds[idx] = feed;
             } else {
                 p.customFeeds.push(feed);

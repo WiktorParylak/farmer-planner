@@ -48,6 +48,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Rolling has three states like weeds**: the chip switches nothing → to roll (red) → rolled (green) → nothing. The *I want to roll* checkbox is gone from Edit season — the chip is the only switch. A cut marked *rolled* or the *Roll* job ticked in the work list marks it done. Cleared with a new season.
 - **Farm settings tidied up**: grouped into cards — *Savegame*, *Planner* (grassland limit and currency side by side), *Mods*, *Adjust rates* and the danger zone — left-aligned with short hints under each option. The rarely needed map and animal folders are folded away under *Advanced*; Save / Cancel stay visible at the bottom.
 - Farm data is no longer read and parsed from disk on every lookup (dozens of times per screen refresh): each farm's file is cached while it's unchanged on disk and refreshed on save.
+- **Rations per barn**: the ration picked for a barn (in Animals or the Feed planner) now applies to that barn only — two cow barns can be fed differently. Barns without their own choice keep using the species' ration from before.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
@@ -59,6 +60,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - A new season no longer overwrites an existing archive with the same season number — the old file is kept under another name.
 - **Security**: names and translations read from mods and the savegame (crop names and titles, feed mixers, mixer wagons) can no longer carry HTML into the app — markup characters are dropped when they're read.
 - **Narrow window**: below ~1180 px the planner no longer slides under the header — the table and crop list scroll together from the top, the header wraps, and the fields table scrolls sideways instead of being cut off.
+- The Animals view and the Feed planner count the daily feed need the same way (the Animals view left out EnhancedAnimalSystem's lactation factor).
 
 ## 0.9.8 — 2026-10-02
 
