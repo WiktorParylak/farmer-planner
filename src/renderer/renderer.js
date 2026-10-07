@@ -7123,6 +7123,22 @@ function migrateFarmFolderToId(oldFolderName, farmData) {
     return farmData;
 }
 
+// Parsed data.json per farm file, reused while the file's mtime and size
+// stay the same — getAllFarms() runs dozens of times per render. Callers
+// still get their own copy (they change it and save it, or drop it).
+const FARM_FILE_CACHE = new Map();   // jsonPath -> { mtimeMs, size, data }
+
+function readFarmFile(jsonPath) {
+    const st = fs.statSync(jsonPath);
+    const hit = FARM_FILE_CACHE.get(jsonPath);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return structuredClone(hit.data);
+    const content = fs.readFileSync(jsonPath, 'utf-8');
+    if (content.trim() === '') return null;
+    const data = JSON.parse(content);
+    FARM_FILE_CACHE.set(jsonPath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(data) });
+    return data;
+}
+
 function getAllFarms() {
     const farms = [];
     if (!fs.existsSync(appDataDir)) return farms;
@@ -7134,9 +7150,8 @@ function getAllFarms() {
             if (fs.statSync(folderPath).isDirectory()) {
                 const jsonPath = path.join(folderPath, 'data.json');
                 if (fs.existsSync(jsonPath)) {
-                    const content = fs.readFileSync(jsonPath, 'utf-8');
-                    if (content.trim() !== "") {
-                        let data = JSON.parse(content);
+                    let data = readFarmFile(jsonPath);
+                    if (data) {
                         if (data.id && data.folderName !== data.id) {
                             data = migrateFarmFolderToId(folder, data);
                         }
@@ -7159,7 +7174,12 @@ function saveFarmData(farmData, { touch = true } = {}) {
 
     if (touch) farmData.lastEdited = new Date().toISOString();
 
-    try { fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8'); }
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8');
+        // Keep the cache in step so the next read doesn't parse the file again.
+        const st = fs.statSync(filePath);
+        FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
+    }
     catch (err) { console.error('saveFarmData failed', err); alert(t('saveDataError')); }
 }
 

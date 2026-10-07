@@ -47,6 +47,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Simpler fields table**: the next job is a small line under the state instead of a second badge, grassland age is part of the cuts badge (*Cuts 1/2 · season 4*), a lease is a small caption under the field number, tillage is one chip that cycles plowed → no-till → none, and the plot area fits on one line — rows are lower and calmer.
 - **Rolling has three states like weeds**: the chip switches nothing → to roll (red) → rolled (green) → nothing. The *I want to roll* checkbox is gone from Edit season — the chip is the only switch. A cut marked *rolled* or the *Roll* job ticked in the work list marks it done. Cleared with a new season.
 - **Farm settings tidied up**: grouped into cards — *Savegame*, *Planner* (grassland limit and currency side by side), *Mods*, *Adjust rates* and the danger zone — left-aligned with short hints under each option. The rarely needed map and animal folders are folded away under *Advanced*; Save / Cancel stay visible at the bottom.
+- Farm data is no longer read and parsed from disk on every lookup (dozens of times per screen refresh): each farm's file is cached while it's unchanged on disk and refreshed on save.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
