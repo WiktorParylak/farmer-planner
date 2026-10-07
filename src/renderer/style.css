@@ -6645,6 +6645,13 @@ button.tillage-switch-option {
   background: var(--color-surface-soft);
 }
 
+.fertplan-from-game {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-ink-faint);
+}
+
 .field-number.is-invalid {
   border-color: var(--color-rust);
   box-shadow: 0 0 0 2px rgba(166, 69, 43, 0.25);

@@ -122,6 +122,14 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        limeTitlePf: "Soil pH {ph} (optimum for this soil {opt}) — from Precision Farming",
+        limeTitlePfNeed: "lime to reach it: {l} l",
+        fertPlanExistingFromGame: "From Precision Farming's nitrogen map — type a number to override it.",
+        suppliesLime: "Lime",
+        suppliesLimePh: "pH now → optimum",
+        suppliesLimeBuy: "Lime to buy",
+        suppliesLimeEstimate: "estimate (no pH map)",
+        suppliesLimeNone: "No field needs lime right now.",
         settingsGroupSave: "Savegame",
         settingsGroupPlanner: "Planner",
         settingsAdvanced: "Advanced: map and animal folders (usually not needed)",
@@ -807,6 +815,14 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        limeTitlePf: "pH gleby {ph} (optimum dla tej gleby {opt}) — z Precision Farming",
+        limeTitlePfNeed: "wapna do optimum: {l} l",
+        fertPlanExistingFromGame: "Z mapy azotu Precision Farming — wpisz liczbę, żeby ją nadpisać.",
+        suppliesLime: "Wapno",
+        suppliesLimePh: "pH teraz → optimum",
+        suppliesLimeBuy: "Wapna do kupienia",
+        suppliesLimeEstimate: "szacunek (brak mapy pH)",
+        suppliesLimeNone: "Żadne pole nie potrzebuje teraz wapna.",
         settingsGroupSave: "Zapis gry",
         settingsGroupPlanner: "Planer",
         settingsAdvanced: "Zaawansowane: foldery mapy i zwierząt (zwykle niepotrzebne)",
@@ -1504,7 +1520,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c7_t: "Tillage",
     tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click the chip to switch plowed → no-till → none, right in the table. The chip in the next column is rolling — like weeds, a click switches it: to roll (red) → rolled (green) → none.",
     tut_c8_t: "Lime",
-    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
+    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = fine, amber ≈ half, rust = almost none; below 75% it needs lime. With Precision Farming in the save it shows the field's real pH against the optimum for its soil (hover for the numbers and the lime needed); otherwise the app estimates it — every new season lowers it, faster on lighter soils, and grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c12_t: "Work list",
@@ -1804,7 +1820,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c7_t: "Uprawa gleby",
     tut_c7_x: "Orka (bursztynowa) albo bezorka (zielona) — co planujesz zrobić przed siewem. Kliknij chip, żeby przełączyć orka → bezorka → brak, od razu w tabeli. Chip w następnej kolumnie to wałowanie — jak chwasty, kliknięcie przełącza: do zrobienia (czerwony) → zrobione (zielony) → brak.",
     tut_c8_t: "Wapno",
-    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone, poplon i ryż go nie obniżają. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
+    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = w porządku, bursztynowy ≈ połowa, rdzawy = prawie nic; poniżej 75% trzeba wapnować. Z Precision Farming w zapisie gry pokazuje prawdziwe pH pola wobec optimum dla jego gleby (najedź, żeby zobaczyć liczby i potrzebne wapno); bez niego aplikacja je szacuje — każdy nowy sezon je obniża, szybciej na lżejszych glebach, a użytki zielone, poplon i ryż go nie zmieniają. Kliknij chip, żeby zaznaczyć wapnowanie w małym oknie.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c12_t: "Prace",
@@ -3876,9 +3892,53 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
         html += `<p class="hub-panel-note">${t('suppliesNoFert')}</p>`;
     }
 
+    // --- Lime --- fields below their soil's optimum pH. With Precision
+    // Farming in the save: the litres to bring every part of the field up
+    // (pH map); otherwise the app's own estimate for fields it marks as
+    // needing lime (one application per soil type, limeRateForSoil).
+    const lime = buildSuppliesLimeRows(farm, rates);
+    html += `<div class="hub-panel-subtitle">${t('suppliesLime')}</div>`;
+    if (lime.rows.length) {
+        html += `<table class="supply-table"><thead><tr>
+            <th>${t('suppliesColField')}</th><th>${t('suppliesColArea')}</th><th>${t('suppliesLimePh')}</th><th>${t('suppliesLimeBuy')}</th>
+            </tr></thead><tbody>`;
+        lime.rows.forEach(r => {
+            html += `<tr><td>${escapeHtml(r.number)}</td><td>${r.area.toFixed(2)} ha</td>
+                <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
+                <td>${fmtL(r.buffered)}</td></tr>`;
+        });
+        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}</td></tr></tfoot></table>`;
+    } else {
+        html += `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
+    }
+
     html += `<p class="hub-panel-note">${t('suppliesBufferNote').replace('{p}', rates.bufferPct)}</p>`;
 
     bodyEl.innerHTML = html;
+}
+
+// Lime to buy this season, per planner field (buffer included).
+function buildSuppliesLimeRows(farm, rates) {
+    const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
+    const rows = [];
+    const seen = new Set();
+    (farm.fields || []).forEach((f, i) => {
+        const key = (f.number || '').toString().trim();
+        if (!key || seen.has(key)) return;   // split field: one row for the whole field
+        seen.add(key);
+        const pf = pfFieldData(key);
+        const area = parseFloat((farm.fieldSizes || {})[key]) || (farm.fields || []).filter(x => (x.number || '').toString().trim() === key).reduce((s, x) => s + (parseFloat(x.area) || 0), 0);
+        if (pf && pf.ph) {
+            if (pf.ph.limeL < 1) return;
+            rows.push({ number: key, area, fromGame: true, ph: pf.ph.avg, optimal: pf.ph.optimal, buffered: pf.ph.limeL * buffer });
+            return;
+        }
+        const { status } = getLimeStatus(f, i, farm.currentSeason || 1, rates);
+        if (status === 'active' || !(area > 0)) return;
+        const litres = fieldLimeRate(getFieldSoilMix(fertPlanSoilKey(f, i), rates)) * area;
+        rows.push({ number: key, area, fromGame: false, buffered: litres * buffer });
+    });
+    return { rows, total: rows.reduce((s, r) => s + r.buffered, 0) };
 }
 
 // Farm Hub → "Field soil type": one row per field of the current farm, a %
@@ -5718,7 +5778,10 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
     const targetRate = fieldNRate(cropKey, soilMix, rates);
     const saved = rates.fertPlan && rates.fertPlan[planKey];
     const num = (v) => (saved && saved[v] > 0 && !isNaN(saved[v])) ? parseFloat(saved[v]) : 0;
-    const existingRate = num('existingN');   // N already in/on the field before this plan
+    // N already in/on the field: what you typed, else PF's nitrogen map.
+    const pfN = pfFieldData(soilKey);
+    const existingFromGame = !(saved && saved.existingN > 0) && !!(pfN && pfN.nitrogen);
+    const existingRate = existingFromGame ? Math.round(pfN.nitrogen.avg) : num('existingN');
     const orgRate = num('orgN');             // natural fertilizer this plan adds
     const mineralRate = Math.max(0, targetRate - existingRate - orgRate);
 
@@ -5730,7 +5793,7 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
     const orgVol = { manure: orgRate / mN, slurry: orgRate / sN, digestate: orgRate / dN };
 
     return {
-        density, buffer, soilMix, targetRate, existingRate, orgRate, mineralRate, orgVol,
+        density, buffer, soilMix, targetRate, existingRate, existingFromGame, orgRate, mineralRate, orgVol,
         mineralLitres: mineralRate / density,
         area, covered: (existingRate + orgRate) >= targetRate - 0.5
     };
@@ -5756,7 +5819,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
 
     titleEl.textContent = `${t('fertPlanTitle')} — ${t('suppliesColField')} ${displayNumber} · ${translateCropName(cropKey)}`;
 
-    const existingVal = d.existingRate > 0 ? d.existingRate : '';
+    const existingVal = d.existingRate > 0 && !d.existingFromGame ? d.existingRate : '';
+    const existingPlaceholder = d.existingFromGame ? d.existingRate : 0;
     const orgVal = d.orgRate > 0 ? d.orgRate : '';
     const status = d.covered
         ? `<span class="fertplan-status is-covered">${t('fertPlanCovered')}</span>`
@@ -5769,7 +5833,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
         <p class="details-category"><span>${t('fertPlanColTarget')}</span><span class="details-category-value">${num(d.targetRate)} ${kgN} · ${num(d.targetRate * d.area)} kg</span></p>
         <label class="fertplan-field">
             <span>${t('fertPlanColExisting')}</span>
-            <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="fertplan-existing-input" value="${existingVal}" placeholder="0"><span class="supply-unit">${kgN}</span></span>
+            <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="fertplan-existing-input" value="${existingVal}" placeholder="${existingPlaceholder}"><span class="supply-unit">${kgN}</span></span>
+            ${d.existingFromGame ? `<small class="fertplan-from-game">${t('fertPlanExistingFromGame')}</small>` : ''}
         </label>
         <label class="fertplan-field">
             <span>${t('fertPlanColOrg')}</span>
@@ -6674,7 +6739,7 @@ function fieldYieldFactor(soilMix) {
 // the 3rd), so each field's application is sized to 3 harvests of decay:
 //   loamySand / sandyLoam : -0.125 pH/harvest -> 3 x 730  = 2190 l/ha
 //   loam / siltyClay      : -0.250 pH/harvest -> 3 x 1460 = 4380 l/ha
-// Nothing calls limeRateForSoil / fieldLimeRate yet — kept for a lime shopping list.
+// Used for the Supplies lime list when the save has no Precision Farming pH map.
 const LIME_L_PER_PH_STATE = 730;     // l/ha to raise pH by one 0.125 step
 const LIME_CYCLE_HARVESTS = 3;       // an application is sized to last this many seasons
 const LIME_PH_DROP_PER_HARVEST = { loamySand: 0.125, sandyLoam: 0.125, loam: 0.250, siltyClay: 0.250 };
@@ -6860,7 +6925,8 @@ function buildSuppliesFertRows(farm, rates) {
         const soilKey = fertPlanSoilKey(f, i);
         const planKey = fertPlanKey(f, i);
         const saved = rates.fertPlan && rates.fertPlan[planKey];
-        const hasPlan = !!(saved && ((parseFloat(saved.existingN) > 0) || (parseFloat(saved.orgN) > 0)));
+        const pfN = pfFieldData(soilKey);
+        const hasPlan = !!(saved && ((parseFloat(saved.existingN) > 0) || (parseFloat(saved.orgN) > 0))) || !!(pfN && pfN.nitrogen);
 
         // f.fertilizer = synthetic fertilizer already applied this season, so
         // there's nothing left to buy for it. Otherwise every crop field counts,
@@ -8314,6 +8380,12 @@ function getFieldNumberTotals(fields) {
 // mirrors the old "warns from the 3rd season" cutoff at the old 0.125/harvest
 // rate).
 function getLimeStatus(field, i, seasonNum, rates) {
+    // Current season with Precision Farming in the save: the game's own pH.
+    const farm = getCurrentFarm();
+    if (farm && seasonNum === (farm.currentSeason || 1)) {
+        const pf = pfFieldData((field.number || '').toString().trim());
+        if (pf && pf.ph) return pfLimeStatus(pf.ph);
+    }
     const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), rates);
     const ph = resolveLimePh(field, seasonNum, soilMix);
     if (ph == null) return { ph: null, status: 'off' };
@@ -8988,9 +9060,12 @@ function renderFieldsTable(fields) {
             // fertPlanSoilKey/fertPlanKey below AND for the lime pH lookup,
             // which must key soil mix the same way buildSuppliesFertRows does.
             const origIdx = fields.indexOf(field);
-            const { ph: limePh, status: limeStatus } = getLimeStatus(field, origIdx, viewedSeason, getSupplyRates());
+            const { ph: limePh, status: limeStatus, pf: limePf } = getLimeStatus(field, origIdx, viewedSeason, getSupplyRates());
             const limeColor = limeChipColor(limePh);
-            const limeTitle = buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
+            const limeTitle = limePf
+                ? t('limeTitlePf').replace('{ph}', limePf.avg.toFixed(2)).replace('{opt}', limePf.optimal.toFixed(2))
+                    + (limePf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', Math.round(limePf.limeL).toLocaleString(FIN_LOCALE())) : '')
+                : buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
 
             const numberParts = String(field.number || '').split('-').map(n => n.trim()).filter(Boolean);
             const numberChipsHtml = numberParts.length
@@ -10290,6 +10365,53 @@ function renderGameFarmChoice(farm) {
 
 function refreshFarmlandInfo(farm) {
     FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath, gameFarmIdOf(farm)) : null;
+    refreshPfFieldData(farm);
+}
+
+// Precision Farming's real soil pH and nitrogen per field, from the save's
+// pH / nitrogen maps (savegame-soil.js). Read on open and on every sync;
+// null without a save, without PF or with PF switched off.
+let PF_FIELD_DATA = null;
+
+function refreshPfFieldData(farm) {
+    PF_FIELD_DATA = null;
+    if (!farm || !farm.saveGamePath) return;
+    useSaveFarm(farm);
+    if (!modEnabled('precisionFarming')) return;
+    const res = readFieldSoilFromSave(farm.saveGamePath);
+    if (res.ok && (res.hasPh || res.hasNitrogen)) PF_FIELD_DATA = { farmId: farm.id, fields: res.fields };
+}
+
+// A planner field number ("12" or joined "12-13") -> its PF data, area-weighted
+// across the game fields: { ph: { avg, optimal, limeL } | null, nitrogen: { avg } | null }.
+function pfFieldData(key) {
+    if (!PF_FIELD_DATA || PF_FIELD_DATA.farmId !== currentFarmId || !key) return null;
+    const parts = String(key).split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)))
+        .map(id => PF_FIELD_DATA.fields[id]).filter(Boolean);
+    if (!parts.length) return null;
+    const weigh = (pick, val) => {
+        const list = parts.filter(p => pick(p));
+        const ha = list.reduce((s, p) => s + p.ha, 0);
+        return ha ? list.reduce((s, p) => s + val(p) * p.ha, 0) / ha : null;
+    };
+    const phAvg = weigh(p => p.ph, p => p.ph.avg);
+    const nAvg = weigh(p => p.nitrogen, p => p.nitrogen.avg);
+    return {
+        ph: phAvg == null ? null : {
+            avg: phAvg,
+            optimal: weigh(p => p.ph, p => p.ph.optimal),
+            limeL: parts.reduce((s, p) => s + (p.ph ? p.ph.limeL : 0), 0)
+        },
+        nitrogen: nAvg == null ? null : { avg: nAvg }
+    };
+}
+
+// The lime gauge from PF's real pH: full at the soil's optimum, 75 % (the
+// "needs lime" line) a quarter pH step-group below it, empty 1 pH below.
+function pfLimeStatus(pfPh) {
+    const deficit = Math.max(0, pfPh.optimal - pfPh.avg);
+    const ph = Math.max(0, Math.min(1, 1 - deficit));
+    return { ph, status: ph > 0.75 ? 'active' : 'warning', pf: pfPh };
 }
 
 // Land plot area behind a field key ("12" or combined "12-13"), or null.

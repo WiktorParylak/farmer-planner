@@ -197,6 +197,13 @@ function readFieldPolygons(i3d) {
     return fields.filter(f => f.pts.length >= 3);
 }
 
+// PrecisionFarming.xml <pHMap><valueTransformations>: optimal pH per soil type
+// (soil map 0..3 = loamySand, sandyLoam, loam, siltyClay) and its pH state.
+const PH_OPTIMAL = [6.0, 6.5, 6.75, 7.0];
+const PH_OPTIMAL_STATE = PH_OPTIMAL.map(v => Math.round((v - 4.375) / 0.125));
+// <limeUsage usagePerState="730">: litres per ha per 0.125 pH step.
+const LIME_L_PER_STATE = 730;
+
 // --- Main entry ---------------------------------------------------------------
 // Returns { ok:true, mapTitle, fields: { "<fieldId>": { ha, counts:[4 soils] } } }
 // or { ok:false, reason } with reason one of nopath | nosave | nomapid |
@@ -241,6 +248,19 @@ function readFieldSoilFromSave(careerSavegamePath) {
         }
         if (!soil) return { ok: false, reason: 'nosoil', modName };
 
+        // Precision Farming's live pH and nitrogen maps (same grid as the soil
+        // map), when the save has them. PrecisionFarming.xml: pH state = bits
+        // 0-4, pH = 4.375 + state × 0.125 (state 0 = no data); nitrogen state =
+        // bits 0-5, kg N/ha = (state - 1) × 5.
+        const readSaveLayer = name => {
+            const p = path.join(saveDir, name);
+            if (!fs.existsSync(p)) return null;
+            const layer = decodeGrle(fs.readFileSync(p));
+            return layer && layer.w === soil.w && layer.h === soil.h ? layer : null;
+        };
+        const phMap = readSaveLayer('precisionFarming_phMap.grle');
+        const nMap = readSaveLayer('precisionFarming_nitrogenMap.grle');
+
         // Rasterise each polygon on the farmland grid (finest of the two
         // layers), sampling soil at each pixel centre.
         const res = farmlands.w, scale = res / mapSize, soilStep = soil.w / res;
@@ -252,6 +272,8 @@ function readFieldSoilFromSave(careerSavegamePath) {
             const y0 = Math.max(0, Math.floor(Math.min(...ys))), y1 = Math.min(res - 1, Math.ceil(Math.max(...ys)));
             const counts = [0, 0, 0, 0], farmVotes = {};
             let n = 0;
+            // pH: sum of states and lime states short of each pixel's soil optimum.
+            let phN = 0, phSum = 0, limeStates = 0, nN = 0, nSum = 0;
             for (let y = y0; y <= y1; y++) {
                 const yc = y + 0.5, xs = [];
                 for (let i = 0; i < P.length; i++) {
@@ -263,7 +285,21 @@ function readFieldSoilFromSave(careerSavegamePath) {
                 for (let k = 0; k + 1 < xs.length; k += 2) {
                     for (let x = Math.max(0, Math.ceil(xs[k] - 0.5)); x + 0.5 < xs[k + 1] && x < res; x++) {
                         n++;
-                        counts[soil.data[soilRow + Math.floor(x * soilStep)] & 3]++;
+                        const si = soilRow + Math.floor(x * soilStep);
+                        const soilType = soil.data[si] & 3;
+                        counts[soilType]++;
+                        if (phMap) {
+                            const ph = phMap.data[si] & 31;
+                            if (ph) {
+                                phN++;
+                                phSum += ph;
+                                limeStates += Math.max(0, PH_OPTIMAL_STATE[soilType] - ph);
+                            }
+                        }
+                        if (nMap) {
+                            const nv = nMap.data[si] & 63;
+                            if (nv) { nN++; nSum += nv - 1; }
+                        }
                         const fid = farmlands.data[y * res + x];
                         if (fid) farmVotes[fid] = (farmVotes[fid] || 0) + 1;
                     }
@@ -276,10 +312,24 @@ function readFieldSoilFromSave(careerSavegamePath) {
             const id = best ? best[0] : ((f.name.match(/(\d+)$/) || [])[1] || '').replace(/^0+/, '');
             if (!id) return;
             const prev = out[id];
-            if (prev) { prev.counts = prev.counts.map((c, i) => c + counts[i]); prev.ha += n * pxArea / 10000; }
-            else out[id] = { ha: n * pxArea / 10000, counts };
+            const pf = { phN, phSum, limeStates, nN, nSum, px: n, pxHa: pxArea / 10000 };
+            if (prev) {
+                prev.counts = prev.counts.map((c, i) => c + counts[i]);
+                prev.ha += n * pxArea / 10000;
+                Object.keys(pf).forEach(k => { if (k !== 'pxHa') prev.pf[k] += pf[k]; });
+            } else out[id] = { ha: n * pxArea / 10000, counts, pf };
         });
-        return { ok: true, mapTitle, modName, fields: out };
+        // Per field: average pH, the optimum for its soil mix, lime litres to
+        // bring every pixel up to its soil's optimum (PF <limeUsage
+        // usagePerState="730"> l/ha per 0.125 pH step) and average N kg/ha.
+        Object.values(out).forEach(f => {
+            const p = f.pf;
+            const optimal = f.counts.reduce((s, c, i) => s + c * PH_OPTIMAL[i], 0) / Math.max(1, f.counts.reduce((s, c) => s + c, 0));
+            f.ph = p.phN ? { avg: 4.375 + (p.phSum / p.phN) * 0.125, optimal, limeL: p.limeStates * LIME_L_PER_STATE * p.pxHa, coverage: p.phN / p.px } : null;
+            f.nitrogen = p.nN ? { avg: (p.nSum / p.nN) * 5, coverage: p.nN / p.px } : null;
+            delete f.pf;
+        });
+        return { ok: true, mapTitle, modName, fields: out, hasPh: !!phMap, hasNitrogen: !!nMap };
     } catch (e) {
         console.error('readFieldSoilFromSave failed', e);
         return { ok: false, reason: 'parse', error: String(e && e.message || e) };
