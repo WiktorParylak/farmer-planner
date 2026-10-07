@@ -58,11 +58,11 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
             if (!file) continue;
             const norm = file.replace(/\\/g, '/');
             const base = path.posix.basename(norm, path.posix.extname(norm));
-            let name = null, calendar = null, rawName = null;
+            let name = null, calendar = null, rawName = null, agronomy = null;
             if (!/^\$data\//i.test(norm)) {
                 const xml = read(norm.replace(/^\$moddir\$[^/]+\//i, ''));
                 const parsed = xml ? parseGrowthXml(xml) : null;
-                if (parsed) { name = parsed.name; calendar = parsed.calendar; }
+                if (parsed) { name = parsed.name; calendar = parsed.calendar; agronomy = parsed.agronomy || null; }
                 if (xml) rawName = attr((xml.match(/<fruitType\b[^>]*>/) || [''])[0], 'name');
             }
             // "meadowUS.xml" -> the folder name ("meadow") is the crop.
@@ -70,7 +70,7 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
             const key = name.replace(/[_\s]+/g, '').toUpperCase();
             if (seen.has(key)) continue;
             seen.add(key);
-            crops.push({ name, rawName: rawName || name, calendar, fromBase: calendar === null });
+            crops.push({ name, rawName: rawName || name, calendar, agronomy, fromBase: calendar === null });
         }
         if (!crops.length) return { ok: false, reason: 'nofruittypes', modName };
 

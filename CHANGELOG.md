@@ -49,6 +49,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Farm settings tidied up**: grouped into cards — *Savegame*, *Planner* (grassland limit and currency side by side), *Mods*, *Adjust rates* and the danger zone — left-aligned with short hints under each option. The rarely needed map and animal folders are folded away under *Advanced*; Save / Cancel stay visible at the bottom.
 - Farm data is no longer read and parsed from disk on every lookup (dozens of times per screen refresh): each farm's file is cached while it's unchanged on disk and refreshed on save.
 - **Rations per barn**: the ration picked for a barn (in Animals or the Feed planner) now applies to that barn only — two cow barns can be fed differently. Barns without their own choice keep using the species' ration from before.
+- **Seed rates, yields and straw come from the farm's map**: read from the map's own crop files (and the base game's for crops the map doesn't redefine) instead of built-in tables tuned to the Solek map — on another map the predicted yields, feed planner and seed list use that map's numbers. The base game's values ship in `data/default-agronomy.json`.
 
 **Fixed**
 - A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.

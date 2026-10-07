@@ -4194,9 +4194,11 @@ const FEED_CROP_USES = {
     Soybean: { feed: 'PROTEIN' }, Canola: { feed: 'PROTEIN' }, Sunflower: { feed: 'PROTEIN' },
     Potato: { feed: 'EARTH' }, Sugarbeet: { feed: 'EARTH' }, Beetroot: { feed: 'EARTH' }, Carrot: { feed: 'EARTH' }, Parsnip: { feed: 'EARTH' }
 };
-// Straw windrow left behind by the combine, l/ha — the map's
-// windrowLitersPerSqm x 10000 (tools/SOLEK_agronomy.json).
-const FEED_STRAW_L_PER_HA = { Wheat: 38000, Barley: 36800, Oat: 36800, Rye: 46000, Triticale: 36000 };
+// Straw windrow left behind by the combine, l/ha — the crop's straw <windrow>
+// litersPerSqm × 10000 (map crop files, else base game). null = no straw.
+function cropStrawRate(crop) {
+    return cropAgronomy(crop, 'straw');
+}
 // Reference crop used to turn a shortfall in litres into "about X ha missing".
 const FEED_REFERENCE_CROP = { PIG_BASE: 'Maize', GRAIN: 'Wheat', PROTEIN: 'Soybean', EARTH: 'Potato', OAT: 'Oat', STRAW: 'Wheat' };
 // animals.xml food/straw curves are litres per in-game *month* — the game
@@ -4290,7 +4292,7 @@ function getFeedPlan(farm) {
         fieldUse: { ...(saved.fieldUse || {}) },
         strawFields: { ...(saved.strawFields || {}) },
         grassCuts: parseFloat(saved.grassCuts) > 0 ? parseFloat(saved.grassCuts) : 3,
-        chaffYield: parseFloat(saved.chaffYield) > 0 ? parseFloat(saved.chaffYield) : Math.round((CROP_YIELD_L_PER_HA.Maize || 9200) * 4),
+        chaffYield: parseFloat(saved.chaffYield) > 0 ? parseFloat(saved.chaffYield) : Math.round((cropAgronomy('Maize', 'yield') || 9200) * 4),
         strawYield: parseFloat(saved.strawYield) > 0 ? parseFloat(saved.strawYield) : null,
         mixer: normalizeMixerPlan(saved.mixer)
     };
@@ -4534,8 +4536,8 @@ function buildFeedSupply(farm, plan, rates) {
             byCategory[category] = (byCategory[category] || 0) + litres;
         }
 
-        const strawRate = plan.strawYield || FEED_STRAW_L_PER_HA[crop];
-        const strawPossible = FEED_STRAW_L_PER_HA[crop] !== undefined;
+        const strawRate = plan.strawYield || cropStrawRate(crop);
+        const strawPossible = cropStrawRate(crop) !== null;
         const straw = strawPossible && plan.strawFields[key] ? area * strawRate * factor : 0;
         if (straw > 0) byCategory.STRAW = (byCategory.STRAW || 0) + straw;
 
@@ -4884,7 +4886,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         if (need <= 0 && have <= 0 && stock <= 0) return;
         const ref = FEED_REFERENCE_CROP[c];
         const perHa = c === 'STRAW'
-            ? (plan.strawYield || FEED_STRAW_L_PER_HA.Wheat) * avgFactor
+            ? (plan.strawYield || cropStrawRate('Wheat') || 0) * avgFactor
             : (ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0);
         rows.push({ id: c, need, have, stock, perHa, buyOnly: c === 'MINERAL' });
     });
@@ -5948,7 +5950,7 @@ function renderSettingsSupplyAdjust(rates, cropList) {
         // placeholder, so saving the drawer never freezes defaults into
         // rates.crops (which would bypass the per-soil seed/N numbers).
         const o = rates.crops[c] || {};
-        const seedDefault = SUPPLY_SEED_RATES[c] !== undefined ? SUPPLY_SEED_RATES[c] : SUPPLY_SEED_FALLBACK;
+        const seedDefault = defaultSeedRate(c) || SUPPLY_SEED_FALLBACK;
         const nDefault = SUPPLY_N_RATES[c] !== undefined ? SUPPLY_N_RATES[c] : SUPPLY_N_FALLBACK;
         const seed = (o.seed !== undefined && o.seed !== '') ? o.seed : '';
         const n = (o.n !== undefined && o.n !== '') ? o.n : '';
@@ -6508,6 +6510,49 @@ function compareCropsGameOrder(a, b) {
 // XML folder, since not every map ships XML overrides for crops it doesn't
 // customize. A farm's own crops_config.json (imported map data) is merged
 // on top of this in loadFarmConfigs(), overriding per-crop where present.
+// Seed rate, harvest yield and straw per crop in l/ha (litersPerSqm × 10000)
+// from a fruitType XML: <seeding>, <harvest> and a straw <windrow>. Same
+// attributes as tools/generate-default-agronomy.js.
+function cropAgronomyFromDoc(doc) {
+    const perHa = el => {
+        const v = el ? parseFloat(el.getAttribute('litersPerSqm')) : NaN;
+        return v > 0 ? Math.round(v * 10000) : null;
+    };
+    const out = {};
+    const seed = perHa(doc.querySelector('seeding'));
+    const yld = perHa(doc.querySelector('harvest'));
+    const windrow = doc.querySelector('windrow');
+    const straw = windrow && /straw/i.test(windrow.getAttribute('fillType') || '') ? perHa(windrow) : null;
+    if (seed) out.seed = seed;
+    if (yld) out.yield = yld;
+    if (straw) out.straw = straw;
+    return Object.keys(out).length ? out : null;
+}
+
+// Base game agronomy (data/default-agronomy.json, from the game's own crop
+// files) with the open farm's map crops on top — see loadFarmConfigs.
+let DEFAULT_AGRONOMY = {};
+try {
+    DEFAULT_AGRONOMY = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-agronomy.json'), 'utf-8')) || {};
+} catch (e) {
+    console.error('Could not load default-agronomy.json', e);
+}
+let CROP_AGRONOMY = {};   // cropOrderKey -> { seed, yield, straw }
+
+function buildCropAgronomy(mapCrops) {
+    const out = {};
+    Object.keys(DEFAULT_AGRONOMY).forEach(k => { out[cropOrderKey(k)] = { ...DEFAULT_AGRONOMY[k] }; });
+    (mapCrops || []).forEach(c => {
+        if (c.agronomy) out[cropOrderKey(c.name)] = { ...(out[cropOrderKey(c.name)] || {}), ...c.agronomy };
+    });
+    return out;
+}
+
+function cropAgronomy(crop, key) {
+    const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
+    return a && a[key] > 0 ? a[key] : null;
+}
+
 let DEFAULT_CROPS = {};
 try {
     DEFAULT_CROPS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-crops.json'), 'utf-8')) || {};
@@ -6540,21 +6585,14 @@ try {
 // localStorage and are merged over these tables.
 const CONFIG_KEY_SUPPLY_RATES = 'farmer_planner_supply_rates';
 
-// Litres of seed per hectare, keyed by the crop keys used in crops.json /
-// field.crop. Anything unlisted falls back to SUPPLY_SEED_FALLBACK.
-// Values scanned from the FS25 Solek map's foliage XMLs (seeding/@litersPerSqm
-// x 10000) — see tools/scan-solek-agronomy.py / tools/SOLEK_agronomy.json.
-// A different map may use different rates; override per crop in the panel.
+// Litres of seed per hectare: the farm's map crop files (seeding
+// litersPerSqm), else the base game's (data/default-agronomy.json); anything
+// unknown falls back to SUPPLY_SEED_FALLBACK. Override per crop in the panel.
 // For crops in SUPPLY_SEED_RATES_PF below, Precision Farming replaces the
-// foliage rate in-game, so the value here is PF's "standard" rate — only
-// shown as the drawer placeholder; per-field numbers come from fieldSeedRate.
-const SUPPLY_SEED_RATES = {
-    Wheat: 308, Barley: 265, Oat: 340, Rye: 500, Triticale: 500, Greenrye: 300,
-    Canola: 49, Sunflower: 143, Soybean: 214, Maize: 53, Silagemaize: 56, Sorghum: 35,
-    Millet: 500, Buckwheat: 500, Pea: 250, Beans: 500, Greenbean: 280,
-    Potato: 3733, Beetroot: 40, Sugarbeet: 34, Carrot: 10, Parsnip: 10, Spinach: 10, Cotton: 50,
-    Grass: 120, Alfalfa: 500, Clover: 500, Oilseedradish: 40
-};
+// foliage rate in-game; per-field numbers come from fieldSeedRate.
+function defaultSeedRate(crop) {
+    return cropAgronomy(crop, 'seed');
+}
 const SUPPLY_SEED_FALLBACK = 150;
 
 // The previous built-in seed table (foliage-only rates). The Adjust drawer used
@@ -6620,21 +6658,11 @@ const SUPPLY_N_RATES = {
 const SUPPLY_N_FALLBACK = 150;
 
 // Litres of harvest per hectare at 100%-yield-potential soil, full season —
-// used by the "Przewidywane plony" (Predicted yields) panel. Same source/
-// convention as SUPPLY_SEED_RATES above: scanned from the FS25 Solek map's
-// growth definitions (harvestLitersPerHa) — see tools/SOLEK_agronomy.json.
-// Deliberately no fallback constant for an unlisted crop (unlike the seed/N
-// tables) — there's no sane universal yield guess, so callers should show
-// "unknown" rather than a made-up number.
-const CROP_YIELD_L_PER_HA = {
-    Wheat: 6400, Barley: 6800, Oat: 7000, Rye: 5200, Triticale: 6800, Greenrye: 8900,
-    Canola: 4000, Sunflower: 5200, Soybean: 4500, Maize: 9200, Silagemaize: 9200, Sorghum: 8200,
-    Millet: 4500, Buckwheat: 3000, Pea: 9600, Beans: 3500, Greenbean: 6975,
-    Potato: 41300, Beetroot: 57800, Sugarbeet: 57800, Carrot: 77000, Parsnip: 69500,
-    Spinach: 23100, Cotton: 4970, Grass: 43700, Alfalfa: 43700, Clover: 43700, Oilseedradish: 9900
-};
+// used by the Predicted yields panel and the feed planner. From the farm's
+// map crop files (harvest litersPerSqm), else the base game's. No fallback
+// constant for an unknown crop — callers show "unknown" instead of a guess.
 function getCropYieldRate(crop) {
-    return CROP_YIELD_L_PER_HA[crop] !== undefined ? CROP_YIELD_L_PER_HA[crop] : null;
+    return cropAgronomy(crop, 'yield');
 }
 
 // --- Nitrogen by soil type (Precision Farming) ------------------------------
@@ -6904,7 +6932,7 @@ function saveSupplyRates(rates) {
 function getCropSeedRate(crop, rates) {
     const o = rates.crops[crop];
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
-    return SUPPLY_SEED_RATES[crop] !== undefined ? SUPPLY_SEED_RATES[crop] : null;
+    return defaultSeedRate(crop);
 }
 // --- Zaopatrzenie (Supplies panel) row builders -----------------------------
 // Both read farm.fields[] directly — no savegame path, no per-crop
@@ -7238,6 +7266,7 @@ function loadFarmConfigs(farm) {
     // (if any) is merged on top below, per-crop, so it extends/overrides the
     // defaults instead of replacing the whole list.
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
+    CROP_AGRONOMY = buildCropAgronomy(null);
     CROP_ORDER = [...BASE_CROP_ORDER];
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
@@ -7263,6 +7292,7 @@ function loadFarmConfigs(farm) {
                 ? mapNames
                 : [...BASE_CROP_ORDER, ...mapNames.filter(n => !baseKeys.includes(cropOrderKey(n)))];
             CROP_ORDER = [...mapCropNames];
+            CROP_AGRONOMY = buildCropAgronomy(res.crops);
             res.crops.forEach(c => {
                 if (c.calendar) CROP_CALENDAR[c.name] = { ...(CROP_CALENDAR[c.name] || {}), ...c.calendar };
                 if (c.titles) MAP_CROP_TITLES[cropOrderKey(c.name)] = c.titles;
@@ -7530,7 +7560,7 @@ function parseCropGrowthXml(xmlText) {
     }
 
     if (Object.keys(calendar).length === 0) return null;
-    return { name: formatCropName(rawName), calendar };
+    return { name: formatCropName(rawName), calendar, agronomy: cropAgronomyFromDoc(doc) };
 }
 
 // Takes a FileList (from a <input webkitdirectory> folder picker, which the
