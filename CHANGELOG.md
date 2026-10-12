@@ -15,7 +15,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Weeds** (Zabiegi column): a chip per field — nothing / to spray / done, click to switch. Synced from the savegame: live weeds on the field (fields.xml *weedState* 1–6) mark it *to spray*, dead ones (7–9) *done*. Cleared with a new season.
 - **Grassland age**: grass, meadow, alfalfa and clover show how many seasons in a row they've been on the field (*season 3*), highlighted once it's time to plough up — after 4 seasons by default, set per farm in Settings. The cuts window shows it too.
 - **Overdue**: a field that isn't sown when its crop's sowing window has just ended (up to 3 months ago, from the map's crop calendar) shows a red *Overdue* instead of *To plant*.
-- **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known), with the percentages on hover.
+- **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known) in Precision Farming's colours — loamy sand faded yellow, sandy loam faded green, loam grey, silty clay navy — with the percentages on hover.
 - **New season reminder**: when a year has gone by in the game since the current season started, the app offers to start a new season (once per in-game year).
 - **Undo new season**: right after a new season, Settings (danger zone) has *Undo new season N* — it brings back the fields and fertilization plans from before and removes the archive it wrote.
 - **Restore an earlier fields table**: Settings (danger zone) lists the saved versions of the fields table (before editing / after saving, with date and field count) and puts the chosen one back; the current one is backed up first.

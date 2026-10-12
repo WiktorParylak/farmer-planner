@@ -9253,7 +9253,9 @@ function isSowingOverdue(field, currentMonth) {
 }
 
 // Small stacked bar of the field's soil types (only when its soil is known).
-const SOIL_BAR_COLORS = { loamySand: '#d9b56c', sandyLoam: '#b98a4e', loam: '#8a6141', siltyClay: '#5c4a3d' };
+// Like Precision Farming's soil map: loamy sand faded yellow, sandy loam faded
+// green, loam grey, silty clay navy.
+const SOIL_BAR_COLORS = { loamySand: '#d8c98a', sandyLoam: '#9fb58a', loam: '#9a9a96', siltyClay: '#2f3f63' };
 function soilMixBarHtml(key) {
     const rates = getSupplyRates();
     if (!key || !rates.fieldSoil || !rates.fieldSoil[key]) return '';
