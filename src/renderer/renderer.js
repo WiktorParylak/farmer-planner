@@ -7,7 +7,7 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops, readModL10n } = require('./map-crops');
+const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
@@ -63,6 +63,53 @@ const TRANSLATIONS = {
         editSeason: "EDIT SEASON",
         edit: "EDIT",
         saveChanges: "SAVE CHANGES",
+        updateSettingLabel: "Updates",
+        updateSettingHint: "Check for a new version when the app starts.",
+        updateCheckNow: "Check now",
+        updateCurrentVersion: "Installed: {v}",
+        updateAvailableTitle: "Update available",
+        updateAvailableBody: "Farmer Planner {v} is out (you have {c}). Download the installer from the release page and run it — your farms stay where they are.",
+        updateDownload: "Open the download page",
+        updateLater: "Later",
+        updateNoneTitle: "Up to date",
+        updateNone: "You have the newest version ({v}).",
+        updateErrorTitle: "Couldn't check for updates",
+        updateError: "GitHub didn't answer — check your internet connection and try again.",
+        historyNewCareerTitle: "New career in this savegame?",
+        historyNewCareerBody: "The savegame is earlier in time than the monthly history of this farm (another save, or the career started over). Continue the history with it, or start a new one? The old history is kept in a file next to it.",
+        historyStartNew: "Start a new history",
+        historyContinue: "Continue the history",
+        currencyLabel: "Currency:",
+        currencyAuto: "Same as in the game",
+        gameFarmLabel: "Your farm in this savegame:",
+        gameFarmUnnamed: "Farm",
+        openFarmTitle: "Open farm",
+        deleteFarmTitle: "Delete farm",
+        importNoFarmOpen: "no farm open — open a farm before importing map data",
+        importCropsDone: "{n} crop(s) from {d} growth definition(s)",
+        importCropsSaveError: "could not save the crops config ({e})",
+        importAnimalsDone: "{n} animal breed(s) with feed/water/straw needs",
+        importAnimalsSaveError: "could not save the animal needs config ({e})",
+        importReadErrors: "{n} file(s) could not be read (details in the console)",
+        importSummary: "Imported: {parts} (out of {n} XML files scanned).",
+        importNothingFound: "No crop or animal definition files found among {n} scanned XML file(s). Make sure you picked the right folder(s).",
+        filesSelected: "{n} file(s) selected",
+        saveDataError: "Couldn't save the farm data.",
+        fieldSizeHint: "Total ha of this physical field — lets the app tell you how much is left to sow",
+        addRowSplitHint: "Tip: reuse the same field number on two rows to split one field between two crops",
+        titlebarMinimize: "Minimize",
+        titlebarMaximize: "Maximize",
+        titlebarRestore: "Restore",
+        titlebarClose: "Close",
+        yearFromGameHint: "In-game year, read from the savegame",
+        yearManualHint: "Year counter — no savegame linked, so set it by hand",
+        cancelEdit: "CANCEL",
+        discardEditsTitle: "Discard changes?",
+        discardEditsBody: "You have unsaved changes in the fields table. They will be lost.",
+        discardEditsConfirm: "Discard changes",
+        discardEditsKeep: "Keep editing",
+        missingFieldNumberTitle: "Field number missing",
+        missingFieldNumberBody: "Some rows have a crop or area but no field number — they're highlighted. Enter a number or remove those rows, then save again.",
         season: "Season",
         thFieldNo: "Field No.",
         thFieldHa: "Field Ha",
@@ -72,13 +119,122 @@ const TRANSLATIONS = {
         thTillage: "Tillage",
         tillagePlowed: "Plowed",
         tillageNoTill: "No-till",
-        thSoil: "Soil",
+        thSoil: "Treatments",
         thHa: "Ha",
-        totalPlantedArea: "Total planted area",
-        farmDetails: "Farm Details",
+        totalPlantedArea: "Planned area",
+        fieldViewOpenHint: "Open this field: soil, pH, fertilization, feed use, work and history",
+        fieldViewTitle: "Field {field}",
+        fieldViewFromGame: "from the game",
+        fieldViewSoil: "Soil",
+        fieldViewSoilHint: "Shares of each soil type in % (Precision Farming's soil map can fill them in: Field soil type → Load soils from game).",
+        fieldViewLime: "pH and lime",
+        fieldViewNoLime: "Not limed yet (no Precision Farming pH map) — use the lime chip in the table.",
+        fieldViewFert: "Nitrogen",
+        fieldViewFeed: "Feed use",
+        fieldViewWork: "Work",
+        fieldViewNextJob: "Next job: {job}",
+        fieldViewHistory: "Past seasons",
+        fieldViewNoHistory: "No earlier season on this field number yet.",
+        settingsTabMods: "Mods",
+        settingsTabRates: "Rates",
+        settingsTabAdvanced: "Advanced",
+        savePathMissing: "No file at this path — pick careerSavegame.xml (or its savegame folder).",
+        savePathNotSave: "This file isn't an FS25 career savegame.",
+        savePathFound: "Found: {name} · {map} · {money}",
+        newFarmSaveLabel: "Savegame:",
+        newFarmNoSave: "No savegame",
+        newFarmNoSaveHint: "plan by hand; link one later in Settings",
+        newFarmSaveUnnamed: "Savegame",
+        newFarmNoSavesFound: "No savegames found in Documents\\My Games\\FarmingSimulator2025 — you can link one later in Settings.",
+        limeTitlePf: "Soil pH {ph} (optimum for this soil {opt}) — from Precision Farming",
+        limeTitlePfNeed: "lime to reach it: {l} l",
+        fertPlanExistingFromGame: "From Precision Farming's nitrogen map — type a number to override it.",
+        suppliesLime: "Lime",
+        suppliesLimePh: "pH now → optimum",
+        suppliesLimeBuy: "Lime to buy",
+        suppliesLimeEstimate: "estimate (no pH map)",
+        suppliesLimeNone: "No field needs lime right now.",
+        settingsGroupSave: "Savegame",
+        settingsGroupPlanner: "Planner",
+        settingsAdvanced: "Advanced: map and animal folders (usually not needed)",
+        tillageClickHint: "Click to switch: plowed → no-till → none",
+        leaseLabel: "Lease",
+        leaseYes: "leased field",
+        leaseSeasons: "For (seasons)",
+        leaseThen: "Then",
+        leaseReturn: "give back",
+        leaseBuy: "buy out",
+        leaseBadge: "Lease {n}/{m}",
+        leaseBadgeOpen: "Lease · season {n}",
+        leaseBadgeHint: "Leased since season {s}",
+        leaseEndBuy: "Lease term reached — time to buy the field out",
+        leaseEndReturn: "Lease term reached — time to give the field back",
+        workTitle: "Work · field {field}",
+        workIntro: "Your steps in order — tick what's done; the button in the table shows the next one.",
+        workIntroSuggested: "Suggested from the sowing month. Change anything (tick, move, add) and it becomes this field's own list.",
+        workAdd: "Add step",
+        workSuggest: "Suggest by month",
+        workUp: "Move up",
+        workDown: "Move down",
+        workRemove: "Remove step",
+        workAllDone: "All done",
+        workOpenHint: "Open the work list for this field",
+        workSuggestedHint: "Next step suggested from the sowing month — click for the full list",
+        work_fertilize: "Fertilize",
+        work_manure: "Manure / slurry",
+        work_lime: "Lime",
+        work_mow: "Mow",
+        work_bale: "Bale",
+        work_harvestWrap: "Collect & wrap",
+        work_harvest: "Harvest",
+        work_cultivate: "Cultivate",
+        work_plow: "Plow",
+        work_sow: "Sow",
+        work_roll: "Roll",
+        work_weeds: "Weeds",
+        loadFieldsFromGame: "FIELDS FROM GAME",
+        loadFieldsFromGameHint: "Add your fields from the savegame, fill in their area and mark what's already sown",
+        loadFieldsTitle: "Fields from the game",
+        loadFieldsNoSave: "Couldn't read the fields from the savegame (fields.xml / farmland.xml).",
+        loadFieldsDone: "Added fields: {a}. Area filled in from the game: {h}. Marked sown: {s}.",
+        loadFieldsKeptManual: "{n} field(s) keep the area you typed (it differs from the game's).",
+        restoreFieldsLabel: "Earlier versions of the fields table:",
+        restoreFieldsBtn: "RESTORE",
+        restoreFieldsTitle: "Restore the fields table?",
+        restoreFieldsBody: "The current season's fields are replaced with the version from {when}. The current version is kept as a backup first.",
+        restoreFieldsConfirm: "Restore",
+        backupFields: "{n} fields",
+        "backupAction_pre-edit": "before editing",
+        "backupAction_post-edit": "after saving",
+        "backupAction_pre-restore": "before a restore",
+        "backupAction_pre-import": "before fields from game",
+        undoNewSeason: "UNDO NEW SEASON {n}",
+        undoNewSeasonTitle: "Take back season {n}?",
+        undoNewSeasonBody: "The farm goes back to season {c} with its fields and fertilization plans as they were before the new season. Anything changed in season {n} since then is lost.",
+        undoNewSeasonConfirm: "Back to season {c}",
+        undoNewSeasonDoneTitle: "Back in season {c}",
+        undoNewSeasonDone: "Season {n} was taken back.",
+        newSeasonYearHint: "A year has gone by in the game (year {y}; this season started in year {s}) — time for a new season?",
+        dangerZoneLabel: "Danger zone",
+        resetSeasonsHint: "Deletes every archived season of this farm; the current fields stay.",
+        seasonNavLocked: "Save or cancel the edit to switch seasons",
+        seasonPrev: "Previous season",
+        seasonNext: "Next season",
+        grasslandLimitLabel: "Plough up grassland after (seasons):",
+        cutsGrassAge: "Grassland here for {n} season(s) in a row (plough up after {max}).",
+        sownAreaSum: "sown {ha} ha",
+        overdue: "Overdue",
+        overdueHint: "The sowing window for this crop is over and the field isn't sown",
+        grassAge: "season {n}",
+        grassAgeHint: "Grassland on this field for {n} season(s) in a row (plough it up after {max})",
+        grassAgeOverHint: "Grassland on this field for {n} seasons in a row — time to plough it up (set to {max} in Settings)",
+        weedsNone: "Weeds: nothing to do",
+        weedsNeeded: "Weeds: spray / weed this field",
+        weedsDone: "Weeds: done",
+        weedsClickHint: "click to switch",
         detailBalance: "Balance",
         detailCredit: "Credit",
-        bankCreditValue: "{n} active loan(s) · {m} € / month",
+        bankCreditValue: "{n} active loan(s) · {m} / month",
         finNoLoan: "no loan",
         finVsPrevMonth: "vs last month",
         finNoHistory: "history builds up as you play",
@@ -98,11 +254,7 @@ const TRANSLATIONS = {
         animChartSeasons: "Animals at the end of each season",
         animKpiLowFeed: "low feed: {list}",
         animKpiFeedOk: "every building has feed",
-        detailHaAmount: "Ha amount",
         detailFarmAge: "Playtime",
-        detailFields: "Fields",
-        detailCrops: "Crops",
-        detailEquipment: "Equipment",
         detailAnimals: "Animals",
         cropsListTitle: "List of all crops that are being farmed",
         resetSeasons: "RESET SEASONS",
@@ -114,7 +266,7 @@ const TRANSLATIONS = {
         cropsFolderLabel: "Crops folder (map's uprawaX.xml / fruitType files):",
         cropsFolderHint: "Usually not needed — when the farm is linked to a savegame, the map mod's crops (and their order in the game menu) are read automatically. Pick a folder only for a map the app can't read (base-game map, missing mod) or to override a crop's calendar; subfolders are scanned automatically.",
         noFolderSelected: "No folder selected",
-        autoSyncLabel: "Auto-sync with the savegame while playing",
+        autoSyncLabel: "Auto-sync this farm with the savegame while playing",
         autoSyncHint: "The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously. Lower the autosave interval in-game for fresher data.",
         autoSyncedToast: "Synced from savegame",
         saveAndImport: "SAVE & IMPORT",
@@ -130,7 +282,7 @@ const TRANSLATIONS = {
         add: "Add",
         areYouSure: "Are you sure?",
         newSeasonTitle: "Start season {n}?",
-        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown.",
+        newSeasonBody: "Season {c} will be saved to the archive and its fields cleared. Soil pH drops by one harvest on fields whose crop uses lime. Grass, meadow, alfalfa and clover stay sown. Fertilization plans start over.",
         newSeasonConfirm: "Start season {n}",
         newSeasonDoneTitle: "Season {n}",
         newSeasonDone: "Season {c} is archived. Welcome to season {n}!",
@@ -149,7 +301,7 @@ const TRANSLATIONS = {
         plantNow: "Plant now",
         toPlant: "To plant",
         split: "Split",
-        rotationWarning: "Same crop as last season on this field — consider rotating to keep the soil healthy",
+        rotationWarning: "Same crop as last season on this field",
         haNotAssigned: "ha not yet assigned",
         overBy: "over by",
         limeTitle: "Lime",
@@ -238,14 +390,10 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Catch crop sowing",
         catchCropHint: "A crop grown on the same field before or after the main crop (green rye, oilseed radish…). Listed separately in the crops summary so its area isn't counted twice.",
         catchCropShort: "catch crop",
-        thRolling: "Rolling",
-        rollingWant: "I want to roll",
-        rollingHint: "Plan rolling this field after sowing (some crops need it for full yield).",
         rollingPlanned: "Rolling planned",
         cutsTitle: "Cuts · field {field}",
         cutsIntro: "Plan each cut: month, what it's for and what's done. About {l} l per cut on this field — the feed planner counts every cut into its use.",
         cutsIntroNoYield: "Plan each cut: month, what it's for and what's done.",
-        cutsSowing: "Sowing",
         cutsCutN: "Cut {n}",
         cutsRemove: "Remove cut",
         cutsAdd: "Add cut",
@@ -262,6 +410,7 @@ const TRANSLATIONS = {
         cutsOpenHint: "Open the cuts plan",
         feedUseCuts: "by cuts ({n})",
         rollingOff: "No rolling planned",
+        rollingDone: "Rolled",
         rollingClickHint: "click to switch",
         limeClickHint: "click to lime / undo",
         limeConfirmTitle: "Lime field {field}?",
@@ -338,7 +487,7 @@ const TRANSLATIONS = {
         suppliesAdjust: "Adjust rates",
         suppliesBuffer: "Reserve buffer (%)",
         suppliesNDensity: "Fertilizer N content (kg N / l)",
-        suppliesAssumeAllFert: "Assume every crop gets fertilized",
+        suppliesAssumeAllFert: "Count every crop field, not only fields with a fertilization plan",
         suppliesPerCropRates: "Per-crop rates",
         suppliesResetRates: "Reset to defaults",
         suppliesEstimateNote: "Defaults are estimates for a full season at high yield. Tune them to your map, mods and Precision Farming's on-field readout.",
@@ -369,7 +518,7 @@ const TRANSLATIONS = {
         fertPlanTreatmentsTitle: "Treatments",
         fertPlanManureApplied: "Manure / slurry applied",
         fertPlanFertilizerApplied: "Synthetic fertilizer applied",
-        fertPlanTreatmentsNote: "These checkmarks feed the Supplies shopping list — they don't change the nitrogen numbers above.",
+        fertPlanTreatmentsNote: "Once synthetic fertilizer is applied, the field drops off the Supplies shopping list. These checkmarks don't change the nitrogen numbers above.",
 
         hubNotes: "Notes",
         notesTitle: "Notes",
@@ -393,7 +542,8 @@ const TRANSLATIONS = {
         notesBodyPlaceholder: "Any extra detail...",
         notesMonthsLabel: "Months",
         notesTagsLabel: "Tags",
-        notesTagsPlaceholder: "Type a tag and press Enter",
+        notesTagsPlaceholder: "Type a tag and press Enter (or a comma)",
+        notesFilterByTag: "Show only notes with this tag",
         notesChecklistLabel: "Checklist",
         notesAddChecklistItem: "+ Add item",
         notesChecklistItemPlaceholder: "Checklist item",
@@ -568,9 +718,23 @@ const TRANSLATIONS = {
         feedScaleBase: "base game: monthly need doesn't depend on days/month ({d})",
         feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} days/month)",
         feedScaleEas: "EAS: more food after calving",
-        animalModsLabel: "Animal mods in this savegame:",
-        animalModsNoSave: "Link the savegame above to detect animal mods (AnimalFoodCalculator, EnhancedAnimalSystem).",
-        animalModsNone: "No feed-changing animal mods active — base game rules ({d} days/month doesn't change monthly feed).",
+        animalModsLabel: "Mods the app reads:",
+        modsNoSave: "Link the savegame above to see which of these mods it uses.",
+        modStatusActive: "in this savegame",
+        modStatusMissing: "not in this savegame",
+        modDesc_precisionFarming: "field soils from the soil map, variable seed rates by soil",
+        modDesc_afc: "animal feed, water and straw scaled to days per month",
+        modDesc_eas: "milk and feed by lactation after calving",
+        modDesc_animalPackage: "feed curves when AnimalFoodCalculator follows the Animal Package",
+        modDesc_bankCredit: "bank loans and monthly payment",
+        modDesc_hirePurchasing: "vehicles bought on hire purchase — what is still owed counts as a loan",
+        modDesc_fieldLeasing: "leased plots marked on their fields with months, minimum term and monthly fee",
+        leaseGameBadge: "Lease · {n} mo.",
+        leaseGameHint: "Leased with Field Leasing, {fee} a month.",
+        leaseGameMinLeft: "Minimum term: {n} more month(s).",
+        leaseGameCanEnd: "Minimum term over — can be given back.",
+        modDesc_els: "separate loans instead of the game's single loan",
+        fieldSoilImportNoPf: "Needs Precision Farming in the savegame (switched on in Settings).",
         afcModeLine: "mode {mode}: feed ×{x}; curves: {src}",
         afcMode_vanilla: "Basegame (off)",
         afcMode_auto: "Auto (× days/month)",
@@ -616,6 +780,53 @@ const TRANSLATIONS = {
         editSeason: "EDYTUJ SEZON",
         edit: "EDYTUJ",
         saveChanges: "ZAPISZ ZMIANY",
+        updateSettingLabel: "Aktualizacje",
+        updateSettingHint: "Sprawdzaj nową wersję przy uruchomieniu aplikacji.",
+        updateCheckNow: "Sprawdź teraz",
+        updateCurrentVersion: "Zainstalowana: {v}",
+        updateAvailableTitle: "Dostępna aktualizacja",
+        updateAvailableBody: "Wyszedł Farmer Planner {v} (masz {c}). Pobierz instalator ze strony wydania i uruchom go — Twoje farmy zostaną na miejscu.",
+        updateDownload: "Otwórz stronę pobierania",
+        updateLater: "Później",
+        updateNoneTitle: "Masz najnowszą wersję",
+        updateNone: "Zainstalowana wersja ({v}) jest najnowsza.",
+        updateErrorTitle: "Nie udało się sprawdzić aktualizacji",
+        updateError: "GitHub nie odpowiedział — sprawdź połączenie z internetem i spróbuj ponownie.",
+        historyNewCareerTitle: "Nowa kariera w tym zapisie?",
+        historyNewCareerBody: "Zapis gry jest wcześniej w czasie niż historia miesięczna tej farmy (inny zapis albo kariera od nowa). Kontynuować z nim historię czy zacząć nową? Stara historia zostanie zachowana w pliku obok.",
+        historyStartNew: "Zacznij nową historię",
+        historyContinue: "Kontynuuj historię",
+        currencyLabel: "Waluta:",
+        currencyAuto: "Taka jak w grze",
+        gameFarmLabel: "Twoja farma w tym zapisie gry:",
+        gameFarmUnnamed: "Farma",
+        openFarmTitle: "Otwórz farmę",
+        deleteFarmTitle: "Usuń farmę",
+        importNoFarmOpen: "żadna farma nie jest otwarta — otwórz farmę przed importem danych mapy",
+        importCropsDone: "upraw: {n} z {d} definicji wzrostu",
+        importCropsSaveError: "nie udało się zapisać konfiguracji upraw ({e})",
+        importAnimalsDone: "ras zwierząt z zapotrzebowaniem na paszę/wodę/słomę: {n}",
+        importAnimalsSaveError: "nie udało się zapisać zapotrzebowania zwierząt ({e})",
+        importReadErrors: "nie udało się odczytać plików: {n} (szczegóły w konsoli)",
+        importSummary: "Zaimportowano: {parts} (przeskanowano plików XML: {n}).",
+        importNothingFound: "Wśród przeskanowanych plików XML ({n}) nie ma definicji upraw ani zwierząt. Sprawdź, czy wybrano właściwe foldery.",
+        filesSelected: "Wybrane pliki: {n}",
+        saveDataError: "Nie udało się zapisać danych farmy.",
+        fieldSizeHint: "Łączna powierzchnia tego pola w ha — dzięki niej aplikacja pokaże, ile zostało do obsiania",
+        addRowSplitHint: "Wskazówka: wpisz ten sam numer pola w dwóch wierszach, żeby podzielić pole na dwie uprawy",
+        titlebarMinimize: "Minimalizuj",
+        titlebarMaximize: "Maksymalizuj",
+        titlebarRestore: "Przywróć",
+        titlebarClose: "Zamknij",
+        yearFromGameHint: "Rok w grze, odczytany z zapisu gry",
+        yearManualHint: "Licznik lat — farma nie ma zapisu gry, więc ustaw go ręcznie",
+        cancelEdit: "ANULUJ",
+        discardEditsTitle: "Odrzucić zmiany?",
+        discardEditsBody: "Masz niezapisane zmiany w tabeli pól. Zostaną utracone.",
+        discardEditsConfirm: "Odrzuć zmiany",
+        discardEditsKeep: "Edytuj dalej",
+        missingFieldNumberTitle: "Brak numeru pola",
+        missingFieldNumberBody: "Niektóre wiersze mają uprawę albo powierzchnię, ale nie mają numeru pola — są podświetlone. Wpisz numer albo usuń te wiersze i zapisz ponownie.",
         season: "Sezon",
         thFieldNo: "Nr Pola",
         thFieldHa: "Ha Pola",
@@ -625,13 +836,122 @@ const TRANSLATIONS = {
         thTillage: "Orka/Bezorka",
         tillagePlowed: "Orka",
         tillageNoTill: "Bezorka",
-        thSoil: "Gleba",
+        thSoil: "Zabiegi",
         thHa: "Ha",
-        totalPlantedArea: "Łączna obsiana powierzchnia",
-        farmDetails: "Szczegóły Farmy",
+        totalPlantedArea: "Zaplanowana powierzchnia",
+        fieldViewOpenHint: "Otwórz pole: gleba, pH, nawożenie, przeznaczenie, prace i historia",
+        fieldViewTitle: "Pole {field}",
+        fieldViewFromGame: "z gry",
+        fieldViewSoil: "Gleba",
+        fieldViewSoilHint: "Udział każdego typu gleby w % (mapa gleb Precision Farming może je uzupełnić: Typ gleby pól → Wczytaj gleby z gry).",
+        fieldViewLime: "pH i wapno",
+        fieldViewNoLime: "Jeszcze nie wapnowane (brak mapy pH z Precision Farming) — użyj chipu wapna w tabeli.",
+        fieldViewFert: "Azot",
+        fieldViewFeed: "Przeznaczenie paszowe",
+        fieldViewWork: "Prace",
+        fieldViewNextJob: "Następna praca: {job}",
+        fieldViewHistory: "Poprzednie sezony",
+        fieldViewNoHistory: "Na tym numerze pola nie ma jeszcze wcześniejszych sezonów.",
+        settingsTabMods: "Mody",
+        settingsTabRates: "Stawki",
+        settingsTabAdvanced: "Zaawansowane",
+        savePathMissing: "Pod tą ścieżką nie ma pliku — wskaż careerSavegame.xml (albo folder zapisu).",
+        savePathNotSave: "Ten plik nie jest zapisem kariery FS25.",
+        savePathFound: "Znaleziono: {name} · {map} · {money}",
+        newFarmSaveLabel: "Zapis gry:",
+        newFarmNoSave: "Bez zapisu gry",
+        newFarmNoSaveHint: "planujesz ręcznie; zapis podepniesz później w Ustawieniach",
+        newFarmSaveUnnamed: "Zapis gry",
+        newFarmNoSavesFound: "Nie znaleziono zapisów w Dokumenty\\My Games\\FarmingSimulator2025 — zapis podepniesz później w Ustawieniach.",
+        limeTitlePf: "pH gleby {ph} (optimum dla tej gleby {opt}) — z Precision Farming",
+        limeTitlePfNeed: "wapna do optimum: {l} l",
+        fertPlanExistingFromGame: "Z mapy azotu Precision Farming — wpisz liczbę, żeby ją nadpisać.",
+        suppliesLime: "Wapno",
+        suppliesLimePh: "pH teraz → optimum",
+        suppliesLimeBuy: "Wapna do kupienia",
+        suppliesLimeEstimate: "szacunek (brak mapy pH)",
+        suppliesLimeNone: "Żadne pole nie potrzebuje teraz wapna.",
+        settingsGroupSave: "Zapis gry",
+        settingsGroupPlanner: "Planer",
+        settingsAdvanced: "Zaawansowane: foldery mapy i zwierząt (zwykle niepotrzebne)",
+        tillageClickHint: "Kliknij, żeby zmienić: orka → bezorka → brak",
+        leaseLabel: "Dzierżawa",
+        leaseYes: "pole dzierżawione",
+        leaseSeasons: "Na ile sezonów",
+        leaseThen: "Potem",
+        leaseReturn: "zdać",
+        leaseBuy: "wykupić",
+        leaseBadge: "Dzierżawa {n}/{m}",
+        leaseBadgeOpen: "Dzierżawa · {n}. sezon",
+        leaseBadgeHint: "Dzierżawione od sezonu {s}",
+        leaseEndBuy: "Koniec dzierżawy — pora wykupić pole",
+        leaseEndReturn: "Koniec dzierżawy — pora zdać pole",
+        workTitle: "Prace · pole {field}",
+        workIntro: "Twoje kroki po kolei — zaznacz, co zrobione; przycisk w tabeli pokazuje następny.",
+        workIntroSuggested: "Podpowiedź według miesiąca siewu. Zmień cokolwiek (zaznacz, przesuń, dodaj), a stanie się własną listą tego pola.",
+        workAdd: "Dodaj krok",
+        workSuggest: "Podpowiedz wg miesiąca",
+        workUp: "W górę",
+        workDown: "W dół",
+        workRemove: "Usuń krok",
+        workAllDone: "Gotowe",
+        workOpenHint: "Otwórz listę prac tego pola",
+        workSuggestedHint: "Następny krok podpowiedziany wg miesiąca siewu — kliknij, żeby zobaczyć całą listę",
+        work_fertilize: "Nawóz",
+        work_manure: "Obornik / gnojowica",
+        work_lime: "Wapno",
+        work_mow: "Koszenie",
+        work_bale: "Belowanie",
+        work_harvestWrap: "Zbieranie i owijanie",
+        work_harvest: "Zbiór",
+        work_cultivate: "Uprawa",
+        work_plow: "Orka",
+        work_sow: "Siew",
+        work_roll: "Wałowanie",
+        work_weeds: "Chwasty",
+        loadFieldsFromGame: "POLA Z GRY",
+        loadFieldsFromGameHint: "Dodaj swoje pola z zapisu gry, uzupełnij ich powierzchnię i zaznacz, co już obsiane",
+        loadFieldsTitle: "Pola z gry",
+        loadFieldsNoSave: "Nie udało się odczytać pól z zapisu gry (fields.xml / farmland.xml).",
+        loadFieldsDone: "Dodane pola: {a}. Powierzchnia uzupełniona z gry: {h}. Oznaczone jako obsiane: {s}.",
+        loadFieldsKeptManual: "Pola z wpisaną ręcznie powierzchnią (inną niż w grze) zostają bez zmian: {n}.",
+        restoreFieldsLabel: "Wcześniejsze wersje tabeli pól:",
+        restoreFieldsBtn: "PRZYWRÓĆ",
+        restoreFieldsTitle: "Przywrócić tabelę pól?",
+        restoreFieldsBody: "Pola bieżącego sezonu zostaną zastąpione wersją z {when}. Obecna wersja najpierw trafi do kopii zapasowej.",
+        restoreFieldsConfirm: "Przywróć",
+        backupFields: "pól: {n}",
+        "backupAction_pre-edit": "przed edycją",
+        "backupAction_post-edit": "po zapisie",
+        "backupAction_pre-restore": "przed przywróceniem",
+        "backupAction_pre-import": "przed polami z gry",
+        undoNewSeason: "COFNIJ NOWY SEZON {n}",
+        undoNewSeasonTitle: "Cofnąć sezon {n}?",
+        undoNewSeasonBody: "Farma wróci do sezonu {c} z polami i planami nawożenia sprzed nowego sezonu. Wszystko, co zmieniono od tego czasu w sezonie {n}, przepadnie.",
+        undoNewSeasonConfirm: "Wróć do sezonu {c}",
+        undoNewSeasonDoneTitle: "Z powrotem w sezonie {c}",
+        undoNewSeasonDone: "Sezon {n} został cofnięty.",
+        newSeasonYearHint: "W grze minął rok (rok {y}; ten sezon zaczął się w roku {s}) — pora na nowy sezon?",
+        dangerZoneLabel: "Strefa niebezpieczna",
+        resetSeasonsHint: "Usuwa wszystkie zarchiwizowane sezony tej farmy; bieżące pola zostają.",
+        seasonNavLocked: "Zapisz albo anuluj edycję, żeby przełączyć sezon",
+        seasonPrev: "Poprzedni sezon",
+        seasonNext: "Następny sezon",
+        grasslandLimitLabel: "Przeorać użytek zielony po (sezonach):",
+        cutsGrassAge: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max}).",
+        sownAreaSum: "obsiane {ha} ha",
+        overdue: "Po terminie",
+        overdueHint: "Termin siewu tej uprawy minął, a pole nie jest obsiane",
+        grassAge: "{n}. sezon",
+        grassAgeHint: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max})",
+        grassAgeOverHint: "Użytek zielony na tym polu od {n} sezonów z rzędu — pora przeorać (ustawione na {max} w Ustawieniach)",
+        weedsNone: "Chwasty: nic do zrobienia",
+        weedsNeeded: "Chwasty: do oprysku / pielenia",
+        weedsDone: "Chwasty: zrobione",
+        weedsClickHint: "kliknij, żeby zmienić",
         detailBalance: "Saldo",
         detailCredit: "Kredyt",
-        bankCreditValue: "aktywne kredyty: {n} · rata {m} € / mies.",
+        bankCreditValue: "aktywne kredyty: {n} · rata {m} / mies.",
         finNoLoan: "brak kredytu",
         finVsPrevMonth: "wobec poprzedniego miesiąca",
         finNoHistory: "historia zbiera się w trakcie gry",
@@ -651,11 +971,7 @@ const TRANSLATIONS = {
         animChartSeasons: "Zwierzęta na koniec każdego sezonu",
         animKpiLowFeed: "mało paszy: {list}",
         animKpiFeedOk: "każdy budynek ma paszę",
-        detailHaAmount: "Ilość ha",
         detailFarmAge: "Czas gry",
-        detailFields: "Pola",
-        detailCrops: "Uprawy",
-        detailEquipment: "Sprzęt",
         detailAnimals: "Zwierzęta",
         cropsListTitle: "Lista wszystkich uprawianych roślin",
         resetSeasons: "RESETUJ SEZONY",
@@ -667,7 +983,7 @@ const TRANSLATIONS = {
         cropsFolderLabel: "Folder upraw (pliki uprawaX.xml / fruitType mapy):",
         cropsFolderHint: "Zwykle niepotrzebne — gdy farma jest połączona z zapisem gry, uprawy z moda mapy (i ich kolejność z menu gry) wczytują się automatycznie. Wybierz folder tylko dla mapy, której aplikacja nie odczyta (mapa podstawowa, brak moda), albo żeby nadpisać kalendarz uprawy; podfoldery są skanowane automatycznie.",
         noFolderSelected: "Nie wybrano folderu",
-        autoSyncLabel: "Automatyczna synchronizacja z zapisem gry podczas grania",
+        autoSyncLabel: "Automatyczna synchronizacja tej farmy z zapisem gry podczas grania",
         autoSyncHint: "Gra zapisuje stan na dysk tylko przy ręcznym zapisie / autozapisie, więc planer odświeża się przy każdym (auto)zapisie — nie na bieżąco. Skróć interwał autozapisu w grze, aby dane były świeższe.",
         autoSyncedToast: "Zsynchronizowano z zapisem gry",
         saveAndImport: "ZAPISZ I IMPORTUJ",
@@ -683,7 +999,7 @@ const TRANSLATIONS = {
         add: "Dodaj",
         areYouSure: "Czy na pewno?",
         newSeasonTitle: "Rozpocząć sezon {n}?",
-        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane.",
+        newSeasonBody: "Sezon {c} trafi do archiwum, a pola zostaną wyczyszczone. pH gleby spadnie o jeden zbiór na polach, których uprawa zużywa wapno. Trawa, łąka, lucerna i koniczyna zostają zasiane. Plany nawożenia zaczynają się od nowa.",
         newSeasonConfirm: "Rozpocznij sezon {n}",
         newSeasonDoneTitle: "Sezon {n}",
         newSeasonDone: "Sezon {c} zarchiwizowany. Witaj w sezonie {n}!",
@@ -702,7 +1018,7 @@ const TRANSLATIONS = {
         plantNow: "Siej teraz",
         toPlant: "Do obsiania",
         split: "Podział",
-        rotationWarning: "Ta sama uprawa co w zeszłym sezonie na tym polu — rozważ zmianę dla dobra gleby",
+        rotationWarning: "Ta sama uprawa co w zeszłym sezonie na tym polu",
         haNotAssigned: "ha jeszcze nieprzypisane",
         overBy: "przekroczono o",
         limeTitle: "Wapno",
@@ -791,14 +1107,10 @@ const TRANSLATIONS = {
         thCatchSowingMth: "Siew międzyplonu",
         catchCropHint: "Uprawa na tym samym polu przed lub po uprawie głównej (zielone żyto, poplon…). W podsumowaniu upraw liczona osobno, żeby areał nie liczył się podwójnie.",
         catchCropShort: "międzyplon",
-        thRolling: "Wałowanie",
-        rollingWant: "chcę wałować",
-        rollingHint: "Zaplanuj wałowanie tego pola po siewie (niektóre uprawy potrzebują go do pełnego plonu).",
         rollingPlanned: "Wałowanie zaplanowane",
         cutsTitle: "Pokosy · pole {field}",
         cutsIntro: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione. Z tego pola ok. {l} l z pokosu — planer pasz liczy każdy pokos do jego przeznaczenia.",
         cutsIntroNoYield: "Zaplanuj każdy pokos: miesiąc, przeznaczenie i co już zrobione.",
-        cutsSowing: "Siew",
         cutsCutN: "{n}. pokos",
         cutsRemove: "Usuń pokos",
         cutsAdd: "Dodaj pokos",
@@ -815,6 +1127,7 @@ const TRANSLATIONS = {
         cutsOpenHint: "Otwórz plan pokosów",
         feedUseCuts: "wg pokosów ({n})",
         rollingOff: "Wałowanie niezaplanowane",
+        rollingDone: "Wałowanie zrobione",
         rollingClickHint: "kliknij, żeby przełączyć",
         limeClickHint: "kliknij, żeby wapnować / cofnąć",
         limeConfirmTitle: "Wapnowanie pola {field}",
@@ -891,7 +1204,7 @@ const TRANSLATIONS = {
         suppliesAdjust: "Dostosuj stawki",
         suppliesBuffer: "Zapas bezpieczeństwa (%)",
         suppliesNDensity: "Zawartość N w nawozie (kg N / l)",
-        suppliesAssumeAllFert: "Zakładaj nawożenie każdej uprawy",
+        suppliesAssumeAllFert: "Licz każde pole z uprawą, nie tylko pola z planem nawożenia",
         suppliesPerCropRates: "Stawki per uprawa",
         suppliesResetRates: "Przywróć domyślne",
         suppliesEstimateNote: "Domyślne wartości to szacunki dla pełnego sezonu przy wysokim plonie. Dostosuj je do swojej mapy, modów i odczytu Precision Farming na polu.",
@@ -922,7 +1235,7 @@ const TRANSLATIONS = {
         fertPlanTreatmentsTitle: "Zabiegi",
         fertPlanManureApplied: "Zastosowano obornik / gnojówkę",
         fertPlanFertilizerApplied: "Zastosowano nawóz sztuczny",
-        fertPlanTreatmentsNote: "Te znaczniki zasilają listę zakupów w Zaopatrzeniu — nie zmieniają wyliczeń azotu powyżej.",
+        fertPlanTreatmentsNote: "Po zastosowaniu nawozu sztucznego pole znika z listy zakupów w Zaopatrzeniu. Te znaczniki nie zmieniają wyliczeń azotu powyżej.",
 
         hubNotes: "Notatki",
         notesTitle: "Notatki",
@@ -946,7 +1259,8 @@ const TRANSLATIONS = {
         notesBodyPlaceholder: "Dodatkowe informacje...",
         notesMonthsLabel: "Miesiące",
         notesTagsLabel: "Tagi",
-        notesTagsPlaceholder: "Wpisz tag i naciśnij Enter",
+        notesTagsPlaceholder: "Wpisz tag i naciśnij Enter (albo przecinek)",
+        notesFilterByTag: "Pokaż tylko notatki z tym tagiem",
         notesChecklistLabel: "Checklista",
         notesAddChecklistItem: "+ Dodaj punkt",
         notesChecklistItemPlaceholder: "Punkt checklisty",
@@ -1121,9 +1435,23 @@ const TRANSLATIONS = {
         feedScaleBase: "gra podstawowa: zapotrzebowanie miesięczne nie zależy od dni w miesiącu ({d})",
         feedScaleAfc: "AnimalFoodCalculator ×{x} ({d} dni w miesiącu)",
         feedScaleEas: "EAS: więcej paszy po porodzie",
-        animalModsLabel: "Mody zwierząt w tym zapisie gry:",
-        animalModsNoSave: "Podaj wyżej ścieżkę zapisu gry, żeby wykryć mody zwierząt (AnimalFoodCalculator, EnhancedAnimalSystem).",
-        animalModsNone: "Brak aktywnych modów zmieniających paszę — zasady gry podstawowej ({d} dni w miesiącu nie zmienia paszy na miesiąc).",
+        animalModsLabel: "Mody odczytywane przez aplikację:",
+        modsNoSave: "Podaj wyżej ścieżkę zapisu gry, żeby zobaczyć, których z tych modów używa.",
+        modStatusActive: "w tym zapisie",
+        modStatusMissing: "brak w tym zapisie",
+        modDesc_precisionFarming: "gleby pól z mapy gleb, zmienna dawka wysiewu wg gleby",
+        modDesc_afc: "pasza, woda i słoma zwierząt przeliczone na dni w miesiącu",
+        modDesc_eas: "mleko i pasza wg laktacji po porodzie",
+        modDesc_animalPackage: "krzywe paszy, gdy AnimalFoodCalculator korzysta z Animal Package",
+        modDesc_bankCredit: "kredyty bankowe i miesięczna rata",
+        modDesc_hirePurchasing: "maszyny kupione na raty — pozostała do spłaty kwota liczy się jako kredyt",
+        modDesc_fieldLeasing: "dzierżawione działki oznaczone na polach: miesiące, minimalny okres i opłata miesięczna",
+        leaseGameBadge: "Dzierżawa · {n} mies.",
+        leaseGameHint: "Dzierżawa z Field Leasing, {fee} miesięcznie.",
+        leaseGameMinLeft: "Minimalny okres: jeszcze {n} mies.",
+        leaseGameCanEnd: "Minimalny okres minął — można zdać.",
+        modDesc_els: "osobne kredyty zamiast jednej pożyczki z gry",
+        fieldSoilImportNoPf: "Wymaga Precision Farming w zapisie gry (włączonego w Ustawieniach).",
         afcModeLine: "tryb {mode}: pasza ×{x}; krzywe: {src}",
         afcMode_vanilla: "Basegame (wyłączony)",
         afcMode_auto: "Auto (× dni w miesiącu)",
@@ -1209,7 +1537,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_b2_t: "Balance & month",
     tut_b2_x: "Balance and current in-game month. Once you link a savegame (farm settings), they are read from the game automatically. \"Plant now\" badges use this month.",
     tut_b3_t: "Year",
-    tut_b3_x: "The in-game year is editable and goes up by itself when the game rolls from December to January. Change it to 3.",
+    tut_b3_x: "On a farm linked to a savegame the year comes from the game (it turns over in March, like in the game). The demo farm has no save, so here you can edit it — change it to 3.",
     tut_b4_t: "Seasons",
     tut_b4_x: "A season is one planting/harvest cycle — independent of the year. The demo farm is in season 2; season 1 is archived.",
     tut_b5_t: "Previous season",
@@ -1219,37 +1547,49 @@ Object.assign(TRANSLATIONS.en, {
     tut_b7_t: "Back to the current season",
     tut_b7_x: "Click ▶ to return to season 2.",
     tut_b8_t: "New season",
-    tut_b8_x: "After the harvest: archives the current season, clears crops, sowing months and tillage (grass, meadow, alfalfa and clover stay sown), lowers lime pH by one step (depending on soil; not after grassland, oilseed radish or rice) and keeps field numbers and areas. It asks for confirmation — don't click it now.",
+    tut_b8_x: "After the harvest: archives the current season, clears crops, sowing months, tillage and work lists (grass, meadow, alfalfa and clover stay sown), lowers lime pH by one step (depending on soil; not after grassland, oilseed radish or rice), starts fertilization plans over and keeps field numbers and areas. With a savegame, the app offers it by itself once a year has gone by in the game, and Settings can undo the last one. It asks for confirmation — don't click it now.",
     tut_b9_t: "Reset seasons",
-    tut_b9_x: "Deletes the whole season archive and starts counting from season 1 again. Your current fields stay as they are.",
+    tut_b9_x: "Reset seasons — deleting the whole season archive and counting from season 1 again — is in Settings, in the danger zone at the bottom. Your current fields stay as they are.",
 
     tut_c1_t: "Fields table",
-    tut_c1_x: "One row per field (or part of a field). Rows to sow this month jump to the top, the rest are sorted by field number.",
+    tut_c1_x: "One row per field (or part of a field). Rows to sow this month jump to the top, the rest are sorted by field number. Under the area a small bar shows the field's soil mix once it's known. With a savegame linked, \"Fields from game\" above the table adds your fields from the game with their areas.",
     tut_c2_t: "Plant now",
     tut_c2_x: "Orange \"Plant now\": the field isn't sown yet and its sowing month is the current in-game month.",
     tut_c3_t: "Planted / To plant",
-    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Click the badge to switch it right in the table, no edit mode needed.",
+    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Red \"Overdue\" — the crop's sowing window has just ended and the field isn't sown. Click the badge to switch sown / not sown right in the table, no edit mode needed.",
     tut_c11_t: "Grass cuts ✂",
-    tut_c11_x: "Grass, meadow and other grassland fields have a \"Cuts\" button instead of \"Planted\". It opens this season's cuts on a timeline: when each cut was made, what it went to (fresh grass, hay, silage, sale) and whether you fertilized, limed or rolled after it — those checks update the field too.",
+    tut_c11_x: "Grass, meadow and other grassland fields have a \"Cuts\" button instead of \"Planted\". It opens this season's cuts on a timeline: when each cut was made, what it went to (fresh grass, hay, silage, sale) and whether you fertilized, limed or rolled after it — those checks update the field too. Next to it: how many seasons in a row the grassland has been there — highlighted when it's time to plough it up (after 4 by default, set in Settings).",
     tut_c4_t: "Rotation warning ⟳",
     tut_c4_x: "The same crop was grown on this field last season. Consider rotating crops — hover the icon for details.",
     tut_c5_t: "Split field",
-    tut_c5_x: "Two rows with the same number = one physical field shared by two crops (blue bar). The caption shows the total field size and warns when some hectares aren't assigned yet or you've assigned too many.",
+    tut_c5_x: "Two rows with the same number = one physical field shared by two crops (blue bar). The caption shows the total field size and warns when some hectares aren't assigned yet or you've assigned too many. A leased field gets an amber bar and a lease counter (set in Edit, or read from the Field Leasing mod).",
     tut_c6_t: "Combined fields",
     tut_c6_x: "A number like \"5-6\" means several physical fields farmed as one row.",
     tut_c7_t: "Tillage",
-    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. The chip next to it is rolling — click it to plan or clear it.",
+    tut_c7_x: "Plowed (amber) or no-till (green) — what you plan to do before sowing. Click the chip to switch plowed → no-till → none, right in the table. The chip in the next column is rolling — like weeds, a click switches it: to roll (red) → rolled (green) → none.",
     tut_c8_t: "Lime",
-    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = freshly limed, amber ≈ half, rust = almost none. Below 75% it needs attention. Every new season lowers it, faster on lighter soils — grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
+    tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = fine, amber ≈ half, rust = almost none; below 75% it needs lime. With Precision Farming in the save it shows the field's real pH against the optimum for its soil (hover for the numbers and the lime needed); otherwise the app estimates it — every new season lowers it, faster on lighter soils, and grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
-    tut_c10_t: "Total area",
-    tut_c10_x: "The sum of hectares in the table.",
+    tut_c14_t: "Field view",
+    tut_c14_x: "Click a field number to open everything about that field in one place: its soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
+    tut_c12_t: "Work list",
+    tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate and lime, then sow and roll, after: fertilizer and weeds; a catch crop's jobs first). Click it to tick jobs off, reorder or add them — then it's the field's own list.",
+    tut_c13_t: "Weeds",
+    tut_c13_x: "The spray chip: nothing to do / to spray (red) / done (green) — click to switch. With a savegame it follows the game: live weeds on the field mark it red, dead ones green.",
+    tut_i10_t: "Grassland & currency",
+    tut_i10_x: "After how many seasons grassland should be ploughed up (the table highlights it), and the currency — the game's own or one you pick. With a multiplayer save a choice of your farm appears here too.",
+    tut_i11_t: "Danger zone",
+    tut_i11_x: "Earlier versions of the fields table to restore, undo of the last new season (right after one) and resetting all seasons. Each asks before it does anything.",
+    tut_j8_t: "Updates",
+    tut_j8_x: "The app checks for a new version when it starts and shows a popup with the download page. \"Check now\" asks right away; the switch turns the start-up check off.",
+    tut_c10_t: "Area",
+    tut_c10_x: "Planned area — hectares of the fields with a crop — and how much of it is already sown.",
 
     tut_d1_t: "Edit the season",
-    tut_d1_x: "Click \"Edit\". A backup is saved automatically before every edit.",
+    tut_d1_x: "Click \"Edit\". A backup is saved automatically before every edit (the last 20 can be restored in Settings).",
     tut_d2_t: "Field cards",
-    tut_d2_x: "Each field is now an editable card. ✕ deletes it, the \"+\" next to the number adds a dash so you can combine field numbers (e.g. 5-6).",
+    tut_d2_x: "Each field is now an editable card. ✕ deletes it, the \"+\" next to the number adds a dash so you can combine field numbers (e.g. 5-6). At the bottom you can mark a leased field, for how many seasons and what then (buy out / give back).",
     tut_d3_t: "Add a field",
     tut_d3_x: "Scroll down and click \"+ Add new field\".",
     tut_d4_t: "Field number",
@@ -1266,7 +1606,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_d10_t: "Planted",
     tut_d10_x: "Tick the checkbox to mark the field as already sown.",
     tut_d11_t: "Save",
-    tut_d11_x: "The button now says \"Save changes\" — click it. There's no Cancel: the second click always saves.",
+    tut_d11_x: "The button now says \"Save changes\" — click it. \"Cancel\" next to it would drop the changes instead (it asks first if something was changed).",
     tut_d12_t: "Done",
     tut_d12_x: "Your new field is in the table, sorted by its number.",
 
@@ -1321,13 +1661,13 @@ Object.assign(TRANSLATIONS.en, {
     tut_h13_t: "Notes",
     tut_h13_x: "Click \"Notes\".",
     tut_h14_t: "A note",
-    tut_h14_x: "Notes can be pinned to months, tagged and have a checklist. Notes for the current month are highlighted.",
+    tut_h14_x: "Notes can be pinned to months, tagged and have a checklist. Notes for the current month are highlighted and unfolded; click a note's title to fold or unfold it, and a tag to show only notes with that tag.",
     tut_h15_t: "New note",
     tut_h15_x: "Click the add note button.",
     tut_h16_t: "Title",
     tut_h16_x: "Type a title, e.g. \"Buy lime\".",
     tut_h17_t: "Months",
-    tut_h17_x: "Pick the months the note applies to — it will be highlighted when that month comes. Below you can add tags and a checklist.",
+    tut_h17_x: "Pick the months the note applies to — it will be highlighted when that month comes. Below you can add tags (Enter or a comma after each) and a checklist.",
     tut_h18_t: "Save the note",
     tut_h18_x: "Click Save.",
     tut_h20_t: "Yield forecast",
@@ -1354,7 +1694,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_k8_t: "Days of feed left",
     tut_k8_x: "Feed in the trough ÷ what the herd eats per day. Amber below 7 days, red below 3 — time to restock.",
     tut_k20_t: "Ration",
-    tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner — change it in either place.",
+    tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner (change it in either place) and it's this barn's own — other barns with the same animals keep theirs.",
     tut_k9_t: "Low feed warning",
     tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the trough is below 15% of its capacity, below 80 L if you haven't entered a capacity, or when there's no feed at all.",
     tut_k10_t: "Enter the capacity",
@@ -1410,11 +1750,11 @@ Object.assign(TRANSLATIONS.en, {
     tut_i3_t: "Savegame",
     tut_i3_x: "Point to your savegame folder (e.g. Documents\\My Games\\FarmingSimulator2025\\savegame1) with \"...\". That links balance, month, credit, equipment, animals, feed stock, bales, mixer wagons and feed mixers. Below it shows the mods folder the app found — FSG Mod Assistant collections included.",
     tut_i4_t: "Auto-sync",
-    tut_i4_x: "Turn on to update the planner automatically every time you save in the game. The option below also shows the whole land plot area (farmland), not just the field.",
+    tut_i4_x: "On by default for a farm with a savegame: the planner updates by itself every time you save in the game. You can turn it off per farm. The option below also shows the whole land plot area (farmland), not just the field.",
     tut_i5_t: "Map crops & animals",
-    tut_i5_x: "Crops and animals of the map are read automatically from your savegame's mods. Pick folders here only when something is missing, e.g. a map kept outside any mods folder. Below: animal mods found in this savegame.",
-    tut_i6_t: "Adjust rates",
-    tut_i6_x: "Click \"Adjust rates\" to expand it.",
+    tut_i5_x: "The Mods tab: every mod the app can read (Precision Farming, animal, loan and lease mods), whether it is in this savegame, and a switch to use base-game rules instead. Crops and animals of the map are read from the savegame's mods by themselves — folders to pick by hand are under Advanced, only for when something is missing.",
+    tut_i6_t: "Rates",
+    tut_i6_x: "The Rates tab holds the numbers behind the Supplies list.",
     tut_i7_t: "Rates",
     tut_i7_x: "Buffer %, nitrogen density of the mineral fertilizer, nitrogen content of manure/slurry/digestate, and seed / nitrogen rates per crop. Empty = default.",
     tut_i8_t: "Save",
@@ -1499,7 +1839,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_b2_t: "Saldo i miesiąc",
     tut_b2_x: "Saldo i bieżący miesiąc w grze. Po podpięciu zapisu gry (ustawienia farmy) są odczytywane automatycznie. Oznaczenia „Siej teraz” opierają się na tym miesiącu.",
     tut_b3_t: "Rok",
-    tut_b3_x: "Rok w grze można edytować, a przy przejściu z grudnia na styczeń zwiększa się sam. Zmień go na 3.",
+    tut_b3_x: "Na farmie połączonej z zapisem gry rok pochodzi z gry (zmienia się w marcu, tak jak w grze). Farma demo nie ma zapisu, więc tu można go edytować — zmień go na 3.",
     tut_b4_t: "Sezony",
     tut_b4_x: "Sezon to jeden cykl siewu i zbioru — niezależny od roku. Farma demo jest w sezonie 2, a sezon 1 jest w archiwum.",
     tut_b5_t: "Poprzedni sezon",
@@ -1509,37 +1849,49 @@ Object.assign(TRANSLATIONS.pl, {
     tut_b7_t: "Powrót do bieżącego sezonu",
     tut_b7_x: "Kliknij ▶, żeby wrócić do sezonu 2.",
     tut_b8_t: "Nowy sezon",
-    tut_b8_x: "Po żniwach: archiwizuje bieżący sezon, czyści uprawy, miesiące siewu i uprawę gleby (trawa, łąka, lucerna i koniczyna zostają zasiane), obniża pH wapna o jeden krok (zależnie od gleby; nie po użytkach zielonych, poplonie i ryżu) i zachowuje numery oraz powierzchnie pól. Pyta o potwierdzenie — nie klikaj teraz.",
+    tut_b8_x: "Po żniwach: archiwizuje bieżący sezon, czyści uprawy, miesiące siewu, uprawę gleby i listy prac (trawa, łąka, lucerna i koniczyna zostają zasiane), obniża pH wapna o jeden krok (zależnie od gleby; nie po użytkach zielonych, poplonie i ryżu), zaczyna plany nawożenia od nowa i zachowuje numery oraz powierzchnie pól. Z zapisem gry aplikacja sama to zaproponuje, gdy w grze minie rok, a Ustawienia pozwalają cofnąć ostatni nowy sezon. Pyta o potwierdzenie — nie klikaj teraz.",
     tut_b9_t: "Reset sezonów",
-    tut_b9_x: "Usuwa całe archiwum sezonów i liczy od sezonu 1. Bieżące pola zostają bez zmian.",
+    tut_b9_x: "Resetowanie sezonów — usunięcie całego archiwum i liczenie od sezonu 1 — jest w Ustawieniach, w strefie niebezpiecznej na dole. Bieżące pola zostają bez zmian.",
 
     tut_c1_t: "Tabela pól",
-    tut_c1_x: "Jeden wiersz na pole (lub część pola). Pola do obsiania w tym miesiącu są na górze, reszta według numeru.",
+    tut_c1_x: "Jeden wiersz na pole (lub część pola). Pola do obsiania w tym miesiącu są na górze, reszta według numeru. Pod powierzchnią mały pasek pokazuje skład gleby pola, gdy jest znany. Z podpiętym zapisem gry przycisk „Pola z gry” nad tabelą dodaje Twoje pola z gry razem z powierzchnią.",
     tut_c2_t: "Siej teraz",
     tut_c2_x: "Pomarańczowe „Siej teraz”: pole nie jest obsiane, a jego miesiąc siewu to bieżący miesiąc w grze.",
     tut_c3_t: "Obsiane / Do obsiania",
-    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Kliknij plakietkę, żeby przełączyć ją od razu w tabeli, bez trybu edycji.",
+    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Czerwone „Po terminie” — okno siewu tej uprawy właśnie minęło, a pole nie jest obsiane. Kliknij plakietkę, żeby przełączyć obsiane / nieobsiane od razu w tabeli, bez trybu edycji.",
     tut_c11_t: "Pokosy ✂",
-    tut_c11_x: "Pola z trawą, łąką i innymi użytkami zielonymi mają zamiast „Obsiane” przycisk „Pokosy”. Otwiera on pokosy tego sezonu na osi czasu: kiedy był każdy pokos, na co poszedł (zielonka, siano, kiszonka, sprzedaż) i czy po nim nawożono, wapnowano lub wałowano — te zaznaczenia aktualizują też pole.",
+    tut_c11_x: "Pola z trawą, łąką i innymi użytkami zielonymi mają zamiast „Obsiane” przycisk „Pokosy”. Otwiera on pokosy tego sezonu na osi czasu: kiedy był każdy pokos, na co poszedł (zielonka, siano, kiszonka, sprzedaż) i czy po nim nawożono, wapnowano lub wałowano — te zaznaczenia aktualizują też pole. Obok: od ilu sezonów z rzędu jest tu użytek zielony — wyróżnione, gdy pora go przeorać (domyślnie po 4, ustawienie w Ustawieniach).",
     tut_c4_t: "Ostrzeżenie o płodozmianie ⟳",
     tut_c4_x: "Na tym polu w poprzednim sezonie rosła ta sama uprawa. Rozważ zmianę — najedź na ikonę po szczegóły.",
     tut_c5_t: "Pole dzielone",
-    tut_c5_x: "Dwa wiersze z tym samym numerem = jedno pole podzielone między dwie uprawy (niebieski pasek). Podpis pokazuje całkowitą wielkość pola i ostrzega, gdy część hektarów nie jest przypisana albo przypisano za dużo.",
+    tut_c5_x: "Dwa wiersze z tym samym numerem = jedno pole podzielone między dwie uprawy (niebieski pasek). Podpis pokazuje całkowitą wielkość pola i ostrzega, gdy część hektarów nie jest przypisana albo przypisano za dużo. Pole dzierżawione ma bursztynowy pasek i licznik dzierżawy (ustawiane w edycji albo odczytane z moda Field Leasing).",
     tut_c6_t: "Pola łączone",
     tut_c6_x: "Numer w stylu „5-6” oznacza kilka fizycznych pól uprawianych jako jeden wiersz.",
     tut_c7_t: "Uprawa gleby",
-    tut_c7_x: "Orka (bursztynowa) albo uprawa bezorkowa (zielona) — co planujesz zrobić przed siewem. Chip obok to wałowanie — kliknij go, żeby je zaplanować albo wyczyścić.",
+    tut_c7_x: "Orka (bursztynowa) albo bezorka (zielona) — co planujesz zrobić przed siewem. Kliknij chip, żeby przełączyć orka → bezorka → brak, od razu w tabeli. Chip w następnej kolumnie to wałowanie — jak chwasty, kliknięcie przełącza: do zrobienia (czerwony) → zrobione (zielony) → brak.",
     tut_c8_t: "Wapno",
-    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = świeżo wapnowane, bursztynowy ≈ połowa, rdzawy = prawie nic. Poniżej 75% wymaga uwagi. Każdy nowy sezon go obniża, szybciej na lżejszych glebach — użytki zielone, poplon i ryż go nie obniżają. Kliknij chip, żeby oznaczyć wapnowanie w małym okienku.",
+    tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = w porządku, bursztynowy ≈ połowa, rdzawy = prawie nic; poniżej 75% trzeba wapnować. Z Precision Farming w zapisie gry pokazuje prawdziwe pH pola wobec optimum dla jego gleby (najedź, żeby zobaczyć liczby i potrzebne wapno); bez niego aplikacja je szacuje — każdy nowy sezon je obniża, szybciej na lżejszych glebach, a użytki zielone, poplon i ryż go nie zmieniają. Kliknij chip, żeby zaznaczyć wapnowanie w małym oknie.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
-    tut_c10_t: "Suma powierzchni",
-    tut_c10_x: "Suma hektarów w tabeli.",
+    tut_c14_t: "Widok pola",
+    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
+    tut_c12_t: "Prace",
+    tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, potem siew i wałowanie, po: nawóz i chwasty; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność albo dodawać — wtedy to własna lista pola.",
+    tut_c13_t: "Chwasty",
+    tut_c13_x: "Chip z opryskiwaczem: nic / do oprysku (czerwony) / zrobione (zielony) — kliknij, żeby przełączyć. Z zapisem gry podąża za grą: żywe chwasty na polu = czerwony, martwe = zielony.",
+    tut_i10_t: "Łąki i waluta",
+    tut_i10_x: "Po ilu sezonach przeorać użytek zielony (tabela to wyróżni) i waluta — taka jak w grze albo wybrana. Przy zapisie multiplayer pojawi się tu też wybór Twojej farmy.",
+    tut_i11_t: "Strefa niebezpieczna",
+    tut_i11_x: "Wcześniejsze wersje tabeli pól do przywrócenia, cofnięcie ostatniego nowego sezonu (zaraz po nim) i reset wszystkich sezonów. Każda z tych akcji najpierw pyta.",
+    tut_j8_t: "Aktualizacje",
+    tut_j8_x: "Aplikacja przy starcie sprawdza, czy jest nowa wersja, i pokazuje okienko ze stroną pobierania. „Sprawdź teraz” sprawdza od razu; przełącznik wyłącza sprawdzanie przy starcie.",
+    tut_c10_t: "Powierzchnia",
+    tut_c10_x: "Zaplanowana powierzchnia — hektary pól z uprawą — i ile z niej jest już obsiane.",
 
     tut_d1_t: "Edytuj sezon",
-    tut_d1_x: "Kliknij „Edytuj”. Przed każdą edycją zapisuje się automatyczna kopia zapasowa.",
+    tut_d1_x: "Kliknij „Edytuj”. Przed każdą edycją zapisuje się automatyczna kopia zapasowa (20 ostatnich można przywrócić w Ustawieniach).",
     tut_d2_t: "Karty pól",
-    tut_d2_x: "Każde pole jest teraz edytowalną kartą. ✕ je usuwa, a „+” przy numerze dodaje myślnik, żeby połączyć numery pól (np. 5-6).",
+    tut_d2_x: "Każde pole jest teraz edytowalną kartą. ✕ je usuwa, a „+” przy numerze dodaje myślnik, żeby połączyć numery pól (np. 5-6). Na dole zaznaczysz pole dzierżawione, na ile sezonów i co potem (wykup / zdanie).",
     tut_d3_t: "Dodaj pole",
     tut_d3_x: "Przewiń w dół i kliknij „+ Dodaj pole”.",
     tut_d4_t: "Numer pola",
@@ -1556,7 +1908,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_d10_t: "Obsiane",
     tut_d10_x: "Zaznacz pole wyboru, żeby oznaczyć pole jako już obsiane.",
     tut_d11_t: "Zapisz",
-    tut_d11_x: "Przycisk ma teraz napis „Zapisz zmiany” — kliknij go. Nie ma „Anuluj”: drugie kliknięcie zawsze zapisuje.",
+    tut_d11_x: "Przycisk ma teraz napis „Zapisz zmiany” — kliknij go. „Anuluj” obok odrzuciłby zmiany (najpierw zapyta, jeśli coś zmieniono).",
     tut_d12_t: "Gotowe",
     tut_d12_x: "Nowe pole jest w tabeli, posortowane według numeru.",
 
@@ -1611,13 +1963,13 @@ Object.assign(TRANSLATIONS.pl, {
     tut_h13_t: "Notatki",
     tut_h13_x: "Kliknij „Notatki”.",
     tut_h14_t: "Notatka",
-    tut_h14_x: "Notatki można przypiąć do miesięcy, otagować i dodać do nich listę kontrolną. Notatki na bieżący miesiąc są wyróżnione.",
+    tut_h14_x: "Notatki można przypiąć do miesięcy, otagować i dodać do nich listę kontrolną. Notatki na bieżący miesiąc są wyróżnione i rozwinięte; kliknij tytuł notatki, żeby ją zwinąć lub rozwinąć, a tag — żeby pokazać tylko notatki z tym tagiem.",
     tut_h15_t: "Nowa notatka",
     tut_h15_x: "Kliknij przycisk dodawania notatki.",
     tut_h16_t: "Tytuł",
     tut_h16_x: "Wpisz tytuł, np. „Kupić wapno”.",
     tut_h17_t: "Miesiące",
-    tut_h17_x: "Wybierz miesiące, których dotyczy notatka — zostanie wyróżniona, gdy nadejdą. Niżej dodasz tagi i listę kontrolną.",
+    tut_h17_x: "Wybierz miesiące, których dotyczy notatka — zostanie wyróżniona, gdy nadejdą. Niżej dodasz tagi (Enter albo przecinek po każdym) i listę kontrolną.",
     tut_h18_t: "Zapisz notatkę",
     tut_h18_x: "Kliknij Zapisz.",
     tut_h20_t: "Prognoza plonów",
@@ -1644,7 +1996,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k8_t: "Na ile dni wystarczy paszy",
     tut_k8_x: "Pasza w korycie ÷ ile stado zjada dziennie. Bursztynowy poniżej 7 dni, czerwony poniżej 3 — czas dosypać.",
     tut_k20_t: "Dawka",
-    tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz — zmienisz go w dowolnym miejscu.",
+    tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz (zmienisz go w dowolnym miejscu) i dotyczy tylko tego budynku — inne budynki z tymi samymi zwierzętami mają swój.",
     tut_k9_t: "Ostrzeżenie o paszy",
     tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy w korycie jest poniżej 15% pojemności, poniżej 80 L przy niepodanej pojemności albo gdy paszy nie ma wcale.",
     tut_k10_t: "Wpisz pojemność",
@@ -1700,11 +2052,11 @@ Object.assign(TRANSLATIONS.pl, {
     tut_i3_t: "Zapis gry",
     tut_i3_x: "Wskaż folder zapisu gry (np. Dokumenty\\My Games\\FarmingSimulator2025\\savegame1) przyciskiem „...”. Dzięki temu saldo, miesiąc, kredyt, sprzęt, zwierzęta, zapasy paszy, bele, paszowozy i mieszalnie pasz są pobierane z gry. Pod spodem widać znaleziony folder modów — także kolekcje FSG Mod Assistanta.",
     tut_i4_t: "Automatyczna synchronizacja",
-    tut_i4_x: "Włącz, żeby planer aktualizował się sam po każdym zapisie gry. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
+    tut_i4_x: "Domyślnie włączona dla farmy z zapisem gry: planer aktualizuje się sam po każdym zapisie gry. Można ją wyłączyć osobno dla każdej farmy. Opcja niżej pokazuje też powierzchnię całej działki (farmland), nie tylko pola.",
     tut_i5_t: "Uprawy i zwierzęta mapy",
-    tut_i5_x: "Uprawy i zwierzęta mapy są odczytywane automatycznie z modów Twojego zapisu gry. Foldery wskazuj tu tylko wtedy, gdy czegoś brakuje, np. mapa leży poza folderami modów. Niżej: mody zwierząt znalezione w tym zapisie.",
-    tut_i6_t: "Dostosuj stawki",
-    tut_i6_x: "Kliknij „Dostosuj stawki”, żeby je rozwinąć.",
+    tut_i5_x: "Zakładka Mody: wszystkie mody, które aplikacja potrafi odczytać (Precision Farming, mody zwierząt, kredytów i dzierżaw), czy są w tym zapisie gry i przełącznik, żeby liczyć wg zasad gry podstawowej. Uprawy i zwierzęta mapy wczytują się same z modów zapisu — foldery do wskazania ręcznie są w zakładce Zaawansowane, tylko gdy czegoś brakuje.",
+    tut_i6_t: "Stawki",
+    tut_i6_x: "Zakładka Stawki: liczby, z których liczy się lista w Zaopatrzeniu.",
     tut_i7_t: "Dawki",
     tut_i7_x: "Bufor %, zawartość azotu w nawozie mineralnym, azot w oborniku/gnojowicy/pofermencie oraz dawki nasion i azotu dla każdej uprawy. Puste = wartość domyślna.",
     tut_i8_t: "Zapisz",
@@ -1761,7 +2113,7 @@ const CROP_NAME_TRANSLATIONS = {
         "Sunflower": "Słonecznik", "Soybean": "Soja", "Soybeans": "Soja", "Corn": "Kukurydza", "Maize": "Kukurydza", "Beetroot": "Burak czerwony", "Buckwheat": "Gryka",
         "Potato": "Ziemniaki", "Potatoes": "Ziemniaki", "Sugar Beet": "Burak Cukrowy", "Sugarbeet": "Burak Cukrowy", "Clover": "Koniczyna", "Greenbean": "Fasolka zielona",
         "Cotton": "Bawełna", "Grape": "Winogrona", "Grapes": "Winogrona", "Olive": "Oliwki", "Olives": "Oliwki", "Meadow": "Łąka", "Millet": "Proso", "Oilseedradish": "Poplon",
-        "Poplar": "Topola", "Rice": "Ryż", "Rye": "Żyto", "Triticale": "Pszenżyto", "Pea": "Groch", "Silagemaize": "Kukurydza na kiszonkę",
+        "Poplar": "Topola", "Rice": "Ryż", "Rye": "Żyto", "Triticale": "Pszenżyto", "Pea": "Zielony groszek", "Silagemaize": "Kukurydza na kiszonkę",
         "Green Beans": "Fasola Szparagowa", "Spinach": "Szpinak", "Sugarcane": "Trzcina Cukrowa",
         "Sugar Cane": "Trzcina Cukrowa", "Parsnip": "Pasternak", "Parsnips": "Pasternak", "Carrot": "Marchew",
         "Long Grain Rice": "Ryż Długoziarnisty", "Rice Long Grain": "Ryż długoziarnisty", "Ricelonggrain": "Ryż długoziarnisty",
@@ -2003,7 +2355,8 @@ if (titlebarDragArea) titlebarDragArea.addEventListener('dblclick', () => ipcRen
 ipcRenderer.on('window-maximized-change', (event, isMaximized) => {
     if (!titlebarMaxBtn) return;
     titlebarMaxBtn.innerHTML = isMaximized ? '<i class="fa-solid fa-window-restore" aria-hidden="true"></i>' : '<i class="fa-solid fa-window-maximize" aria-hidden="true"></i>';
-    titlebarMaxBtn.title = isMaximized ? 'Restore' : 'Maximize';
+    titlebarMaxBtn.dataset.i18nTitle = isMaximized ? 'titlebarRestore' : 'titlebarMaximize';
+    titlebarMaxBtn.title = t(titlebarMaxBtn.dataset.i18nTitle);
 });
 
 // =============================================================
@@ -2039,6 +2392,10 @@ const discordRpcToggle = document.getElementById('discord-rpc-toggle');
 if (appSettingsBtn && appSettingsModal) {
     appSettingsBtn.addEventListener('click', () => {
         if (discordRpcToggle) discordRpcToggle.checked = isDiscordRpcEnabled();
+        const updToggle = document.getElementById('update-check-toggle');
+        if (updToggle) updToggle.checked = isUpdateCheckEnabled();
+        const versionLabel = document.getElementById('app-version-label');
+        if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         appSettingsModal.style.display = 'flex';
     });
 }
@@ -2104,21 +2461,12 @@ if (closeHubPanelBtn && hubPanelModal) {
     });
 }
 
-// Reads a value straight off the already-rendered Farm Details card,
-// so the hub panels never show a number that could drift out of sync
-// with what's on screen there.
 // Reads balance/loan from every archived season (older archives made before
 // this feature won't have them and are skipped) plus the live current
 // season, giving a season-by-season trend rather than one static number.
 function getSeasonBalanceHistory(farm) {
     const history = [];
     if (!farm || !farm.folderName) return history;
-
-    const parseMoney = (v) => {
-        if (v === undefined || v === null) return 0;
-        const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-        return isNaN(n) ? 0 : n;
-    };
 
     const seasonsDir = path.join(appDataDir, farm.folderName, 'seasons');
     if (fs.existsSync(seasonsDir)) {
@@ -2239,13 +2587,10 @@ function monthlyRowFingerprint(row) {
 // Builds the row for the current in-game month from freshly-read save data
 // (gameData) merged onto `farm`.
 function buildMonthlyRow(farm, gameData) {
-    const parseMoney = (v) => {
-        if (v === undefined || v === null) return 0;
-        const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
-        return isNaN(n) ? 0 : n;
-    };
     return {
-        period: gameData.gamePeriod,
+        // monthlyPeriodOffset: set when a new career continues an existing
+        // history (see recordMonthlySnapshot), so its months follow on.
+        period: gameData.gamePeriod + (parseInt(farm.monthlyPeriodOffset, 10) || 0),
         month: FS_PERIOD_TO_MONTH[gameData.gamePeriod % 12],
         gameYear: gameData.gameYear,
         gameDay: gameData.gameDay,
@@ -2262,9 +2607,15 @@ function buildMonthlyRow(farm, gameData) {
     };
 }
 
+// A jump back of at least this many in-game months (or a different savegame
+// file) means a new career rather than an older save of the same one.
+const NEW_CAREER_PERIOD_DROP = 12;
+let monthlyHistoryPrompting = false;
+
 // Append a new month, or refresh the current month's row in place as values
-// move during that month. Never rewrites older rows and ignores a save that
-// jumped backwards in time (older save loaded) so the log can't be corrupted.
+// move during that month. Never rewrites older rows. A save that jumped
+// backwards a little (older save loaded) is ignored; a new career asks whether
+// to continue the history or start a new one.
 function recordMonthlySnapshot(farm, gameData) {
     if (!farm || !farm.folderName) return;
     if (!gameData || gameData.gamePeriod === null || gameData.gamePeriod === undefined) return;
@@ -2272,6 +2623,16 @@ function recordMonthlySnapshot(farm, gameData) {
     const rows = loadMonthlyHistory(farm);
     const last = rows[rows.length - 1];
     const row = buildMonthlyRow(farm, gameData);
+
+    if (last && row.period < last.period) {
+        const otherSave = !!farm.monthlySavePath && farm.monthlySavePath !== farm.saveGamePath;
+        if (otherSave || last.period - row.period >= NEW_CAREER_PERIOD_DROP) askAboutMonthlyHistory(farm, gameData, last);
+        return;   // older save of the same career: leave history untouched
+    }
+    if (farm.monthlySavePath !== farm.saveGamePath) {
+        farm.monthlySavePath = farm.saveGamePath;
+        saveFarmData(farm, { touch: false });
+    }
 
     if (!last || row.period > last.period) {
         rows.push(row);
@@ -2285,7 +2646,41 @@ function recordMonthlySnapshot(farm, gameData) {
             saveMonthlyHistory(farm, rows);
         }
     }
-    // row.period < last.period -> older save loaded, leave history untouched
+}
+
+// New career (or another savegame) behind a farm with a monthly history:
+// either its months continue the charts, or the old history is set aside
+// (monthly_<date>.json next to it) and the charts start over.
+async function askAboutMonthlyHistory(farm, gameData, last) {
+    if (monthlyHistoryPrompting) return;
+    monthlyHistoryPrompting = true;
+    try {
+        const startNew = await showSeasonModal({
+            title: t('historyNewCareerTitle'),
+            body: t('historyNewCareerBody'),
+            confirmText: t('historyStartNew'),
+            cancelText: t('historyContinue'),
+            icon: 'fa-chart-line'
+        });
+        const fresh = getAllFarms().find(f => f.id === farm.id);
+        if (!fresh) return;
+        if (startNew) {
+            const p = monthlyHistoryPath(fresh);
+            const stamp = new Date().toISOString().slice(0, 10);
+            try { if (p && fs.existsSync(p)) fs.renameSync(p, p.replace(/\.json$/, `_until_${stamp}.json`)); }
+            catch (err) { console.error('Could not set the monthly history aside:', err); }
+            fresh.monthlyPeriodOffset = 0;
+        } else {
+            // The new career's current month becomes the month after the last one logged.
+            fresh.monthlyPeriodOffset = last.period + 1 - gameData.gamePeriod;
+        }
+        fresh.monthlySavePath = fresh.saveGamePath;
+        saveFarmData(fresh, { touch: false });
+        recordMonthlySnapshot(fresh, gameData);
+        if (currentFarmId === fresh.id && currentPlannerView && currentPlannerView !== 'plan') openHubPanel(currentPlannerView);
+    } finally {
+        monthlyHistoryPrompting = false;
+    }
 }
 
 // Short, localized month label for a monthly row ("Aug", "Sty", ...).
@@ -2601,11 +2996,6 @@ function wireBarnPanel(bodyEl) {
     });
 }
 
-function getDetailValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.textContent : '-';
-}
-
 // =============================================================
 // FINANCE VIEW — KPI tiles, monthly balance chart (crosshair tooltip),
 // season-end bars, table view. Colors: balance #3B7542 / loan #C97A2B,
@@ -2615,7 +3005,43 @@ function getDetailValue(id) {
 // =============================================================
 const FIN_LOCALE = () => (currentLang === 'pl' ? 'pl-PL' : 'en-US');
 function finMoney(v) {
-    return `${Math.round(v).toLocaleString(FIN_LOCALE())} €`;
+    const n = Math.round(v).toLocaleString(FIN_LOCALE());
+    return CURRENCY === '€' ? `${n} €` : `${CURRENCY}${n}`;
+}
+
+// Money amounts: farm.balance is a number now, but farms, archives and the
+// demo data from older versions hold text like "1234 €" — accept both.
+function parseMoney(v) {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+}
+
+// Currency symbol of the open farm: chosen in Settings, or the game's own
+// setting (gameSettings.xml <units><money>: 1 euro, 2 dollar, 3 pound).
+// Only the symbol changes — amounts in the save are the same.
+const GAME_MONEY_UNITS = { '1': '€', '2': '$', '3': '£' };
+let CURRENCY = '€';
+
+function readGameCurrency(saveGamePath) {
+    try {
+        const gameDir = path.dirname(path.dirname(saveGamePath));
+        const gs = fs.readFileSync(path.join(gameDir, 'gameSettings.xml'), 'utf-8');
+        const m = gs.match(/<units>[\s\S]*?<money>\s*(\d+)\s*<\/money>/);
+        return m ? (GAME_MONEY_UNITS[m[1]] || null) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function currencyOf(farm) {
+    if (farm && farm.currency && farm.currency !== 'auto') return farm.currency;
+    return (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+}
+
+function useCurrency(farm) {
+    CURRENCY = currencyOf(farm);
 }
 function finCompact(v) {
     return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
@@ -2645,9 +3071,8 @@ function finDeltaHtml(delta, label) {
 
 // KPI row: balance (hero), loan, change this season, play time.
 function renderFinanceKpis(farm, monthly, history) {
-    const parse = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
-    const balance = parse(farm && farm.balance);
-    const loan = parse(farm && farm.loan);
+    const balance = parseMoney(farm && farm.balance);
+    const loan = parseMoney(farm && farm.loan);
     const prevMonth = monthly.length > 1 ? monthly[monthly.length - 2] : null;
     const season = (farm && farm.currentSeason) || 1;
     // Season start: the last archived season's end balance, else this season's first month.
@@ -2656,7 +3081,7 @@ function renderFinanceKpis(farm, monthly, history) {
     const seasonStart = prevSeason ? prevSeason.balance : (firstThisSeason ? firstThisSeason.balance : null);
     const bc = farm && farm.bankCredit;
     const loanSub = bc && bc.count
-        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', bc.monthly.toLocaleString(FIN_LOCALE()))
+        ? t('bankCreditValue').replace('{n}', bc.count).replace('{m}', finMoney(bc.monthly))
         : (loan > 0 ? '' : t('finNoLoan'));
     return `<div class="fin-kpis">
         <div class="fin-kpi fin-kpi--hero">
@@ -2676,7 +3101,7 @@ function renderFinanceKpis(farm, monthly, history) {
         </div>
         <div class="fin-kpi">
             <span class="fin-kpi-label">${t('detailFarmAge')}</span>
-            <span class="fin-kpi-value">${escapeHtml(getDetailValue('detail-age'))}</span>
+            <span class="fin-kpi-value">${escapeHtml((farm && farm.playTime) || '0h 0m')}</span>
         </div>
     </div>`;
 }
@@ -2890,14 +3315,14 @@ function renderFinancePanel(bodyEl, farm) {
         const hasLoan = monthly.some(r => r.loan > 0);
         const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
         if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
-        const opts = { format: (v, end) => finCompact(v) + (end ? ' €' : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
         html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
             w => buildTrendChart(monthly, w, series, opts), width);
     }
     if (history.length > 1) {
         html += `<section class="fin-card fin-chart">
             <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
-            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' €' : ''), t('finChartSeasons'))}
+            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), t('finChartSeasons'))}
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
@@ -3043,8 +3468,8 @@ window.openHubPanel = function (type) {
             buildings.forEach(b => b.clusters.forEach(c => {
                 const type = animalTypeOf(c.subType);
                 if (!type || !ANIMAL_NEEDS_DATA[c.subType]) return;
-                const ration = resolveRation(type, feedPlan);
-                if (ration) splitByRecipe(getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals, ration, farmDailyByCat);
+                const ration = resolveRation(type, feedPlan, b.id);
+                if (ration) splitByRecipe(clusterDailyFood(farm, type, c), ration, farmDailyByCat);
                 farmDailyByCat.STRAW = (farmDailyByCat.STRAW || 0) + getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
             }));
             let anyProductionFound = false;
@@ -3073,12 +3498,12 @@ window.openHubPanel = function (type) {
                 building.clusters.forEach(c => {
                     if (!ANIMAL_NEEDS_DATA[c.subType]) { needsKnownForAll = false; return; }
                     const animalType = animalTypeOf(c.subType);
-                    const ration = animalType ? resolveRation(animalType, feedPlan) : null;
+                    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
                     // The ration's productionWeight scales milk/eggs/wool the way
                     // the game does; manure/slurry don't depend on the feed.
                     const outputFactor = ration ? ration.efficiency / 100 : 1;
                     // EAS lactation: same food factor as the feed planner.
-                    const clusterFood = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, animalType, c);
+                    const clusterFood = clusterDailyFood(farm, animalType, c);
                     if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
                     dailyNeed.food += clusterFood;
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
@@ -3200,12 +3625,12 @@ window.openHubPanel = function (type) {
                 // daily need split into its ingredients, with how long the
                 // farm's stock of each ingredient lasts.
                 Object.keys(foodByType).forEach(animalType => {
-                    const ration = resolveRation(animalType, feedPlan);
+                    const ration = resolveRation(animalType, feedPlan, building.id);
                     if (!ration) return;
                     const parts = {};
                     splitByRecipe(foodByType[animalType], ration, parts);
                     card += `<div class="barn-subtitle">${t('hubRation')}${Object.keys(foodByType).length > 1 ? ' · ' + t('feedAnimal_' + animalType) : ''}</div>
-                        <select class="pen-ration-select barn-ration-select" data-type="${animalType}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
+                        <select class="pen-ration-select barn-ration-select" data-type="${animalType}" data-barn="${escapeHtml(String(building.id))}">${feedRationOptionsHtml(animalType, feedPlan, ration.id)}</select>
                         <div class="ration-list">`;
                     Object.keys(parts).filter(cat => parts[cat] > 0).forEach(cat => {
                         const stockL = feedStockCat[cat] || 0;
@@ -3385,7 +3810,7 @@ window.openHubPanel = function (type) {
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
                 const plan = getFeedPlan(getCurrentFarm());
-                plan.rations[el.dataset.type] = el.value;
+                setBarnRation(plan, el.dataset.barn, el.dataset.type, el.value);
                 saveFeedPlan(plan);
                 const scroll = modalEl ? modalEl.scrollTop : 0;
                 openHubPanel('animals');
@@ -3512,16 +3937,60 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
         if (fert.missingPlanCount > 0) {
             html += `<p class="hub-panel-note">${t('suppliesNoPlanNote').replace('{n}', fert.missingPlanCount)}</p>`;
         }
-        const density = (parseFloat(rates.nDensity) > 0) ? parseFloat(rates.nDensity) : 0.5;
+        const density = supplyRate(rates, 'nDensity');
         html += `<p class="hub-panel-note">${t('suppliesNDensityNote').replace('{d}', density)}</p>`;
         html += `<p class="hub-panel-note">${t('suppliesSoilHint')}</p>`;
     } else {
         html += `<p class="hub-panel-note">${t('suppliesNoFert')}</p>`;
     }
 
+    // --- Lime --- fields below their soil's optimum pH. With Precision
+    // Farming in the save: the litres to bring every part of the field up
+    // (pH map); otherwise the app's own estimate for fields it marks as
+    // needing lime (one application per soil type, limeRateForSoil).
+    const lime = buildSuppliesLimeRows(farm, rates);
+    html += `<div class="hub-panel-subtitle">${t('suppliesLime')}</div>`;
+    if (lime.rows.length) {
+        html += `<table class="supply-table"><thead><tr>
+            <th>${t('suppliesColField')}</th><th>${t('suppliesColArea')}</th><th>${t('suppliesLimePh')}</th><th>${t('suppliesLimeBuy')}</th>
+            </tr></thead><tbody>`;
+        lime.rows.forEach(r => {
+            html += `<tr><td>${escapeHtml(r.number)}</td><td>${r.area.toFixed(2)} ha</td>
+                <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
+                <td>${fmtL(r.buffered)}</td></tr>`;
+        });
+        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}</td></tr></tfoot></table>`;
+    } else {
+        html += `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
+    }
+
     html += `<p class="hub-panel-note">${t('suppliesBufferNote').replace('{p}', rates.bufferPct)}</p>`;
 
     bodyEl.innerHTML = html;
+}
+
+// Lime to buy this season, per planner field (buffer included).
+function buildSuppliesLimeRows(farm, rates) {
+    const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
+    const rows = [];
+    const seen = new Set();
+    (farm.fields || []).forEach((f, i) => {
+        const key = (f.number || '').toString().trim();
+        if (!key || seen.has(key)) return;   // split field: one row for the whole field
+        seen.add(key);
+        const pf = pfFieldData(key);
+        const area = parseFloat((farm.fieldSizes || {})[key]) || (farm.fields || []).filter(x => (x.number || '').toString().trim() === key).reduce((s, x) => s + (parseFloat(x.area) || 0), 0);
+        if (pf && pf.ph) {
+            if (pf.ph.limeL < 1) return;
+            rows.push({ number: key, area, fromGame: true, ph: pf.ph.avg, optimal: pf.ph.optimal, buffered: pf.ph.limeL * buffer });
+            return;
+        }
+        const { status } = getLimeStatus(f, i, farm.currentSeason || 1, rates);
+        if (status === 'active' || !(area > 0)) return;
+        const litres = fieldLimeRate(getFieldSoilMix(fertPlanSoilKey(f, i), rates)) * area;
+        rows.push({ number: key, area, fromGame: false, buffered: litres * buffer });
+    });
+    return { rows, total: rows.reduce((s, r) => s + r.buffered, 0) };
 }
 
 // Farm Hub → "Field soil type": one row per field of the current farm, a %
@@ -3556,9 +4025,10 @@ function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
     }
 
     const hasSave = !!(farm && farm.saveGamePath);
+    const pfOn = hasSave && modEnabled('precisionFarming');
     html += `<div class="field-soil-import">
-            <button type="button" id="field-soil-import-btn" class="supply-fillplan-btn" ${hasSave ? '' : 'disabled'}>${t('fieldSoilImportBtn')}</button>
-            <span class="field-soil-import-hint">${hasSave ? t('fieldSoilImportHint') : t('fieldSoilImportNoPath')}</span>
+            <button type="button" id="field-soil-import-btn" class="supply-fillplan-btn" ${pfOn ? '' : 'disabled'}>${t('fieldSoilImportBtn')}</button>
+            <span class="field-soil-import-hint">${!hasSave ? t('fieldSoilImportNoPath') : (pfOn ? t('fieldSoilImportHint') : t('fieldSoilImportNoPf'))}</span>
         </div>`;
     if (fieldSoilImportMsg) {
         html += `<p class="hub-panel-note field-soil-import-msg">${fieldSoilImportMsg}</p>`;
@@ -3776,9 +4246,11 @@ const FEED_CROP_USES = {
     Soybean: { feed: 'PROTEIN' }, Canola: { feed: 'PROTEIN' }, Sunflower: { feed: 'PROTEIN' },
     Potato: { feed: 'EARTH' }, Sugarbeet: { feed: 'EARTH' }, Beetroot: { feed: 'EARTH' }, Carrot: { feed: 'EARTH' }, Parsnip: { feed: 'EARTH' }
 };
-// Straw windrow left behind by the combine, l/ha — the map's
-// windrowLitersPerSqm x 10000 (tools/SOLEK_agronomy.json).
-const FEED_STRAW_L_PER_HA = { Wheat: 38000, Barley: 36800, Oat: 36800, Rye: 46000, Triticale: 36000 };
+// Straw windrow left behind by the combine, l/ha — the crop's straw <windrow>
+// litersPerSqm × 10000 (map crop files, else base game). null = no straw.
+function cropStrawRate(crop) {
+    return cropAgronomy(crop, 'straw');
+}
 // Reference crop used to turn a shortfall in litres into "about X ha missing".
 const FEED_REFERENCE_CROP = { PIG_BASE: 'Maize', GRAIN: 'Wheat', PROTEIN: 'Soybean', EARTH: 'Potato', OAT: 'Oat', STRAW: 'Wheat' };
 // animals.xml food/straw curves are litres per in-game *month* — the game
@@ -3797,10 +4269,10 @@ function feedDaysPerYear(farm) {
     return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
 }
 function afcActive(farm) {
-    return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !(farm && farm.ignoreAfc));
+    return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !disabledModsOf(farm).has('afc'));
 }
 function easActive(farm) {
-    return !!(ANIMAL_MODS && ANIMAL_MODS.eas && !(farm && farm.ignoreEas));
+    return !!(ANIMAL_MODS && ANIMAL_MODS.eas && !disabledModsOf(farm).has('eas'));
 }
 // AFCConsumptionScaling:getScaleFactor — food, water and straw.
 function feedConsumptionScale(farm) {
@@ -3862,6 +4334,9 @@ function getFeedPlan(farm) {
     const saved = (farm && farm.feedPlan && typeof farm.feedPlan === 'object') ? farm.feedPlan : {};
     return {
         rations: { ...(saved.rations || {}) },
+        // Ration per barn and species: { [barnId]: { [type]: rationId } }.
+        // A barn without its own choice uses the species' ration above.
+        barnRations: JSON.parse(JSON.stringify(saved.barnRations || {})),
         customFeeds: Array.isArray(saved.customFeeds) ? saved.customFeeds : [],
         // Fixed to the game's default recipe — it's no longer editable, so an
         // older saved recipe is ignored.
@@ -3869,7 +4344,7 @@ function getFeedPlan(farm) {
         fieldUse: { ...(saved.fieldUse || {}) },
         strawFields: { ...(saved.strawFields || {}) },
         grassCuts: parseFloat(saved.grassCuts) > 0 ? parseFloat(saved.grassCuts) : 3,
-        chaffYield: parseFloat(saved.chaffYield) > 0 ? parseFloat(saved.chaffYield) : Math.round((CROP_YIELD_L_PER_HA.Maize || 9200) * 4),
+        chaffYield: parseFloat(saved.chaffYield) > 0 ? parseFloat(saved.chaffYield) : Math.round((cropAgronomy('Maize', 'yield') || 9200) * 4),
         strawYield: parseFloat(saved.strawYield) > 0 ? parseFloat(saved.strawYield) : null,
         mixer: normalizeMixerPlan(saved.mixer)
     };
@@ -3896,11 +4371,13 @@ function saveFeedPlan(plan) {
     saveFarmData(farm);
 }
 
-// The recipe ({ingredients, efficiency}) a species is fed with. Unknown or
+// The recipe ({ingredients, efficiency}) a species is fed with — in one barn
+// when barnId is given (its own choice, else the species' ration). Unknown or
 // deleted custom feeds fall back to the species' first built-in ration.
-function resolveRation(type, plan) {
+function resolveRation(type, plan, barnId) {
     const groups = ANIMAL_FOOD_GROUPS[type] || {};
-    let id = plan.rations[type] || defaultRationFor(type);
+    const own = barnId != null && plan.barnRations && plan.barnRations[barnId] ? plan.barnRations[barnId][type] : null;
+    let id = own || plan.rations[type] || defaultRationFor(type);
     if (id.startsWith('mixer:')) {
         const mixer = feedMixersFor(getCurrentFarm(), type).find(m => 'mixer:' + m.id === id);
         if (mixer) return mixerRation(mixer, type);
@@ -3996,6 +4473,27 @@ function feedStockCategoriesFor(farm, plan) {
     return feedStockByCategory(farm && farm.feedStock, override);
 }
 
+// Picks a barn's ration for one species (the other barns keep theirs).
+function setBarnRation(plan, barnId, type, rationId) {
+    if (!plan.barnRations) plan.barnRations = {};
+    plan.barnRations[barnId] = { ...(plan.barnRations[barnId] || {}), [type]: rationId };
+}
+
+// Drops a ration id everywhere it's chosen (a deleted custom feed). type:
+// only for that species.
+function forgetRation(plan, rationId, type) {
+    Object.keys(plan.rations).forEach(tp => { if ((!type || tp === type) && plan.rations[tp] === rationId) delete plan.rations[tp]; });
+    Object.values(plan.barnRations || {}).forEach(byType => Object.keys(byType).forEach(tp => {
+        if ((!type || tp === type) && byType[tp] === rationId) delete byType[tp];
+    }));
+}
+
+// A cluster's daily food in litres — the one formula behind the Animals view
+// and the feed planner (EAS lactation factor included).
+function clusterDailyFood(farm, type, c) {
+    return getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, type, c);
+}
+
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
@@ -4016,14 +4514,17 @@ function buildFeedDemand(farm, plan) {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
+        const food = clusterDailyFood(farm, type, c) * yearFactor;
         s.head += c.numAnimals;
-        s.food += getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        s.food += food;
         s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
+        // Each barn's own ration splits its food into ingredients.
+        const ration = resolveRation(type, plan, b.id);
+        if (ration) splitByRecipe(food, ration, byCategory);
     }));
     Object.keys(bySpecies).forEach(type => {
         const s = bySpecies[type];
         s.ration = resolveRation(type, plan);
-        if (s.ration) splitByRecipe(s.food, s.ration, byCategory);
         byCategory.STRAW = (byCategory.STRAW || 0) + s.straw;   // bedding, whatever the ration
     });
     return { byCategory, bySpecies, unknownSubTypes };
@@ -4087,8 +4588,8 @@ function buildFeedSupply(farm, plan, rates) {
             byCategory[category] = (byCategory[category] || 0) + litres;
         }
 
-        const strawRate = plan.strawYield || FEED_STRAW_L_PER_HA[crop];
-        const strawPossible = FEED_STRAW_L_PER_HA[crop] !== undefined;
+        const strawRate = plan.strawYield || cropStrawRate(crop);
+        const strawPossible = cropStrawRate(crop) !== null;
         const straw = strawPossible && plan.strawFields[key] ? area * strawRate * factor : 0;
         if (straw > 0) byCategory.STRAW = (byCategory.STRAW || 0) + straw;
 
@@ -4150,6 +4651,12 @@ function isFeedFillType(fillType) {
 // game's archives and can't be read, so only mod mixers are found.
 // Production rates: cyclesPerMonth, or legacy cyclesPerHour x 24 (the game
 // converts it the same way), so output per in-game month.
+// Text read from a mod's XML (shop names) goes into the UI's HTML — drop
+// markup characters so a mod can't inject HTML (the renderer has Node access).
+function plainModText(s) {
+    return String(s || '').replace(/[<>"'`]/g, '');
+}
+
 function readFeedMixersFromSave(saveFolder, modsDirs) {
     const p = path.join(saveFolder, 'placeables.xml');
     if (!fs.existsSync(p)) return [];
@@ -4159,7 +4666,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
     const defCache = {};
     const l10nCache = {};
     const mixers = [];
-    doc.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+    doc.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`).forEach(pl => {
         const saved = pl.querySelector(':scope > productionPoint');
         if (!saved) return;
         const filename = pl.getAttribute('filename') || '';
@@ -4196,7 +4703,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
         }
 
         const nameEl = def.querySelector('storeData > name');
-        const rawName = nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '';
+        const rawName = plainModText(nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '');
         const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
 
         // The mod's own translations: its name ("$l10n_shopItem_…") and its
@@ -4284,7 +4791,7 @@ function readFeedStockFromSave(saveFolder) {
 
     const placeables = parse('placeables.xml');
     if (placeables) {
-        placeables.querySelectorAll('placeable[farmId="1"]').forEach(pl => {
+        placeables.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`).forEach(pl => {
             pl.querySelectorAll('node[fillType]').forEach(node => {
                 if (!node.closest('silo, siloExtension, husbandry')) return;
                 add(node.getAttribute('fillType'), 'silo', parseFloat(node.getAttribute('fillLevel')));
@@ -4296,12 +4803,12 @@ function readFeedStockFromSave(saveFolder) {
     }
     const items = parse('items.xml');
     if (items) {
-        items.querySelectorAll('item[className="Bale"][farmId="1"]').forEach(b =>
+        items.querySelectorAll(`item[className="Bale"][farmId="${SAVE_FARM_ID}"]`).forEach(b =>
             add(baleFillType(b), 'bale', parseFloat(b.getAttribute('fillLevel'))));
     }
     const vehicles = parse('vehicles.xml');
     if (vehicles) {
-        vehicles.querySelectorAll('vehicle[farmId="1"]').forEach(v => {
+        vehicles.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`).forEach(v => {
             if (!v.querySelector(':scope > pallet')) return;
             v.querySelectorAll(':scope > fillUnit > unit[fillType]').forEach(u =>
                 add(u.getAttribute('fillType'), 'pallet', parseFloat(u.getAttribute('fillLevel'))));
@@ -4335,10 +4842,10 @@ function readFeedBalesFromSave(saveFolder) {
         return doc.querySelector('parsererror') ? null : doc;
     };
     const items = parse('items.xml');
-    if (items) items.querySelectorAll('item[className="Bale"][farmId="1"]').forEach(add);
+    if (items) items.querySelectorAll(`item[className="Bale"][farmId="${SAVE_FARM_ID}"]`).forEach(add);
     const placeables = parse('placeables.xml');
     if (placeables) {
-        placeables.querySelectorAll('placeable[farmId="1"] objectStorage > object[className="Bale"]').forEach(add);
+        placeables.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"] objectStorage > object[className="Bale"]`).forEach(add);
     }
     return Object.values(groups).sort((a, b) => b.count - a.count);
 }
@@ -4353,7 +4860,7 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
     const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
     if (doc.querySelector('parsererror')) return [];
     const wagons = [];
-    doc.querySelectorAll('vehicle[farmId="1"]').forEach(v => {
+    doc.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`).forEach(v => {
         if (!v.querySelector(':scope > mixerWagon')) return;
         const filename = v.getAttribute('filename') || '';
         const wagon = {
@@ -4367,7 +4874,7 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
             const vx = new DOMParser().parseFromString(bytes.toString('utf8'), 'text/xml');
             if (!vx.querySelector('parsererror')) {
                 const name = vx.querySelector('storeData > name');
-                const nameText = name ? name.textContent.trim() : '';
+                const nameText = plainModText(name ? name.textContent.trim() : '');
                 if (nameText && !nameText.startsWith('$')) wagon.name = nameText;
                 const mw = vx.querySelector('mixerWagon');
                 const idx = Math.max(1, parseInt(mw && mw.getAttribute('fillUnitIndex')) || 1);
@@ -4431,7 +4938,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         if (need <= 0 && have <= 0 && stock <= 0) return;
         const ref = FEED_REFERENCE_CROP[c];
         const perHa = c === 'STRAW'
-            ? (plan.strawYield || FEED_STRAW_L_PER_HA.Wheat) * avgFactor
+            ? (plan.strawYield || cropStrawRate('Wheat') || 0) * avgFactor
             : (ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0);
         rows.push({ id: c, need, have, stock, perHa, buyOnly: c === 'MINERAL' });
     });
@@ -4485,8 +4992,8 @@ function buildBarnFeedNeed(building, plan, farm) {
         if (!type) return;
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
-        const ration = resolveRation(type, plan);
-        const f = getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * yearFactor * clusterFoodFactor(farm, type, c);
+        const ration = resolveRation(type, plan, building.id);
+        const f = clusterDailyFood(farm, type, c) * yearFactor;
         const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
         food += f;
         bedding += b;
@@ -4665,7 +5172,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
         // --- 2. Feed per species in this barn ---
         Object.keys(barnNeed.heads).forEach(type => {
-            const ration = resolveRation(type, plan);
+            const ration = resolveRation(type, plan, barn.id);
             const current = ration ? ration.id : '';
             html += `<div class="hub-panel-subtitle">${t('feedPickRation')}${Object.keys(barnNeed.heads).length > 1 ? ' · ' + t('feedAnimal_' + type) : ''}</div><div class="feed-ration-row">`;
             Object.keys(ANIMAL_FOOD_GROUPS[type] || {}).forEach(id => {
@@ -4695,7 +5202,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         if (feedEditorDraft && !feedEditorDraft.id) html += renderFeedEditor(feedEditorDraft);
 
         // --- 2b. Mixer wagon, for barns fed TMR (the only thing a mixer makes) ---
-        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan); return r && r.tmr; });
+        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan, barn.id); return r && r.tmr; });
         if (barnUsesTmr) html += renderMixerSection(farm, plan, barnNeed, num);
 
         // --- 3. Ingredient tiles ---
@@ -5227,7 +5734,7 @@ function wireFeedPlanPanel(bodyEl) {
         rerenderFeedPlan();
     }));
     bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => el.addEventListener('click', () =>
-        update(p => { p.rations[el.dataset.type] = el.dataset.ration; })));
+        update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); })));
     const settings = bodyEl.querySelector('.feed-settings');
     if (settings) settings.addEventListener('toggle', () => { feedSettingsOpen = settings.open; });
     bodyEl.querySelectorAll('.feed-use-select').forEach(el => el.addEventListener('change', () =>
@@ -5247,7 +5754,7 @@ function wireFeedPlanPanel(bodyEl) {
         if (!confirm(t('feedCustomDeleteConfirm'))) return;
         update(p => {
             p.customFeeds = p.customFeeds.filter(f => f.id !== el.dataset.id);
-            Object.keys(p.rations).forEach(type => { if (p.rations[type] === 'custom:' + el.dataset.id) delete p.rations[type]; });
+            forgetRation(p, 'custom:' + el.dataset.id);
         });
     }));
     bodyEl.querySelectorAll('.feed-custom-new').forEach(el => el.addEventListener('click', () => {
@@ -5292,7 +5799,7 @@ function wireFeedPlanPanel(bodyEl) {
             if (idx >= 0) {
                 // Species changed: a ration pointing at it for the old species no longer applies.
                 const old = p.customFeeds[idx];
-                if (old.animalType !== feed.animalType && p.rations[old.animalType] === 'custom:' + feed.id) delete p.rations[old.animalType];
+                if (old.animalType !== feed.animalType) forgetRation(p, 'custom:' + feed.id, old.animalType);
                 p.customFeeds[idx] = feed;
             } else {
                 p.customFeeds.push(feed);
@@ -5348,25 +5855,28 @@ function findFertPlanField(farm, planKey) {
 }
 
 function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
-    const density = (parseFloat(rates.nDensity) > 0) ? parseFloat(rates.nDensity) : 0.5;
+    const density = supplyRate(rates, 'nDensity');
     const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
     const soilMix = getFieldSoilMix(soilKey, rates);
     const targetRate = fieldNRate(cropKey, soilMix, rates);
     const saved = rates.fertPlan && rates.fertPlan[planKey];
     const num = (v) => (saved && saved[v] > 0 && !isNaN(saved[v])) ? parseFloat(saved[v]) : 0;
-    const existingRate = num('existingN');   // N already in/on the field before this plan
+    // N already in/on the field: what you typed, else PF's nitrogen map.
+    const pfN = pfFieldData(soilKey);
+    const existingFromGame = !(saved && saved.existingN > 0) && !!(pfN && pfN.nitrogen);
+    const existingRate = existingFromGame ? Math.round(pfN.nitrogen.avg) : num('existingN');
     const orgRate = num('orgN');             // natural fertilizer this plan adds
     const mineralRate = Math.max(0, targetRate - existingRate - orgRate);
 
     // How many litres of manure / slurry / digestate the entered natural-N dose
     // is equivalent to, at this farm's N content per litre (Supplies rates).
-    const mN = parseFloat(rates.manureN) > 0 ? parseFloat(rates.manureN) : 0.007;
-    const sN = parseFloat(rates.slurryN) > 0 ? parseFloat(rates.slurryN) : 0.004;
-    const dN = parseFloat(rates.digestateN) > 0 ? parseFloat(rates.digestateN) : 0.0055;
+    const mN = supplyRate(rates, 'manureN');
+    const sN = supplyRate(rates, 'slurryN');
+    const dN = supplyRate(rates, 'digestateN');
     const orgVol = { manure: orgRate / mN, slurry: orgRate / sN, digestate: orgRate / dN };
 
     return {
-        density, buffer, soilMix, targetRate, existingRate, orgRate, mineralRate, orgVol,
+        density, buffer, soilMix, targetRate, existingRate, existingFromGame, orgRate, mineralRate, orgVol,
         mineralLitres: mineralRate / density,
         area, covered: (existingRate + orgRate) >= targetRate - 0.5
     };
@@ -5392,7 +5902,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
 
     titleEl.textContent = `${t('fertPlanTitle')} — ${t('suppliesColField')} ${displayNumber} · ${translateCropName(cropKey)}`;
 
-    const existingVal = d.existingRate > 0 ? d.existingRate : '';
+    const existingVal = d.existingRate > 0 && !d.existingFromGame ? d.existingRate : '';
+    const existingPlaceholder = d.existingFromGame ? d.existingRate : 0;
     const orgVal = d.orgRate > 0 ? d.orgRate : '';
     const status = d.covered
         ? `<span class="fertplan-status is-covered">${t('fertPlanCovered')}</span>`
@@ -5405,7 +5916,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
         <p class="details-category"><span>${t('fertPlanColTarget')}</span><span class="details-category-value">${num(d.targetRate)} ${kgN} · ${num(d.targetRate * d.area)} kg</span></p>
         <label class="fertplan-field">
             <span>${t('fertPlanColExisting')}</span>
-            <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="fertplan-existing-input" value="${existingVal}" placeholder="0"><span class="supply-unit">${kgN}</span></span>
+            <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="fertplan-existing-input" value="${existingVal}" placeholder="${existingPlaceholder}"><span class="supply-unit">${kgN}</span></span>
+            ${d.existingFromGame ? `<small class="fertplan-from-game">${t('fertPlanExistingFromGame')}</small>` : ''}
         </label>
         <label class="fertplan-field">
             <span>${t('fertPlanColOrg')}</span>
@@ -5490,7 +6002,7 @@ function renderSettingsSupplyAdjust(rates, cropList) {
         // placeholder, so saving the drawer never freezes defaults into
         // rates.crops (which would bypass the per-soil seed/N numbers).
         const o = rates.crops[c] || {};
-        const seedDefault = SUPPLY_SEED_RATES[c] !== undefined ? SUPPLY_SEED_RATES[c] : SUPPLY_SEED_FALLBACK;
+        const seedDefault = defaultSeedRate(c) || SUPPLY_SEED_FALLBACK;
         const nDefault = SUPPLY_N_RATES[c] !== undefined ? SUPPLY_N_RATES[c] : SUPPLY_N_FALLBACK;
         const seed = (o.seed !== undefined && o.seed !== '') ? o.seed : '';
         const n = (o.n !== undefined && o.n !== '') ? o.n : '';
@@ -5558,16 +6070,15 @@ const plannerBalance = document.getElementById('planner-balance');
 const plannerMonth = document.getElementById('planner-month');
 const plannerYear = document.getElementById('planner-year');
 const exitBtn = document.getElementById('exit-btn');
-const backBtn = document.getElementById('back-btn');
 
-// Independent, user-editable year counter shown next to the month — not the
-// same thing as farm.currentSeason (which drives NEW SEASON / field archiving).
-// Bumped automatically on a December -> January rollover in applyGameSaveToFarm;
-// manual edits here just overwrite the stored value directly.
+// Year shown next to the month — not the same thing as farm.currentSeason
+// (which drives NEW SEASON / field archiving). A synced farm takes it from the
+// savegame in applyGameSaveToFarm (the input is read-only then); a farm without
+// a save keeps this hand-edited counter.
 if (plannerYear) {
     plannerYear.addEventListener('change', () => {
         const farm = getCurrentFarm();
-        if (!farm) return;
+        if (!farm || farm.saveGamePath) return;
         const n = Math.max(1, parseInt(plannerYear.value, 10) || 1);
         plannerYear.value = n;
         farm.yearNumber = n;
@@ -5582,12 +6093,6 @@ const fieldsBody = document.getElementById('fields-body');
 const fieldsTable = document.getElementById('fields-table');
 const totalSumEl = document.getElementById('total-ha-sum');
 
-const detailHa = document.getElementById('detail-ha');
-const detailFields = document.getElementById('detail-fields');
-const detailCrops = document.getElementById('detail-crops');
-const detailAge = document.getElementById('detail-age');
-const detailEquipment = document.getElementById('detail-equipment');
-const detailAnimals = document.getElementById('detail-animals');
 
 const cropsBody = document.getElementById('crops-body');
 
@@ -5663,8 +6168,9 @@ function renderNoteCard(note, currentMonth) {
     const monthsHtml = (note.months || []).map(m =>
         `<span class="note-month-chip${m === currentMonth ? ' note-month-chip--current' : ''}">${translateMonth(m)}</span>`
     ).join('');
+    // Tags filter the list on click (see wireNotesPanel).
     const tagsHtml = (note.tags || []).map(tg =>
-        `<span class="note-tag-chip" style="--tag-color:${noteTagColor(tg)}">${escapeHtml(tg)}</span>`
+        `<button type="button" class="note-tag-chip note-tag-filter" data-tag="${escapeHtml(tg)}" title="${t('notesFilterByTag')}" style="--tag-color:${noteTagColor(tg)}">${escapeHtml(tg)}</button>`
     ).join('');
 
     const checklist = note.checklist || [];
@@ -5679,10 +6185,15 @@ function renderNoteCard(note, currentMonth) {
                 </label>`).join('')}
         </div>` : '';
 
+    // Collapsed: title, months, tags and the checklist count. Click the title
+    // row to unfold the text and checklist. Notes for the current month start open.
+    const open = noteOpenIds.has(note.id) || (isCurrent && !noteClosedIds.has(note.id));
+    const hasDetails = !!(note.body || checklist.length);
+    const summary = checklist.length ? `<span class="note-card-count">${doneCount}/${checklist.length}</span>` : '';
     return `
-        <div class="note-card${isCurrent ? ' note-card--current-month' : ''}">
+        <div class="note-card${isCurrent ? ' note-card--current-month' : ''}${open ? ' is-open' : ''}${hasDetails ? ' has-details' : ''}" data-note-id="${escapeHtml(note.id)}">
             <div class="note-card-header">
-                <h4 class="note-card-title">${escapeHtml(note.title)}</h4>
+                <h4 class="note-card-title">${hasDetails ? '<i class="fa-solid fa-chevron-right note-card-caret" aria-hidden="true"></i>' : ''}${escapeHtml(note.title)}${open ? '' : summary}</h4>
                 <div class="note-card-actions">
                     <button type="button" class="note-card-action" title="${t('notesEdit')}" onclick="window.openNoteEditModal('${note.id}')"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
                     <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" onclick="window.deleteNote('${note.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
@@ -5690,11 +6201,18 @@ function renderNoteCard(note, currentMonth) {
             </div>
             ${isCurrent ? `<span class="note-current-badge">${t('notesCurrentMonthBadge')}</span>` : ''}
             ${monthsHtml ? `<div class="note-chip-row">${monthsHtml}</div>` : ''}
-            ${note.body ? `<p class="note-card-body">${escapeHtml(note.body)}</p>` : ''}
             ${tagsHtml ? `<div class="note-chip-row">${tagsHtml}</div>` : ''}
-            ${checklistHtml}
+            <div class="note-card-details">
+                ${note.body ? `<p class="note-card-body">${escapeHtml(note.body)}</p>` : ''}
+                ${checklistHtml}
+            </div>
         </div>`;
 }
+
+// Notes unfolded / folded by hand in this session (by id), so a re-render of
+// the list keeps them as they were.
+const noteOpenIds = new Set();
+const noteClosedIds = new Set();
 
 function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag) {
     const filtered = notes.filter(n => {
@@ -5726,6 +6244,22 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
     };
     if (monthSel) monthSel.addEventListener('change', refresh);
     if (tagSel) tagSel.addEventListener('change', refresh);
+    listEl.addEventListener('click', e => {
+        const tagBtn = e.target.closest('.note-tag-filter');
+        if (tagBtn) {
+            if (tagSel) { tagSel.value = tagSel.value === tagBtn.dataset.tag ? '' : tagBtn.dataset.tag; refresh(); }
+            return;
+        }
+        if (e.target.closest('button, input, label')) return;
+        const header = e.target.closest('.note-card-header');
+        const card = header && header.closest('.note-card.has-details');
+        if (!card) return;
+        const id = card.dataset.noteId;
+        const nowOpen = !card.classList.contains('is-open');
+        if (nowOpen) { noteOpenIds.add(id); noteClosedIds.delete(id); }
+        else { noteClosedIds.add(id); noteOpenIds.delete(id); }
+        refresh();
+    });
     if (thisMonthBtn) thisMonthBtn.addEventListener('click', () => {
         if (monthSel) monthSel.value = thisMonthBtn.dataset.month;
         refresh();
@@ -5890,17 +6424,24 @@ function closeNoteEditModal() {
 }
 
 const noteEditTagInput = document.getElementById('note-edit-tag-input');
+
+// Adds whatever is in the tag box (comma-separated allowed) to the note.
+function commitNoteTagInput() {
+    if (!noteEditTagInput || !noteEditState) return;
+    noteEditTagInput.value.split(',').map(v => v.trim()).filter(Boolean).forEach(val => {
+        if (!noteEditState.tags.includes(val)) noteEditState.tags.push(val);
+    });
+    noteEditTagInput.value = '';
+    renderNoteEditTags();
+}
+
 if (noteEditTagInput) {
     noteEditTagInput.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
+        if (e.key !== 'Enter' && e.key !== ',') return;
         e.preventDefault();
-        const val = noteEditTagInput.value.trim();
-        if (val && noteEditState && !noteEditState.tags.includes(val)) {
-            noteEditState.tags.push(val);
-            renderNoteEditTags();
-        }
-        noteEditTagInput.value = '';
+        commitNoteTagInput();
     });
+    noteEditTagInput.addEventListener('blur', commitNoteTagInput);
 }
 
 const noteEditAddItemBtn = document.getElementById('note-edit-add-item-btn');
@@ -5932,6 +6473,9 @@ if (noteEditSaveBtn) {
         const body = (bodyInput ? bodyInput.value : '').trim();
 
         const months = Array.from(document.querySelectorAll('#note-edit-months input[type="checkbox"]:checked')).map(cb => cb.value);
+
+        // A tag typed but not confirmed with Enter is still meant to be saved.
+        commitNoteTagInput();
 
         syncChecklistStateFromDom();
         const checklist = noteEditState.checklist
@@ -6018,6 +6562,49 @@ function compareCropsGameOrder(a, b) {
 // XML folder, since not every map ships XML overrides for crops it doesn't
 // customize. A farm's own crops_config.json (imported map data) is merged
 // on top of this in loadFarmConfigs(), overriding per-crop where present.
+// Seed rate, harvest yield and straw per crop in l/ha (litersPerSqm × 10000)
+// from a fruitType XML: <seeding>, <harvest> and a straw <windrow>. Same
+// attributes as tools/generate-default-agronomy.js.
+function cropAgronomyFromDoc(doc) {
+    const perHa = el => {
+        const v = el ? parseFloat(el.getAttribute('litersPerSqm')) : NaN;
+        return v > 0 ? Math.round(v * 10000) : null;
+    };
+    const out = {};
+    const seed = perHa(doc.querySelector('seeding'));
+    const yld = perHa(doc.querySelector('harvest'));
+    const windrow = doc.querySelector('windrow');
+    const straw = windrow && /straw/i.test(windrow.getAttribute('fillType') || '') ? perHa(windrow) : null;
+    if (seed) out.seed = seed;
+    if (yld) out.yield = yld;
+    if (straw) out.straw = straw;
+    return Object.keys(out).length ? out : null;
+}
+
+// Base game agronomy (data/default-agronomy.json, from the game's own crop
+// files) with the open farm's map crops on top — see loadFarmConfigs.
+let DEFAULT_AGRONOMY = {};
+try {
+    DEFAULT_AGRONOMY = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-agronomy.json'), 'utf-8')) || {};
+} catch (e) {
+    console.error('Could not load default-agronomy.json', e);
+}
+let CROP_AGRONOMY = {};   // cropOrderKey -> { seed, yield, straw }
+
+function buildCropAgronomy(mapCrops) {
+    const out = {};
+    Object.keys(DEFAULT_AGRONOMY).forEach(k => { out[cropOrderKey(k)] = { ...DEFAULT_AGRONOMY[k] }; });
+    (mapCrops || []).forEach(c => {
+        if (c.agronomy) out[cropOrderKey(c.name)] = { ...(out[cropOrderKey(c.name)] || {}), ...c.agronomy };
+    });
+    return out;
+}
+
+function cropAgronomy(crop, key) {
+    const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
+    return a && a[key] > 0 ? a[key] : null;
+}
+
 let DEFAULT_CROPS = {};
 try {
     DEFAULT_CROPS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-crops.json'), 'utf-8')) || {};
@@ -6050,21 +6637,14 @@ try {
 // localStorage and are merged over these tables.
 const CONFIG_KEY_SUPPLY_RATES = 'farmer_planner_supply_rates';
 
-// Litres of seed per hectare, keyed by the crop keys used in crops.json /
-// field.crop. Anything unlisted falls back to SUPPLY_SEED_FALLBACK.
-// Values scanned from the FS25 Solek map's foliage XMLs (seeding/@litersPerSqm
-// x 10000) — see tools/scan-solek-agronomy.py / tools/SOLEK_agronomy.json.
-// A different map may use different rates; override per crop in the panel.
+// Litres of seed per hectare: the farm's map crop files (seeding
+// litersPerSqm), else the base game's (data/default-agronomy.json); anything
+// unknown falls back to SUPPLY_SEED_FALLBACK. Override per crop in the panel.
 // For crops in SUPPLY_SEED_RATES_PF below, Precision Farming replaces the
-// foliage rate in-game, so the value here is PF's "standard" rate — only
-// shown as the drawer placeholder; per-field numbers come from fieldSeedRate.
-const SUPPLY_SEED_RATES = {
-    Wheat: 308, Barley: 265, Oat: 340, Rye: 500, Triticale: 500, Greenrye: 300,
-    Canola: 49, Sunflower: 143, Soybean: 214, Maize: 53, Silagemaize: 56, Sorghum: 35,
-    Millet: 500, Buckwheat: 500, Pea: 250, Beans: 500, Greenbean: 280,
-    Potato: 3733, Beetroot: 40, Sugarbeet: 34, Carrot: 10, Parsnip: 10, Spinach: 10, Cotton: 50,
-    Grass: 120, Alfalfa: 500, Clover: 500, Oilseedradish: 40
-};
+// foliage rate in-game; per-field numbers come from fieldSeedRate.
+function defaultSeedRate(crop) {
+    return cropAgronomy(crop, 'seed');
+}
 const SUPPLY_SEED_FALLBACK = 150;
 
 // The previous built-in seed table (foliage-only rates). The Adjust drawer used
@@ -6081,10 +6661,10 @@ const LEGACY_SEED_DEFAULTS = {
 // Precision Farming variable seed rate: with PF the sowing machine uses these
 // litres/ha instead of the foliage seeding rate. lha = [low, standard, high];
 // auto = which of the three PF's automatic mode picks on each soil (the lowest
-// rate reaching the best <soilType yields>). Source: FS25 Solek
-// map/mapUS.xml <precisionFarming><seedRateMap> (Rye, Triticale, Alfalfa,
-// Clover, Buckwheat, Greenrye, Silagemaize, Beans, Millet), the rest from
-// FS25_precisionFarming PrecisionFarming.xml <seedRateMap> (usages x 10000).
+// rate reaching the best <soilType yields>). For a farm with a savegame they're
+// read from PF itself and the map's own seedRateMap (readPfSeedRates, see
+// PF_SEED_RATES); this table is only the fallback without a save — the base
+// game crops from FS25_precisionFarming PrecisionFarming.xml (usages × 10000).
 // Sugarbeet's 302 l/ha "low" is PF's own data (usage 0.03022), kept as the game uses it.
 const PF_AUTO_STD = { loamySand: 2, sandyLoam: 1, loam: 0, siltyClay: 2 };
 const SUPPLY_SEED_RATES_PF = {
@@ -6103,17 +6683,16 @@ const SUPPLY_SEED_RATES_PF = {
     Pea: { lha: [200, 250, 300], auto: PF_AUTO_STD },
     Greenbean: { lha: [240, 280, 320], auto: PF_AUTO_STD },
     Spinach: { lha: [8.5, 10, 11.5], auto: PF_AUTO_STD },
-    Oilseedradish: { lha: [30, 40, 50], auto: { loamySand: 0, sandyLoam: 0, loam: 0, siltyClay: 0 } },
-    Rye: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Triticale: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Alfalfa: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Clover: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Buckwheat: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Beans: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Millet: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Greenrye: { lha: [200, 300, 400], auto: { loamySand: 0, sandyLoam: 1, loam: 1, siltyClay: 2 } },
-    Silagemaize: { lha: [45, 56, 67], auto: { loamySand: 0, sandyLoam: 1, loam: 2, siltyClay: 2 } }
+    Oilseedradish: { lha: [30, 40, 50], auto: { loamySand: 0, sandyLoam: 0, loam: 0, siltyClay: 0 } }
 };
+// The open farm's PF seed rates (PF + its map), keyed by cropOrderKey; null =
+// no savegame or nothing readable -> SUPPLY_SEED_RATES_PF.
+let PF_SEED_RATES = null;
+
+function pfSeedRateFor(crop) {
+    if (PF_SEED_RATES) return PF_SEED_RATES[cropOrderKey(crop || '')] || null;
+    return SUPPLY_SEED_RATES_PF[crop] || null;
+}
 
 // Kilograms of nitrogen per hectare for a full season — the flat baseline used
 // only for the per-crop "N" box in the Adjust drawer (and if nitrogen-by-soil
@@ -6130,21 +6709,11 @@ const SUPPLY_N_RATES = {
 const SUPPLY_N_FALLBACK = 150;
 
 // Litres of harvest per hectare at 100%-yield-potential soil, full season —
-// used by the "Przewidywane plony" (Predicted yields) panel. Same source/
-// convention as SUPPLY_SEED_RATES above: scanned from the FS25 Solek map's
-// growth definitions (harvestLitersPerHa) — see tools/SOLEK_agronomy.json.
-// Deliberately no fallback constant for an unlisted crop (unlike the seed/N
-// tables) — there's no sane universal yield guess, so callers should show
-// "unknown" rather than a made-up number.
-const CROP_YIELD_L_PER_HA = {
-    Wheat: 6400, Barley: 6800, Oat: 7000, Rye: 5200, Triticale: 6800, Greenrye: 8900,
-    Canola: 4000, Sunflower: 5200, Soybean: 4500, Maize: 9200, Silagemaize: 9200, Sorghum: 8200,
-    Millet: 4500, Buckwheat: 3000, Pea: 9600, Beans: 3500, Greenbean: 6975,
-    Potato: 41300, Beetroot: 57800, Sugarbeet: 57800, Carrot: 77000, Parsnip: 69500,
-    Spinach: 23100, Cotton: 4970, Grass: 43700, Alfalfa: 43700, Clover: 43700, Oilseedradish: 9900
-};
+// used by the Predicted yields panel and the feed planner. From the farm's
+// map crop files (harvest litersPerSqm), else the base game's. No fallback
+// constant for an unknown crop — callers show "unknown" instead of a guess.
 function getCropYieldRate(crop) {
-    return CROP_YIELD_L_PER_HA[crop] !== undefined ? CROP_YIELD_L_PER_HA[crop] : null;
+    return cropAgronomy(crop, 'yield');
 }
 
 // --- Nitrogen by soil type (Precision Farming) ------------------------------
@@ -6243,7 +6812,7 @@ function fieldNRate(crop, soilMix, rates) {
 function fieldSeedRate(crop, soilMix, rates) {
     const o = rates.crops[crop];
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
-    const pf = SUPPLY_SEED_RATES_PF[crop];
+    const pf = modEnabled('precisionFarming') ? pfSeedRateFor(crop) : null;
     if (!pf) return getCropSeedRate(crop, rates);
     const rateOn = id => pf.lha[pf.auto[id] !== undefined ? pf.auto[id] : 1];
     const entries = Object.entries(soilMix).filter(([, p]) => p > 0);
@@ -6278,7 +6847,7 @@ function fieldYieldFactor(soilMix) {
 // the 3rd), so each field's application is sized to 3 harvests of decay:
 //   loamySand / sandyLoam : -0.125 pH/harvest -> 3 x 730  = 2190 l/ha
 //   loam / siltyClay      : -0.250 pH/harvest -> 3 x 1460 = 4380 l/ha
-// A flat "Lime application" rate in the Adjust panel overrides the whole thing.
+// Used for the Supplies lime list when the save has no Precision Farming pH map.
 const LIME_L_PER_PH_STATE = 730;     // l/ha to raise pH by one 0.125 step
 const LIME_CYCLE_HARVESTS = 3;       // an application is sized to last this many seasons
 const LIME_PH_DROP_PER_HARVEST = { loamySand: 0.125, sandyLoam: 0.125, loam: 0.250, siltyClay: 0.250 };
@@ -6339,11 +6908,8 @@ function soilMixLabel(mix) {
 }
 
 const SUPPLY_GLOBAL_DEFAULTS = {
-    mode: 'pf',              // 'pf' = nitrogen in kg N; 'basic' = plain litres/ha
     bufferPct: 5,            // reserve added on top of every total
-    limeRate: '',            // flat l/ha of lime per application; blank => per-soil (fieldLimeRate)
     nDensity: 0.22,          // kg of N per litre of the fertilizer you buy (PF)
-    basicFertRate: 400,      // litres/ha of generic fertilizer when mode = basic
     assumeAllFertilized: true,
     // kg of nitrogen per litre of organic fertilizer — tuned to this farm's
     // actual products (solid manure 5 kg N/t, slurry 4 kg N/m³, digestate
@@ -6354,6 +6920,13 @@ const SUPPLY_GLOBAL_DEFAULTS = {
     slurryN: 0.004,
     digestateN: 0.0055
 };
+
+// A positive number from the farm's rates, or the built-in default when the
+// setting is blank / zero — the one fallback every calculation shares.
+function supplyRate(rates, key) {
+    const v = parseFloat(rates && rates[key]);
+    return v > 0 ? v : SUPPLY_GLOBAL_DEFAULTS[key];
+}
 
 // Supply-rate overrides (per-crop seed/N, per-field soil mixes, the global
 // knobs) are per-farm — stored on the farm's data.json so they ride along with
@@ -6369,7 +6942,7 @@ function getSupplyRates() {
             if (legacy && typeof legacy === 'object') {
                 saved = legacy;
                 farm.supplyRates = legacy;
-                saveFarmData(farm);
+                saveFarmData(farm, { touch: false });
             }
         } catch { /* no legacy blob to adopt */ }
     }
@@ -6388,7 +6961,7 @@ function getSupplyRates() {
         });
         saved.defaultOverridesCleaned = true;
         farm.supplyRates = saved;
-        saveFarmData(farm);
+        saveFarmData(farm, { touch: false });
     }
     return {
         ...SUPPLY_GLOBAL_DEFAULTS, ...saved,
@@ -6410,14 +6983,8 @@ function saveSupplyRates(rates) {
 function getCropSeedRate(crop, rates) {
     const o = rates.crops[crop];
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
-    return SUPPLY_SEED_RATES[crop] !== undefined ? SUPPLY_SEED_RATES[crop] : null;
+    return defaultSeedRate(crop);
 }
-function getCropNRate(crop, rates) {
-    const o = rates.crops[crop];
-    if (o && o.n !== undefined && o.n !== '' && !isNaN(o.n)) return parseFloat(o.n);
-    return SUPPLY_N_RATES[crop] !== undefined ? SUPPLY_N_RATES[crop] : null;
-}
-
 // --- Zaopatrzenie (Supplies panel) row builders -----------------------------
 // Both read farm.fields[] directly — no savegame path, no per-crop
 // aggregation. One row per field, matching how the field itself is edited
@@ -6463,13 +7030,17 @@ function buildSuppliesFertRows(farm, rates) {
         const area = parseFloat(f.area) || 0;
         const displayNumber = (f.number || '').toString().trim() || ('#' + (i + 1));
         const hasCrop = !!crop && area > 0;
-        const eligible = hasCrop && (rates.assumeAllFertilized || f.fertilizer);
-        if (!eligible) return;
-
         const soilKey = fertPlanSoilKey(f, i);
         const planKey = fertPlanKey(f, i);
         const saved = rates.fertPlan && rates.fertPlan[planKey];
-        const hasPlan = !!(saved && ((parseFloat(saved.existingN) > 0) || (parseFloat(saved.orgN) > 0)));
+        const pfN = pfFieldData(soilKey);
+        const hasPlan = !!(saved && ((parseFloat(saved.existingN) > 0) || (parseFloat(saved.orgN) > 0))) || !!(pfN && pfN.nitrogen);
+
+        // f.fertilizer = synthetic fertilizer already applied this season, so
+        // there's nothing left to buy for it. Otherwise every crop field counts,
+        // or — with "assume every crop" off — only fields with a plan filled in.
+        const eligible = hasCrop && !f.fertilizer && (rates.assumeAllFertilized || hasPlan);
+        if (!eligible) return;
 
         if (!hasPlan) {
             rows.push({ number: displayNumber, crop, area, hasPlan: false, planKey, soilKey, displayNumber });
@@ -6546,77 +7117,6 @@ function buildYieldForecastRows(fields, rates) {
     };
 }
 
-// Shared tail for both supply calculators (manual fields + savegame): turns the
-// per-field list into seed / fertilizer / lime rows + buffered totals.
-// In PF mode each fertilizer row's rate is the soil-mix-weighted kg N/ha for
-// that field's crop; in basic mode it's the flat litres/ha rate.
-function finalizeSupplies(cropFields, extra, rates) {
-    const buffer = 1 + (parseFloat(rates.bufferPct) || 0) / 100;
-    const pf = rates.mode === 'pf';
-    const basicRate = parseFloat(rates.basicFertRate) || 0;
-    const flatLimeRate = parseFloat(rates.limeRate) || 0;   // >0 => flat override on every field
-
-    const seedRows = [];
-    const fertRows = [];
-    const orgPlanRows = [];
-    const limeRows = [];
-    let plannedArea = 0;
-    let fieldsToSow = 0;
-    let limeArea = 0;
-
-    cropFields.forEach(f => {
-        if (f.crop && f.area > 0) plannedArea += f.area;
-
-        if (f.sow) {
-            fieldsToSow++;
-            const rate = fieldSeedRate(f.crop, getFieldSoilMix(f.key, rates), rates);
-            const known = rate !== null;
-            const r = known ? rate : SUPPLY_SEED_FALLBACK;
-            const need = f.area * r;
-            seedRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, rate: r, known, need, buffered: need * buffer });
-        }
-
-        if (f.fertilize) {
-            const factor = f.fertFactor != null ? f.fertFactor : 1;
-            const soilMix = getFieldSoilMix(f.key, rates);
-            // A field's own fertilization plan (existing-N / natural-N already
-            // entered) overrides the flat "whole target still unmet" guess with
-            // the actual remaining mineral need.
-            const rate = f.planMineralRate != null ? f.planMineralRate : (pf ? fieldNRate(f.crop, soilMix, rates) : basicRate);
-            const need = f.area * rate * factor;
-            fertRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate, factor, need, buffered: need * buffer, planned: !!f.planned });
-
-            if (f.planOrgRate > 0) {
-                const orgNeed = f.area * f.planOrgRate * factor;
-                orgPlanRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate: f.planOrgRate, need: orgNeed, buffered: orgNeed * buffer });
-            }
-        }
-
-        if (f.limeDue) {
-            limeArea += f.area;
-            const soilMix = getFieldSoilMix(f.key, rates);
-            const rate = flatLimeRate > 0 ? flatLimeRate : fieldLimeRate(soilMix);   // l/ha
-            const need = f.area * rate;
-            limeRows.push({ key: f.key, number: f.number, crop: f.crop, area: f.area, soilMix, rate, need, buffered: need * buffer });
-        }
-    });
-
-    return {
-        season: extra.season,
-        plannedArea, fieldsToSow,
-        source: extra.source || 'manual',
-        savedFieldCount: extra.savedFieldCount || 0,
-        savedAreaHa: extra.savedAreaHa || 0,
-        skippedNoArea: extra.skippedNoArea || 0,
-        seedRows, seedTotal: seedRows.reduce((s, r) => s + r.buffered, 0),
-        fertRows, fertTotal: fertRows.reduce((s, r) => s + r.buffered, 0),
-        orgPlanRows, orgPlanTotal: orgPlanRows.reduce((s, r) => s + r.buffered, 0),
-        limeRows, limeArea, limeTotal: limeRows.reduce((s, r) => s + r.buffered, 0),
-        limeFields: limeRows.map(r => r.number).filter(Boolean),
-        hasAnything: seedRows.length > 0 || fertRows.length > 0 || limeRows.length > 0
-    };
-}
-
 // Maps a savegame fruit token ("WHEAT", "SUGARBEET", "OILSEEDRADISH") to the
 // crop key the rest of the app uses. FALLOW / UNKNOWN mean "nothing planned".
 function saveFruitToCropKey(raw) {
@@ -6630,9 +7130,8 @@ function saveFruitToCropKey(raw) {
 //   farmland.xml            -> which farmlandIds belong to farm 1
 //   precisionFarming.xml    -> real field area (m², from the <tillage> block)
 //   fields.xml             -> planned crop + current spray/lime level per field
-// Returns { ok, fields:[...], hasArea } — everything the "from savegame"
-// branch of the supply calculator needs. Fails quietly (ok:false) so the panel
-// can fall back to the manually entered fields.
+// Returns { ok, fields:[...], hasArea }; fails quietly (ok:false) when the
+// save folder or its files are missing. weedState feeds syncWeedsFromSave.
 function readSaveFields(farm) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
@@ -6644,7 +7143,7 @@ function readSaveFields(farm) {
         const flText = fs.readFileSync(farmlandPath, 'utf-8');
         const owned = new Set();
         for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
-            if (m[2] === '1') owned.add(m[1]);
+            if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
         }
 
         const areaById = {};
@@ -6674,7 +7173,8 @@ function readSaveFields(farm) {
                 growthState,
                 sown: fruitType !== 'UNKNOWN' && fruitType !== '' && fruitType !== 'FALLOW' && growthState > 0,
                 sprayLevel: parseInt(attrOf(tag, 'sprayLevel')) || 0,
-                limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0
+                limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
+                weedState: parseInt(attrOf(tag, 'weedState')) || 0
             });
         }
         return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0 };
@@ -6682,44 +7182,6 @@ function readSaveFields(farm) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
     }
-}
-
-// Same output shape as computeSeasonSupplies, but sourced from the savegame.
-// "Buy" is the REMAINING need: seed only for unsown fields, fertilizer scaled
-// by how far each field's sprayLevel still is from full, lime only where the
-// field currently has none.
-function computeSeasonSuppliesFromSave(farm, rates, save) {
-    const SPRAY_MAX = 2;   // fields.xml buckets fertilization into 0..2
-    let savedAreaHa = 0, skippedNoArea = 0;
-
-    const cropFields = [];
-    save.fields.forEach(f => {
-        const crop = saveFruitToCropKey(f.plannedFruit) || saveFruitToCropKey(f.fruitType);
-        const limeDue = f.limeLevel < 1;
-        if (!crop && !limeDue) return;
-        if (f.areaHa == null) { if (crop) skippedNoArea++; return; }
-
-        const area = f.areaHa;
-        if (crop) savedAreaHa += area;
-        const remFrac = Math.max(0, (SPRAY_MAX - f.sprayLevel) / SPRAY_MAX);
-
-        cropFields.push({
-            key: String(f.id),
-            number: '#' + f.id,
-            crop: crop || '', area,
-            sow: !!crop && !f.sown,
-            fertilize: !!crop && remFrac > 0,
-            fertFactor: remFrac,
-            limeDue
-        });
-    });
-
-    return finalizeSupplies(cropFields, {
-        season: (farm && farm.currentSeason) || 1,
-        source: 'save',
-        savedFieldCount: save.fields.length - skippedNoArea,
-        savedAreaHa, skippedNoArea
-    }, rates);
 }
 
 let ANIMAL_NEEDS_DATA = {};
@@ -6769,6 +7231,22 @@ function migrateFarmFolderToId(oldFolderName, farmData) {
     return farmData;
 }
 
+// Parsed data.json per farm file, reused while the file's mtime and size
+// stay the same — getAllFarms() runs dozens of times per render. Callers
+// still get their own copy (they change it and save it, or drop it).
+const FARM_FILE_CACHE = new Map();   // jsonPath -> { mtimeMs, size, data }
+
+function readFarmFile(jsonPath) {
+    const st = fs.statSync(jsonPath);
+    const hit = FARM_FILE_CACHE.get(jsonPath);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return structuredClone(hit.data);
+    const content = fs.readFileSync(jsonPath, 'utf-8');
+    if (content.trim() === '') return null;
+    const data = JSON.parse(content);
+    FARM_FILE_CACHE.set(jsonPath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(data) });
+    return data;
+}
+
 function getAllFarms() {
     const farms = [];
     if (!fs.existsSync(appDataDir)) return farms;
@@ -6780,9 +7258,8 @@ function getAllFarms() {
             if (fs.statSync(folderPath).isDirectory()) {
                 const jsonPath = path.join(folderPath, 'data.json');
                 if (fs.existsSync(jsonPath)) {
-                    const content = fs.readFileSync(jsonPath, 'utf-8');
-                    if (content.trim() !== "") {
-                        let data = JSON.parse(content);
+                    let data = readFarmFile(jsonPath);
+                    if (data) {
                         if (data.id && data.folderName !== data.id) {
                             data = migrateFarmFolderToId(folder, data);
                         }
@@ -6797,19 +7274,35 @@ function getAllFarms() {
     return farms;
 }
 
-function saveFarmData(farmData) {
+// touch: false for writes that aren't the user's own edits (savegame sync,
+// migrations), so "Last edited" on the farm list stays meaningful.
+function saveFarmData(farmData, { touch = true } = {}) {
     if (!farmData.folderName) return;
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
-    farmData.lastEdited = new Date().toLocaleString();
+    if (touch) farmData.lastEdited = new Date().toISOString();
 
-    try { fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8'); }
-    catch (err) { alert("Error saving data!"); }
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8');
+        // Keep the cache in step so the next read doesn't parse the file again.
+        const st = fs.statSync(filePath);
+        FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
+    }
+    catch (err) { console.error('saveFarmData failed', err); alert(t('saveDataError')); }
 }
 
 // Absolute path to a farm's own data folder (named after its id).
 function farmDir(farm) {
     return path.join(appDataDir, farm.folderName || farm.id);
+}
+
+// lastEdited is ISO now; farms saved by older versions hold a string already
+// formatted in whatever locale the system had then — show those as they are.
+function formatLastEdited(value) {
+    if (!value) return '–';
+    if (!/^d{4}-d{2}-d{2}T/.test(value)) return value;
+    const d = new Date(value);
+    return isNaN(d) ? value : d.toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function getCurrentFarm() {
@@ -6824,6 +7317,18 @@ function loadFarmConfigs(farm) {
     // (if any) is merged on top below, per-crop, so it extends/overrides the
     // defaults instead of replacing the whole list.
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
+    CROP_AGRONOMY = buildCropAgronomy(null);
+    PF_SEED_RATES = null;
+    if (farm && farm.saveGamePath) {
+        const pfRates = readPfSeedRates(farm.saveGamePath, formatCropName);
+        if (pfRates.ok) {
+            // Built-in base rates first (PF may ship inside the game, out of
+            // reach), then what PF and the map say.
+            PF_SEED_RATES = {};
+            Object.keys(SUPPLY_SEED_RATES_PF).forEach(k => { PF_SEED_RATES[cropOrderKey(k)] = SUPPLY_SEED_RATES_PF[k]; });
+            Object.keys(pfRates.rates).forEach(k => { PF_SEED_RATES[cropOrderKey(k)] = pfRates.rates[k]; });
+        }
+    }
     CROP_ORDER = [...BASE_CROP_ORDER];
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
@@ -6833,6 +7338,7 @@ function loadFarmConfigs(farm) {
     // below, per subType.
     ANIMAL_NEEDS_DATA = JSON.parse(JSON.stringify(DEFAULT_ANIMALS));
     if (!farm) { AVAILABLE_CROPS = sortedAvailableCrops(null); return; }
+    if (ensureFieldIds(farm)) saveFarmData(farm, { touch: false });
 
     // The map mod's own crop list (if the savegame points at a mod map):
     // decides which crops exist on this farm and their menu order.
@@ -6849,6 +7355,7 @@ function loadFarmConfigs(farm) {
                 ? mapNames
                 : [...BASE_CROP_ORDER, ...mapNames.filter(n => !baseKeys.includes(cropOrderKey(n)))];
             CROP_ORDER = [...mapCropNames];
+            CROP_AGRONOMY = buildCropAgronomy(res.crops);
             res.crops.forEach(c => {
                 if (c.calendar) CROP_CALENDAR[c.name] = { ...(CROP_CALENDAR[c.name] || {}), ...c.calendar };
                 if (c.titles) MAP_CROP_TITLES[cropOrderKey(c.name)] = c.titles;
@@ -6895,7 +7402,8 @@ function loadFarmConfigs(farm) {
 
     // AnimalFoodCalculator's reference source decides whose food/water/straw
     // curves the barns actually follow.
-    ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath) : null;
+    useSaveFarm(farm);
+    ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
     if (afcActive(farm)) {
         const INPUTS = ['food', 'water', 'straw'];
         const applyInputs = (subType, src) => {
@@ -6999,8 +7507,12 @@ function refreshAnimalDefsFromSource(farm, animalsPath) {
 
 // Turns a raw fruitType "name" attribute (e.g. "SUGAR_BEET", "canola")
 // into a readable display name ("Sugar Beet", "Canola").
+// Crop names come from mod XML and the savegame and end up in the UI's HTML;
+// they're game identifiers, so anything but letters, digits, "_", "-" and
+// spaces is dropped (no markup can get through).
 function formatCropName(rawName) {
-    return rawName
+    return String(rawName || '')
+        .replace(/[^\p{L}\p{N}_\s-]/gu, '')
         .toLowerCase()
         .split(/[_\s]+/)
         .filter(Boolean)
@@ -7111,7 +7623,7 @@ function parseCropGrowthXml(xmlText) {
     }
 
     if (Object.keys(calendar).length === 0) return null;
-    return { name: formatCropName(rawName), calendar };
+    return { name: formatCropName(rawName), calendar, agronomy: cropAgronomyFromDoc(doc) };
 }
 
 // Takes a FileList (from a <input webkitdirectory> folder picker, which the
@@ -7300,6 +7812,102 @@ function buildCropsCalendarFromFiles(fileList) {
     return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors };
 }
 
+// The player's farm inside the savegame. Single player is always farmId 1;
+// in a multiplayer save the farm is picked in Settings (farm.gameFarmId).
+// The save readers below filter by SAVE_FARM_ID — set it with useSaveFarm()
+// before reading.
+let SAVE_FARM_ID = '1';
+
+// Mods whose data the app reads. "Active" = listed in the savegame's
+// careerSavegame.xml (or, for ELS, its file is in the save); each can be
+// switched off per farm (farm.disabledMods) to fall back to base-game rules.
+const SUPPORTED_MODS = [
+    { id: 'precisionFarming', name: 'Precision Farming', modNames: ['FS25_precisionFarming'] },
+    { id: 'afc', name: 'AnimalFoodCalculator', modNames: ['FS25_AnimalFoodCalculator'] },
+    { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
+    { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
+    { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
+    { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
+    { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
+    { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
+];
+let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
+let SAVE_DISABLED_MODS = new Set();    // app mod ids switched off for the farm
+let SAVE_LINKED = false;
+
+function activeModsInSave(saveGamePath) {
+    try {
+        const career = fs.readFileSync(saveGamePath, 'utf-8');
+        return new Set([...career.matchAll(/<mod\b[^>]*\bmodName="([^"]+)"/g)].map(m => m[1]));
+    } catch (e) {
+        return new Set();
+    }
+}
+
+// farm.ignoreAfc / ignoreEas are the switches from before this list existed.
+function disabledModsOf(farm) {
+    const set = new Set((farm && Array.isArray(farm.disabledMods)) ? farm.disabledMods : []);
+    if (farm && farm.ignoreAfc) set.add('afc');
+    if (farm && farm.ignoreEas) set.add('eas');
+    return set;
+}
+
+function modActiveInSave(def, saveGamePath = null) {
+    if (def.modNames.some(n => SAVE_ACTIVE_MODS.has(n))) return true;
+    if (def.modPattern && [...SAVE_ACTIVE_MODS].some(n => def.modPattern.test(n))) return true;
+    const dir = saveGamePath ? path.dirname(saveGamePath) : null;
+    return !!(def.saveFile && dir && fs.existsSync(path.join(dir, def.saveFile)));
+}
+
+// Whether the app uses a mod's data for the open farm. Without a savegame
+// nothing can be detected — Precision Farming's seed rates stay on then
+// (the app's default before mods were detected).
+function modEnabled(id) {
+    if (SAVE_DISABLED_MODS.has(id)) return false;
+    if (!SAVE_LINKED) return id === 'precisionFarming';
+    const def = SUPPORTED_MODS.find(d => d.id === id);
+    return !!(def && modActiveInSave(def, SAVE_LINKED));
+}
+
+function gameFarmIdOf(farm) {
+    return String((farm && farm.gameFarmId) || '1');
+}
+
+function useSaveFarm(farm) {
+    SAVE_FARM_ID = gameFarmIdOf(farm);
+    SAVE_LINKED = (farm && farm.saveGamePath) || false;
+    SAVE_ACTIVE_MODS = SAVE_LINKED ? activeModsInSave(farm.saveGamePath) : new Set();
+    SAVE_DISABLED_MODS = disabledModsOf(farm);
+}
+
+// Farms in a savegame's farms.xml: [{ id, name, money }]. [] if unreadable.
+function listSaveFarms(pathToFile) {
+    try {
+        const xml = fs.readFileSync(path.join(path.dirname(pathToFile), 'farms.xml'), 'utf-8');
+        const out = [];
+        for (const m of xml.matchAll(/<farm\s[^>]*>/g)) {
+            const attr = name => (m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1];
+            const id = attr('farmId');
+            if (!id || id === '0') continue;   // 0 = spectator / nobody
+            out.push({ id, name: attr('name') || '', money: parseFloat(attr('money')) });
+        }
+        return out;
+    } catch (e) {
+        return [];
+    }
+}
+
+// Fills in farm.gameFarmId the first time a save is read: the only farm in
+// the save, else farm 1 if it exists, else the first one. Returns true if set.
+function resolveGameFarmId(farm) {
+    if (!farm || !farm.saveGamePath || farm.gameFarmId) return false;
+    const farms = listSaveFarms(farm.saveGamePath);
+    if (!farms.length) return false;
+    const pick = farms.length === 1 ? farms[0] : (farms.find(f => f.id === '1') || farms[0]);
+    farm.gameFarmId = pick.id;
+    return true;
+}
+
 function readGameSave(pathToFile) {
     const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
@@ -7320,19 +7928,25 @@ function readGameSave(pathToFile) {
             envText = fs.readFileSync(envPath, 'utf-8');
         }
 
-        const moneyVal = findValueInRawText(careerText, 'money');
-        if (moneyVal) result.balance = parseInt(moneyVal) + " €";
+        // careerSavegame's <money> is farm 1's; any other farm reads its own
+        // money from farms.xml.
+        let moneyVal = SAVE_FARM_ID === '1' ? findValueInRawText(careerText, 'money') : null;
+        if (moneyVal === null) {
+            const own = listSaveFarms(pathToFile).find(f => f.id === SAVE_FARM_ID);
+            if (own && !isNaN(own.money)) moneyVal = own.money;
+        }
+        if (moneyVal !== null && moneyVal !== '' && !isNaN(parseInt(moneyVal))) result.balance = parseInt(moneyVal);
 
         // Enhanced Loan System (mod) keeps its own list of separate loans
         // instead of the base game's single "loan" value — sum whatever's
         // still outstanding (skip anything already paid off), per farm.
         let loanVal = null;
         const elsLoansPath = path.join(saveFolder, 'els_loans.xml');
-        if (fs.existsSync(elsLoansPath)) {
+        if (fs.existsSync(elsLoansPath) && !SAVE_DISABLED_MODS.has('els')) {
             try {
                 const elsXml = fs.readFileSync(elsLoansPath, 'utf-8');
                 const elsDoc = new DOMParser().parseFromString(elsXml, "text/xml");
-                const farmLoansEl = elsDoc.querySelector('farmId[farmId="1"]') || elsDoc.querySelector('farmId');
+                const farmLoansEl = elsDoc.querySelector(`farmId[farmId="${SAVE_FARM_ID}"]`) || (SAVE_FARM_ID === '1' ? elsDoc.querySelector('farmId') : null);
                 if (farmLoansEl) {
                     let total = 0;
                     let foundAny = false;
@@ -7356,7 +7970,7 @@ function readGameSave(pathToFile) {
             if (fs.existsSync(farmsPath)) {
                 const farmsXml = fs.readFileSync(farmsPath, 'utf-8');
                 const farmsDoc = new DOMParser().parseFromString(farmsXml, "text/xml");
-                const farmEl = farmsDoc.querySelector('farm[farmId="1"]') || farmsDoc.querySelector('farm');
+                const farmEl = farmsDoc.querySelector(`farm[farmId="${SAVE_FARM_ID}"]`) || (SAVE_FARM_ID === '1' ? farmsDoc.querySelector('farm') : null);
                 if (farmEl) loanVal = farmEl.getAttribute('loan');
             }
             if (!loanVal) loanVal = findValueInRawText(careerText, 'loan');
@@ -7367,12 +7981,12 @@ function readGameSave(pathToFile) {
         // vanilla loan on load) — add whatever is still outstanding for the
         // farm. Only while the mod is active, so a stale file doesn't count.
         const bankCreditPath = path.join(saveFolder, 'bankCredit.xml');
-        if (/<mod\b[^>]*modName="FS25_BankCredit"/.test(careerText) && fs.existsSync(bankCreditPath)) {
+        if (/<mod\b[^>]*modName="FS25_BankCredit"/.test(careerText) && !SAVE_DISABLED_MODS.has('bankCredit') && fs.existsSync(bankCreditPath)) {
             try {
                 const bcDoc = new DOMParser().parseFromString(fs.readFileSync(bankCreditPath, 'utf-8'), "text/xml");
                 let bcTotal = 0, bcMonthly = 0, bcCount = 0;
                 bcDoc.querySelectorAll('bankcredit > loan').forEach(loanEl => {
-                    if (loanEl.getAttribute('farmId') !== '1' || loanEl.getAttribute('paidOff') === 'true') return;
+                    if (loanEl.getAttribute('farmId') !== SAVE_FARM_ID || loanEl.getAttribute('paidOff') === 'true') return;
                     const rest = parseFloat(loanEl.getAttribute('restAmount'));
                     if (isNaN(rest) || rest <= 0) return;
                     bcTotal += rest;
@@ -7383,6 +7997,42 @@ function readGameSave(pathToFile) {
                 result.bankCredit = { count: bcCount, total: Math.round(bcTotal), monthly: Math.round(bcMonthly) };
             } catch (err) {
                 console.warn('Could not read bankCredit.xml', err);
+            }
+        }
+        // Hire Purchasing (FS25_HirePurchasing) finances vehicles: each deal in
+        // leaseDeals.xml is paid monthly (annuity at a rate set by the deposit
+        // share, LeaseDeal:getInterestRate / getMonthlyPayment) plus a final
+        // fee. What's still owed (LeaseDeal:getRemainingCost) counts as a loan.
+        const leaseDealsPath = path.join(saveFolder, 'leaseDeals.xml');
+        if (/<mod\b[^>]*modName="FS25_HirePurchasing"/.test(careerText) && !SAVE_DISABLED_MODS.has('hirePurchasing') && fs.existsSync(leaseDealsPath)) {
+            try {
+                const hpXml = fs.readFileSync(leaseDealsPath, 'utf-8');
+                let hpTotal = 0, hpMonthly = 0, hpCount = 0;
+                for (const m of hpXml.matchAll(/<deal\s[^>]*>/g)) {
+                    const num = name => parseFloat((m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1]);
+                    if (String(num('farmId')) !== SAVE_FARM_ID) continue;
+                    const cost = num('baseCost'), deposit = num('deposit') || 0, months = num('durationMonths');
+                    const finalFee = num('finalFee') || 0, paid = num('monthsPaid') || 0;
+                    if (!(cost > 0) || !(months > 0)) continue;
+                    const share = deposit / cost;
+                    const rate = share <= 0.051 ? 0.05 : share <= 0.11 ? 0.04 : share <= 0.21 ? 0.035 : share <= 0.31 ? 0.0295 : 0.025;
+                    const r = rate / 12, g = Math.pow(1 + r, months);
+                    const monthly = (cost - deposit - finalFee / g) * (r * g) / (g - 1);
+                    const left = Math.max(0, months - paid);
+                    const remaining = monthly * left + finalFee;
+                    if (remaining <= 0) continue;
+                    hpTotal += remaining;
+                    if (left > 0) hpMonthly += monthly;
+                    hpCount++;
+                }
+                if (hpCount) {
+                    loanVal = (parseFloat(loanVal) || 0) + hpTotal;
+                    const prev = result.bankCredit || { count: 0, total: 0, monthly: 0 };
+                    // bankCredit holds every mod loan summed (Finance tile: count · monthly).
+                    result.bankCredit = { count: prev.count + hpCount, total: prev.total + Math.round(hpTotal), monthly: prev.monthly + Math.round(hpMonthly) };
+                }
+            } catch (err) {
+                console.warn('Could not read leaseDeals.xml', err);
             }
         }
         if (loanVal !== null && loanVal !== undefined && loanVal !== "") result.loan = Math.round(parseFloat(loanVal));
@@ -7418,7 +8068,7 @@ function readGameSave(pathToFile) {
         if (fs.existsSync(vehiclesPath)) {
             const vehiclesXml = fs.readFileSync(vehiclesPath, 'utf-8');
             const vehiclesDoc = new DOMParser().parseFromString(vehiclesXml, "text/xml");
-            const playerVehicles = vehiclesDoc.querySelectorAll('vehicle[farmId="1"]');
+            const playerVehicles = vehiclesDoc.querySelectorAll(`vehicle[farmId="${SAVE_FARM_ID}"]`);
             result.equipment = playerVehicles.length;
         }
 
@@ -7430,7 +8080,7 @@ function readGameSave(pathToFile) {
             const bySpecies = {};
             const production = {};
             const buildings = [];
-            const playerPlaceables = placeablesDoc.querySelectorAll('placeable[farmId="1"]');
+            const playerPlaceables = placeablesDoc.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`);
 
             playerPlaceables.forEach(placeable => {
                 const clustersEl = placeable.querySelector('husbandryAnimals');
@@ -7553,12 +8203,12 @@ window.openPlanner = function (id) {
 
         if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason || 1}`;
 
-        isEditMode = false;
-        if (editSeasonBtn) { editSeasonBtn.innerText = t('edit'); editSeasonBtn.style.backgroundColor = ""; editSeasonBtn.style.color = ""; }
+        setEditModeUi(false);
 
         viewedSeason = farm.currentSeason || 1;
         renderSeasonView();
         showPlannerView('plan');
+        maybeSuggestNewSeason(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
         if (plannerView) plannerView.style.display = 'flex';
@@ -7568,19 +8218,48 @@ window.openPlanner = function (id) {
     }
 };
 
+// Weeds from the save (fields.xml weedState = the weed foliage state:
+// 0 none, 1-6 growing / alive, 7-9 dead after herbicide or weeding — see
+// data/foliage/weed/weed.xml). A planner field (its number may join several
+// game fields, "12-13") gets "to spray" while any of them has live weeds and
+// "done" once they're all dead. Fields without weeds keep what you set.
+// Returns true if any field changed.
+function syncWeedsFromSave(farm) {
+    const save = readSaveFields(farm);
+    if (!save.ok) return false;
+    const byId = {};
+    save.fields.forEach(f => { byId[f.id] = f.weedState; });
+    let changed = false;
+    (farm.fields || []).forEach(field => {
+        const ids = String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+        const states = ids.map(id => byId[id]).filter(s => s > 0);
+        if (!states.length) return;
+        const next = states.some(s => s <= 6) ? 'needed' : 'done';
+        if (field.weeds !== next) { field.weeds = next; changed = true; }
+    });
+    return changed;
+}
+
 // Reads the live savegame and merges any changed values into `farm`, persisting
 // to disk when something actually moved. Returns true if a field changed.
 // Shared by openPlanner (one-shot on open) and the real-time auto-sync loop.
 function applyGameSaveToFarm(farm) {
     if (!farm || !farm.saveGamePath) return false;
+    let changed = resolveGameFarmId(farm);
+    useSaveFarm(farm);
     const gameData = readGameSave(farm.saveGamePath);
-    let changed = false;
 
-    if (gameData.balance && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
+    if (gameData.balance !== null && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
+    if (gameData.gameYear !== null && gameData.gameYear !== farm.yearNumber) {
+        // The game's own year (from currentDay). It turns over in March, with
+        // the game's first period — same as the Finances charts.
+        farm.yearNumber = gameData.gameYear;
+        changed = true;
+    }
     if (gameData.month && gameData.month !== farm.month) {
-        // December -> January is a new in-game year — bump the user-facing
-        // year counter shown next to the month (independent of farm.currentSeason).
-        if (farm.month === 'DECEMBER' && gameData.month === 'JANUARY') {
+        // Older saves without currentDay: no year from the game, so count a
+        // December -> January rollover instead.
+        if (gameData.gameYear === null && farm.month === 'DECEMBER' && gameData.month === 'JANUARY') {
             farm.yearNumber = (parseInt(farm.yearNumber, 10) || 1) + 1;
             changed = true;
         }
@@ -7592,18 +8271,24 @@ function applyGameSaveToFarm(farm) {
     if (JSON.stringify(bankCredit) !== JSON.stringify(farm.bankCredit || null)) { farm.bankCredit = bankCredit; changed = true; }
     if (gameData.equipment !== null && gameData.equipment !== farm.equipment) { farm.equipment = gameData.equipment; changed = true; }
     if (gameData.animals !== null && gameData.animals !== farm.animals) { farm.animals = gameData.animals; changed = true; }
-    if (gameData.animalBreakdown !== null) { farm.animalBreakdown = gameData.animalBreakdown; changed = true; }
-    if (gameData.animalProduction !== null) { farm.animalProduction = gameData.animalProduction; changed = true; }
-    if (gameData.animalBuildings !== null) { farm.animalBuildings = gameData.animalBuildings; changed = true; }
-    if (gameData.feedStock !== null) { farm.feedStock = gameData.feedStock; changed = true; }
-    if (gameData.feedBales !== null) { farm.feedBales = gameData.feedBales; changed = true; }
-    if (gameData.mixerWagons !== null) { farm.mixerWagons = gameData.mixerWagons; changed = true; }
+    // Structured values: only count them as changed when their content moved,
+    // otherwise every open/auto-sync tick would rewrite data.json and re-render.
+    const setIfMoved = (key) => {
+        if (gameData[key] === null || gameData[key] === undefined) return;
+        if (JSON.stringify(gameData[key]) === JSON.stringify(farm[key])) return;
+        farm[key] = gameData[key];
+        changed = true;
+    };
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
-    if (changed) saveFarmData(farm);
+    if (syncWeedsFromSave(farm)) changed = true;
+    if (syncLeasesFromSave(farm)) changed = true;
+
+    if (changed) saveFarmData(farm, { touch: false });
 
     // Log/refresh this in-game month's data point for the trend charts. Safe to
     // call every read — it only writes when the month rolls over or a value in
@@ -7618,24 +8303,23 @@ function applyGameSaveToFarm(farm) {
 // without resetting edit mode or the viewed season.
 function refreshPlannerHeader(farm) {
     if (!farm) return;
-    if (plannerBalance) plannerBalance.innerText = farm.balance || "0 €";
+    useCurrency(farm);
+    if (plannerBalance) plannerBalance.innerText = finMoney(parseMoney(farm.balance));
     if (plannerMonth) {
         // Day of the in-game month next to its name ("MARCH 2") — only when a
         // month has more than one day, otherwise it'd always read "1".
         const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
         plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
     }
-    if (plannerYear) plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
+    if (plannerYear) {
+        plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
+        // Synced farms take the year from the save; only a farm without one
+        // keeps the hand-edited counter.
+        const fromGame = !!farm.saveGamePath;
+        plannerYear.readOnly = fromGame;
+        plannerYear.title = fromGame ? t('yearFromGameHint') : t('yearManualHint');
+    }
 
-    const loanInput = document.getElementById('detail-loan');
-    if (loanInput) loanInput.innerText = farm.loan ? `${farm.loan} €` : "0 €";
-
-    const sidebarBalance = document.getElementById('details-balance');
-    if (sidebarBalance) sidebarBalance.innerText = farm.balance || "0 €";
-
-    if (detailEquipment) detailEquipment.innerText = farm.equipment !== undefined ? farm.equipment : "-";
-    if (detailAnimals) detailAnimals.innerText = farm.animals !== undefined ? farm.animals : "-";
-    if (detailAge) detailAge.innerText = farm.playTime !== undefined ? farm.playTime : "0h 0m";
 }
 
 // =============================================================
@@ -7647,7 +8331,7 @@ function refreshPlannerHeader(farm) {
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
     'careerSavegame.xml', 'environment.xml', 'farms.xml',
-    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml'
+    'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml', 'fieldLeasingAgreements.xml'
 ];
 
 let autoSyncTimer = null;
@@ -7657,8 +8341,11 @@ let autoSyncSeenSig = null;     // signature we've already imported
 let autoSyncPendingSig = null;  // changed-but-not-yet-stable signature
 let autoSyncToastTimer = null;
 
-function isAutoSyncEnabled() {
-    return localStorage.getItem(CONFIG_KEY_AUTO_SYNC) === '1';
+// Per farm (farm.autoSync), on by default. Farms from before this was per
+// farm follow the old app-wide switch only if it was explicitly turned off.
+function autoSyncSetting(farm) {
+    if (farm && typeof farm.autoSync === 'boolean') return farm.autoSync;
+    return localStorage.getItem(CONFIG_KEY_AUTO_SYNC) !== '0';
 }
 
 // A cheap fingerprint of the save folder: mtime + size of each relevant file.
@@ -7689,9 +8376,8 @@ function stopAutoSync() {
 
 function startAutoSync(farmId) {
     stopAutoSync();
-    if (!isAutoSyncEnabled()) return;
     const farm = getAllFarms().find(f => f.id === farmId);
-    if (!farm || !farm.saveGamePath || !fs.existsSync(farm.saveGamePath)) return;
+    if (!farm || !autoSyncSetting(farm) || !farm.saveGamePath || !fs.existsSync(farm.saveGamePath)) return;
 
     autoSyncFarmId = farmId;
     autoSyncSavePath = farm.saveGamePath;
@@ -7727,6 +8413,7 @@ function runAutoSyncTick() {
         refreshPlannerHeader(farm);
         renderSeasonView();
         showAutoSyncToast();
+        maybeSuggestNewSeason(getCurrentFarm());
     }
 }
 
@@ -7744,8 +8431,7 @@ function showAutoSyncToast() {
     }, 2500);
 }
 
-if (exitBtn) exitBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
-if (backBtn) backBtn.addEventListener('click', () => { stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
+if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
 // Fields of one season: the archive (seasons/season_N.json) for a past
 // season, the live farm.fields for the current one. [] if the archive is
@@ -7775,13 +8461,11 @@ window.renderSeasonView = function () {
     updateCropsSummary(fieldsToDisplay);
 
     if (seasonNumberEl) {
-        const leftArrow = viewedSeason > 1
-            ? `<span id="prev-season-btn" style="cursor:pointer; color: var(--color-primary); padding-right: 15px;"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></span>`
-            : `<span style="opacity:0.2; padding-right: 15px;"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></span>`;
+        // Disabled while editing (the edit table belongs to the current season).
+        const lock = isEditMode ? ` disabled title="${t('seasonNavLocked')}"` : '';
+        const leftArrow = `<button type="button" id="prev-season-btn" class="season-nav-btn" aria-label="${t('seasonPrev')}"${viewedSeason > 1 ? lock : ' disabled'}><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>`;
 
-        const rightArrow = viewedSeason < currentActiveSeason
-            ? `<span id="next-season-btn" style="cursor:pointer; color: var(--color-primary); padding-left: 15px;"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>`
-            : `<span style="opacity:0.2; padding-left: 15px;"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>`;
+        const rightArrow = `<button type="button" id="next-season-btn" class="season-nav-btn" aria-label="${t('seasonNext')}"${viewedSeason < currentActiveSeason ? lock : ' disabled'}><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`;
 
         seasonNumberEl.innerHTML = `${leftArrow} ${t('season')} ${viewedSeason} ${rightArrow}`;
 
@@ -7803,7 +8487,8 @@ window.renderSeasonView = function () {
 
     const displayStyle = isPastSeason ? 'none' : 'inline-block';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
-    if (newSeasonBtn) newSeasonBtn.style.display = displayStyle;
+    if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
+    if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
     updateDiscordPresence();
@@ -7837,6 +8522,12 @@ function getFieldNumberTotals(fields) {
 // mirrors the old "warns from the 3rd season" cutoff at the old 0.125/harvest
 // rate).
 function getLimeStatus(field, i, seasonNum, rates) {
+    // Current season with Precision Farming in the save: the game's own pH.
+    const farm = getCurrentFarm();
+    if (farm && seasonNum === (farm.currentSeason || 1)) {
+        const pf = pfFieldData((field.number || '').toString().trim());
+        if (pf && pf.ph) return pfLimeStatus(pf.ph);
+    }
     const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), rates);
     const ph = resolveLimePh(field, seasonNum, soilMix);
     if (ph == null) return { ph: null, status: 'off' };
@@ -7902,10 +8593,11 @@ window.toggleLimeChip = function (btn) {
     }
 };
 
-// Reads which crop was on each field in the season right before the one
-// being viewed, so we can flag "same crop as last season" (soil depletion
-// warning). Returns {} if there's no previous season or its archive can't
-// be read — the warning simply doesn't show rather than breaking anything.
+// Reads which crops were on each field number in the season right before the
+// one being viewed (a split field has several), so we can flag "same crop as
+// last season". FS25 has no crop-rotation bonus, so a repeat is the only
+// thing worth flagging. Returns {} if there's no previous season or its
+// archive can't be read — the warning simply doesn't show then.
 function getPreviousSeasonCropMap(farm, seasonNum) {
     const map = {};
     if (!farm || !farm.folderName || seasonNum <= 1) return map;
@@ -7917,7 +8609,7 @@ function getPreviousSeasonCropMap(farm, seasonNum) {
         const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
         (archiveData.fields || []).forEach(f => {
             const key = (f.number || '').toString().trim();
-            if (key && f.crop) map[key] = f.crop;
+            if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
         });
     } catch (err) {
         // Unreadable/corrupt archive — just skip the warning, don't crash the table.
@@ -8014,18 +8706,16 @@ function renderCutsModal() {
     document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
     const area = parseFloat(field.area) || 0;
     const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
-    document.getElementById('cuts-intro').textContent = perCut > 0
+    const ageN = grasslandSeasonCount(field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1);
+    document.getElementById('cuts-intro').textContent = (perCut > 0
         ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))
-        : t('cutsIntroNoYield');
+        : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
     const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
-    let html = `<div class="cuts-node cuts-node--sow">
-        <span class="cuts-node-label">${t('cutsSowing')}</span>
-        <select class="feed-input cuts-month" data-cut="sow">${cutsMonthOptions((field.sowingMonth || '').toUpperCase())}</select>
-    </div>`;
+    let html = '';
     cuts.forEach((c, i) => {
-        html += `<span class="cuts-link" aria-hidden="true"></span>
+        html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <div class="cuts-node${c.harvested ? ' is-done' : ''}">
             <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
             <button type="button" class="cuts-remove" data-cut="${i}" title="${t('cutsRemove')}" aria-label="${t('cutsRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -8034,7 +8724,7 @@ function renderCutsModal() {
             <div class="cuts-checks">${checks.map(([k, lbl]) => `<label><input type="checkbox" class="cuts-check" data-cut="${i}" data-key="${k}" ${c[k] ? 'checked' : ''}> ${t(lbl)}</label>`).join('')}</div>
         </div>`;
     });
-    html += `<span class="cuts-link" aria-hidden="true"></span>
+    html += `${cuts.length ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <button type="button" class="cuts-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('cutsAdd')}</button>`;
     body.innerHTML = html;
     const add = body.querySelector('.cuts-add');
@@ -8070,7 +8760,7 @@ window.openCutsModal = function (idx) {
         const el = e.target;
         const i = el.dataset.cut;
         if (el.classList.contains('cuts-month')) {
-            updateCutsField(f => { if (i === 'sow') f.sowingMonth = el.value; else f.cuts[+i].month = el.value; });
+            updateCutsField(f => { f.cuts[+i].month = el.value; });
         } else if (el.classList.contains('cuts-use')) {
             updateCutsField(f => { f.cuts[+i].use = el.value; });
         } else if (el.classList.contains('cuts-check')) {
@@ -8078,7 +8768,7 @@ window.openCutsModal = function (idx) {
                 f.cuts[+i][el.dataset.key] = el.checked;
                 // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
                 if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
-                if (el.dataset.key === 'rolled') f.rolling = f.cuts.some(c => c.rolled);
+                if (el.dataset.key === 'rolled') { f.rolling = f.cuts.some(c => c.rolled); f.rollingDone = f.rolling; }
             });
         }
     });
@@ -8102,18 +8792,314 @@ window.openCutsModal = function (idx) {
 // State column: grassland gets a "Cuts" button (done / planned) that opens
 // the cuts timeline; everything else the sown / not sown badge (a toggle in
 // the current season).
-function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+// age: grasslandAge() result — "· season N" is added to the cuts badge.
+function stateCellHtml(field, idx, isPastSeason, stateDisplay, age) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
-        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        let text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
+        if (age) text += ` · <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span>`;
         const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
+        const title = age ? age.title : t('cutsOpenHint');
         return isPastSeason
-            ? `<span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
-            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${t('cutsOpenHint')}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+            ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
+            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
     }
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
+
+// --- Field view ("Pole") -----------------------------------------------------
+// Everything about one field in one place: soil mix (editable), pH and lime,
+// nitrogen and the fertilization plan, feed use, cuts, work, and what grew
+// there in past seasons. Opened from the field number in the table.
+let fieldModalIdx = null;
+
+function renderFieldModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[fieldModalIdx];
+    const body = document.getElementById('field-modal-body');
+    if (!field || !body) return;
+    const idx = fieldModalIdx;
+    const rates = getSupplyRates();
+    const num = (field.number || '').toString().trim();
+    const soilKey = fertPlanSoilKey(field, idx);
+    const planKey = fertPlanKey(field, idx);
+    const area = parseFloat(field.area) || 0;
+    const season = farm.currentSeason || 1;
+    const fmt = (v, d = 0) => Number(v).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: d });
+
+    document.getElementById('field-modal-title').textContent = t('fieldViewTitle').replace('{field}', num || '–')
+        + (field.crop ? ' · ' + translateCropName(field.crop) : '');
+    const summary = [
+        `${area.toFixed(2)} ha${field.areaSource === 'game' ? ' (' + t('fieldViewFromGame') + ')' : ''}`,
+        field.catchCrop ? t('catchCropShort') + ': ' + translateCropName(field.catchCrop) : '',
+        field.sowingMonth ? t('thSowingMth') + ': ' + translateMonth(field.sowingMonth) : '',
+        field.state === 'Planted' ? t('planted') : t('toPlant'),
+        field.tillage === 'plowed' ? t('tillagePlowed') : (field.tillage === 'noTill' ? t('tillageNoTill') : ''),
+        field.lease ? t('leaseLabel') : ''
+    ].filter(Boolean).join(' · ');
+    document.getElementById('field-modal-summary').textContent = summary;
+
+    let html = '';
+    const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
+
+    // Soil (editable — same data as the Field soil type view).
+    const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
+    html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
+            <span>${escapeHtml(soilLabel(s.id))}</span>
+            <input type="number" min="0" max="100" step="1" class="field-view-soil" data-soil="${s.id}" value="${mix[s.id] != null ? mix[s.id] : ''}" placeholder="0">
+        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>`);
+
+    // pH and lime.
+    const lime = getLimeStatus(field, idx, season, rates);
+    let limeText;
+    if (lime.pf) {
+        limeText = t('limeTitlePf').replace('{ph}', lime.pf.avg.toFixed(2)).replace('{opt}', lime.pf.optimal.toFixed(2))
+            + (lime.pf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', fmt(lime.pf.limeL)) : '');
+    } else if (lime.ph != null) {
+        limeText = buildLimeTitle(lime.ph, lime.status, field.limeAppliedSeason);
+    } else {
+        limeText = t('fieldViewNoLime');
+    }
+    html += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
+
+    // Nitrogen and the fertilization plan.
+    if (field.crop && area > 0) {
+        const d = computeFieldFertPlan(planKey, soilKey, field.crop, area, rates);
+        const rows = [
+            [t('fertPlanColTarget'), fmt(d.targetRate) + ' kg N/ha'],
+            [t('fertPlanColExisting'), fmt(d.existingRate) + ' kg N/ha' + (d.existingFromGame ? ' (' + t('fieldViewFromGame') + ')' : '')],
+            [t('fertPlanColOrg'), fmt(d.orgRate) + ' kg N/ha'],
+            [t('fertPlanColMineralL'), fmt(d.mineralLitres * area) + ' l']
+        ];
+        html += section(t('fieldViewFert'), rows.map(([k, v]) => `<p class="details-category"><span>${k}</span><span class="details-category-value">${v}</span></p>`).join('')
+            + `<button type="button" class="settings-btn field-view-fertplan">${t('fertPlanBtn')}</button>`);
+    }
+
+    // Feed use (same choices as the Feed planner).
+    const plan = getFeedPlan(farm);
+    const feedRows = buildFeedSupply(farm, plan, rates).rows.filter(r => r.key === planKey || r.key === planKey + ':catch');
+    if (feedRows.length) {
+        html += section(t('fieldViewFeed'), feedRows.map(r => {
+            const label = translateCropName(r.crop) + (r.isCatch ? ' (' + t('catchCropShort') + ')' : '');
+            if (r.use === 'cuts') return `<p>${escapeHtml(label)}: ${t('feedUseCuts').replace('{n}', r.cuts)}</p>`;
+            const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
+            return `<label class="settings-field"><span>${escapeHtml(label)}</span><select class="field-view-use" data-key="${escapeHtml(r.key)}">${opts}</select></label>`;
+        }).join(''));
+    }
+
+    // Cuts / work / treatments.
+    const work = [];
+    if (isCutCrop(field.crop)) {
+        const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+        work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
+            <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
+    } else if (field.crop) {
+        const { next, done, total } = nextWorkStep(field, farm.month);
+        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t('workAllDone')}</p>
+            <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
+    }
+    const state = (v, map) => t(map[v] || map['']);
+    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
+    html += section(t('fieldViewWork'), work.join(''));
+
+    // History of this field number.
+    const history = loadSeasonHistory(farm, season);
+    const past = Object.keys(history).map(Number).sort((a, b) => b - a).map(s => {
+        const crops = (history[s] || []).filter(f => (f.number || '').toString().trim() === num && f.crop).map(f => translateCropName(f.crop));
+        return crops.length ? `<li>${t('season')} ${s}: ${escapeHtml(crops.join(', '))}</li>` : '';
+    }).filter(Boolean);
+    html += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
+
+    body.innerHTML = html;
+}
+
+window.openFieldModal = function (idx) {
+    fieldModalIdx = idx;
+    renderFieldModal();
+    const modal = document.getElementById('field-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const content = modal.querySelector('.modal-content');
+        if (content) content.scrollTop = 0;
+    }
+};
+
+(function wireFieldModal() {
+    const modal = document.getElementById('field-modal');
+    const body = document.getElementById('field-modal-body');
+    if (!modal || !body) return;
+    const close = () => { modal.style.display = 'none'; fieldModalIdx = null; renderSeasonView(); };
+    document.getElementById('field-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    body.addEventListener('change', e => {
+        const el = e.target;
+        const farm = getCurrentFarm();
+        const field = farm && (farm.fields || [])[fieldModalIdx];
+        if (!field) return;
+        if (el.classList.contains('field-view-soil')) {
+            const r = getSupplyRates();
+            const k = fertPlanSoilKey(field, fieldModalIdx);
+            if (!r.fieldSoil) r.fieldSoil = {};
+            if (!r.fieldSoil[k]) r.fieldSoil[k] = {};
+            const n = parseFloat(el.value);
+            if (el.value === '' || isNaN(n) || n <= 0) delete r.fieldSoil[k][el.dataset.soil];
+            else r.fieldSoil[k][el.dataset.soil] = n;
+            if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
+            saveSupplyRates(r);
+            renderFieldModal();
+        } else if (el.classList.contains('field-view-use')) {
+            const plan = getFeedPlan(farm);
+            plan.fieldUse[el.dataset.key] = el.value;
+            saveFeedPlan(plan);
+            renderFieldModal();
+        }
+    });
+    body.addEventListener('click', e => {
+        const farm = getCurrentFarm();
+        const idx = fieldModalIdx;
+        const field = farm && (farm.fields || [])[idx];
+        if (!field) return;
+        if (e.target.closest('.field-view-fertplan')) {
+            close();
+            const num = (field.number || '').toString().trim();
+            openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
+        } else if (e.target.closest('.field-view-cuts')) {
+            close();
+            openCutsModal(idx);
+        } else if (e.target.closest('.field-view-work')) {
+            close();
+            openWorkModal(idx);
+        }
+    });
+})();
+
+// --- Field work queue ("Prace") ----------------------------------------------
+// field.work = [{ step, done }] in the order you do them — catch crop and main
+// crop in one list (e.g. green rye: fertilize, mow, bale, wrap; then beet:
+// cultivate, sow, fertilize, weeds). The button next to the state shows the
+// next step. Without a list of your own it suggests one from the sowing month:
+// before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
+const WORK_STEPS = ['fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+
+function suggestedWork(field, currentMonth) {
+    const steps = [];
+    if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
+    const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
+    const cur = ALL_MONTHS.indexOf((currentMonth || '').toUpperCase());
+    // Months until the sowing month (0 = this month), wrapping round the year.
+    const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
+    const sown = field.state === 'Planted';
+    if (!sown) {
+        steps.push(field.tillage === 'plowed' ? 'plow' : 'cultivate');
+        if (until > 0 && !(field.limeAppliedSeason != null && field.limePh != null && field.limePh > 0.75)) steps.push('lime');
+        steps.push('sow');
+        if (field.rolling) steps.push('roll');
+    }
+    steps.push('fertilize', 'weeds');
+    return steps.map(step => ({ step, done: false }));
+}
+
+function fieldWork(field) {
+    return Array.isArray(field.work) && field.work.length ? field.work : null;
+}
+
+// Next step for the table button: your list, else the month-based suggestion.
+function nextWorkStep(field, currentMonth) {
+    const list = fieldWork(field) || suggestedWork(field, currentMonth).map(w => {
+        if (w.step === 'sow' && field.state === 'Planted') return { ...w, done: true };
+        return w;
+    });
+    const next = list.find(w => !w.done);
+    return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
+}
+
+function workCellHtml(field, idx, isPastSeason, currentMonth) {
+    if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
+    const { next, done, total, own } = nextWorkStep(field, currentMonth);
+    const label = next ? t('work_' + next.step) : t('workAllDone');
+    const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
+}
+
+let workFieldIdx = null;
+
+function renderWorkModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[workFieldIdx];
+    if (!field) return;
+    const label = [(field.number || '').toString().trim(), translateCropName(field.crop), field.catchCrop ? '+ ' + translateCropName(field.catchCrop) : ''].filter(Boolean).join(' · ');
+    document.getElementById('work-title').textContent = t('workTitle').replace('{field}', label);
+    const own = fieldWork(field);
+    document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
+    const list = own || suggestedWork(field, farm.month);
+    const listEl = document.getElementById('work-list');
+    listEl.innerHTML = list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
+        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
+        <span class="work-item-btns">
+            <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
+            <button type="button" class="work-remove" data-i="${i}" aria-label="${t('workRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </span></li>`).join('');
+    document.getElementById('work-add-select').innerHTML = WORK_STEPS.map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
+}
+
+// Any change turns the shown list (suggested or own) into the field's own list.
+function updateWorkField(fn) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[workFieldIdx];
+    if (!field) return;
+    field.work = (fieldWork(field) || suggestedWork(field, farm.month)).map(w => ({ ...w }));
+    fn(field.work, field, farm);
+    saveFarmData(farm);
+    renderWorkModal();
+}
+
+window.openWorkModal = function (idx) {
+    workFieldIdx = idx;
+    renderWorkModal();
+    document.getElementById('work-modal').style.display = 'flex';
+};
+
+(function wireWorkModal() {
+    const modal = document.getElementById('work-modal');
+    const listEl = document.getElementById('work-list');
+    if (!modal || !listEl) return;
+    const close = () => { modal.style.display = 'none'; workFieldIdx = null; renderSeasonView(); };
+    document.getElementById('work-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    listEl.addEventListener('change', e => {
+        if (!e.target.classList.contains('work-check')) return;
+        const i = +e.target.dataset.i;
+        updateWorkField((work, field) => {
+            work[i].done = e.target.checked;
+            // Sowing done = the field is sown.
+            if (work[i].step === 'sow') field.state = e.target.checked ? 'Planted' : 'To Plant';
+            if (work[i].step === 'weeds') field.weeds = e.target.checked ? 'done' : field.weeds;
+            if (work[i].step === 'roll') { if (e.target.checked) field.rolling = true; field.rollingDone = e.target.checked; }
+        });
+    });
+    listEl.addEventListener('click', e => {
+        const mv = e.target.closest('.work-move');
+        if (mv) {
+            const i = +mv.dataset.i, j = i + (+mv.dataset.dir);
+            updateWorkField(work => { [work[i], work[j]] = [work[j], work[i]]; });
+            return;
+        }
+        const rm = e.target.closest('.work-remove');
+        if (rm) updateWorkField(work => { work.splice(+rm.dataset.i, 1); });
+    });
+    document.getElementById('work-add-btn').addEventListener('click', () => {
+        const step = document.getElementById('work-add-select').value;
+        if (step) updateWorkField(work => { work.push({ step, done: false }); });
+    });
+    document.getElementById('work-suggest-btn').addEventListener('click', () => {
+        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, farm.month)); });
+    });
+})();
 
 // Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
 // cancels, Enter confirms.
@@ -8155,13 +9141,17 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
-// toggles "I want to roll" straight away; the lime chip asks first in a small
+// cycles rolling (none / to roll / rolled) straight away; the lime chip asks first in a small
 // dialog — lime a field, lime it again when it's running low, or take a
 // mistaken liming back.
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
-    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle');
+    const fieldBtn = e.target.closest('.field-open');
+    if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
+    const workBtn = e.target.closest('.work-open');
+    if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
+    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
     const farm = allFarms.find(f => f.id === currentFarmId);
@@ -8172,7 +9162,15 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     if (btn.classList.contains('state-toggle')) {
         field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
     } else if (btn.classList.contains('rolling-toggle')) {
-        field.rolling = !field.rolling;
+        // none -> to roll -> rolled -> none
+        if (!field.rolling) { field.rolling = true; field.rollingDone = false; }
+        else if (!field.rollingDone) field.rollingDone = true;
+        else { field.rolling = false; field.rollingDone = false; }
+    } else if (btn.classList.contains('weeds-toggle')) {
+        // none -> to do -> done -> none
+        field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
+    } else if (btn.classList.contains('tillage-toggle')) {
+        field.tillage = field.tillage === 'plowed' ? 'noTill' : (field.tillage === 'noTill' ? null : 'plowed');
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
@@ -8198,6 +9196,109 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     renderSeasonView();
 });
 
+// Fields of every archived season before `seasonNum` -> { [season]: fields }.
+function loadSeasonHistory(farm, seasonNum) {
+    const out = {};
+    for (let s = 1; s < seasonNum; s++) out[s] = loadSeasonFields(farm, s);
+    return out;
+}
+
+// Seasons in a row the same grassland crop has been on this field number,
+// counting the viewed one (1 = sown this season).
+function grasslandSeasonCount(field, history, seasonNum) {
+    const key = (field.number || '').toString().trim();
+    let n = 1;
+    for (let s = seasonNum - 1; s >= 1; s--) {
+        const prev = (history[s] || []).some(f => (f.number || '').toString().trim() === key && cropOrderKey(f.crop) === cropOrderKey(field.crop));
+        if (!prev) break;
+        n++;
+    }
+    return n;
+}
+
+// Farm setting: after how many seasons grassland should be ploughed up (default 4).
+const GRASSLAND_SEASONS_DEFAULT = 4;
+function grasslandSeasonLimit(farm) {
+    const v = parseInt(farm && farm.grasslandMaxSeasons, 10);
+    return v > 0 ? v : GRASSLAND_SEASONS_DEFAULT;
+}
+
+function grasslandAge(field, history, seasonNum, limit) {
+    if (!isPerennialCrop(field.crop)) return null;
+    const n = grasslandSeasonCount(field, history, seasonNum);
+    const over = n >= limit;
+    return { n, over, title: t(over ? 'grassAgeOverHint' : 'grassAgeHint').replace('{n}', n).replace('{max}', limit) };
+}
+
+// Sowing window = the run of months in the crop calendar that holds the
+// planned month. Overdue: not sown and the window ended at most
+// SOWING_OVERDUE_MONTHS ago (and we're closer to its end than to its next
+// start) — further out it's more likely a plan for the next round.
+const SOWING_OVERDUE_MONTHS = 3;
+function isSowingOverdue(field, currentMonth) {
+    if (!field.crop || field.state === 'Planted' || !currentMonth) return false;
+    const cal = CROP_CALENDAR[field.crop];
+    const sow = (field.sowingMonth || '').toUpperCase();
+    if (!cal || !sow || !cal[sow]) return false;
+    const idx = m => ALL_MONTHS.indexOf(m);
+    const inWindow = m => !!cal[ALL_MONTHS[(m + 12) % 12]];
+    const cur = idx(currentMonth);
+    if (cur < 0 || inWindow(cur)) return false;
+    let end = idx(sow), start = idx(sow);
+    for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
+    for (let i = 0; i < 11 && inWindow(start - 1); i++) start--;
+    const sinceEnd = (cur - end + 24) % 12;
+    const untilStart = (start - cur + 24) % 12;
+    return sinceEnd <= SOWING_OVERDUE_MONTHS && sinceEnd <= untilStart;
+}
+
+// Small stacked bar of the field's soil types (only when its soil is known).
+// Like Precision Farming's soil map: loamy sand faded yellow, sandy loam faded
+// green, loam grey, silty clay navy.
+const SOIL_BAR_COLORS = { loamySand: '#d8c98a', sandyLoam: '#9fb58a', loam: '#9a9a96', siltyClay: '#2f3f63' };
+function soilMixBarHtml(key) {
+    const rates = getSupplyRates();
+    if (!key || !rates.fieldSoil || !rates.fieldSoil[key]) return '';
+    const mix = getFieldSoilMix(key, rates);
+    const total = Object.values(mix).reduce((s, v) => s + v, 0);
+    if (!total) return '';
+    const parts = Object.entries(mix).map(([id, v]) => `<span style="flex:${v}; background:${SOIL_BAR_COLORS[id] || '#999'}"></span>`).join('');
+    return `<span class="soil-mix-bar" title="${escapeHtml(soilMixLabel(mix))}">${parts}</span>`;
+}
+
+// Tillage: a real switch in the current season (click again to clear).
+// Tillage: one chip — click cycles nothing -> plowed -> no-till.
+function tillageCellHtml(field, idx, isPastSeason) {
+    const value = field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : '';
+    const label = value === 'plowed' ? t('tillagePlowed') : (value === 'noTill' ? t('tillageNoTill') : '–');
+    const cls = `tillage-chip${value ? ' tillage-chip--' + value : ''}`;
+    return isPastSeason
+        ? `<span class="${cls}">${label}</span>`
+        : `<button type="button" class="${cls} tillage-toggle" data-idx="${idx}" title="${t('tillageClickHint')}">${label}</button>`;
+}
+
+// Rolling: nothing / to roll (field.rolling) / rolled (field.rollingDone) —
+// same three states and colours as weeds. Cycles on click in the current season.
+function rollingChipHtml(field, idx, isPastSeason) {
+    const state = field.rolling ? (field.rollingDone ? 'done' : 'needed') : '';
+    const title = t(state === 'needed' ? 'rollingPlanned' : (state === 'done' ? 'rollingDone' : 'rollingOff'));
+    const cls = `treatment-chip treatment-chip--rolling${state ? ' is-' + state : ''}`;
+    const icon = '<i class="fa-solid fa-grip-lines" aria-hidden="true"></i>';
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle rolling-toggle" data-idx="${idx}" title="${title} · ${t('rollingClickHint')}">${icon}</button>`;
+}
+
+// Weeds: nothing / to spray / sprayed. Cycles on click in the current season;
+// the savegame sync sets "to spray" when the game has live weeds on the field.
+function weedsChipHtml(field, idx, isPastSeason) {
+    const state = field.weeds === 'needed' || field.weeds === 'done' ? field.weeds : '';
+    const title = t(state === 'needed' ? 'weedsNeeded' : (state === 'done' ? 'weedsDone' : 'weedsNone'));
+    const cls = `treatment-chip treatment-chip--weeds${state ? ' is-' + state : ''}`;
+    const icon = '<i class="fa-solid fa-spray-can-sparkles" aria-hidden="true"></i>';
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
+}
+
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
     if (!fieldsBody) return;
@@ -8210,7 +9311,10 @@ function renderFieldsTable(fields) {
     const isPastSeason = viewedSeason < ((farm && farm.currentSeason) || 1);
 
     let htmlString = "";
-    let totalArea = 0;
+    let totalArea = 0;     // rows with a crop planned
+    let sownArea = 0;      // ...of which already sown
+    const seasonHistory = loadSeasonHistory(farm, viewedSeason);
+    const grassLimit = grasslandSeasonLimit(farm);
 
     if (fields && fields.length > 0) {
         const numberTotals = getFieldNumberTotals(fields);
@@ -8218,13 +9322,14 @@ function renderFieldsTable(fields) {
 
         sortedFields.forEach(field => {
             const area = parseFloat(field.area || 0);
-            totalArea += area;
+            if (field.crop) totalArea += area;
+            if (field.crop && field.state === 'Planted') sownArea += area;
 
             const key = (field.number || '').toString().trim();
             const group = numberTotals[key];
             const isSplit = group && group.count > 1;
 
-            const isRotationRepeat = field.crop && prevCropMap[key] && prevCropMap[key] === field.crop;
+            const isRotationRepeat = !!(field.crop && prevCropMap[key] && prevCropMap[key].some(c => cropOrderKey(c) === cropOrderKey(field.crop)));
             const rotationBadge = isRotationRepeat
                 ? ` <span class="badge badge--rotation-warn" title="${t('rotationWarning')}"><i class="fa-solid fa-rotate" aria-hidden="true"></i></span>`
                 : '';
@@ -8247,6 +9352,7 @@ function renderFieldsTable(fields) {
             }
             const plotHa = farmlandAreaForKey(key);
             if (plotHa !== null) areaCell += `<span class="ha-caption ha-caption--farmland">${t('farmlandPlot')}: ${plotHa.toFixed(2)} ha</span>`;
+            areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
 
@@ -8256,6 +9362,8 @@ function renderFieldsTable(fields) {
                 const sowMonth = field.sowingMonth ? field.sowingMonth.toUpperCase() : "";
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
+                } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
+                    stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
                 }
@@ -8265,9 +9373,12 @@ function renderFieldsTable(fields) {
             // fertPlanSoilKey/fertPlanKey below AND for the lime pH lookup,
             // which must key soil mix the same way buildSuppliesFertRows does.
             const origIdx = fields.indexOf(field);
-            const { ph: limePh, status: limeStatus } = getLimeStatus(field, origIdx, viewedSeason, getSupplyRates());
+            const { ph: limePh, status: limeStatus, pf: limePf } = getLimeStatus(field, origIdx, viewedSeason, getSupplyRates());
             const limeColor = limeChipColor(limePh);
-            const limeTitle = buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
+            const limeTitle = limePf
+                ? t('limeTitlePf').replace('{ph}', limePf.avg.toFixed(2)).replace('{opt}', limePf.optimal.toFixed(2))
+                    + (limePf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', Math.round(limePf.limeL).toLocaleString(FIN_LOCALE())) : '')
+                : buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
 
             const numberParts = String(field.number || '').split('-').map(n => n.trim()).filter(Boolean);
             const numberChipsHtml = numberParts.length
@@ -8291,18 +9402,15 @@ function renderFieldsTable(fields) {
             }
 
             htmlString += `
-                <tr class="${isSplit ? 'field-split-row' : ''}">
-                    <td class="field-number-cell"${numberCellTitle}><span class="field-number-chips">${numberChipsHtml}</span></td>
+                <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
+                    <td class="field-number-cell"${numberCellTitle}>${isPastSeason
+                        ? `<span class="field-number-chips">${numberChipsHtml}</span>`
+                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
-                    <td>
-                        <div class="tillage-switch tillage-switch--readonly">
-                            <span class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}">${t('tillagePlowed')}</span>
-                            <span class="tillage-switch-option tillage-switch-option--notill ${field.tillage === 'noTill' ? 'is-active' : ''}">${t('tillageNoTill')}</span>
-                        </div>
-                    </td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
+                    <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
@@ -8312,10 +9420,8 @@ function renderFieldsTable(fields) {
                                 <span class="lime-fill"></span>
                                 <span class="lime-letter">${t('limeLetter')}</span>
                             </${tag}>`;
-                            const rollingHtml = isPastSeason
-                                ? (field.rolling ? `<span class="treatment-chip treatment-chip--rolling is-active" title="${t('rollingPlanned')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span>` : '')
-                                : `<button${btnAttrs} class="treatment-chip treatment-chip--rolling table-chip-toggle rolling-toggle${field.rolling ? ' is-active' : ''}" title="${t(field.rolling ? 'rollingPlanned' : 'rollingOff')} · ${t('rollingClickHint')}"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>`;
-                            return limeHtml + rollingHtml;
+                            const rollingHtml = rollingChipHtml(field, origIdx, isPastSeason);
+                            return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
                     ${fertPlanCell}
@@ -8326,6 +9432,8 @@ function renderFieldsTable(fields) {
     fieldsBody.innerHTML = htmlString;
 
     if (totalSumEl) totalSumEl.innerText = totalArea.toFixed(2) + " ha";
+    const sownSumEl = document.getElementById('sown-ha-sum');
+    if (sownSumEl) sownSumEl.textContent = t('sownAreaSum').replace('{ha}', sownArea.toFixed(2));
     const farmlandSumEl = document.getElementById('farmland-ha-sum');
     if (farmlandSumEl) {
         const owned = (FARMLAND_INFO && FARMLAND_INFO.ok) ? FARMLAND_INFO.owned.filter(id => FARMLAND_INFO.areas[id] !== undefined) : [];
@@ -8335,8 +9443,6 @@ function renderFieldsTable(fields) {
             farmlandSumEl.textContent = t('farmlandTotal').replace('{ha}', plotsHa.toFixed(2)).replace('{n}', owned.length);
         }
     }
-    if (detailHa) detailHa.innerText = totalArea.toFixed(2) + " ha";
-    if (detailFields) detailFields.innerText = fields ? fields.length : 0;
 }
 
 function generateMonthOptionsHtml(cropName, selectedMonth) {
@@ -8352,8 +9458,15 @@ function generateMonthOptionsHtml(cropName, selectedMonth) {
 
 // Every crop the farm's map offers, in the game's own menu order — plus the
 // currently selected one, so a field keeps a crop the map no longer lists.
-function cropOptionsHtml(selected, emptyLabel) {
-    const crops = [...AVAILABLE_CROPS];
+// Crops that make sense as a catch crop (międzyplon) before the main crop.
+const CATCH_CROPS = ['Greenrye', 'Oilseedradish', 'Grass'];
+function isCatchCropChoice(crop) {
+    return CATCH_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
+
+// onlyCatch: list just the catch crops (a saved choice outside it stays listed).
+function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
+    const crops = AVAILABLE_CROPS.filter(c => !onlyCatch || isCatchCropChoice(c));
     if (selected && !crops.includes(selected)) crops.push(selected);
     let html = `<option value="">${emptyLabel}</option>`;
     crops.forEach(c => {
@@ -8366,6 +9479,67 @@ function cropOptionsHtml(selected, emptyLabel) {
 // single full-width <td> with a card inside. Keeping it inside a <tr> means all
 // the existing save / split-hint logic (which walks `#fields-body tr` and
 // `row.querySelector('.field-*')`) keeps working unchanged.
+// Field data the edit card has no inputs for — carried through edit mode as is.
+// Rolling is set with the chip in the table, so it rides along here too; id
+// is the field's stable identity (see ensureFieldIds).
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+
+// --- Stable field ids --------------------------------------------------------
+// Soil, field size, fertilization plan, feed use and straw are stored under
+// the field's number ("12") or number + crop ("12::Wheat"). Every field row
+// also has a stable id, so when Edit season changes a number or a crop that
+// data is moved to the new key instead of being left behind.
+function newFieldId() {
+    return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// Gives every field of the farm an id. Returns true if any was added.
+function ensureFieldIds(farm) {
+    let added = false;
+    (farm && farm.fields || []).forEach(f => { if (!f.id) { f.id = newFieldId(); added = true; } });
+    return added;
+}
+
+// Moves per-field data from old keys to new ones for fields (matched by id)
+// whose number or crop changed in an edit. A key still used by another field
+// is copied, not moved; an existing value under the new key wins.
+function migrateFieldKeys(farm, oldFields, newFields) {
+    const byId = {};
+    (oldFields || []).forEach(f => { if (f.id) byId[f.id] = f; });
+    const num = f => (f.number || '').toString().trim();
+    const planKey = f => num(f) + '::' + (f.crop || '');
+    const stillUsed = (key, kind) => newFields.some(f => (kind === 'num' ? num(f) : planKey(f)) === key);
+    const move = (store, from, to, kind) => {
+        if (!store || from === to || store[from] === undefined) return;
+        if (store[to] === undefined) store[to] = JSON.parse(JSON.stringify(store[from]));
+        if (!stillUsed(from, kind)) delete store[from];
+    };
+    const rates = farm.supplyRates || null;
+    const plan = farm.feedPlan || null;
+    newFields.forEach(f => {
+        const old = f.id && byId[f.id];
+        if (!old) return;
+        if (num(old) && num(old) !== num(f)) {
+            if (rates) move(rates.fieldSoil, num(old), num(f), 'num');
+            move(farm.fieldSizes, num(old), num(f), 'num');
+        }
+        if (num(old) && planKey(old) !== planKey(f)) {
+            if (rates) move(rates.fertPlan, planKey(old), planKey(f), 'plan');
+            if (plan) {
+                [['', ''], [':catch', ':catch']].forEach(([a, b]) => {
+                    move(plan.fieldUse, planKey(old) + a, planKey(f) + b, 'plan');
+                    move(plan.strawFields, planKey(old) + a, planKey(f) + b, 'plan');
+                });
+            }
+        }
+    });
+}
+function fieldExtras(field) {
+    const out = {};
+    FIELD_EXTRA_KEYS.forEach(k => { if (field && field[k] !== undefined) out[k] = field[k]; });
+    return out;
+}
+
 function buildFieldEditCard(field, opts) {
     opts = opts || {};
     field = field || {};
@@ -8374,7 +9548,7 @@ function buildFieldEditCard(field, opts) {
     const isSplit = !!opts.isSplit;
 
     const cropOptions = cropOptionsHtml(field.crop, t('selectPlaceholder'));
-    const catchCropOptions = cropOptionsHtml(field.catchCrop, t('catchCropNone'));
+    const catchCropOptions = cropOptionsHtml(field.catchCrop, t('catchCropNone'), true);
 
     const monthOptions = isNew
         ? `<option value="">${t('selectCropFirst')}</option>`
@@ -8382,6 +9556,7 @@ function buildFieldEditCard(field, opts) {
     const catchMonthOptions = generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth);
 
     const isChecked = field.state === 'Planted' ? 'checked' : '';
+    const lease = field.lease || null;
     const key = (field.number || '').toString().trim();
     const savedSize = (farm && farm.fieldSizes && key && farm.fieldSizes[key] !== undefined) ? farm.fieldSizes[key] : '';
     // opts.origIdx = this field's real index in farm.fields (not a position in
@@ -8399,7 +9574,7 @@ function buildFieldEditCard(field, opts) {
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -8413,15 +9588,11 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <div class="fc-cell fc-cell--area">
                             <span class="fc-label">${t('thFieldHa')}</span>
-                            <input type="text" class="edit-input field-area" value="${field.area || ''}" placeholder="0.00">
+                            <input type="text" class="edit-input field-area" value="${field.area || ''}" data-orig="${escapeHtml(String(field.area || ''))}" placeholder="0.00">
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
                             <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
-                        </label>
-                        <label class="fc-cell fc-cell--state" title="${t('rollingHint')}">
-                            <span class="fc-label">${t('thRolling')}</span>
-                            <span class="fc-check"><input type="checkbox" class="edit-input field-rolling" ${field.rolling ? 'checked' : ''}> <span class="fc-check-text">${t('rollingWant')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -8460,8 +9631,25 @@ function buildFieldEditCard(field, opts) {
                             <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
                         </div>
                     </div>
+                    <div class="field-card-row field-card-row--grid field-card-row--lease">
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseLabel')}</span>
+                            <label class="lease-check"><input type="checkbox" class="field-lease" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
+                        </div>
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseSeasons')}</span>
+                            <input type="number" min="1" max="50" step="1" class="edit-input field-lease-seasons" value="${lease ? lease.seasons || '' : ''}" placeholder="–">
+                        </div>
+                        <div class="fc-cell">
+                            <span class="fc-label">${t('leaseThen')}</span>
+                            <select class="edit-input field-lease-then">
+                                <option value="return" ${lease && lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
+                                <option value="buy" ${lease && lease.then === 'buy' ? 'selected' : ''}>${t('leaseBuy')}</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="field-card-foot">
-                        <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="Total ha of this physical field — lets the app tell you how much is left to sow" style="display:none;">
+                        <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="${t('fieldSizeHint')}" style="display:none;">
                         <span class="split-hint"></span>
                     </div>
                 </div>
@@ -8490,7 +9678,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="Tip: reuse the same field number on two rows to split one field between two crops">
+            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
@@ -8624,6 +9812,392 @@ window.addNewFieldRow = function () {
     if (numInput) numInput.focus();
 };
 
+// --- Field backups (backups/*.json) ---------------------------------------
+// Written on entering and saving Edit season (and before a restore); only the
+// newest FIELD_BACKUPS_KEPT stay, so the farm folder and its export don't grow
+// forever. Settings -> danger zone can put one of them back.
+const FIELD_BACKUPS_KEPT = 20;
+
+function fieldBackupsDir(farm) {
+    return path.join(appDataDir, farm.folderName, 'backups');
+}
+
+function writeFieldsBackup(farm, fieldsData, prefix) {
+    try {
+        const dir = fieldBackupsDir(farm);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const now = new Date();
+        const stamp = now.toISOString().replace(/[:.]/g, '-');
+        const file = path.join(dir, `${prefix}_backup-${stamp}.json`);
+        fs.writeFileSync(file, JSON.stringify({ action: prefix, timestamp: now.toISOString(), fields: fieldsData }, null, 2), 'utf-8');
+        listFieldBackups(farm).slice(FIELD_BACKUPS_KEPT).forEach(b => {
+            try { fs.rmSync(b.file); } catch (e) { /* locked — try again next time */ }
+        });
+    } catch (err) {
+        console.error('Could not write a fields backup:', err);
+    }
+}
+
+// Newest first: [{ file, action, timestamp, count }]
+function listFieldBackups(farm) {
+    const dir = farm && farm.folderName ? fieldBackupsDir(farm) : null;
+    if (!dir || !fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter(n => n.endsWith('.json')).map(n => {
+        const file = path.join(dir, n);
+        try {
+            const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            return { file, action: data.action || '', timestamp: data.timestamp || fs.statSync(file).mtime.toISOString(), count: (data.fields || []).length };
+        } catch (e) {
+            return null;
+        }
+    }).filter(Boolean).sort((x, y) => y.timestamp.localeCompare(x.timestamp));
+}
+
+function renderFieldBackupChoice(farm) {
+    const select = document.getElementById('fields-backup-select');
+    const row = document.getElementById('fields-backup-row');
+    if (!select || !row) return;
+    const list = listFieldBackups(farm);
+    row.hidden = !list.length;
+    select.innerHTML = list.map(b => {
+        const when = new Date(b.timestamp).toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
+        return `<option value="${escapeHtml(b.file)}">${escapeHtml(when)} · ${escapeHtml(t('backupAction_' + b.action) || b.action)} · ${t('backupFields').replace('{n}', b.count)}</option>`;
+    }).join('');
+}
+
+async function restoreFieldsBackup() {
+    const farm = getCurrentFarm();
+    const select = document.getElementById('fields-backup-select');
+    if (!farm || !select || !select.value) return;
+    let data;
+    try { data = JSON.parse(fs.readFileSync(select.value, 'utf-8')); } catch (e) { return; }
+    const settingsModalEl = document.getElementById('settings-modal');
+    if (settingsModalEl) settingsModalEl.style.display = 'none';
+    const ok = await showSeasonModal({
+        title: t('restoreFieldsTitle'),
+        body: t('restoreFieldsBody').replace('{when}', select.options[select.selectedIndex].text),
+        confirmText: t('restoreFieldsConfirm'),
+        cancelText: t('cancel'),
+        danger: true,
+        icon: 'fa-clock-rotate-left'
+    });
+    if (!ok || !(await discardEditsIfConfirmed())) return;
+    writeFieldsBackup(farm, farm.fields || [], 'pre-restore');
+    farm.fields = Array.isArray(data.fields) ? data.fields : [];
+    saveFarmData(farm);
+    viewedSeason = farm.currentSeason || 1;
+    renderSeasonView();
+}
+
+const restoreFieldsBtn = document.getElementById('restore-fields-btn');
+if (restoreFieldsBtn) restoreFieldsBtn.addEventListener('click', () => restoreFieldsBackup());
+
+// "Fields from game": fills the fields table from the savegame. Owned fields
+// missing from the table are added (number + area); rows whose area is empty
+// or came from the game get the game's area (Precision Farming's field area,
+// summed for joined numbers like "12-13"); a row whose planned crop is what's
+// growing in the game is marked sown. A hand-typed area stays — it overrides.
+// The planned crop itself is never touched: planning is the point.
+async function loadFieldsFromGame() {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    if (!farm || isEditMode) return;
+    useSaveFarm(farm);
+    const save = readSaveFields(farm);
+    if (!save.ok) { await showSeasonNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
+
+    const byId = {};
+    save.fields.forEach(f => { byId[f.id] = f; });
+    const usePfArea = modEnabled('precisionFarming');
+    const partsOf = num => String(num || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+    const counts = {};
+    (farm.fields || []).forEach(f => { const k = String(f.number || '').trim(); counts[k] = (counts[k] || 0) + 1; });
+
+    const covered = new Set();
+    let added = 0, areas = 0, sown = 0, keptManual = 0;
+    writeFieldsBackup(farm, farm.fields || [], 'pre-import');
+    (farm.fields || []).forEach(field => {
+        const ids = partsOf(field.number);
+        ids.forEach(id => covered.add(id));
+        const games = ids.map(id => byId[id]).filter(Boolean);
+        if (!games.length || games.length !== ids.length) return;
+        // Area: whole (not split) rows only — the game knows the plot, not your split.
+        const key = String(field.number || '').trim();
+        const gameHa = usePfArea && games.every(g => g.areaHa != null) ? games.reduce((s, g) => s + g.areaHa, 0) : null;
+        if (gameHa != null && counts[key] === 1) {
+            const cur = parseFloat(field.area) || 0;
+            if (!cur || field.areaSource === 'game') {
+                if (Math.abs(cur - gameHa) > 0.005 || field.areaSource !== 'game') { field.area = gameHa.toFixed(2); field.areaSource = 'game'; areas++; }
+            } else if (Math.abs(cur - gameHa) > 0.005) {
+                keptManual++;
+            }
+        }
+        // Sown: the planned crop is what's growing there in the game.
+        if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
+            field.state = 'Planted';
+            sown++;
+        }
+    });
+    save.fields.forEach(g => {
+        if (covered.has(String(g.id))) return;
+        farm.fields = farm.fields || [];
+        farm.fields.push({
+            number: String(g.id),
+            area: usePfArea && g.areaHa != null ? g.areaHa.toFixed(2) : '0',
+            areaSource: usePfArea && g.areaHa != null ? 'game' : undefined,
+            crop: '', sowingMonth: '', state: 'To Plant', tillage: null,
+            catchCrop: '', catchSowingMonth: '', rolling: false, cuts: [], manure: false, fertilizer: false,
+            id: newFieldId()
+        });
+        added++;
+    });
+    syncWeedsFromSave(farm);
+    saveFarmData(farm);
+    renderSeasonView();
+    const msg = t('loadFieldsDone').replace('{a}', added).replace('{h}', areas).replace('{s}', sown)
+        + (keptManual ? ' ' + t('loadFieldsKeptManual').replace('{n}', keptManual) : '');
+    await showSeasonNotice(t('loadFieldsTitle'), msg);
+}
+
+const loadFieldsBtn = document.getElementById('load-fields-btn');
+if (loadFieldsBtn) loadFieldsBtn.addEventListener('click', () => loadFieldsFromGame());
+
+// Lease (dzierżawa) from an edit card: { since, seasons, then } or null.
+// "since" is the season it was first marked leased — kept across edits.
+function readLeaseInputs(row, farm) {
+    const on = row.querySelector('.field-lease');
+    if (!on || !on.checked) return null;
+    let prev = null;
+    try { prev = JSON.parse(row.dataset.extra || '{}').lease || null; } catch (e) { /* none */ }
+    const seasons = parseInt(row.querySelector('.field-lease-seasons').value, 10);
+    const out = {
+        since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
+        seasons: seasons > 0 ? seasons : null,
+        then: row.querySelector('.field-lease-then').value === 'buy' ? 'buy' : 'return'
+    };
+    // A lease read from Field Leasing keeps the game's numbers (next sync refreshes them).
+    if (prev && prev.source === 'game') ['source', 'months', 'minMonths', 'monthlyFee'].forEach(k => { out[k] = prev[k]; });
+    return out;
+}
+
+// Field Leasing (FS25_FieldLeasing): <savegame>/fieldLeasingAgreements.xml
+//   <fieldLeasingAgreements priceMultiplier="%" minDuration="months">
+//     <fieldLeaseAgreement farmlandId farmId price duration="months so far"/>
+// Monthly fee = price × priceMultiplier / 100 / 12 (FieldLeasingManager:
+// getPriceMultiplier); the lease can't be ended before minDuration months.
+// -> { minMonths, byFarmland: { id: { months, monthlyFee } } } for SAVE_FARM_ID.
+function parseFieldLeasing(xml) {
+    const root = (xml.match(/<fieldLeasingAgreements\b[^>]*>/) || [''])[0];
+    const num = (tag, name) => parseFloat((tag.match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1]);
+    const mult = num(root, 'priceMultiplier');
+    const out = { minMonths: num(root, 'minDuration') || 12, byFarmland: {} };
+    for (const m of xml.matchAll(/<fieldLeaseAgreement\s[^>]*>/g)) {
+        if (String(num(m[0], 'farmId')) !== SAVE_FARM_ID) continue;
+        const id = String(num(m[0], 'farmlandId'));
+        out.byFarmland[id] = {
+            months: num(m[0], 'duration') || 0,
+            monthlyFee: (num(m[0], 'price') || 0) * ((isNaN(mult) ? 1 : mult) / 100) / 12
+        };
+    }
+    return out;
+}
+
+// Marks planner fields whose plots are leased in the game (any of the plots
+// of a joined number like "12-13"); a lease that came from the game and ended
+// there is cleared. Leases you typed in yourself stay. Returns true if changed.
+function syncLeasesFromSave(farm) {
+    if (!farm.saveGamePath || !modEnabled('fieldLeasing')) return false;
+    let leasing;
+    try {
+        leasing = parseFieldLeasing(fs.readFileSync(path.join(path.dirname(farm.saveGamePath), 'fieldLeasingAgreements.xml'), 'utf-8'));
+    } catch (e) {
+        return false;
+    }
+    let changed = false;
+    (farm.fields || []).forEach(field => {
+        const ids = String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+        const leased = ids.map(id => leasing.byFarmland[id]).filter(Boolean);
+        const prev = field.lease || null;
+        let next = prev;
+        if (leased.length) {
+            next = {
+                since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
+                seasons: prev ? prev.seasons || null : null,
+                then: prev ? prev.then || 'return' : 'return',
+                source: 'game',
+                months: Math.max(...leased.map(l => l.months)),
+                minMonths: leasing.minMonths,
+                monthlyFee: Math.round(leased.reduce((s, l) => s + l.monthlyFee, 0))
+            };
+        } else if (prev && prev.source === 'game') {
+            next = null;
+        }
+        if (JSON.stringify(next) !== JSON.stringify(prev)) { field.lease = next; changed = true; }
+    });
+    return changed;
+}
+
+// Table badge: "Lease 2/5" — season of the lease out of its length; red with
+// what to do (buy / give back) once the term is reached.
+function leaseBadgeHtml(field, seasonNum) {
+    const lease = field.lease;
+    if (!lease) return '';
+    if (lease.source === 'game') {
+        const months = parseInt(lease.months, 10) || 0;
+        const min = parseInt(lease.minMonths, 10) || 0;
+        const left = Math.max(0, min - months);
+        const fee = finMoney(parseFloat(lease.monthlyFee) || 0);
+        const title = t('leaseGameHint').replace('{fee}', fee) + ' ' + (left ? t('leaseGameMinLeft').replace('{n}', left) : t('leaseGameCanEnd'));
+        return `<span class="lease-caption${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months)}</span>`;
+    }
+    const n = Math.max(1, seasonNum - (lease.since || seasonNum) + 1);
+    const over = lease.seasons && n >= lease.seasons;
+    const text = lease.seasons ? t('leaseBadge').replace('{n}', n).replace('{m}', lease.seasons) : t('leaseBadgeOpen').replace('{n}', n);
+    const title = over ? t(lease.then === 'buy' ? 'leaseEndBuy' : 'leaseEndReturn') : t('leaseBadgeHint').replace('{s}', lease.since || seasonNum);
+    return `<span class="lease-caption${over ? ' is-over' : ''}" title="${title}">${text}</span>`;
+}
+
+// Reads the edit-mode table back into field objects. Rows that have data but
+// no field number come back in missingNumber (their number inputs) instead of
+// being silently dropped.
+function collectEditedFields(farm) {
+    const fields = [];
+    const fieldSizes = { ...(farm.fieldSizes || {}) };
+    const missingNumber = [];
+
+    fieldsBody.querySelectorAll('tr').forEach(row => {
+        const numInput = row.querySelector('.field-number');
+        if (!numInput) return;
+        if (!numInput.value.trim()) {
+            // A row with something filled in but no field number would be
+            // dropped on save — report it instead of losing it silently.
+            const cropSel = row.querySelector('.field-crop');
+            const areaInput = row.querySelector('.field-area');
+            if ((cropSel && cropSel.value) || (areaInput && areaInput.value.trim())) missingNumber.push(numInput);
+            return;
+        }
+        let rawArea = row.querySelector('.field-area').value || "0";
+        rawArea = rawArea.replace(',', '.');
+        // An area typed by hand overrides the one from the game.
+        const areaInput = row.querySelector('.field-area');
+        const areaEdited = areaInput && areaInput.dataset.orig !== undefined && areaInput.value !== areaInput.dataset.orig;
+
+        const checkbox = row.querySelector('.field-state');
+        const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
+
+        const limeChip = row.querySelector('.treatment-chip--lime');
+        const plowedChip = row.querySelector('.tillage-switch-option--plowed');
+        const noTillChip = row.querySelector('.tillage-switch-option--notill');
+
+        let tillage = null;
+        if (plowedChip && plowedChip.classList.contains('is-active')) tillage = 'plowed';
+        else if (noTillChip && noTillChip.classList.contains('is-active')) tillage = 'noTill';
+
+        // If the lime chip is on (active or still showing the red
+        // warning), keep whichever season/pH it was originally
+        // applied at — don't reset the clock just because the
+        // season got saved. Only a fresh off->on click resets both
+        // to "now, ideal pH".
+        let limeAppliedSeason = null;
+        let limePh = null;
+        if (limeChip && (limeChip.classList.contains('is-active') || limeChip.classList.contains('is-warning'))) {
+            const original = limeChip.dataset.limeSeason ? parseInt(limeChip.dataset.limeSeason) : null;
+            const isFresh = original === null || isNaN(original);
+            limeAppliedSeason = isFresh ? (farm.currentSeason || 1) : original;
+            // dataset.limePh was stamped from resolveLimePh() at render time, so
+            // it's already correct even for a field that predates this pH model.
+            const originalPh = limeChip.dataset.limePh !== '' ? parseFloat(limeChip.dataset.limePh) : null;
+            limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
+        }
+
+        const catchCropSelect = row.querySelector('.field-catch-crop');
+        const catchCrop = catchCropSelect ? catchCropSelect.value : '';
+
+        fields.push({
+            number: numInput.value,
+            area: rawArea,
+            crop: row.querySelector('.field-crop').value,
+            sowingMonth: row.querySelector('.field-sow').value,
+            catchCrop: catchCrop,
+            catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
+            state: stateValue,
+            tillage: tillage,
+            limeAppliedSeason: limeAppliedSeason,
+            limePh: limePh,
+            // Manure/fertilizer toggles moved to the per-field fertilization
+            // plan; the edit card no longer shows them, so just carry
+            // through whatever was already on the field when edit mode
+            // opened (stamped onto the row as data attributes).
+            cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
+            manure: row.dataset.manure === '1',
+            fertilizer: row.dataset.fertilizer === '1',
+            ...(() => { try { return JSON.parse(row.dataset.extra || '{}'); } catch { return {}; } })(),
+            ...(areaEdited ? { areaSource: 'manual' } : {}),
+            lease: readLeaseInputs(row, farm)
+        });
+        const added = fields[fields.length - 1];
+        if (!added.id) added.id = newFieldId();
+
+        const sizeInput = row.querySelector('.field-size-input');
+        if (sizeInput && sizeInput.value) {
+            const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
+            if (!isNaN(parsedSize)) fieldSizes[numInput.value.trim()] = parsedSize;
+        }
+    });
+    return { fields, fieldSizes, missingNumber };
+}
+
+// JSON of the edit table as it was right after entering edit mode — Cancel and
+// leaving the planner only ask for confirmation when the table differs from it.
+let editSnapshot = null;
+
+function editTableSnapshot(farm) {
+    const { fields, fieldSizes } = collectEditedFields(farm);
+    return JSON.stringify({ fields, fieldSizes });
+}
+
+function setEditModeUi(on) {
+    isEditMode = on;
+    if (editSeasonBtn) {
+        editSeasonBtn.innerText = t(on ? 'saveChanges' : 'edit');
+        editSeasonBtn.classList.toggle('is-saving', on);
+    }
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) cancelBtn.hidden = !on;
+    const loadBtn = document.getElementById('load-fields-btn');
+    if (loadBtn && on) loadBtn.hidden = true;
+    // Starting a new season mid-edit would throw the edits away.
+    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
+    if (!on) editSnapshot = null;
+    document.querySelectorAll('.season-nav-btn').forEach(b => {
+        const reachable = b.id === 'prev-season-btn' ? viewedSeason > 1 : viewedSeason < ((getCurrentFarm() || {}).currentSeason || 1);
+        b.disabled = on || !reachable;
+        b.title = on ? t('seasonNavLocked') : '';
+    });
+}
+
+// Leaves edit mode without saving. Asks first when something was changed.
+// Resolves false if the user chose to keep editing.
+async function discardEditsIfConfirmed() {
+    if (!isEditMode) return true;
+    const farm = getCurrentFarm();
+    const dirty = farm && editSnapshot !== null && editTableSnapshot(farm) !== editSnapshot;
+    if (dirty) {
+        const ok = await showSeasonModal({
+            title: t('discardEditsTitle'),
+            body: t('discardEditsBody'),
+            confirmText: t('discardEditsConfirm'),
+            cancelText: t('discardEditsKeep'),
+            danger: true,
+            icon: 'fa-triangle-exclamation'
+        });
+        if (!ok) return false;
+    }
+    setEditModeUi(false);
+    renderSeasonView();
+    return true;
+}
+
 if (editSeasonBtn) {
     editSeasonBtn.addEventListener('click', () => {
         if (!currentFarmId) return;
@@ -8633,116 +10207,22 @@ if (editSeasonBtn) {
         if (idx === -1) return;
         const farm = allFarms[idx];
 
-        // --- FUNKCJA POMOCNICZA DO TWORZENIA BACKUPU ---
-        const createBackup = (fieldsData, prefix) => {
-            try {
-                const farmFolder = farm.folderName;
-                const backupsDir = path.join(appDataDir, farmFolder, 'backups');
-                if (!fs.existsSync(backupsDir)) {
-                    fs.mkdirSync(backupsDir, { recursive: true });
-                }
-
-                const now = new Date();
-                const h = String(now.getHours()).padStart(2, '0');
-                const m = String(now.getMinutes()).padStart(2, '0');
-                const s = String(now.getSeconds()).padStart(2, '0');
-                const d = String(now.getDate()).padStart(2, '0');
-                const mo = String(now.getMonth() + 1).padStart(2, '0');
-                const y = now.getFullYear();
-
-                // Nazwa pliku np.: pre-edit_backup-18-30-05_19-02-2026.json
-                const backupFileName = `${prefix}_backup-${h}-${m}-${s}_${d}-${mo}-${y}.json`;
-                const backupFilePath = path.join(backupsDir, backupFileName);
-
-                const backupData = {
-                    action: prefix,
-                    timestamp: now.toISOString(),
-                    fields: fieldsData
-                };
-
-                fs.writeFileSync(backupFilePath, JSON.stringify(backupData, null, 2), 'utf-8');
-                console.log(`Utworzono backup (${prefix}):`, backupFileName);
-
-            } catch (err) {
-                console.error("Błąd zapisu kopii zapasowej:", err);
-            }
-        };
-        // ------------------------------------------------
+        const createBackup = (fieldsData, prefix) => writeFieldsBackup(farm, fieldsData, prefix);
 
         if (isEditMode) {
             // >>> WYJŚCIE Z EDYCJI (ZAPIS) <<<
 
-            const rows = fieldsBody.querySelectorAll('tr');
-            const newFields = [];
-            const newFieldSizes = { ...(allFarms[idx].fieldSizes || {}) };
-
-            rows.forEach(row => {
-                const numInput = row.querySelector('.field-number');
-                if (numInput && numInput.value) {
-                    let rawArea = row.querySelector('.field-area').value || "0";
-                    rawArea = rawArea.replace(',', '.');
-
-                    const checkbox = row.querySelector('.field-state');
-                    const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
-
-                    const limeChip = row.querySelector('.treatment-chip--lime');
-                    const plowedChip = row.querySelector('.tillage-switch-option--plowed');
-                    const noTillChip = row.querySelector('.tillage-switch-option--notill');
-
-                    let tillage = null;
-                    if (plowedChip && plowedChip.classList.contains('is-active')) tillage = 'plowed';
-                    else if (noTillChip && noTillChip.classList.contains('is-active')) tillage = 'noTill';
-
-                    // If the lime chip is on (active or still showing the red
-                    // warning), keep whichever season/pH it was originally
-                    // applied at — don't reset the clock just because the
-                    // season got saved. Only a fresh off->on click resets both
-                    // to "now, ideal pH".
-                    let limeAppliedSeason = null;
-                    let limePh = null;
-                    if (limeChip && (limeChip.classList.contains('is-active') || limeChip.classList.contains('is-warning'))) {
-                        const original = limeChip.dataset.limeSeason ? parseInt(limeChip.dataset.limeSeason) : null;
-                        const isFresh = original === null || isNaN(original);
-                        limeAppliedSeason = isFresh ? (allFarms[idx].currentSeason || 1) : original;
-                        // dataset.limePh was stamped from resolveLimePh() at render time, so
-                        // it's already correct even for a field that predates this pH model.
-                        const originalPh = limeChip.dataset.limePh !== '' ? parseFloat(limeChip.dataset.limePh) : null;
-                        limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
-                    }
-
-                    const catchCropSelect = row.querySelector('.field-catch-crop');
-                    const catchCrop = catchCropSelect ? catchCropSelect.value : '';
-
-                    newFields.push({
-                        number: numInput.value,
-                        area: rawArea,
-                        crop: row.querySelector('.field-crop').value,
-                        sowingMonth: row.querySelector('.field-sow').value,
-                        rolling: !!(row.querySelector('.field-rolling') && row.querySelector('.field-rolling').checked),
-                        catchCrop: catchCrop,
-                        catchSowingMonth: catchCrop ? row.querySelector('.field-catch-sow').value : '',
-                        state: stateValue,
-                        tillage: tillage,
-                        limeAppliedSeason: limeAppliedSeason,
-                        limePh: limePh,
-                        // Manure/fertilizer toggles moved to the per-field fertilization
-                        // plan; the edit card no longer shows them, so just carry
-                        // through whatever was already on the field when edit mode
-                        // opened (stamped onto the row as data attributes).
-                        cuts: (() => { try { return JSON.parse(row.dataset.cuts || '[]'); } catch { return []; } })(),
-                        manure: row.dataset.manure === '1',
-                        fertilizer: row.dataset.fertilizer === '1'
-                    });
-
-                    const sizeInput = row.querySelector('.field-size-input');
-                    if (sizeInput && sizeInput.value) {
-                        const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
-                        if (!isNaN(parsedSize)) newFieldSizes[numInput.value.trim()] = parsedSize;
-                    }
-                }
-            });
+            const { fields: newFields, fieldSizes: newFieldSizes, missingNumber } = collectEditedFields(allFarms[idx]);
+            fieldsBody.querySelectorAll('.field-number.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            if (missingNumber.length) {
+                missingNumber.forEach(el => el.classList.add('is-invalid'));
+                missingNumber[0].focus();
+                showSeasonNotice(t('missingFieldNumberTitle'), t('missingFieldNumberBody'), true);
+                return;
+            }
 
             // 1. Zapisz nowe dane do farmy
+            migrateFieldKeys(allFarms[idx], allFarms[idx].fields || [], newFields);
             allFarms[idx].fields = newFields;
             allFarms[idx].fieldSizes = newFieldSizes;
             saveFarmData(allFarms[idx]);
@@ -8750,12 +10230,8 @@ if (editSeasonBtn) {
             // 2. ZRÓB BACKUP "POST-EDIT" (stan po zmianach)
             createBackup(newFields, "post-edit");
 
+            setEditModeUi(false);
             renderSeasonView();
-
-            isEditMode = false;
-            editSeasonBtn.innerText = t('edit');
-            editSeasonBtn.style.backgroundColor = "transparent";
-            editSeasonBtn.style.color = "var(--color-black)";
 
         } else {
             // >>> WEJŚCIE W TRYB EDYCJI <<<
@@ -8765,14 +10241,17 @@ if (editSeasonBtn) {
             createBackup(farm.fields || [], "pre-edit");
 
             renderEditTableWithDropdowns(farm.fields || []);
-            isEditMode = true;
-
-            editSeasonBtn.innerText = t('saveChanges');
-            editSeasonBtn.style.backgroundColor = "var(--color-black)";
-            editSeasonBtn.style.color = "var(--color-white)";
+            setEditModeUi(true);
+            editSnapshot = editTableSnapshot(farm);
         }
     });
 }
+
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+if (cancelEditBtn) cancelEditBtn.addEventListener('click', () => { discardEditsIfConfirmed(); });
+if (fieldsBody) fieldsBody.addEventListener('input', e => {
+    if (e.target.classList && e.target.classList.contains('field-number')) e.target.classList.remove('is-invalid');
+});
 
 // =============================================================
 // SECTION 7: CROPS SUMMARY SIDEBAR
@@ -8839,7 +10318,6 @@ function updateCropsSummary(fields) {
     const mainRows = sumCropArea(fields, 'crop');
     const catchRows = sumCropArea(fields, 'catchCrop');
 
-    if (detailCrops) detailCrops.innerText = mainRows.length;
     updateCropsSortHeaders();
 
     if (mainRows.length === 0 && catchRows.length === 0) {
@@ -8926,15 +10404,6 @@ function showSeasonNotice(title, body, isError = false) {
     });
 }
 
-function resetEditSeasonButton() {
-    isEditMode = false;
-    if (editSeasonBtn) {
-        editSeasonBtn.innerText = t('edit');
-        editSeasonBtn.style.backgroundColor = "transparent";
-        editSeasonBtn.style.color = "var(--color-black)";
-    }
-}
-
 // Crops that keep growing for years once sown — "New Season" carries them
 // over (still planted) instead of clearing the field.
 const PERENNIAL_CROPS = FEED_GRASSLAND_CROPS;
@@ -8950,9 +10419,16 @@ function cropKeepsLime(crop) {
     return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }
 
-if (newSeasonBtn) {
-    newSeasonBtn.addEventListener('click', async () => {
+if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
+
+// New season: archive the current one, clear the fields for the next. Keeps
+// what's needed to take it back (seasons/undo_new_season.json, see
+// undoLastNewSeason). intro: optional text shown above the usual confirmation
+// (the in-game year reminder).
+async function runNewSeason({ intro = '' } = {}) {
+    {
         if (!currentFarmId) return;
+        if (!(await discardEditsIfConfirmed())) return;
 
         const startFarm = getAllFarms().find(f => f.id === currentFarmId);
         if (!startFarm) return;
@@ -8960,7 +10436,7 @@ if (newSeasonBtn) {
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
         const confirmNew = await showSeasonModal({
             title: fill(t('newSeasonTitle')),
-            body: fill(t('newSeasonBody')),
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')),
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
             icon: 'fa-seedling'
@@ -8979,6 +10455,20 @@ if (newSeasonBtn) {
             if (!fs.existsSync(seasonsDirPath)) fs.mkdirSync(seasonsDirPath, { recursive: true });
 
             const archivePath = path.join(seasonsDirPath, `season_${currentSeasonNum}.json`);
+            // An archive for this season number already exists (e.g. left over
+            // after an undo or a manual copy) — keep it under another name
+            // instead of overwriting it.
+            if (fs.existsSync(archivePath)) {
+                fs.renameSync(archivePath, archivePath.replace(/\.json$/, `_replaced_${Date.now()}.json`));
+            }
+            // Everything needed to take this new season back.
+            const undoData = {
+                season: currentSeasonNum,
+                fields: JSON.parse(JSON.stringify(farm.fields || [])),
+                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {})),
+                seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
+                createdAt: new Date().toISOString()
+            };
             let archivedAvgHealth = null;
             {
                 let weightedSum = 0, headCount = 0;
@@ -8996,7 +10486,8 @@ if (newSeasonBtn) {
                 balance: farm.balance,
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
-                avgHealth: archivedAvgHealth
+                avgHealth: archivedAvgHealth,
+                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}))
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
@@ -9017,6 +10508,7 @@ if (newSeasonBtn) {
                 field.catchCrop = "";
                 field.catchSowingMonth = "";
                 field.rolling = false;
+                field.rollingDone = false;
                 field.cuts = [];
                 // limeAppliedSeason is intentionally left untouched — it's
                 // display-only metadata now (see limePh below for the actual
@@ -9032,12 +10524,20 @@ if (newSeasonBtn) {
                 field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
                 field.manure = false;
                 field.fertilizer = false;
+                field.weeds = null;
+                field.work = [];
             });
+            // Fertilization plans ("N already in the soil", natural N) belong to
+            // the season just archived — a new crop on the same field starts clean.
+            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
             farm.currentSeason = currentSeasonNum + 1;
+            farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
+            fs.writeFileSync(path.join(seasonsDirPath, 'undo_new_season.json'), JSON.stringify(undoData, null, 2), 'utf-8');
+            refreshUndoSeasonButton(farm);
 
-            resetEditSeasonButton();
+            setEditModeUi(false);
             viewedSeason = farm.currentSeason;
             renderSeasonView();
 
@@ -9047,12 +10547,102 @@ if (newSeasonBtn) {
             console.error(err);
             await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
         }
+    }
+}
+
+function undoSeasonPath(farm) {
+    return path.join(appDataDir, farm.folderName, 'seasons', 'undo_new_season.json');
+}
+
+// The undo is only valid right after that new season: same season number.
+function readUndoSeason(farm) {
+    try {
+        const p = farm && farm.folderName ? undoSeasonPath(farm) : null;
+        if (!p || !fs.existsSync(p)) return null;
+        const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        return data && data.season + 1 === (parseInt(farm.currentSeason, 10) || 1) ? data : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function refreshUndoSeasonButton(farm) {
+    const btn = document.getElementById('undo-season-btn');
+    if (!btn) return;
+    const undo = readUndoSeason(farm);
+    btn.hidden = !undo;
+    if (undo) btn.textContent = t('undoNewSeason').replace('{n}', undo.season + 1).replace('{c}', undo.season);
+}
+
+// Takes the last new season back: fields, fertilization plans and the season
+// number as they were; the archive written for it is removed. Work done in the
+// new season is lost, so it asks first.
+async function undoLastNewSeason() {
+    const farm = getCurrentFarm();
+    const undo = readUndoSeason(farm);
+    if (!farm || !undo) return;
+    const settingsModalEl = document.getElementById('settings-modal');
+    if (settingsModalEl) settingsModalEl.style.display = 'none';
+    const fill = s => s.replace(/{n}/g, undo.season + 1).replace(/{c}/g, undo.season);
+    const ok = await showSeasonModal({
+        title: fill(t('undoNewSeasonTitle')),
+        body: fill(t('undoNewSeasonBody')),
+        confirmText: fill(t('undoNewSeasonConfirm')),
+        cancelText: t('cancel'),
+        danger: true,
+        icon: 'fa-rotate-left'
     });
+    if (!ok) return;
+    if (!(await discardEditsIfConfirmed())) return;
+    try {
+        farm.fields = undo.fields;
+        if (!farm.supplyRates) farm.supplyRates = {};
+        farm.supplyRates.fertPlan = undo.fertPlan || {};
+        farm.currentSeason = undo.season;
+        farm.seasonStartedGameYear = undo.seasonStartedGameYear;
+        saveFarmData(farm);
+        const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${undo.season}.json`);
+        if (fs.existsSync(archivePath)) fs.rmSync(archivePath);
+        fs.rmSync(undoSeasonPath(farm));
+        refreshUndoSeasonButton(farm);
+        viewedSeason = farm.currentSeason;
+        if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason}`;
+        renderSeasonView();
+        await showSeasonNotice(fill(t('undoNewSeasonDoneTitle')), fill(t('undoNewSeasonDone')));
+    } catch (err) {
+        console.error('Undo new season failed', err);
+        await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
+    }
+}
+
+const undoSeasonBtn = document.getElementById('undo-season-btn');
+if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeason());
+
+// A year went by in the game since this season started — offer a new season
+// once per in-game year (farm.seasonHintYear). The first sync only notes the
+// year the season is in.
+function maybeSuggestNewSeason(farm) {
+    if (!farm || !farm.saveGamePath || isEditMode) return;
+    const year = parseInt(farm.yearNumber, 10);
+    if (!(year > 0)) return;
+    if (!(parseInt(farm.seasonStartedGameYear, 10) > 0)) {
+        farm.seasonStartedGameYear = year;
+        saveFarmData(farm, { touch: false });
+        return;
+    }
+    if (year <= farm.seasonStartedGameYear || farm.seasonHintYear === year) return;
+    farm.seasonHintYear = year;
+    saveFarmData(farm, { touch: false });
+    const intro = t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
+    setTimeout(() => runNewSeason({ intro }), 600);
 }
 
 if (resetSeasonsBtn) {
     resetSeasonsBtn.addEventListener('click', async () => {
         if (!currentFarmId) return;
+        const settingsModalEl = document.getElementById('settings-modal');
+        if (settingsModalEl) settingsModalEl.style.display = 'none';
+        if (!(await discardEditsIfConfirmed())) return;
 
         const confirmReset = await showSeasonModal({
             title: t('resetSeasonsTitle'),
@@ -9085,7 +10675,7 @@ if (resetSeasonsBtn) {
         saveFarmData(farm);
 
         viewedSeason = 1;
-        resetEditSeasonButton();
+        setEditModeUi(false);
         renderSeasonView();
 
         await showSeasonNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));
@@ -9098,32 +10688,143 @@ if (resetSeasonsBtn) {
 let pendingCropFiles = null;
 let pendingAnimalDefFiles = null;
 
-// Settings → animal mods found in the savegame, each with an on/off switch
-// (on = the feed planner follows what the mod does in game).
+// Settings: every mod the app can read, whether it's active in the farm's
+// savegame, and a per-farm switch (off = base-game rules for that part).
+// AFC / EAS also show what they currently change.
 function renderAnimalModsInfo(farm) {
     const box = document.getElementById('animal-mods-info');
     if (!box) return;
-    if (!farm || !farm.saveGamePath) { box.innerHTML = `<p class="animal-mods-note">${t('animalModsNoSave')}</p>`; return; }
+    const hasSave = !!(farm && farm.saveGamePath);
+    const disabled = disabledModsOf(farm);
+    const prevActive = SAVE_ACTIVE_MODS;
+    SAVE_ACTIVE_MODS = hasSave ? activeModsInSave(farm.saveGamePath) : new Set();
     const mods = ANIMAL_MODS || {};
-    let html = '';
-    if (mods.afc) {
-        const afc = mods.afc;
-        const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
-        const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
-        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-afc-toggle" ${farm.ignoreAfc ? '' : 'checked'}>
-            <span><strong>AnimalFoodCalculator</strong> — ${t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src)}</span></label>`;
-    }
-    if (mods.eas) {
-        const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
-        html += `<label class="animal-mod-row"><input type="checkbox" id="animal-mod-eas-toggle" ${farm.ignoreEas ? '' : 'checked'}>
-            <span><strong>EnhancedAnimalSystem</strong> — ${t('easLine').replace('{list}', escapeHtml(species))}</span></label>`;
-    }
-    if (!html) html = `<p class="animal-mods-note">${t('animalModsNone').replace('{d}', feedDaysPerPeriod(farm))}</p>`;
+    let html = hasSave ? '' : `<p class="animal-mods-note">${t('modsNoSave')}</p>`;
+    SUPPORTED_MODS.forEach(def => {
+        const inSave = hasSave && modActiveInSave(def, farm.saveGamePath);
+        let detail = t('modDesc_' + def.id);
+        if (def.id === 'afc' && mods.afc) {
+            const afc = mods.afc;
+            const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
+            const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
+            detail += ' · ' + t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src);
+        }
+        if (def.id === 'eas' && mods.eas) {
+            const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
+            detail += ' · ' + t('easLine').replace('{list}', species);
+        }
+        html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
+            <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
+            <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
+    });
+    SAVE_ACTIVE_MODS = prevActive;
     box.innerHTML = html;
 }
 
+// Settings: which farm of a multiplayer save is yours. Hidden for a save
+// with a single farm (single player).
+// Farm settings tabs (Savegame / Planner / Mods / Rates / Advanced).
+function showSettingsTab(name) {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    modal.querySelectorAll('.settings-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === name));
+    modal.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active-tab', el.dataset.settingsTab === name));
+    if (name === 'rates') {
+        const d = modal.querySelector('#settings-supply-adjust details');
+        if (d) d.open = true;
+    }
+    const content = modal.querySelector('.modal-content');
+    if (content) content.scrollTop = 0;
+}
+document.querySelectorAll('#settings-modal .settings-tab').forEach(b => b.addEventListener('click', () => showSettingsTab(b.dataset.tab)));
+
+// Live check of the savegame path: what's there, or why it won't work —
+// a wrong path used to be ignored without a word on save.
+function checkSavePathInput() {
+    const input = document.getElementById('game-save-path');
+    const out = document.getElementById('save-path-check');
+    if (!input || !out) return;
+    let p = input.value.trim().replace(/"/g, '');
+    if (p && fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'careerSavegame.xml');
+    out.classList.remove('is-ok', 'is-bad');
+    if (!p) { out.textContent = ''; return; }
+    if (!fs.existsSync(p)) { out.textContent = t('savePathMissing'); out.classList.add('is-bad'); return; }
+    try {
+        const xml = fs.readFileSync(p, 'utf-8');
+        const tag = name => decodeXmlEntities((xml.match(new RegExp('<' + name + '>([^<]*)</' + name + '>')) || [])[1] || '');
+        if (!/<careerSavegame\b/.test(xml)) throw new Error('not a career savegame');
+        const money = parseFloat(tag('money'));
+        out.textContent = t('savePathFound').replace('{name}', tag('savegameName') || '?').replace('{map}', tag('mapTitle') || '?')
+            .replace('{money}', isNaN(money) ? '–' : finMoney(money));
+        out.classList.add('is-ok');
+    } catch (e) {
+        out.textContent = t('savePathNotSave');
+        out.classList.add('is-bad');
+    }
+}
+const gameSavePathField = document.getElementById('game-save-path');
+if (gameSavePathField) gameSavePathField.addEventListener('input', checkSavePathInput);
+
+function renderGameFarmChoice(farm) {
+    const row = document.getElementById('game-farm-row');
+    const select = document.getElementById('game-farm-select');
+    if (!row || !select) return;
+    const farms = farm && farm.saveGamePath ? listSaveFarms(farm.saveGamePath) : [];
+    row.hidden = farms.length < 2;
+    const current = gameFarmIdOf(farm);
+    select.innerHTML = farms.map(f =>
+        `<option value="${escapeHtml(f.id)}" ${f.id === current ? 'selected' : ''}>${escapeHtml(f.name || t('gameFarmUnnamed'))} (#${escapeHtml(f.id)})</option>`).join('');
+}
+
 function refreshFarmlandInfo(farm) {
-    FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath) : null;
+    FARMLAND_INFO = (farm && farm.showFarmlandArea && farm.saveGamePath) ? readFarmlandAreas(farm.saveGamePath, gameFarmIdOf(farm)) : null;
+    refreshPfFieldData(farm);
+}
+
+// Precision Farming's real soil pH and nitrogen per field, from the save's
+// pH / nitrogen maps (savegame-soil.js). Read on open and on every sync;
+// null without a save, without PF or with PF switched off.
+let PF_FIELD_DATA = null;
+
+function refreshPfFieldData(farm) {
+    PF_FIELD_DATA = null;
+    if (!farm || !farm.saveGamePath) return;
+    useSaveFarm(farm);
+    if (!modEnabled('precisionFarming')) return;
+    const res = readFieldSoilFromSave(farm.saveGamePath);
+    if (res.ok && (res.hasPh || res.hasNitrogen)) PF_FIELD_DATA = { farmId: farm.id, fields: res.fields };
+}
+
+// A planner field number ("12" or joined "12-13") -> its PF data, area-weighted
+// across the game fields: { ph: { avg, optimal, limeL } | null, nitrogen: { avg } | null }.
+function pfFieldData(key) {
+    if (!PF_FIELD_DATA || PF_FIELD_DATA.farmId !== currentFarmId || !key) return null;
+    const parts = String(key).split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)))
+        .map(id => PF_FIELD_DATA.fields[id]).filter(Boolean);
+    if (!parts.length) return null;
+    const weigh = (pick, val) => {
+        const list = parts.filter(p => pick(p));
+        const ha = list.reduce((s, p) => s + p.ha, 0);
+        return ha ? list.reduce((s, p) => s + val(p) * p.ha, 0) / ha : null;
+    };
+    const phAvg = weigh(p => p.ph, p => p.ph.avg);
+    const nAvg = weigh(p => p.nitrogen, p => p.nitrogen.avg);
+    return {
+        ph: phAvg == null ? null : {
+            avg: phAvg,
+            optimal: weigh(p => p.ph, p => p.ph.optimal),
+            limeL: parts.reduce((s, p) => s + (p.ph ? p.ph.limeL : 0), 0)
+        },
+        nitrogen: nAvg == null ? null : { avg: nAvg }
+    };
+}
+
+// The lime gauge from PF's real pH: full at the soil's optimum, 75 % (the
+// "needs lime" line) a quarter pH step-group below it, empty 1 pH below.
+function pfLimeStatus(pfPh) {
+    const deficit = Math.max(0, pfPh.optimal - pfPh.avg);
+    const ph = Math.max(0, Math.min(1, 1 - deficit));
+    return { ph, status: ph > 0.75 ? 'active' : 'warning', pf: pfPh };
 }
 
 // Land plot area behind a field key ("12" or combined "12-13"), or null.
@@ -9139,7 +10840,7 @@ if (settingsBtn) {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
         if (gameSavePathInput) gameSavePathInput.value = farm ? (farm.saveGamePath || "") : "";
         if (settingsMapNameInput) settingsMapNameInput.value = farm ? (farm.mapName || "") : "";
-        if (autoSyncToggle) autoSyncToggle.checked = isAutoSyncEnabled();
+        if (autoSyncToggle) autoSyncToggle.checked = autoSyncSetting(farm);
         const flToggle = document.getElementById('farmland-area-toggle');
         if (flToggle) flToggle.checked = !!(farm && farm.showFarmlandArea);
         const modsDirInfo = document.getElementById('mods-dir-info');
@@ -9151,6 +10852,15 @@ if (settingsBtn) {
             modsDirInfo.title = dirs.join('\n');
         }
         renderAnimalModsInfo(farm);
+        renderGameFarmChoice(farm);
+        refreshUndoSeasonButton(farm);
+        showSettingsTab('save');
+        checkSavePathInput();
+        renderFieldBackupChoice(farm);
+        const grassLimitInput = document.getElementById('grassland-limit-input');
+        if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
+        const currencySelect = document.getElementById('currency-select');
+        if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         if (cropsLoadedInfo) {
@@ -9180,7 +10890,11 @@ if (settingsBtn) {
             wireSettingsSupplyAdjust(supplyAdjustContainer);
         }
 
-        if (settingsModal) settingsModal.style.display = 'flex';
+        if (settingsModal) {
+            settingsModal.style.display = 'flex';
+            const content = settingsModal.querySelector('.modal-content');
+            if (content) content.scrollTop = 0;
+        }
     });
 }
 
@@ -9194,6 +10908,7 @@ if (browseSaveBtn && gameSavePathInput) {
         });
         if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
         gameSavePathInput.value = result.filePaths[0];
+        checkSavePathInput();
     });
 }
 
@@ -9210,7 +10925,7 @@ if (browseCropsBtn && cropsFolderPicker && cropsFolderInput) {
 
         // Best-effort friendly label for the picked root folder — purely
         // cosmetic, falls back to a file count if it can't be derived.
-        let rootLabel = `${files.length} file(s) selected`;
+        let rootLabel = t('filesSelected').replace('{n}', files.length);
         try {
             const first = files[0];
             const absPath = first.path || (webUtils ? webUtils.getPathForFile(first) : "");
@@ -9239,7 +10954,7 @@ if (browseAnimalDefsBtn && animalDefsFolderPicker && animalDefsFolderInput) {
         if (!files || files.length === 0) return;
         pendingAnimalDefFiles = files;
 
-        let rootLabel = `${files.length} file(s) selected`;
+        let rootLabel = t('filesSelected').replace('{n}', files.length);
         try {
             const first = files[0];
             const absPath = first.path || (webUtils ? webUtils.getPathForFile(first) : "");
@@ -9298,7 +11013,7 @@ if (saveSettingsBtn) {
             const importFarm = getCurrentFarm();
 
             if (!importFarm) {
-                summaryParts.push(`no farm open — open a farm before importing map data`);
+                summaryParts.push(t('importNoFarmOpen'));
             } else {
                 if (cropCount > 0) {
                     const generatedPath = path.join(farmDir(importFarm), 'crops_config.json');
@@ -9319,9 +11034,9 @@ if (saveSettingsBtn) {
                         });
                         fs.writeFileSync(generatedPath, JSON.stringify(merged, null, 2), 'utf-8');
                         importFarm.cropsSourceLabel = cropsFolderInput ? cropsFolderInput.value : "";
-                        summaryParts.push(`${cropCount} crop(s) from ${cropsFound} growth definition(s)`);
+                        summaryParts.push(t('importCropsDone').replace('{n}', cropCount).replace('{d}', cropsFound));
                     } catch (err) {
-                        summaryParts.push(`could not save crops config (${err.message || err})`);
+                        summaryParts.push(t('importCropsSaveError').replace('{e}', err.message || err));
                         console.error('Could not save crops_config.json', err);
                     }
                 }
@@ -9339,9 +11054,9 @@ if (saveSettingsBtn) {
                         importFarm.animalDefsSourceLabel = animalDefsFolderInput ? animalDefsFolderInput.value : "";
                         // Remembered so they're re-read on every start (see refreshAnimalDefsFromSource).
                         importFarm.animalDefsFiles = [...new Set([...(importFarm.animalDefsFiles || []), ...animalFiles])];
-                        summaryParts.push(`${animalDefCount} animal breed(s) with feed/water/straw needs`);
+                        summaryParts.push(t('importAnimalsDone').replace('{n}', animalDefCount));
                     } catch (err) {
-                        summaryParts.push(`could not save animal needs config (${err.message || err})`);
+                        summaryParts.push(t('importAnimalsSaveError').replace('{e}', err.message || err));
                         console.error('Could not save animal_needs_config.json', err);
                     }
                 }
@@ -9355,20 +11070,45 @@ if (saveSettingsBtn) {
             }
 
             if (readErrors.length > 0) {
-                summaryParts.push(`${readErrors.length} file(s) could not be read (see console for details)`);
+                summaryParts.push(t('importReadErrors').replace('{n}', readErrors.length));
             }
 
             if (summaryParts.length > 0) {
-                alert(`Imported: ${summaryParts.join('; ')} (out of ${xmlCount} XML files scanned).`);
+                alert(t('importSummary').replace('{parts}', summaryParts.join('; ')).replace('{n}', xmlCount));
             } else {
-                alert(`No recognizable crop or animal definition files found among ${xmlCount} XML file(s) scanned. Make sure you selected the right folder(s).`);
+                alert(t('importNothingFound').replace('{n}', xmlCount));
             }
             pendingCropFiles = null;
             pendingAnimalDefFiles = null;
         }
 
+        {
+            const grassLimitInput = document.getElementById('grassland-limit-input');
+            const farm = getCurrentFarm();
+            const v = grassLimitInput ? parseInt(grassLimitInput.value, 10) : NaN;
+            if (farm && v > 0 && v !== grasslandSeasonLimit(farm)) {
+                farm.grasslandMaxSeasons = v;
+                saveFarmData(farm);
+                if (!isEditMode) renderSeasonView();
+            }
+        }
+
+        {
+            const currencySelect = document.getElementById('currency-select');
+            const farm = getCurrentFarm();
+            if (currencySelect && farm && (farm.currency || 'auto') !== currencySelect.value) {
+                farm.currency = currencySelect.value;
+                saveFarmData(farm);
+                refreshPlannerHeader(farm);
+            }
+        }
+
         if (autoSyncToggle) {
-            localStorage.setItem(CONFIG_KEY_AUTO_SYNC, autoSyncToggle.checked ? '1' : '0');
+            const farm = getCurrentFarm();
+            if (farm && farm.autoSync !== autoSyncToggle.checked) {
+                farm.autoSync = autoSyncToggle.checked;
+                saveFarmData(farm);
+            }
         }
 
         if (settingsMapNameInput) {
@@ -9389,15 +11129,22 @@ if (saveSettingsBtn) {
             const farm = getCurrentFarm();
             if (farm) {
                 const flToggle = document.getElementById('farmland-area-toggle');
-                const afcToggle = document.getElementById('animal-mod-afc-toggle');
-                const easToggle = document.getElementById('animal-mod-eas-toggle');
-                const next = {
-                    showFarmlandArea: flToggle ? flToggle.checked : !!farm.showFarmlandArea,
-                    ignoreAfc: afcToggle ? !afcToggle.checked : !!farm.ignoreAfc,
-                    ignoreEas: easToggle ? !easToggle.checked : !!farm.ignoreEas
-                };
-                if (Object.keys(next).some(k => !!farm[k] !== next[k])) {
-                    Object.assign(farm, next);
+                const showFarmlandArea = flToggle ? flToggle.checked : !!farm.showFarmlandArea;
+                // Unchecked mods are off for this farm; a mod not in the save
+                // keeps whatever it was set to.
+                const off = new Set(disabledModsOf(farm));
+                document.querySelectorAll('#animal-mods-info .supported-mod-toggle').forEach(cb => {
+                    if (cb.disabled) return;
+                    if (cb.checked) off.delete(cb.dataset.mod); else off.add(cb.dataset.mod);
+                });
+                const disabledMods = SUPPORTED_MODS.map(d => d.id).filter(id => off.has(id));
+                const wasOff = SUPPORTED_MODS.map(d => d.id).filter(id => disabledModsOf(farm).has(id));
+                const modsChanged = disabledMods.join() !== wasOff.join();
+                if (showFarmlandArea !== !!farm.showFarmlandArea || modsChanged) {
+                    farm.showFarmlandArea = showFarmlandArea;
+                    farm.disabledMods = disabledMods;
+                    delete farm.ignoreAfc;
+                    delete farm.ignoreEas;
                     saveFarmData(farm);
                     loadFarmConfigs(farm);
                     refreshFarmlandInfo(farm);
@@ -9407,14 +11154,26 @@ if (saveSettingsBtn) {
         }
 
         if (gameSavePathInput) {
-            const pathToFile = gameSavePathInput.value.trim().replace(/"/g, '');
+            let pathToFile = gameSavePathInput.value.trim().replace(/"/g, '');
+            if (pathToFile && fs.existsSync(pathToFile) && fs.statSync(pathToFile).isDirectory()) pathToFile = path.join(pathToFile, 'careerSavegame.xml');
             if (pathToFile && fs.existsSync(pathToFile)) {
-                const newData = readGameSave(pathToFile);
                 const allFarms = getAllFarms();
                 const idx = allFarms.findIndex(f => f.id === currentFarmId);
                 if (idx > -1) {
-                    allFarms[idx].saveGamePath = pathToFile;
-                    if (newData.balance) allFarms[idx].balance = newData.balance;
+                    const target = allFarms[idx];
+                    const gameFarmRow = document.getElementById('game-farm-row');
+                    const gameFarmSelect = document.getElementById('game-farm-select');
+                    if (target.saveGamePath !== pathToFile) {
+                        // Another save: pick its farm again from scratch.
+                        delete target.gameFarmId;
+                        target.saveGamePath = pathToFile;
+                        resolveGameFarmId(target);
+                    } else if (gameFarmRow && !gameFarmRow.hidden && gameFarmSelect && gameFarmSelect.value) {
+                        target.gameFarmId = gameFarmSelect.value;
+                    }
+                    useSaveFarm(target);
+                    const newData = readGameSave(pathToFile);
+                    if (newData.balance !== null) allFarms[idx].balance = newData.balance;
                     if (newData.month) allFarms[idx].month = newData.month;
                     if (newData.loan !== null) allFarms[idx].loan = newData.loan;
                     saveFarmData(allFarms[idx]);
@@ -9469,13 +11228,13 @@ function renderFarmList(farms) {
         const item = document.createElement('div');
         item.className = 'farm-item';
         const actionButton = deleteMode
-            ? `<p class="delete-btn-circle" onclick="prepareDelete('${farm.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></p>`
-            : `<p class="select-btn" onclick="openPlanner('${farm.id}')"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></p>`;
+            ? `<button type="button" class="delete-btn-circle" onclick="prepareDelete('${farm.id}')" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+            : `<button type="button" class="select-btn" onclick="openPlanner('${farm.id}')" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
 
         item.innerHTML = `
             <div class="farm-details">
                 <span class="farm-name">${farm.name}${farm.mapName ? ` <span class="farm-map">${farm.mapName}</span>` : ''}</span>
-                <span class="farm-dates">${t('lastEdited')}: ${farm.lastEdited}</span>
+                <span class="farm-dates">${t('lastEdited')}: ${escapeHtml(formatLastEdited(farm.lastEdited))}</span>
             </div>
             <div class="farm-item-actions">
                 <p class="export-btn-circle" onclick="exportFarmBackup('${farm.id}')" title="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></p>
@@ -9625,7 +11384,7 @@ window.importFarmBackup = async function () {
         ...bundle.farm,
         id: newId,
         folderName: newId,
-        lastEdited: new Date().toLocaleDateString()
+        lastEdited: new Date().toISOString()
     };
     fs.writeFileSync(path.join(newFolderPath, 'data.json'), JSON.stringify(restoredFarm, null, 2), 'utf-8');
 
@@ -9635,7 +11394,66 @@ window.importFarmBackup = async function () {
 
 if (importBackupBtn) importBackupBtn.addEventListener('click', () => { window.importFarmBackup(); });
 
-if (addFarmBtn) addFarmBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'flex'; if (newFarmInput) newFarmInput.focus(); });
+// --- New farm: pick one of the game's savegames right away ----------------
+// <Documents>\My Games\FarmingSimulator2025\savegameN\careerSavegame.xml,
+// listed with the savegame's name, map and money. Picking one fills in the
+// map (and the farm name when it's still empty); the new farm opens linked to it.
+let newFarmSavePath = '';
+
+function listGameSaves() {
+    const gameDir = path.join(path.dirname(appDataDir), 'My Games', 'FarmingSimulator2025');
+    let names = [];
+    try { names = fs.readdirSync(gameDir).filter(n => /^savegame\d+$/.test(n)); } catch (e) { return []; }
+    return names.map(n => {
+        const file = path.join(gameDir, n, 'careerSavegame.xml');
+        try {
+            const xml = fs.readFileSync(file, 'utf-8');
+            const tag = name => decodeXmlEntities((xml.match(new RegExp('<' + name + '>([^<]*)</' + name + '>')) || [])[1] || '');
+            return { file, slot: parseInt(n.replace('savegame', ''), 10), name: tag('savegameName'), map: tag('mapTitle'), money: parseFloat(tag('money')), date: tag('saveDate') };
+        } catch (e) {
+            return null;
+        }
+    }).filter(Boolean).sort((a, b) => a.slot - b.slot);
+}
+
+function decodeXmlEntities(s) {
+    return String(s).replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+function renderNewFarmSaves() {
+    const box = document.getElementById('new-farm-saves');
+    if (!box) return;
+    const saves = listGameSaves();
+    const item = (pathValue, title, sub) => `<button type="button" class="save-choice${pathValue === newFarmSavePath ? ' is-selected' : ''}" data-path="${escapeHtml(pathValue)}">
+        <span class="save-choice-title">${escapeHtml(title)}</span>${sub ? `<span class="save-choice-sub">${escapeHtml(sub)}</span>` : ''}</button>`;
+    box.innerHTML = item('', t('newFarmNoSave'), t('newFarmNoSaveHint'))
+        + saves.map(s => item(s.file, `${s.name || t('newFarmSaveUnnamed')} · ${s.map || '?'}`,
+            [`savegame${s.slot}`, isNaN(s.money) ? '' : finMoney(s.money), s.date].filter(Boolean).join(' · '))).join('');
+    if (!saves.length) box.insertAdjacentHTML('beforeend', `<p class="settings-hint">${t('newFarmNoSavesFound')}</p>`);
+    box.dataset.saves = JSON.stringify(saves.map(s => ({ file: s.file, name: s.name, map: s.map })));
+}
+
+const newFarmSavesBox = document.getElementById('new-farm-saves');
+if (newFarmSavesBox) newFarmSavesBox.addEventListener('click', e => {
+    const btn = e.target.closest('.save-choice');
+    if (!btn) return;
+    newFarmSavePath = btn.dataset.path;
+    let saves = [];
+    try { saves = JSON.parse(newFarmSavesBox.dataset.saves || '[]'); } catch (err) { /* none */ }
+    const save = saves.find(s => s.file === newFarmSavePath);
+    if (save) {
+        if (newFarmMapInput && save.map) newFarmMapInput.value = save.map;
+        if (newFarmInput && !newFarmInput.value.trim() && save.name) newFarmInput.value = save.name;
+    }
+    newFarmSavesBox.querySelectorAll('.save-choice').forEach(b => b.classList.toggle('is-selected', b === btn));
+});
+
+if (addFarmBtn) addFarmBtn.addEventListener('click', () => {
+    newFarmSavePath = '';
+    renderNewFarmSaves();
+    if (addFarmModal) addFarmModal.style.display = 'flex';
+    if (newFarmInput) newFarmInput.focus();
+});
 if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'none'; if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
 
 if (confirmAddBtn) {
@@ -9655,18 +11473,23 @@ if (confirmAddBtn) {
                 name: farmName,
                 mapName: newFarmMapInput ? newFarmMapInput.value.trim() : "",
                 folderName: newId,
-                lastEdited: new Date().toLocaleDateString(),
-                balance: "0 €",
+                lastEdited: new Date().toISOString(),
+                balance: 0,
                 currentSeason: 1,
                 yearNumber: 1,
                 fields: [],
                 fieldSizes: {}
             };
+            if (newFarmSavePath && fs.existsSync(newFarmSavePath)) newFarm.saveGamePath = newFarmSavePath;
             saveFarmData(newFarm);
             if (addFarmModal) addFarmModal.style.display = 'none';
             newFarmInput.value = "";
             if (newFarmMapInput) newFarmMapInput.value = "";
+            newFarmSavePath = '';
             renderFarmList(getAllFarms());
+            // Straight into the new farm — not during the tutorial, whose
+            // next steps happen on the farm list.
+            if (!tut.active) openPlanner(newId);
         }
     });
 }
@@ -9688,7 +11511,7 @@ window.prepareDelete = function (id) {
     if (modal) {
         modal.style.display = 'flex';
     } else {
-        alert("Błąd. Nie znaleziono modalu usunięcia w index.html. Ustaw ID okienka na 'confirm-delete-modal'.");
+        console.error('prepareDelete: #confirm-delete-modal is missing from index.html');
     }
 };
 
@@ -9894,7 +11717,7 @@ function seedDemoFarm(farm) {
 
     Object.assign(farm, {
         isTutorialDemo: true,
-        balance: "185 400 €",
+        balance: 185400,
         loan: "60 000",
         playTime: "42h 15m",
         equipment: 14,
@@ -9989,7 +11812,7 @@ function seedDemoFarm(farm) {
                 field("4", 4.5, "Maize", "APRIL", "Planted", "plowed"),
                 field("5-6", 6.8, "Wheat", "OCTOBER", "Planted", "plowed")
             ],
-            balance: "142 000 €",
+            balance: 142000,
             loan: 90000,
             animals: 84,
             avgHealth: 90
@@ -10049,7 +11872,7 @@ function createDemoFarm() {
         name: t('tutorialDemoFarmName'),
         mapName: "",
         folderName: id,
-        lastEdited: new Date().toLocaleDateString(),
+        lastEdited: new Date().toISOString(),
         fields: []
     };
     seedDemoFarm(farm);
@@ -10179,7 +12002,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('b6', '#fields-table'),
             tutClick('b7', '#next-season-btn', () => { const f = getCurrentFarm(); return !!f && viewedSeason === (f.currentSeason || 1); }),
             tutInfo('b8', '.new-season-btn'),
-            tutInfo('b9', '#reset-seasons-btn')
+            tutInfo('b9', '#settings-btn')
         ]
     },
     {
@@ -10187,16 +12010,19 @@ const TUTORIAL_CHAPTERS = [
         prepare: tutOpenDemoPlanner,
         steps: [
             tutInfo('c1', '#fields-table'),
+            tutInfo('c14', () => tq('#fields-body .field-open')),
             tutInfo('c2', '#fields-body .badge--plant-now'),
             tutInfo('c3', () => [tq('#fields-body .badge--planted'), tq('#fields-body .badge--to-plant')]),
             tutInfo('c11', () => tq('#fields-body .cuts-open')),
             tutInfo('c4', () => { const b = tq('#fields-body .badge--rotation-warn'); return b ? b.closest('tr') : null; }),
             tutInfo('c5', () => tqa('#fields-body tr.field-split-row')),
             tutInfo('c6', () => { const s = tq('#fields-body .field-number-sep'); return s ? s.closest('tr') : null; }),
-            tutInfo('c7', () => [tq('#fields-body .tillage-switch--readonly'), tq('#fields-body .rolling-toggle')]),
+            tutInfo('c12', () => tq('#fields-body .work-open')),
+            tutInfo('c7', () => [tq('#fields-body .tillage-chip'), tq('#fields-body .rolling-toggle')]),
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
+            tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
-            tutInfo('c10', '#total-ha-sum')
+            tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum'])
         ]
     },
     {
@@ -10372,9 +12198,11 @@ const TUTORIAL_CHAPTERS = [
             tutInput('i2', '#settings-map-name', () => { const el = tq('#settings-map-name'); return !!el && el.value.trim() !== ''; }, 'Hutan Pantai'),
             tutInfo('i3', ['#game-save-path', '#browse-save-btn', '#mods-dir-info']),
             tutInfo('i4', () => ['#auto-sync-toggle', '#farmland-area-toggle'].map(s => { const el = tq(s); return el ? (el.closest('label') || el) : null; }).filter(Boolean)),
-            tutInfo('i5', ['#crops-folder-path', '#browse-crops-btn', '#animal-defs-folder-path', '#browse-animal-defs-btn', '#animal-mods-info']),
-            tutClick('i6', '#settings-supply-adjust summary', () => { const d = tq('#settings-supply-adjust details'); return !!d && d.open; }),
+            tutInfo('i5', '#animal-mods-info', { enter: () => showSettingsTab('mods') }),
+            tutInfo('i10', ['#grassland-limit-input', '#currency-select'], { enter: () => showSettingsTab('planner') }),
+            tutInfo('i6', '#settings-supply-adjust', { enter: () => showSettingsTab('rates') }),
             tutInfo('i7', '#settings-supply-adjust details'),
+            tutInfo('i11', ['#settings-advanced', '#settings-modal .settings-danger-zone'], { enter: () => showSettingsTab('advanced') }),
             tutClick('i8', '#save-settings-btn', () => !tutModalOpen('settings-modal')),
             tutInfo('i9', '#planner-farm-name')
         ]
@@ -10390,6 +12218,7 @@ const TUTORIAL_CHAPTERS = [
             tutClick('j2', '#app-settings-btn', () => tutModalOpen('app-settings-modal')),
             tutInfo('j3', '#app-settings-modal .language-options'),
             tutInfo('j4', () => { const el = tq('#discord-rpc-toggle'); return el ? (el.closest('label') || el) : null; }),
+            tutInfo('j8', () => { const el = tq('#update-check-toggle'); return [el ? (el.closest('label') || el) : null, tq('#check-updates-btn')].filter(Boolean); }),
             tutInfo('j5', '#replay-tutorial-btn'),
             tutClick('j6', '#close-app-settings-btn', () => !tutModalOpen('app-settings-modal')),
             tutInfo('j7', null)
@@ -10776,11 +12605,107 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 // =============================================================
+// UPDATE CHECK
+// =============================================================
+// Asks GitHub Releases (pre-releases included — every version is published as
+// one) whether a newer version exists. Only informs: "Download" opens the
+// release page; the installer is run by the user.
+const APP_VERSION = ipcRenderer.sendSync('get-app-version') || '0.0.0';
+const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/releases?per_page=20';
+const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
+
+function isUpdateCheckEnabled() {
+    return localStorage.getItem(CONFIG_KEY_UPDATE_CHECK) !== '0';
+}
+
+// "v0.9.10" vs "0.9.9" -> 1 / 0 / -1, number by number.
+function compareVersions(a, b) {
+    const pa = String(a).replace(/^v/i, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
+    const pb = String(b).replace(/^v/i, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] || 0) - (pb[i] || 0);
+        if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
+}
+
+// manual: from the Settings button — then "up to date" and errors are shown
+// too; the start-up check stays silent unless there is something new.
+async function checkForUpdates({ manual = false } = {}) {
+    let newest = null;
+    try {
+        const res = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const releases = await res.json();
+        (Array.isArray(releases) ? releases : []).forEach(r => {
+            if (r.draft || !r.tag_name) return;
+            if (!newest || compareVersions(r.tag_name, newest.tag_name) > 0) newest = r;
+        });
+    } catch (err) {
+        console.warn('Update check failed', err);
+        if (manual) await showSeasonNotice(t('updateErrorTitle'), t('updateError'), true);
+        return;
+    }
+
+    const latest = newest ? newest.tag_name.replace(/^v/i, '') : null;
+    if (!latest || compareVersions(latest, APP_VERSION) <= 0) {
+        if (manual) await showSeasonNotice(t('updateNoneTitle'), t('updateNone').replace('{v}', APP_VERSION));
+        return;
+    }
+
+    const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
+    const download = await showSeasonModal({
+        title: fill(t('updateAvailableTitle')),
+        body: fill(t('updateAvailableBody')),
+        confirmText: t('updateDownload'),
+        cancelText: t('updateLater'),
+        icon: 'fa-circle-arrow-up'
+    });
+    if (download) ipcRenderer.invoke('open-release-page', newest.html_url);
+}
+
+const updateCheckToggle = document.getElementById('update-check-toggle');
+if (updateCheckToggle) {
+    updateCheckToggle.addEventListener('change', () => {
+        localStorage.setItem(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
+    });
+}
+const checkUpdatesBtn = document.getElementById('check-updates-btn');
+if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener('click', async () => {
+        checkUpdatesBtn.disabled = true;
+        try { await checkForUpdates({ manual: true }); }
+        finally { checkUpdatesBtn.disabled = false; }
+    });
+}
+
+// =============================================================
 // SECTION 11: INITIALIZATION
 // =============================================================
-document.addEventListener('DOMContentLoaded', () => {
+// First start (no language saved yet): a modal that can only be closed by
+// picking Polski or English — before the tutorial, so it runs in that language.
+function askFirstLanguage() {
+    const modal = document.getElementById('first-lang-modal');
+    if (!modal) return Promise.resolve();
+    return new Promise(resolve => {
+        modal.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.remove('is-selected');   // no language preselected
+            btn.addEventListener('click', () => {
+                applyLanguage(btn.getAttribute('data-lang'));
+                modal.style.display = 'none';
+                resolve();
+            }, { once: true });
+        });
+        modal.style.display = 'flex';
+        const first = modal.querySelector('.lang-btn');
+        if (first) first.focus();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
     // Crop calendar / animal-needs are per-farm now — loaded by loadFarmConfigs()
     // when a farm is opened, not here (no farm is active on the dashboard).
+    const languageChosen = !!localStorage.getItem(CONFIG_KEY_LANG);
     applyLanguage(currentLang);
 
     // Leftover from a tutorial that was interrupted by closing the app.
@@ -10792,5 +12717,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateDiscordPresence();
 
+    if (!languageChosen) {
+        await askFirstLanguage();
+        renderFarmList(getAllFarms());
+    }
     if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
+    else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

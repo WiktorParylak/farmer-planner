@@ -1,0 +1,111 @@
+{
+  "Barley": {
+    "seed": 265,
+    "yield": 9600,
+    "straw": 36800
+  },
+  "Beetroot": {
+    "seed": 40,
+    "yield": 57800
+  },
+  "Canola": {
+    "seed": 49,
+    "yield": 5800
+  },
+  "Carrot": {
+    "seed": 10,
+    "yield": 77000
+  },
+  "Cotton": {
+    "seed": 50,
+    "yield": 4970
+  },
+  "Grape": {
+    "yield": 18400
+  },
+  "Grass": {
+    "seed": 120,
+    "yield": 43700
+  },
+  "Greenbean": {
+    "seed": 280,
+    "yield": 6975
+  },
+  "Maize": {
+    "seed": 53,
+    "yield": 9200
+  },
+  "Meadow": {
+    "seed": 160,
+    "yield": 43700
+  },
+  "Oat": {
+    "seed": 340,
+    "yield": 5700,
+    "straw": 36800
+  },
+  "Oilseedradish": {
+    "seed": 40,
+    "yield": 9900
+  },
+  "Olive": {
+    "yield": 18400
+  },
+  "Onion": {
+    "seed": 9,
+    "yield": 35000
+  },
+  "Parsnip": {
+    "seed": 10,
+    "yield": 69500
+  },
+  "Pea": {
+    "seed": 250,
+    "yield": 9600
+  },
+  "Poplar": {
+    "seed": 1500,
+    "yield": 66270
+  },
+  "Potato": {
+    "seed": 3733,
+    "yield": 41300
+  },
+  "Rice": {
+    "seed": 156,
+    "yield": 6600
+  },
+  "Ricelonggrain": {
+    "seed": 500,
+    "yield": 9000
+  },
+  "Sorghum": {
+    "seed": 35,
+    "yield": 8200
+  },
+  "Soybean": {
+    "seed": 214,
+    "yield": 4500
+  },
+  "Spinach": {
+    "seed": 10,
+    "yield": 23100
+  },
+  "Sugarbeet": {
+    "seed": 34,
+    "yield": 57800
+  },
+  "Sugarcane": {
+    "seed": 12000,
+    "yield": 113400
+  },
+  "Sunflower": {
+    "seed": 143,
+    "yield": 5200
+  },
+  "Wheat": {
+    "seed": 308,
+    "yield": 8900,
+    "straw": 36800
+  }
+}

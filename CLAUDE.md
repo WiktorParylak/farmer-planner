@@ -18,8 +18,8 @@ Wyjątek: `.claude/settings.json` jest w repo — są w nim pluginy Claude Code 
 ```bash
 git fetch --all --prune
 git status                      # czy nie ma niezacommitowanych zmian
-git branch -a                   # która gałąź vX.Y.Z jest najnowsza
-git checkout vX.Y.Z             # najnowsza gałąź wersji
+git branch -a                   # która gałąź dev/vX.Y.Z jest najnowsza
+git switch dev/vX.Y.Z           # najnowsza gałąź wersji (pierwszy raz: git switch -c dev/vX.Y.Z --track origin/dev/vX.Y.Z)
 git pull
 npm install                     # jeśli package-lock.json się zmienił
 ```
@@ -28,8 +28,14 @@ npm install                     # jeśli package-lock.json się zmienił
 ```bash
 git add -A
 git commit -m "..."
-git push -u origin vX.Y.Z       # tylko gałąź robocza — to synchronizacja, nie release
+git push -u origin dev/vX.Y.Z   # tylko gałąź robocza — to synchronizacja, nie release
 ```
+
+Gałęzie robocze mają prefiks `dev/` (`dev/v0.9.8`), a tagi wydań go nie mają (`v0.9.8`), więc nazwy
+się nie gryzą. Nigdy nie twórz gałęzi o nazwie `vX.Y.Z` bez `dev/` — koliduje z tagiem wydania
+(„src refspec matches more than one”, `git checkout` trafia w tag). Do 2026-10-03 gałęzie nazywały się
+`vX.Y.Z`; jeśli na drugim komputerze zostały lokalne `v0.9.7` / `v0.9.8`, po `git fetch --prune`
+usuń je (`git branch -D v0.9.7 v0.9.8`) i przełącz się na `dev/v0.9.8`.
 Niezacommitowana praca zostaje na jednym komputerze — przypomnij o tym, jeśli sesja kończy się z brudnym drzewem.
 
 Pierwszy raz na nowym komputerze:
@@ -48,15 +54,18 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | `npm start` | uruchamia aplikację (`tools/start.js`): z głównego folderu repo odpala worktree z najnowszą gałęzią `dev/vX.Y.Z` z `.claude/worktrees/`, w innym wypadku `electron .` |
 | `npm run build` | buduje instalator NSIS do `dist/` (`Farmer Planner Setup X.Y.Z.exe`) |
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
+| `node tools/generate-default-agronomy.js "<FS25>\data\foliage"` | regeneruje `data/default-agronomy.json` (dawka wysiewu, plon, słoma z gry podstawowej) |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
+| `node tools/dev-farm.js install` | wgrywa farmę testową z `dev-farm/` do `Documents\Farmer Planner` |
+| `node tools/dev-farm.js save` | zapisuje farmę testową z aplikacji z powrotem do `dev-farm/` (potem commit) |
 | `gh release list` | lista wydań |
 
 Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienionej funkcji.
 
 ## Gałęzie i wydania
 
-- Każda wersja ma swoją gałąź `vX.Y.Z`, odgałęzioną od **poprzedniej gałęzi wersji** (v0.9.8 z v0.9.7), nie od `main`.
-- `main` dostaje wersję przez merge PR (`Merge pull request #N from .../vX.Y.Z`) po wydaniu. Przed planowaniem sprawdź, czy `main` nie jest w tyle — czytaj kod z najnowszej gałęzi `vX.Y.Z`.
+- Każda wersja ma swoją gałąź `dev/vX.Y.Z`, odgałęzioną od **poprzedniej gałęzi wersji** (dev/v0.9.9 z dev/v0.9.8), nie od `main`.
+- `main` dostaje wersję przez merge PR z gałęzi `dev/vX.Y.Z` po wydaniu (starsze PR-y mają w nazwie `vX.Y.Z`). Przed planowaniem sprawdź, czy `main` nie jest w tyle — czytaj kod z najnowszej gałęzi `dev/vX.Y.Z`.
 - Na głównym komputerze praca bywa w worktree `.claude/worktrees/v0.9.6` (ma checkout najnowszej gałęzi wersji, nazwa katalogu jest historyczna). Na drugim komputerze tego worktree nie ma — wystarczy zwykły checkout gałęzi.
 - Wydania: GitHub Releases jako **Pre-release**, tag `vX.Y.Z`, tytuł `Farmer Planner X.Y.Z`, załącznik = instalator z `dist/`. Instalatory i zipy **nie trafiają do repo** (`dist/` jest w `.gitignore`).
 
@@ -64,12 +73,13 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 
 - **Commituj lokalnie. Nie pushuj, nie twórz PR, tagów ani release'ów, dopóki użytkownik wyraźnie nie powie.** Wyjątek: push gałęzi roboczej na koniec sesji, kiedy użytkownik prosi o synchronizację między komputerami.
 - **Planowanie wersji jest przyrostowe**: użytkownik podaje zmiany jedną po drugiej. Dopisz każdą do planu i zapytaj krótko „co dalej?" zwykłym tekstem. Nie zamykaj planu (ExitPlanMode) ani nie pytaj o zakres menu wyboru, dopóki nie powie, że to wszystko.
+- **CHANGELOG na bieżąco**: każdą zrobioną zmianę dopisz do sekcji `## X.Y.Z — unreleased` w `CHANGELOG.md` w tym samym commicie (data wpisywana przy wydaniu).
 
 ### Wydanie wersji (krok po kroku)
 1. `package.json` + `package-lock.json` → nowy `version` (to jedyne miejsce z numerem wersji).
 2. `CHANGELOG.md` — nowa sekcja `## X.Y.Z — RRRR-MM-DD` z **New / Changed / Fixed**, w stylu poprzednich wpisów.
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
-4. Commit `Version X.Y.Z: ...` na gałęzi `vX.Y.Z`.
+4. Commit `Version X.Y.Z: ...` na gałęzi `dev/vX.Y.Z`.
 5. Dopiero na polecenie: push, `npm run build`, `gh release create vX.Y.Z --prerelease ...`, PR do `main`.
 
 ## Architektura
@@ -108,6 +118,8 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Zużycie nasion/nawozu per działka: `savegame2/precisionFarming.xml <farmlandStatistics>`.
 - Format GRLE: nagłówek 21 B, szerokość = u16LE@6 × 256, wysokość = u16LE@10 × 256; RLE: bajt v, jeśli następny == v → run, licznik = suma bajtów 0xFF + bajt końcowy, emituj count+1 dodatkowych kopii.
 - `mods/FS25_sowingMachineRollerReady.zip` został spatchowany 2026-09-27 (wał nie potraja zużycia nasion); oryginał w `Documents\Farming - misc\mod_backups`.
+
+Farma testowa `DEV - farma testowa` (kopia Solka, id `1791058275537`) jest w repo w `dev-farm/` — na nowym komputerze `node tools/dev-farm.js install`, po zmianach w aplikacji `save` + commit. Testuj na niej, nie na prawdziwych farmach. Savegame'u (~136 MB) nie ma w repo.
 
 Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farmer Planner` (lub zrób eksport kopii zapasowej farmy w aplikacji) i, jeśli potrzebny jest sync, sam folder savegame'u.
 

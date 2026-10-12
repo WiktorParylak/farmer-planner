@@ -1,0 +1,724 @@
+{
+  "id": "1791058275537",
+  "name": "DEV - farma testowa",
+  "folderName": "1791058275537",
+  "lastEdited": "10/3/2026, 2:54:09 PM",
+  "balance": 24545,
+  "currentSeason": 5,
+  "trackedCrops": [
+    "Maize",
+    "Greenrye",
+    "Rye",
+    "Wheat",
+    "Potato",
+    "Canola",
+    "Grass"
+  ],
+  "fields": [
+    {
+      "number": "7",
+      "area": "1.47",
+      "crop": "Wheat",
+      "sowingMonth": "OCTOBER",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": null,
+      "limeAppliedSeason": 4,
+      "limePh": 0.8025,
+      "cuts": [],
+      "manure": false,
+      "fertilizer": false,
+      "weeds": "needed"
+    },
+    {
+      "number": "30",
+      "area": "1.15",
+      "crop": "Grass",
+      "sowingMonth": "SEPTEMBER",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "Planted",
+      "tillage": "plowed",
+      "limeAppliedSeason": 5,
+      "limePh": 1,
+      "cuts": [
+        {
+          "month": "APRIL",
+          "use": "hay",
+          "harvested": true,
+          "fertilized": true,
+          "limed": true,
+          "rolled": false
+        },
+        {
+          "month": "AUGUST",
+          "use": "hay",
+          "harvested": false,
+          "fertilized": false,
+          "limed": false,
+          "rolled": false
+        }
+      ],
+      "manure": true,
+      "fertilizer": true
+    },
+    {
+      "number": "60",
+      "area": "0.84",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": null,
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "cuts": [],
+      "manure": false,
+      "fertilizer": false,
+      "weeds": "needed"
+    },
+    {
+      "number": "69-70-71",
+      "area": "1.81",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": "noTill",
+      "limeAppliedSeason": 4,
+      "limePh": 0.8512500000000001,
+      "cuts": [],
+      "manure": true,
+      "fertilizer": false,
+      "lease": {
+        "since": 2,
+        "seasons": 3,
+        "then": "return"
+      }
+    },
+    {
+      "number": "115-116",
+      "area": "1.74",
+      "crop": "Maize",
+      "sowingMonth": "APRIL",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": "noTill",
+      "limeAppliedSeason": 4,
+      "limePh": 0.8049999999999999,
+      "cuts": [],
+      "manure": true,
+      "fertilizer": false,
+      "weeds": "needed"
+    },
+    {
+      "number": "152",
+      "area": "1.10",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": "noTill",
+      "limeAppliedSeason": 4,
+      "limePh": 0.75,
+      "cuts": [],
+      "manure": true,
+      "fertilizer": false,
+      "lease": {
+        "since": 3,
+        "seasons": 4,
+        "then": "buy"
+      }
+    },
+    {
+      "number": "168-169",
+      "area": "1.32",
+      "crop": "Canola",
+      "sowingMonth": "SEPTEMBER",
+      "rolling": false,
+      "catchCrop": "",
+      "catchSowingMonth": "",
+      "state": "To Plant",
+      "tillage": null,
+      "limeAppliedSeason": null,
+      "limePh": null,
+      "cuts": [],
+      "manure": false,
+      "fertilizer": false,
+      "weeds": "needed"
+    },
+    {
+      "number": "181",
+      "area": "0.87",
+      "crop": "Maize",
+      "sowingMonth": "APRIL",
+      "rolling": false,
+      "catchCrop": "Greenrye",
+      "catchSowingMonth": "AUGUST",
+      "state": "To Plant",
+      "tillage": "noTill",
+      "limeAppliedSeason": 4,
+      "limePh": 0.87375,
+      "cuts": [],
+      "manure": false,
+      "fertilizer": false,
+      "work": [
+        {
+          "step": "fertilize",
+          "done": true
+        },
+        {
+          "step": "mow",
+          "done": true
+        },
+        {
+          "step": "bale",
+          "done": false
+        },
+        {
+          "step": "harvestWrap",
+          "done": false
+        },
+        {
+          "step": "cultivate",
+          "done": false
+        },
+        {
+          "step": "sow",
+          "done": false
+        },
+        {
+          "step": "fertilize",
+          "done": false
+        },
+        {
+          "step": "weeds",
+          "done": false
+        }
+      ]
+    }
+  ],
+  "saveGamePath": "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\savegame2\\careerSavegame.xml",
+  "month": "AUGUST",
+  "loan": 38823,
+  "equipment": 61,
+  "animals": 326,
+  "playTime": "299h 27m",
+  "fieldSizes": {
+    "30": 1.15,
+    "60": 0.84,
+    "115": 1.19,
+    "159": 0.86,
+    "69-70-71": 1.81,
+    "115-116": 1.19
+  },
+  "animalBreakdown": {
+    "COW_HOLSTEIN": 28,
+    "BULL_HOLSTEIN": 5,
+    "HEN_BOHUSDAL": 50,
+    "ROOSTER_PLYMOUTHROCK": 50,
+    "HEN_PLYMOUTHROCK": 93,
+    "HEN_LEGHORN": 100
+  },
+  "animalProduction": {
+    "LIQUIDMANURE": 42540.707031,
+    "MILK": 687.036987,
+    "STRAW": 26559.989258,
+    "EGG": 6.528075
+  },
+  "animalBuildings": [
+    {
+      "id": "placeable94b174b02236b25cd4a8de578f5eac2b",
+      "name": "$moddir$FS25_CowBarnManurePlate/CowBarn.xml",
+      "clusters": [
+        {
+          "subType": "COW_HOLSTEIN",
+          "numAnimals": 20,
+          "age": 13,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 1,
+          "hadABirth": false
+        },
+        {
+          "subType": "COW_HOLSTEIN",
+          "numAnimals": 6,
+          "age": 28,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": true
+        },
+        {
+          "subType": "BULL_HOLSTEIN",
+          "numAnimals": 1,
+          "age": 16,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 1,
+          "hadABirth": false
+        },
+        {
+          "subType": "BULL_HOLSTEIN",
+          "numAnimals": 4,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        },
+        {
+          "subType": "COW_HOLSTEIN",
+          "numAnimals": 2,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        }
+      ],
+      "food": [
+        {
+          "fillType": "FORAGE",
+          "level": 37209.828125
+        }
+      ],
+      "production": [
+        {
+          "fillType": "LIQUIDMANURE",
+          "level": 42540.707031
+        },
+        {
+          "fillType": "MILK",
+          "level": 687.036987
+        },
+        {
+          "fillType": "STRAW",
+          "level": 22656.398438
+        }
+      ]
+    },
+    {
+      "id": "placeable6613c547704c145514c1f58d661cff8c",
+      "name": "$moddir$FS25_FencelessPastures/xml/chicken01.xml",
+      "clusters": [
+        {
+          "subType": "HEN_BOHUSDAL",
+          "numAnimals": 50,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 5,
+          "hadABirth": false
+        },
+        {
+          "subType": "ROOSTER_PLYMOUTHROCK",
+          "numAnimals": 36,
+          "age": 3,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 3,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 31,
+          "age": 3,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 3,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_LEGHORN",
+          "numAnimals": 100,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 5,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 17,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": true
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 27,
+          "age": 11,
+          "health": 100,
+          "reproduction": 50,
+          "isInseminated": true,
+          "monthsSinceLastBirth": 3,
+          "hadABirth": true
+        },
+        {
+          "subType": "ROOSTER_PLYMOUTHROCK",
+          "numAnimals": 1,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 5,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 12,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        },
+        {
+          "subType": "ROOSTER_PLYMOUTHROCK",
+          "numAnimals": 13,
+          "age": 0,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 0,
+          "hadABirth": false
+        },
+        {
+          "subType": "HEN_PLYMOUTHROCK",
+          "numAnimals": 6,
+          "age": 11,
+          "health": 100,
+          "reproduction": 0,
+          "isInseminated": false,
+          "monthsSinceLastBirth": 3,
+          "hadABirth": true
+        }
+      ],
+      "food": [
+        {
+          "fillType": "WHEAT",
+          "level": 5296.321289
+        }
+      ],
+      "production": [
+        {
+          "fillType": "STRAW",
+          "level": 3903.59082
+        },
+        {
+          "fillType": "EGG",
+          "level": 6.528075
+        }
+      ]
+    }
+  ],
+  "animalBuildingCapacities": {
+    "placeable9380347584f7852d0b62eaba01dfec09": {
+      "FORAGE": 60000,
+      "GRASS_WINDROW": 60000,
+      "__ALL_FEED__": 60000
+    },
+    "placeablede018b9e3f2042f0b3a37bfed05e619f": {
+      "__ALL_FEED__": 15000
+    },
+    "placeable2a91a96cfea2edbd942fb3fea631bb9a": {
+      "__ALL_FEED__": 500
+    },
+    "placeable32d5870476eeb923af92d7c1cc577672": {
+      "__ALL_FEED__": 500
+    },
+    "placeablea5c4576dddf819aab9667b56ee7b2ffc": {
+      "__ALL_FEED__": 500
+    },
+    "placeable6613c547704c145514c1f58d661cff8c": {
+      "__ALL_FEED__": 12000
+    },
+    "placeable94b174b02236b25cd4a8de578f5eac2b": {
+      "__ALL_FEED__": 50000
+    }
+  },
+  "cropsSourceLabel": "C:\\Users\\paryl\\Desktop",
+  "animalDefsSourceLabel": "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\mods\\FS25_AnimalFoodCalculator",
+  "mapName": "Solek",
+  "supplyRates": {
+    "mode": "pf",
+    "bufferPct": 5,
+    "limeRate": "",
+    "nDensity": 0.22,
+    "basicFertRate": 400,
+    "assumeAllFertilized": true,
+    "manureN": 0.005,
+    "slurryN": 0.004,
+    "digestateN": 0.0055,
+    "crops": {},
+    "source": "manual",
+    "fieldSoil": {
+      "7": {
+        "sandyLoam": 42,
+        "loam": 58
+      },
+      "30": {
+        "sandyLoam": 49,
+        "loam": 51
+      },
+      "60": {
+        "loamySand": 31,
+        "sandyLoam": 2,
+        "siltyClay": 67
+      },
+      "152": {
+        "loam": 100
+      },
+      "159": {
+        "loam": 45,
+        "sandyLoam": 55
+      },
+      "181": {
+        "sandyLoam": 99,
+        "siltyClay": 1
+      },
+      "115-116": {
+        "sandyLoam": 44,
+        "loam": 52,
+        "siltyClay": 4
+      },
+      "69-70-71": {
+        "loamySand": 81,
+        "siltyClay": 19
+      },
+      "168-169": {
+        "loamySand": 3,
+        "sandyLoam": 23,
+        "siltyClay": 74
+      }
+    },
+    "fertPlan": {
+      "60": {
+        "orgN": 80
+      },
+      "159::Wheat": {
+        "existingN": 120,
+        "orgN": 60
+      },
+      "115-116::Oat": {
+        "existingN": 10
+      },
+      "7::Wheat": {
+        "existingN": 155,
+        "orgN": 40
+      },
+      "60::Greenrye": {
+        "existingN": 20,
+        "orgN": 80
+      },
+      "69-70-71::Rye": {
+        "existingN": 30,
+        "orgN": 50
+      },
+      "168-169::Maize": {
+        "orgN": 45
+      },
+      "30::Rye": {
+        "existingN": 30,
+        "orgN": 70
+      },
+      "30::Potato": {
+        "existingN": 30,
+        "orgN": 70
+      },
+      "30::Canola": {
+        "existingN": 140,
+        "orgN": 55
+      },
+      "181::Canola": {
+        "existingN": 140,
+        "orgN": 50
+      },
+      "115-116::Canola": {
+        "existingN": 30
+      },
+      "152::Wheat": {
+        "existingN": 20
+      },
+      "69-70-71::Greenrye": {
+        "orgN": 50
+      },
+      "168-169::Rye": {
+        "existingN": 60,
+        "orgN": 50
+      },
+      "7::Maize": {
+        "existingN": 20,
+        "orgN": 100
+      },
+      "60::Potato": {
+        "orgN": 80
+      },
+      "60::Maize": {
+        "orgN": 80
+      },
+      "30::Grass": {
+        "orgN": 150
+      },
+      "152::Rye": {
+        "orgN": 100
+      },
+      "181::Maize": {
+        "existingN": 50,
+        "orgN": 110
+      },
+      "115-116::Maize": {
+        "existingN": 40,
+        "orgN": 80
+      }
+    },
+    "defaultOverridesCleaned": true
+  },
+  "yearNumber": 5,
+  "feedPlan": {
+    "rations": {
+      "COW": "forage"
+    },
+    "customFeeds": [],
+    "tmr": {
+      "HAY": 43,
+      "SILAGE": 33,
+      "STRAW": 24,
+      "MINERAL": 0
+    },
+    "fieldUse": {},
+    "strawFields": {
+      "152::Wheat": true
+    },
+    "grassCuts": 3,
+    "chaffYield": 36800,
+    "strawYield": null,
+    "mixer": {
+      "selected": "save:vehicle41996e3632d5f0b91ec51f38c2c8c49b",
+      "custom": [],
+      "capacity": {},
+      "customBales": [],
+      "load": [
+        {
+          "kind": "bale",
+          "baleKey": "round125|DRYCLOVER_WINDROW|4500",
+          "count": 1
+        },
+        {
+          "kind": "bale",
+          "baleKey": "round125|SILAGE|3500",
+          "count": 1
+        },
+        {
+          "kind": "bale",
+          "baleKey": "round125|STRAW|5000",
+          "count": 0.5
+        }
+      ]
+    }
+  },
+  "feedStock": {
+    "CANOLA": {
+      "silo": 17346.183593
+    },
+    "WHEAT": {
+      "silo": 24960.407227
+    },
+    "DRYCLOVER_WINDROW": {
+      "bale": 27000
+    },
+    "DRYGRASS_WINDROW": {
+      "bale": 81000
+    },
+    "STRAW": {
+      "bale": 225000,
+      "silo": 28059.989258
+    },
+    "SILAGE": {
+      "bale": 70000
+    }
+  },
+  "daysPerPeriod": 3,
+  "animalBuildingNames": {
+    "placeable94b174b02236b25cd4a8de578f5eac2b": "Obora",
+    "placeable6613c547704c145514c1f58d661cff8c": "Kury podwórko"
+  },
+  "feedBales": [
+    {
+      "key": "round125|STRAW|5000",
+      "size": "round125",
+      "fillType": "STRAW",
+      "litres": 5000,
+      "count": 45
+    },
+    {
+      "key": "round125|SILAGE|3500",
+      "size": "round125",
+      "fillType": "SILAGE",
+      "litres": 3500,
+      "count": 20
+    },
+    {
+      "key": "round125|DRYGRASS_WINDROW|4500",
+      "size": "round125",
+      "fillType": "DRYGRASS_WINDROW",
+      "litres": 4500,
+      "count": 18
+    },
+    {
+      "key": "round125|DRYCLOVER_WINDROW|4500",
+      "size": "round125",
+      "fillType": "DRYCLOVER_WINDROW",
+      "litres": 4500,
+      "count": 6
+    }
+  ],
+  "mixerWagons": [
+    {
+      "id": "save:vehicle41996e3632d5f0b91ec51f38c2c8c49b",
+      "name": "Rino FXL 1000HD",
+      "capacity": 10500,
+      "source": "save"
+    }
+  ],
+  "animalDefsFiles": [
+    "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\mods\\FS25_AnimalFoodCalculator\\xmls\\animals.xml"
+  ],
+  "showFarmlandArea": true,
+  "ignoreAfc": false,
+  "ignoreEas": false,
+  "bankCredit": {
+    "count": 1,
+    "total": 38823,
+    "monthly": 1688
+  },
+  "dayInPeriod": 1,
+  "gameFarmId": "1",
+  "monthlySavePath": "C:\\Users\\paryl\\Documents\\My Games\\FarmingSimulator2025\\savegame2\\careerSavegame.xml",
+  "seasonStartedGameYear": 5
+}

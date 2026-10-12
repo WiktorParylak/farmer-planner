@@ -58,11 +58,11 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
             if (!file) continue;
             const norm = file.replace(/\\/g, '/');
             const base = path.posix.basename(norm, path.posix.extname(norm));
-            let name = null, calendar = null, rawName = null;
+            let name = null, calendar = null, rawName = null, agronomy = null;
             if (!/^\$data\//i.test(norm)) {
                 const xml = read(norm.replace(/^\$moddir\$[^/]+\//i, ''));
                 const parsed = xml ? parseGrowthXml(xml) : null;
-                if (parsed) { name = parsed.name; calendar = parsed.calendar; }
+                if (parsed) { name = parsed.name; calendar = parsed.calendar; agronomy = parsed.agronomy || null; }
                 if (xml) rawName = attr((xml.match(/<fruitType\b[^>]*>/) || [''])[0], 'name');
             }
             // "meadowUS.xml" -> the folder name ("meadow") is the crop.
@@ -70,7 +70,7 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
             const key = name.replace(/[_\s]+/g, '').toUpperCase();
             if (seen.has(key)) continue;
             seen.add(key);
-            crops.push({ name, rawName: rawName || name, calendar, fromBase: calendar === null });
+            crops.push({ name, rawName: rawName || name, calendar, agronomy, fromBase: calendar === null });
         }
         if (!crops.length) return { ok: false, reason: 'nofruittypes', modName };
 
@@ -112,7 +112,10 @@ function readModL10n(read, modDesc, langs) {
     const put = (k, lang, v) => {
         if (!k || !v) return;
         const key = k.toLowerCase();
-        (out[key] || (out[key] = {}))[lang] = decodeXmlText(v);
+        // Mod text ends up in the UI's HTML (crop and mixer names), so markup
+        // characters are dropped — a mod must not be able to inject HTML (the
+        // renderer has Node access).
+        (out[key] || (out[key] = {}))[lang] = decodeXmlText(v).replace(/[<>"'`]/g, '');
     };
     const prefix = attr((modDesc.match(/<l10n\b[^>]*filenamePrefix="[^"]*"[^>]*>/) || [''])[0], 'filenamePrefix');
     if (prefix) {
@@ -135,4 +138,73 @@ function readModL10n(read, modDesc, langs) {
     return out;
 }
 
-module.exports = { readMapCrops, readModL10n };
+// Precision Farming's variable seed rates for the savegame:
+// FS25_precisionFarming's PrecisionFarming.xml <seedRateMap>, with the map's
+// own <precisionFarming><seedRateMap> (in its map config) on top per crop.
+// Per crop: lha = [low, standard, high] litres/ha (usages × 10000) and auto =
+// the rate PF's automatic mode picks on each soil — the lowest one reaching
+// the best <soilType yields>. -> { ok, rates: { CropKey: { lha, auto } } }
+const PF_SOIL_IDS = ['loamySand', 'sandyLoam', 'loam', 'siltyClay'];
+
+function parseSeedRateMap(xml, formatName) {
+    const out = {};
+    const block = (xml.match(/<seedRateMap>([\s\S]*?)<\/seedRateMap>/) || [])[1];
+    if (!block) return out;
+    for (const m of block.matchAll(/<fruitType\b([^>]*)>([\s\S]*?)<\/fruitType>/g)) {
+        const name = attr(m[1], 'name');
+        const rates = (m[2].match(/<seedRates\b[^>]*>/) || [''])[0];
+        const usages = (attr(rates, 'usages') || '').trim().split(/\s+/).map(parseFloat);
+        if (!name || usages.length !== 3 || usages.some(isNaN)) continue;
+        const auto = {};
+        for (const s of m[2].matchAll(/<soilType\b[^>]*>/g)) {
+            const idx = parseInt(attr(s[0], 'index'), 10) - 1;
+            const yields = (attr(s[0], 'yields') || '').trim().split(/\s+/).map(parseFloat);
+            if (!PF_SOIL_IDS[idx] || yields.length !== 3) continue;
+            const best = Math.max(...yields);
+            auto[PF_SOIL_IDS[idx]] = yields.findIndex(y => y >= best - 1e-9);
+        }
+        out[formatName(name).replace(/\s+/g, '')] = {
+            lha: usages.map(u => Math.round(u * 10000 * 10) / 10),
+            auto
+        };
+    }
+    return out;
+}
+
+function readPfSeedRates(careerSavegamePath, formatName) {
+    const fs = require('fs');
+    const opened = [];
+    const openSaveMod = name => {
+        const dir = locateMod(careerSavegamePath, name);
+        const mod = dir ? openMod(dir, name) : null;
+        if (mod) opened.push(mod);
+        return mod;
+    };
+    try {
+        if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return { ok: false, reason: 'nosave' };
+        const rates = {};
+        const pf = openSaveMod('FS25_precisionFarming');
+        const pfXml = pf ? (pf.read('PrecisionFarming.xml') || '').toString('utf-8') : '';
+        Object.assign(rates, parseSeedRateMap(stripComments(pfXml), formatName));
+        const career = fs.readFileSync(careerSavegamePath, 'utf-8');
+        const mapId = (career.match(/<mapId>([^<]+)<\/mapId>/) || [])[1];
+        if (mapId && mapId.indexOf('.') > 0) {
+            const map = openSaveMod(mapId.split('.')[0]);
+            if (map) {
+                const modDesc = (map.read('modDesc.xml') || '').toString('utf-8');
+                const cfgRel = (modDesc.match(/<map\b[^>]*configFilename="([^"]+)"/) || [])[1];
+                const cfg = cfgRel ? stripComments((map.read(cfgRel) || '').toString('utf-8')) : '';
+                const pfBlock = (cfg.match(/<precisionFarming>([\s\S]*?)<\/precisionFarming>/) || [])[1] || '';
+                Object.assign(rates, parseSeedRateMap(pfBlock, formatName));
+            }
+        }
+        return { ok: Object.keys(rates).length > 0, rates };
+    } catch (e) {
+        console.error('readPfSeedRates failed', e);
+        return { ok: false, reason: 'parse' };
+    } finally {
+        opened.forEach(m => m.close());
+    }
+}
+
+module.exports = { readMapCrops, readModL10n, readPfSeedRates };

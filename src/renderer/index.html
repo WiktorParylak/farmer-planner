@@ -15,9 +15,9 @@
             <span class="titlebar-title">Farmer Planner</span>
         </div>
         <div class="titlebar-controls">
-            <button id="titlebar-min" class="titlebar-btn" title="Minimize"><i class="fa-solid fa-window-minimize" aria-hidden="true"></i></button>
-            <button id="titlebar-max" class="titlebar-btn" title="Maximize"><i class="fa-solid fa-window-maximize" aria-hidden="true"></i></button>
-            <button id="titlebar-close" class="titlebar-btn titlebar-btn--close" title="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <button id="titlebar-min" class="titlebar-btn" title="Minimize" data-i18n-title="titlebarMinimize"><i class="fa-solid fa-window-minimize" aria-hidden="true"></i></button>
+            <button id="titlebar-max" class="titlebar-btn" title="Maximize" data-i18n-title="titlebarMaximize"><i class="fa-solid fa-window-maximize" aria-hidden="true"></i></button>
+            <button id="titlebar-close" class="titlebar-btn titlebar-btn--close" title="Close" data-i18n-title="titlebarClose"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     </div>
     <div class="app-container">
@@ -39,10 +39,10 @@
                     </div>
                     <div class="dashboard-actions">
                         <div class="buttons-container">
-                            <p class="add-farm-btn" data-i18n="addFarm">ADD FARM +</p>
-                            <p id="delete-mode-toggle" class="delete-farm-btn" data-i18n="deleteFarm">DELETE FARM</p>
+                            <button type="button" class="add-farm-btn" data-i18n="addFarm">ADD FARM +</button>
+                            <button type="button" id="delete-mode-toggle" class="delete-farm-btn" data-i18n="deleteFarm">DELETE FARM</button>
                         </div>
-                        <p id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</p>
+                        <button type="button" id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</button>
                     </div>
                 </div>
             </section>
@@ -107,10 +107,6 @@
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="settings">SETTINGS</span>
                     </button>
-                    <button type="button" id="reset-seasons-btn" class="sidebar-item sidebar-item--util sidebar-item--danger">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="resetSeasons">RESET SEASONS</span>
-                    </button>
                     <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="exit">EXIT</span>
@@ -123,8 +119,10 @@
                         <div class="main-table-header">
                             <h1 class="season-number">Season 1</h1>
                             <div class="main-table-header-btns">
-                                <p class="new-season-btn" data-i18n="newSeason">NEW SEASON</p>
-                                <p id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</p>
+                                <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
+                                <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
+                                <button type="button" id="cancel-edit-btn" class="edit-season-btn cancel-edit-btn" data-i18n="cancelEdit" hidden>CANCEL</button>
+                                <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
                             </div>
                         </div>
                         <div class="table-container">
@@ -148,33 +146,8 @@
                         <div class="table-footer-controls">
                             <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
                             <span id="total-ha-sum">0.00 ha</span>
+                            <span id="sown-ha-sum" class="farmland-ha-sum"></span>
                             <span id="farmland-ha-sum" class="farmland-ha-sum" hidden></span>
-                        </div>
-                    </div>
-                    <!-- Not shown any more; its values are still filled in and read by the Finance / Animals views. -->
-                    <div class="details-container" hidden>
-                        <h1 data-i18n="farmDetails">Farm Details</h1>
-                        <div class="details-categories">
-                            <div class="details-categories-column">
-                                <p class="details-category"><span data-i18n="detailBalance">Balance</span><span id="details-balance"
-                                        class="details-category-value">0 €</span></p>
-                                <p class="details-category"><span data-i18n="detailCredit">Credit</span><span id="detail-loan"
-                                        class="details-category-value">0 €</span></p>
-                                <p class="details-category"><span data-i18n="detailHaAmount">Ha amount</span><span id="detail-ha"
-                                        class="details-category-value">0.00 ha</span></p>
-                                <p class="details-category"><span data-i18n="detailFarmAge">Farm age</span><span id="detail-age"
-                                        class="details-category-value">Season 1</span></p>
-                            </div>
-                            <div class="details-categories-column">
-                                <p class="details-category"><span data-i18n="detailFields">Fields</span><span id="detail-fields"
-                                        class="details-category-value">0</span></p>
-                                <p class="details-category"><span data-i18n="detailCrops">Crops</span><span id="detail-crops"
-                                        class="details-category-value">0</span></p>
-                                <p class="details-category"><span data-i18n="detailEquipment">Equipment</span><span id="detail-equipment"
-                                        class="details-category-value">-</span></p>
-                                <p class="details-category"><span data-i18n="detailAnimals">Animals</span><span id="detail-animals"
-                                        class="details-category-value">-</span></p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -207,70 +180,108 @@
             <div class="modal-content">
                 <h3 data-i18n="settingsTitle">Settings</h3>
 
-                <p data-i18n="farmMapLabel">Map for this farm:</p>
-                <input type="text" id="settings-map-name" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
-
-                <p data-i18n="gameSavePathLabel">Game Save Path (careerSavegame.xml):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml"
-                        style="margin: 0; flex-grow: 1;">
-                    <button id="browse-save-btn" class="settings-btn" type="button"
-                        style="min-width: 40px; cursor: pointer;">...</button>
+                <div class="settings-tabs" role="tablist">
+                    <button type="button" class="settings-tab" data-tab="save" data-i18n="settingsGroupSave">Savegame</button>
+                    <button type="button" class="settings-tab" data-tab="planner" data-i18n="settingsGroupPlanner">Planner</button>
+                    <button type="button" class="settings-tab" data-tab="mods" data-i18n="settingsTabMods">Mods</button>
+                    <button type="button" class="settings-tab" data-tab="rates" data-i18n="settingsTabRates">Rates</button>
+                    <button type="button" class="settings-tab" data-tab="advanced" data-i18n="settingsTabAdvanced">Advanced</button>
                 </div>
-                <p id="mods-dir-info" class="animal-mods-note" style="margin-top: 4px;"></p>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
-                    <input type="checkbox" id="auto-sync-toggle" style="width:auto; margin:0; flex:0 0 auto;">
-                    <span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
-                </label>
-                <p id="auto-sync-hint" data-i18n="autoSyncHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
-                    The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.
-                </p>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; cursor:pointer;">
-                    <input type="checkbox" id="farmland-area-toggle" style="width:auto; margin:0; flex:0 0 auto;">
-                    <span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
-                </label>
-                <p data-i18n="farmlandAreaHint" style="font-size: 12px; opacity: 0.75; margin-top: -2px;">
-                    Counted from the map like the game does (field plus margins); needs the savegame and the map mod.
-                </p>
-                <p data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="crops-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
-                        style="margin: 0; flex-grow: 1;">
 
-                    <button id="browse-crops-btn" class="settings-btn"
-                        style="min-width: 40px; cursor: pointer;">...</button>
+                <section class="settings-group" data-settings-tab="save">
+                    <h4 data-i18n="settingsGroupSave">Savegame</h4>
+                    <label class="settings-field">
+                        <span data-i18n="farmMapLabel">Map for this farm:</span>
+                        <input type="text" id="settings-map-name" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                    </label>
+                    <div class="settings-field">
+                        <span data-i18n="gameSavePathLabel">Game Save Path (careerSavegame.xml):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="game-save-path" data-i18n-placeholder="gameSavePathPlaceholder" placeholder="Path to careerSavegame.xml">
+                            <button id="browse-save-btn" class="settings-btn settings-browse" type="button">...</button>
+                        </div>
+                        <p id="save-path-check" class="settings-hint save-path-check"></p>
+                        <p id="mods-dir-info" class="settings-hint"></p>
+                    </div>
+                    <div id="game-farm-row" class="settings-field" hidden>
+                        <span data-i18n="gameFarmLabel">Your farm in this savegame:</span>
+                        <select id="game-farm-select"></select>
+                    </div>
+                    <label class="settings-check">
+                        <input type="checkbox" id="auto-sync-toggle">
+                        <span><span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
+                            <small id="auto-sync-hint" data-i18n="autoSyncHint">The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.</small></span>
+                    </label>
+                    <label class="settings-check">
+                        <input type="checkbox" id="farmland-area-toggle">
+                        <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
+                            <small data-i18n="farmlandAreaHint">Counted from the map like the game does (field plus margins); needs the savegame and the map mod.</small></span>
+                    </label>
+                </section>
 
-                    <input type="file" id="crops-folder-picker" webkitdirectory directory multiple
-                        style="display: none;">
+                <section class="settings-group" data-settings-tab="planner">
+                    <h4 data-i18n="settingsGroupPlanner">Planner</h4>
+                    <div class="settings-grid">
+                        <label class="settings-field">
+                            <span data-i18n="grasslandLimitLabel">Plough up grassland after (seasons):</span>
+                            <input type="number" id="grassland-limit-input" min="1" max="30" step="1" value="4">
+                        </label>
+                        <label class="settings-field">
+                            <span data-i18n="currencyLabel">Currency:</span>
+                            <select id="currency-select">
+                                <option value="auto" data-i18n="currencyAuto">Same as in the game</option>
+                                <option value="€">€</option>
+                                <option value="$">$</option>
+                                <option value="£">£</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="settings-group" data-settings-tab="mods">
+                    <h4 data-i18n="animalModsLabel">Mods the app reads:</h4>
+                    <div id="animal-mods-info" class="animal-mods-info"></div>
+                </section>
+
+                <details id="settings-advanced" class="settings-group settings-advanced" data-settings-tab="advanced" open>
+                    <summary data-i18n="settingsAdvanced">Advanced: map and animal folders</summary>
+                    <div class="settings-field">
+                        <span data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="crops-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly>
+                            <button id="browse-crops-btn" class="settings-btn settings-browse" type="button">...</button>
+                            <input type="file" id="crops-folder-picker" webkitdirectory directory multiple style="display: none;">
+                        </div>
+                        <p id="crops-loaded-info" class="settings-hint"></p>
+                        <p class="settings-hint" data-i18n="cropsFolderHint">Pick the map's root folder — subfolders are scanned automatically.</p>
+                    </div>
+                    <div class="settings-field">
+                        <span data-i18n="animalDefsFolderLabel">Animal definitions folder (game's animals.xml):</span>
+                        <div class="settings-path-row">
+                            <input type="text" id="animal-defs-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly>
+                            <button id="browse-animal-defs-btn" class="settings-btn settings-browse" type="button">...</button>
+                            <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple style="display: none;">
+                        </div>
+                        <p id="animal-defs-loaded-info" class="settings-hint"></p>
+                        <p class="settings-hint" data-i18n="animalDefsFolderHint">Usually in the base game's install folder, not your map folder.</p>
+                    </div>
+                </details>
+
+                <div id="settings-supply-adjust" class="settings-group" data-settings-tab="rates"></div>
+
+                <div class="settings-danger-zone" data-settings-tab="advanced">
+                    <p data-i18n="dangerZoneLabel">Danger zone</p>
+                    <div id="fields-backup-row" hidden>
+                        <p data-i18n="restoreFieldsLabel">Earlier versions of the fields table:</p>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <select id="fields-backup-select" style="flex:1;"></select>
+                            <button type="button" id="restore-fields-btn" class="settings-btn reset-btn" data-i18n="restoreFieldsBtn">RESTORE</button>
+                        </div>
+                    </div>
+                    <button type="button" id="undo-season-btn" class="settings-btn reset-btn" hidden></button>
+                    <button type="button" id="reset-seasons-btn" class="settings-btn reset-btn" data-i18n="resetSeasons">RESET SEASONS</button>
+                    <p class="animal-mods-note" data-i18n="resetSeasonsHint">Deletes every archived season of this farm; the current fields stay.</p>
                 </div>
-                <p id="crops-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
-                <p data-i18n="cropsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
-                    Pick the map's root folder (or any folder above the crop files) — subfolders are scanned
-                    automatically, so it doesn't matter whether the crop XML files sit together or scattered
-                    across separate folders.
-                </p>
-
-                <p data-i18n="animalDefsFolderLabel">Animal definitions folder (game's animals.xml):</p>
-                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="animal-defs-folder-path" data-i18n-placeholder="noFolderSelected" placeholder="No folder selected" readonly
-                        style="margin: 0; flex-grow: 1;">
-
-                    <button id="browse-animal-defs-btn" class="settings-btn"
-                        style="min-width: 40px; cursor: pointer;">...</button>
-
-                    <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple
-                        style="display: none;">
-                </div>
-                <p id="animal-defs-loaded-info" style="font-size: 12px; opacity: 0.75;"></p>
-                <p data-i18n="animalDefsFolderHint" style="font-size: 12px; opacity: 0.75; margin-top: -6px;">
-                    This is usually in the base game's install folder, not your map folder — separate from
-                    Crops above since they're often in completely different places.
-                </p>
-
-                <p data-i18n="animalModsLabel">Animal mods in this savegame:</p>
-                <div id="animal-mods-info" class="animal-mods-info"></div>
-
-                <div id="settings-supply-adjust"></div>
 
                 <div class="modal-buttons">
                     <button id="save-settings-btn" data-i18n="saveAndImport">SAVE & IMPORT</button>
@@ -291,6 +302,15 @@
                     <input type="checkbox" id="discord-rpc-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="discordSettingHint">Show your current farm on your Discord profile.</span>
                 </label>
+                <p data-i18n="updateSettingLabel" style="margin-bottom:4px;">Updates</p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="update-check-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="updateSettingHint">Check for a new version when the app starts.</span>
+                </label>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                    <button type="button" id="check-updates-btn" class="replay-tutorial-btn" data-i18n="updateCheckNow">Check now</button>
+                    <span id="app-version-label" class="animal-mods-note"></span>
+                </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
                 <div class="modal-buttons">
@@ -314,6 +334,8 @@
                 <input type="text" id="new-farm-name" data-i18n-placeholder="farmNamePlaceholder" placeholder="Farm name (e.g. Riverbend)">
                 <label for="new-farm-map" class="modal-field-label" data-i18n="farmMapLabel">Map for this farm:</label>
                 <input type="text" id="new-farm-map" data-i18n-placeholder="farmMapPlaceholder" placeholder="e.g. Solek, Zielonka, Riverbend">
+                <span class="modal-field-label" data-i18n="newFarmSaveLabel">Savegame:</span>
+                <div id="new-farm-saves" class="new-farm-saves"></div>
                 <div class="modal-buttons">
                     <button id="cancel-btn" data-i18n="cancel">Cancel</button>
                     <button id="confirm-btn" data-i18n="add">Add</button>
@@ -327,6 +349,31 @@
                 <div id="cuts-body" class="cuts-timeline"></div>
                 <div class="modal-buttons">
                     <button type="button" id="cuts-close" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="field-modal" class="modal field-modal">
+            <div class="modal-content field-modal-content" role="dialog" aria-labelledby="field-modal-title">
+                <h3 id="field-modal-title"></h3>
+                <p id="field-modal-summary" class="cuts-intro"></p>
+                <div id="field-modal-body" class="field-modal-body"></div>
+                <div class="modal-buttons">
+                    <button type="button" id="field-modal-close" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="work-modal" class="modal work-modal">
+            <div class="modal-content work-content" role="dialog" aria-labelledby="work-title">
+                <h3 id="work-title"></h3>
+                <p id="work-intro" class="cuts-intro"></p>
+                <ol id="work-list" class="work-list"></ol>
+                <div class="work-add">
+                    <select id="work-add-select"></select>
+                    <button type="button" id="work-add-btn" class="settings-btn" data-i18n="workAdd">Add step</button>
+                    <button type="button" id="work-suggest-btn" class="settings-btn" data-i18n="workSuggest">Suggest by month</button>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" id="work-close" data-i18n="close">Close</button>
                 </div>
             </div>
         </div>
@@ -373,8 +420,8 @@
                 <h3 data-i18n="areYouSure">Are you sure?</h3>
                 <p data-i18n="deleteFarmConfirm">Do you really want to delete this farm? This action cannot be undone.</p>
                 <div class="modal-buttons">
-                    <p id="cancel-delete-btn" data-i18n="cancel">CANCEL</p>
-                    <p id="confirm-delete-btn" class="danger-btn" data-i18n="delete">DELETE</p>
+                    <button type="button" id="cancel-delete-btn" data-i18n="cancel">CANCEL</button>
+                    <button type="button" id="confirm-delete-btn" class="danger-btn" data-i18n="delete">DELETE</button>
                 </div>
             </div>
         </div>
@@ -388,6 +435,17 @@
                     <button type="button" id="season-modal-cancel" class="modal-cancel-btn"></button>
                     <button type="button" id="season-modal-confirm"></button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- First start only: pick the language before anything else (no way to dismiss it). -->
+    <div id="first-lang-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="first-lang-title">
+        <div class="modal-content season-modal-content first-lang-content">
+            <div class="season-modal-icon" aria-hidden="true"><i class="fa-solid fa-language"></i></div>
+            <h3 id="first-lang-title">Wybierz język · Choose your language</h3>
+            <div class="first-lang-buttons">
+                <button type="button" class="lang-btn" data-lang="pl">Polski</button>
+                <button type="button" class="lang-btn" data-lang="en">English</button>
             </div>
         </div>
     </div>

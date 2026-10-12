@@ -1,0 +1,177 @@
+{
+  "Wheat": {
+    "MARCH": "JUNE",
+    "APRIL": "JUNE",
+    "SEPTEMBER": "JUNE",
+    "OCTOBER": "JUNE",
+    "NOVEMBER": "JUNE"
+  },
+  "Triticale": {
+    "MARCH": "AUGUST",
+    "SEPTEMBER": "JUNE",
+    "OCTOBER": "JULY"
+  },
+  "Sunflower": {
+    "MARCH": "SEPTEMBER",
+    "APRIL": "OCTOBER"
+  },
+  "Sugarbeet": {
+    "MARCH": "SEPTEMBER",
+    "APRIL": "OCTOBER"
+  },
+  "Spinach": {
+    "MARCH": "MAY",
+    "APRIL": "JUNE",
+    "MAY": "JULY"
+  },
+  "Soybean": {
+    "APRIL": "AUGUST",
+    "MAY": "SEPTEMBER"
+  },
+  "Sorghum": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST"
+  },
+  "Silagemaize": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER",
+    "JULY": "OCTOBER"
+  },
+  "Rye": {
+    "MARCH": "AUGUST",
+    "SEPTEMBER": "JUNE",
+    "OCTOBER": "JULY"
+  },
+  "Potato": {
+    "MARCH": "JULY",
+    "APRIL": "AUGUST"
+  },
+  "Pea": {
+    "MARCH": "JUNE",
+    "APRIL": "JULY"
+  },
+  "Parsnip": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER"
+  },
+  "Oilseedradish": {
+    "MARCH": "MARCH",
+    "APRIL": "APRIL",
+    "MAY": "MAY",
+    "JUNE": "JUNE",
+    "JULY": "JULY",
+    "AUGUST": "AUGUST",
+    "SEPTEMBER": "SEPTEMBER",
+    "OCTOBER": "OCTOBER"
+  },
+  "Oat": {
+    "MARCH": "JUNE",
+    "APRIL": "JULY",
+    "SEPTEMBER": "JUNE",
+    "OCTOBER": "JUNE"
+  },
+  "Millet": {
+    "APRIL": "AUGUST"
+  },
+  "Meadow": {
+    "MARCH": "APRIL",
+    "APRIL": "MAY",
+    "MAY": "JUNE",
+    "JUNE": "JULY",
+    "JULY": "AUGUST",
+    "AUGUST": "SEPTEMBER",
+    "SEPTEMBER": "OCTOBER",
+    "OCTOBER": "FEBRUARY",
+    "NOVEMBER": "FEBRUARY"
+  },
+  "Maize": {
+    "APRIL": "SEPTEMBER",
+    "MAY": "OCTOBER"
+  },
+  "Greenrye": {
+    "MARCH": "JUNE",
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER",
+    "JULY": "OCTOBER",
+    "AUGUST": "NOVEMBER",
+    "SEPTEMBER": "MARCH",
+    "OCTOBER": "MARCH",
+    "NOVEMBER": "JUNE"
+  },
+  "Greenbean": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER"
+  },
+  "Grass": {
+    "MARCH": "APRIL",
+    "APRIL": "MAY",
+    "MAY": "JUNE",
+    "JUNE": "JULY",
+    "JULY": "AUGUST",
+    "AUGUST": "SEPTEMBER",
+    "SEPTEMBER": "OCTOBER",
+    "OCTOBER": "FEBRUARY",
+    "NOVEMBER": "FEBRUARY"
+  },
+  "Cotton": {
+    "MARCH": "OCTOBER",
+    "FEBRUARY": "SEPTEMBER"
+  },
+  "Clover": {
+    "MARCH": "APRIL",
+    "APRIL": "MAY",
+    "MAY": "JUNE",
+    "JUNE": "JULY",
+    "JULY": "AUGUST",
+    "AUGUST": "SEPTEMBER",
+    "SEPTEMBER": "OCTOBER",
+    "OCTOBER": "FEBRUARY",
+    "NOVEMBER": "FEBRUARY"
+  },
+  "Carrot": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER",
+    "JULY": "OCTOBER"
+  },
+  "Canola": {
+    "AUGUST": "JUNE",
+    "SEPTEMBER": "JUNE"
+  },
+  "Buckwheat": {
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER",
+    "JULY": "OCTOBER"
+  },
+  "Beetroot": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER"
+  },
+  "Beans": {
+    "APRIL": "JULY",
+    "MAY": "AUGUST",
+    "JUNE": "SEPTEMBER"
+  },
+  "Barley": {
+    "MARCH": "JUNE",
+    "APRIL": "JUNE",
+    "SEPTEMBER": "MAY",
+    "OCTOBER": "MAY"
+  },
+  "Alfalfa": {
+    "MARCH": "APRIL",
+    "APRIL": "MAY",
+    "MAY": "JUNE",
+    "JUNE": "JULY",
+    "JULY": "AUGUST",
+    "AUGUST": "SEPTEMBER",
+    "SEPTEMBER": "OCTOBER",
+    "OCTOBER": "FEBRUARY",
+    "NOVEMBER": "FEBRUARY"
+  }
+}

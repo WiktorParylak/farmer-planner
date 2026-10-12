@@ -1,0 +1,158 @@
+FARMER PLANNER — ANALIZA UX, LOGIKI I ROZWIĄZAŃ BEZ SENSU
+========================================================
+Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04, druga tura tego samego dnia; trzecia tura 2026-10-12)
+Wersja kodu: gałąź v0.9.8 (src/ identyczne z main)
+Metoda: przeczytany kod (renderer.js, index.html, main.js, moduły pomocnicze).
+Aplikacja NIE była uruchamiana — wszystko poniżej wynika z kodu. Numery linii
+dotyczą src/renderer/renderer.js, chyba że podano inny plik.
+
+Oceniam bez taryfy ulgowej, tak jak prosiłeś. Najpierw najważniejsze, potem
+szczegóły w podziale na obszary, na końcu kolejność napraw.
+
+
+----------------------------------------------------------------------------
+0. NAJWAŻNIEJSZE
+----------------------------------------------------------------------------
+(wszystko zrobione w 0.9.9)
+
+
+----------------------------------------------------------------------------
+1. SYNCHRONIZACJA Z SAVEGAME'EM — CO SIĘ CZYTA, A CO NIE
+----------------------------------------------------------------------------
+(wszystko zrobione w 0.9.9)
+
+
+----------------------------------------------------------------------------
+2. TABELA PÓL I SEZONY — UX
+----------------------------------------------------------------------------
+
+2.3 Dwa tryby edycji naraz
+    Co: w widoku tylko-do-odczytu część rzeczy klika się od razu (stan
+    zasiewu, wapno z potwierdzeniem, wał, pokosy), a część tylko w trybie
+    edycji (uprawa, miesiąc, uprawa gleby). Uprawa gleby w widoku wygląda jak
+    przełącznik, ale nie reaguje.
+    Propozycja: wybrać jeden model. Najprościej: edycja inline per wiersz
+    (klik w komórkę), bez globalnego trybu edycji.
+
+----------------------------------------------------------------------------
+3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
+----------------------------------------------------------------------------
+
+3.9 Pola w widoku „Typ gleby pola” gubią fokus
+    Co: każda zmiana procentu = pełny re-render panelu (l. 5318).
+    Tab do następnego pola → zmiana → re-render → fokus znika. To samo przy
+    pojemności koryta w Zwierzętach (updateBuildingCapacity, l. 2348).
+    Propozycja: zapisywać bez re-renderu albo przywracać fokus.
+
+
+----------------------------------------------------------------------------
+4. ZWIERZĘTA I PLANER PASZ
+----------------------------------------------------------------------------
+
+4.3 Progi „mało paszy” z sufitu
+    Co: bez wpisanej pojemności „mało” to < 80 L absolutnie (l. 3103),
+    niezależnie czy to 2 kury, czy 200 krów. Pasek jest liczony względem
+    najpełniejszej obory (l. 3170), więc 100 % nie znaczy „pełne”.
+    Propozycja: progiem powinny być dni zapasu (już liczone, gdy znane
+    są potrzeby), a nie litry.
+
+4.4 „Wyprodukowane mleko” to przyrost stanu magazynu
+    Co: getMonthlyHistory liczy produkcję jako dodatnią różnicę litrów
+    w zbiorniku (l. 2297). Sprzedaż w trakcie miesiąca = zaniżenie,
+    brak sprzedaży przez dwa miesiące = wykres jak sinusoida.
+    Jest notka o przybliżeniu, ale wykres i tak wprowadza w błąd.
+    Propozycja: pokazywać produkcję szacowaną z krzywych (już liczona jako
+    „szacowana dzienna produkcja”) albo nazwać wykres „Stan zbiornika”.
+
+----------------------------------------------------------------------------
+5. EKRAN STARTOWY, USTAWIENIA, ONBOARDING
+----------------------------------------------------------------------------
+
+5.3 Foldery upraw i zwierząt w większości zbędne
+    Co: uprawy z moda mapy są już czytane automatycznie (readMapCrops),
+    zwierzęta bazowe są w data/default-animals.json, a mody zwierząt
+    wykrywane z save'a. Pole „animals.xml z folderu gry” odsyła do plików,
+    które w FS25 siedzą w archiwach .gar i nie da się ich wskazać.
+    Propozycja: schować pod „Zaawansowane / ręczny import”.
+
+5.4 Tryb usuwania farm
+    Co: „USUŃ FARMĘ” przełącza całą listę w tryb usuwania, potem kosz
+    przy farmie, potem modal. Trzy kroki i stan globalny.
+    Propozycja: kosz (lub menu „⋯”) przy każdej farmie + modal z nazwą farmy
+    i propozycją eksportu kopii przed usunięciem.
+
+5.5 Pięć różnych okien potwierdzeń
+    Co: confirm-delete-modal, season-modal, small-confirm-modal, natywne
+    confirm() (usuwanie notatki, l. 5793) i natywne alert() (18 miejsc:
+    eksport, import, import upraw, błędy).
+    Propozycja: jeden komponent showConfirm/showNotice.
+
+5.8 Notatki
+    - „Bieżący miesiąc” notatek pochodzi z historii miesięcznej, nie z
+      farm.month (l. 5639) — bez save'a nagłówek pokazuje miesiąc, a notatki
+      twierdzą, że go nie znają.
+    - Notatki są przypisane do miesięcy (powtarzają się co rok), ale
+      odhaczona lista kontrolna zostaje odhaczona na zawsze.
+    - Brak powiązania z polem („Pole 12: wapnować”) — przy planerze pól
+      to oczywiste rozszerzenie.
+
+
+----------------------------------------------------------------------------
+6. ARCHITEKTURA I DŁUG TECHNICZNY (rzeczy „bez sensu” w kodzie)
+----------------------------------------------------------------------------
+
+6.3 Powielone obliczenia
+    - parseMoney ×3 (l. 2117, 2242, 2648),
+    - średnie zdrowie ważone liczbą zwierząt ×5 (l. 2150, 2217, 2921, 3108,
+      ~9010),
+    - zapotrzebowanie paszowe ×3 (pkt 4.2),
+    - getSeasonBalanceHistory i getAnimalHistoryTrend — ta sama pętla po
+      archiwach, dwa razy.
+
+6.5 renderer.js ma ~11 tys. linii
+    Tłumaczenia (~1700 linii), logika, HTML-e w template stringach, samouczek.
+    Bez modułów ES można i tak rozbić na pliki <script> (translations.js,
+    feed.js, supplies.js, fields-table.js, tutorial.js) — już tak robisz
+    z savegame-soil.js czy animal-mods.js.
+
+6.6 Inline onclick z danymi
+    14 × onclick="...('${...}')" z ręcznym escapowaniem (np. esc() w l. 3475
+    i 8279). renderFarmList wstawia farm.name bez escapeHtml (l. 9476) —
+    nazwa z „<” lub cudzysłowem rozwali listę.
+    Propozycja: data-* + jeden listener (jak już robisz w tabeli pól).
+
+6.7 Konfiguracja rozrzucona między localStorage a data.json
+    Język, auto-sync, Discord, samouczek, sortowania — localStorage
+    (nie trafia do kopii zapasowej, nie przenosi się na drugi komputer).
+    Dane farmy — data.json. Stawki zaopatrzenia przeszły już migrację
+    z localStorage do farmy — reszta ustawień aplikacji mogłaby trafić
+    do userData/settings.json.
+
+
+----------------------------------------------------------------------------
+7. DROBIAZGI
+----------------------------------------------------------------------------
+ - Domyślny miesiąc to „SIERPIEŃ”, gdy nic nie wiadomo (l. 7630) — lepiej „–”.
+ - Nagłówek w HTML ma na sztywno „Solek”, „1000$”, „JANUARY” (index.html:52-60)
+   — mignie przy starcie, a „$” kłóci się z „€” w reszcie aplikacji.
+ - Pusta lista farm: tekst „No farms yet…” w atrybucie data-empty-text
+   (index.html:37) — dobrze, ale brak przycisku-CTA w środku pustego stanu.
+ - Komentarze i logi po polsku w kodzie (np. l. 28, 6794, 8636-8665) wbrew
+   zasadzie „kod po angielsku”.
+ - Discord Rich Presence jest domyślnie WŁĄCZONY (opt-out, l. 1921) —
+   pokazuje nazwę farmy publicznie bez pytania. Lepiej zapytać przy
+   pierwszym uruchomieniu.
+ - Przecinek dziesiętny zamieniany tylko pierwszy (replace(',', '.')) —
+   „1,234,5” da śmieci; użyj parsera z walidacją.
+ - Wykres z jednym punktem (pierwszy miesiąc) — komunikat „potrzeba więcej
+   miesięcy” jest, ale KPI „zmiana w sezonie” pokazuje „–” bez wyjaśnienia.
+
+
+----------------------------------------------------------------------------
+8. CO BYM ZROBIŁ I W JAKIEJ KOLEJNOŚCI
+----------------------------------------------------------------------------
+Wszystkie punkty „Średnie” i „Większe” (g–n) zrobione w 0.9.9.
+
+Uwaga do docs/propozycje-funkcji.txt: pkt 8 („Co dziś robić”) i 9 (pH/PF)
+mogą już korzystać ze stałych id pól i danych z gry (pH, azot, gleby,
+chwasty) — warunek wstępny jest spełniony.

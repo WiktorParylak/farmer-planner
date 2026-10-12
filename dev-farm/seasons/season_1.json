@@ -1,0 +1,78 @@
+{
+  "season": 1,
+  "dateArchived": "2026-08-08T09:50:15.697Z",
+  "fields": [
+    {
+      "number": "30",
+      "area": "1.13",
+      "crop": "Greenrye",
+      "sowingMonth": "JULY",
+      "state": "Planted",
+      "harvestMonth": "OCTOBER"
+    },
+    {
+      "number": "60",
+      "area": "0.84",
+      "crop": "Wheat",
+      "sowingMonth": "SEPTEMBER",
+      "state": "Planted",
+      "harvestMonth": "JUNE"
+    },
+    {
+      "number": "69-70",
+      "area": "0.81",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "AUGUST"
+    },
+    {
+      "number": "115",
+      "area": "0.81",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "AUGUST"
+    },
+    {
+      "number": "115",
+      "area": "00.38",
+      "crop": "Potato",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "AUGUST"
+    },
+    {
+      "number": "152",
+      "area": "1.10",
+      "crop": "Clover",
+      "sowingMonth": "JULY",
+      "state": "Planted",
+      "harvestMonth": "AUGUST"
+    },
+    {
+      "number": "159",
+      "area": "0.86",
+      "crop": "Rye",
+      "sowingMonth": "MARCH",
+      "state": "Planted",
+      "harvestMonth": "AUGUST"
+    },
+    {
+      "number": "168-169",
+      "area": "1.28",
+      "crop": "Canola",
+      "sowingMonth": "AUGUST",
+      "state": "Planted",
+      "harvestMonth": "JUNE"
+    }
+  ],
+  "trackedCrops": [
+    "Clover",
+    "Canola",
+    "Potato",
+    "Greenrye",
+    "Rye",
+    "Wheat"
+  ]
+}

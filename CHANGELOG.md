@@ -2,6 +2,72 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.9 — 2026-10-12
+
+**New**
+- **Cancel in Edit season**: a *Cancel* button next to *Save changes* leaves edit mode without saving. With unsaved changes it asks first — so do *Exit*, *New season* and *Reset seasons* while editing. *New season* is hidden during editing.
+- **Multiplayer saves**: the app reads your own farm's data (money, loans, land, animals, feed, vehicles) instead of always farm 1. A save with several farms gets a *Your farm in this savegame* choice in Settings; single-player saves need nothing.
+- **Currency**: money is shown in the currency set in the game (€, $ or £, from `gameSettings.xml`), or one picked per farm in Settings. The balance is stored as a number; farms saved by older versions are read as before.
+- **Language on first start**: the very first time the app opens it asks for the language (Polski / English) before anything else, so the tutorial runs in the chosen language.
+- **Mods list in Settings**: every mod the app can read — Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit, Enhanced Loan System — with whether it is in the farm's savegame and a per-farm on/off switch. Off means base-game rules for that part (e.g. Precision Farming off: flat seed rates, no soil import). Replaces the animal-mods-only list.
+- **Hire Purchasing** (FS25_HirePurchasing): vehicles bought on hire purchase count as loans — what is still owed (remaining monthly payments plus the final fee, calculated like the mod does) is added to the credit, and the Finance tile shows the deals and their monthly payment. Listed in the mods list with its own switch.
+- **Update notice**: at start-up the app checks GitHub Releases and, when a newer version is out, shows a popup with a button that opens its download page (*Later* closes it until the next start). App settings have *Check now*, the installed version and a switch to turn the start-up check off. Not shown while the tutorial runs.
+- **Weeds** (Zabiegi column): a chip per field — nothing / to spray / done, click to switch. Synced from the savegame: live weeds on the field (fields.xml *weedState* 1–6) mark it *to spray*, dead ones (7–9) *done*. Cleared with a new season.
+- **Grassland age**: grass, meadow, alfalfa and clover show how many seasons in a row they've been on the field (*season 3*), highlighted once it's time to plough up — after 4 seasons by default, set per farm in Settings. The cuts window shows it too.
+- **Overdue**: a field that isn't sown when its crop's sowing window has just ended (up to 3 months ago, from the map's crop calendar) shows a red *Overdue* instead of *To plant*.
+- **Soil mix bar** under the field area: the shares of the field's soil types (when its soil is known) in Precision Farming's colours — loamy sand faded yellow, sandy loam faded green, loam grey, silty clay navy — with the percentages on hover.
+- **New season reminder**: when a year has gone by in the game since the current season started, the app offers to start a new season (once per in-game year).
+- **Undo new season**: right after a new season, Settings (danger zone) has *Undo new season N* — it brings back the fields and fertilization plans from before and removes the archive it wrote.
+- **Restore an earlier fields table**: Settings (danger zone) lists the saved versions of the fields table (before editing / after saving, with date and field count) and puts the chosen one back; the current one is backed up first.
+- **Fields from game** button next to *Edit*: adds the fields you own in the savegame that aren't in the table yet (number and area), fills in empty areas from the game (Precision Farming's field area, summed for joined numbers like *12-13*) and marks a field sown when its planned crop is what's growing there. An area you typed yourself stays and overrides the game's; split fields keep theirs. The planned crop is never changed. The table is backed up first.
+- **Work list per field** (*Prace*): a button next to the state shows the field's next job. Without a list of your own it suggests one from the sowing month — before sowing: cultivate (or plow) and lime, then sow and roll, after sowing: fertilizer and weeds; with a catch crop its jobs come first (fertilize, mow, bale, collect & wrap). Click it to tick jobs off, move them, add or remove — the list then becomes the field's own. Ticking *Sow* marks the field sown. Cleared with a new season.
+- **Leased fields**: in Edit season a field can be marked *leased*, for how many seasons and what then (buy out / give back). Leased fields get their own amber stripe on the side (next to the blue one of split fields) and a *Lease 2/5* counter, red with the next step once the term is reached.
+- **Field Leasing** (FS25_FieldLeasing): plots leased in the game are marked on their fields automatically — *Lease · 7 mo.* with the monthly fee and whether the mod's minimum term is over (then it can be given back). A lease that ends in the game is cleared; leases you set yourself stay. Listed in the mods list with its own switch.
+- **Real soil pH and nitrogen from Precision Farming**: with PF in the save the lime chip shows each field's actual pH (from the save's pH map) against the optimum for its soil, with the lime needed on hover; the fertilization plan takes *N already in the soil* from PF's nitrogen map (type a number to override it), so fields get a mineral-N figure without filling anything in.
+- **Lime on the Supplies list**: a new *Lime* section lists every field below its soil's optimum pH with the litres to buy — exact from PF's pH map, or the app's estimate without it.
+- **New farm from a savegame**: *Add farm* lists the game's savegames (name, map, money, date); picking one fills in the map and the farm opens right away, already linked to it. *No savegame* keeps planning by hand.
+- **Field view**: click a field number in the table to see everything about that field in one window — soil mix (editable), pH and lime needed, nitrogen with a shortcut to its fertilization plan, feed use for the crop and catch crop, cuts or the work list, weeds and rolling, and what grew on it in past seasons.
+
+**Changed**
+- **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.
+- **Fertilizer shopping list**: a field marked *Synthetic fertilizer applied* drops off the list (it used to be the other way round). With *Count every crop field* off, only fields with a fertilization plan are listed.
+- **Fertilization plans start over each season**: *New season* stores them in the season archive and clears them, so last year's "N already in the soil" doesn't come back.
+- Opening a farm or an auto-sync with nothing new in the save no longer rewrites the farm data or shows the *synced* toast.
+- *Last edited* on the farm list changes only when you edit the farm (not on sync) and is shown in your language's date format.
+- Buttons on the start screen, the season header and the delete dialog are real buttons (keyboard and screen reader friendly).
+- Leftover English-only texts are translated: map data import summary, field tooltips, title bar buttons, save error.
+- **Auto-sync is per farm and on by default** for a farm with a savegame (it used to be one app-wide switch, off by default). A farm where you had switched it off stays off.
+- **Catch crop list** offers only real catch crops — green rye, oilseed radish and grass — instead of every crop. A catch crop saved before stays selectable.
+- **Notes fold and unfold**: a note shows its title, months, tags and checklist progress; click the title to unfold the text and checklist (notes for the current month start unfolded). Line breaks in the text are kept. Clicking a tag shows only notes with that tag.
+- The *Soil* column is now *Treatments* (it holds lime, rolling and weeds). Tillage (plowed / no-till) can be clicked straight in the table like the other chips, no Edit season needed.
+- The table footer shows the **planned** area (fields with a crop) and how much of it is **sown**, instead of one total of every row.
+- The cuts window no longer has a sowing month — only the cuts.
+- **Reset seasons** moved from the side menu to the farm Settings, into a *danger zone* at the bottom — it no longer sits right above *Exit*.
+- The season arrows are real buttons (keyboard works); while editing they're greyed out with a hint to save or cancel first.
+- Field backups are capped at the newest 20 per farm (they used to pile up forever and bloat farm exports).
+- **Tutorial refreshed** for 0.9.9: new steps for the work list, weeds, grassland & currency settings, the danger zone and the update check; the table, edit, notes and new-season steps describe overdue sowing, the soil bar, leases, *Fields from game*, Cancel, folding notes and the year reminder.
+- **Simpler fields table**: the next job is a small line under the state instead of a second badge, grassland age is part of the cuts badge (*Cuts 1/2 · season 4*), a lease is a small caption under the field number, tillage is one chip that cycles plowed → no-till → none, and the plot area fits on one line — rows are lower and calmer.
+- **Rolling has three states like weeds**: the chip switches nothing → to roll (red) → rolled (green) → nothing. The *I want to roll* checkbox is gone from Edit season — the chip is the only switch. A cut marked *rolled* or the *Roll* job ticked in the work list marks it done. Cleared with a new season.
+- **Farm settings tidied up**: grouped into cards — *Savegame*, *Planner* (grassland limit and currency side by side), *Mods*, *Adjust rates* and the danger zone — left-aligned with short hints under each option. The rarely needed map and animal folders are folded away under *Advanced*; Save / Cancel stay visible at the bottom.
+- Farm data is no longer read and parsed from disk on every lookup (dozens of times per screen refresh): each farm's file is cached while it's unchanged on disk and refreshed on save.
+- **Rations per barn**: the ration picked for a barn (in Animals or the Feed planner) now applies to that barn only — two cow barns can be fed differently. Barns without their own choice keep using the species' ration from before.
+- **Seed rates, yields and straw come from the farm's map**: read from the map's own crop files (and the base game's for crops the map doesn't redefine) instead of built-in tables tuned to the Solek map — on another map the predicted yields, feed planner and seed list use that map's numbers. The base game's values ship in `data/default-agronomy.json`.
+- **Farm settings in tabs**: *Savegame*, *Planner*, *Mods*, *Rates* and *Advanced* (map/animal folders and the danger zone) instead of one long page. The savegame path is checked as you type — *Found: name · map · money*, or why it won't work (a wrong path used to be ignored silently); a savegame folder works as well as its careerSavegame.xml.
+- **Precision Farming seed rates come from PF and the map**: the variable seed rates (low / standard / high per crop and which one PF's automatic mode picks on each soil) are read from Precision Farming itself and the map's own seed-rate table instead of a built-in copy tuned to Solek.
+
+**Fixed**
+- A row with a crop or area but no field number is highlighted and the save stops, instead of the row silently disappearing.
+- Nitrogen density and manure / slurry / digestate N used different fallback values in different places (0.22 vs 0.5, 0.005 vs 0.007); now one set everywhere.
+- **Monthly history after a new career**: when the farm's savegame goes back in time by a year or more (or the farm is linked to another save), the app asks whether to continue the Finance / Animals history with it or start a new one (the old one is kept in a file). Before, the charts silently stopped updating.
+- Peas (PEA, e.g. on the Krajów map) are called *Zielony groszek* in Polish, not *Groch* — the game's crop is green peas.
+- A tag typed in a note but not confirmed with Enter is saved with the note (a comma also adds a tag).
+- The *same crop as last season* warning works for split fields (one number, two crops) — before, the second crop hid the first.
+- A new season no longer overwrites an existing archive with the same season number — the old file is kept under another name.
+- **Security**: names and translations read from mods and the savegame (crop names and titles, feed mixers, mixer wagons) can no longer carry HTML into the app — markup characters are dropped when they're read.
+- **Narrow window**: below ~1180 px the planner no longer slides under the header — the table and crop list scroll together from the top, the header wraps, and the fields table scrolls sideways instead of being cut off.
+- The Animals view and the Feed planner count the daily feed need the same way (the Animals view left out EnhancedAnimalSystem's lactation factor).
+- **Changing a field's number or crop no longer orphans its data**: every field now has a stable id (added automatically to existing farms), and when Edit season renumbers a field or changes its crop, its soil mix, field size, fertilization plan, feed use and straw setting move to the new number / crop.
+
 ## 0.9.8 — 2026-10-02
 
 **New**
