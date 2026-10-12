@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.9 — unreleased
+## 0.9.9 — 2026-10-12
 
 **New**
 - **Cancel in Edit season**: a *Cancel* button next to *Save changes* leaves edit mode without saving. With unsaved changes it asks first — so do *Exit*, *New season* and *Reset seasons* while editing. *New season* is hidden during editing.
