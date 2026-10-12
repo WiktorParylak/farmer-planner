@@ -26,6 +26,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Real soil pH and nitrogen from Precision Farming**: with PF in the save the lime chip shows each field's actual pH (from the save's pH map) against the optimum for its soil, with the lime needed on hover; the fertilization plan takes *N already in the soil* from PF's nitrogen map (type a number to override it), so fields get a mineral-N figure without filling anything in.
 - **Lime on the Supplies list**: a new *Lime* section lists every field below its soil's optimum pH with the litres to buy — exact from PF's pH map, or the app's estimate without it.
 - **New farm from a savegame**: *Add farm* lists the game's savegames (name, map, money, date); picking one fills in the map and the farm opens right away, already linked to it. *No savegame* keeps planning by hand.
+- **Field view**: click a field number in the table to see everything about that field in one window — soil mix (editable), pH and lime needed, nitrogen with a shortcut to its fertilization plan, feed use for the crop and catch crop, cuts or the work list, weeds and rolling, and what grew on it in past seasons.
 
 **Changed**
 - **Year from the game**: a farm linked to a savegame shows the in-game year in the header (read-only; it turns over in March, like in the game). Only farms without a save keep the hand-edited counter.

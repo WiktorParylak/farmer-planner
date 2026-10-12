@@ -6692,6 +6692,68 @@ button.tillage-switch-option {
   color: var(--color-ink-faint);
 }
 
+button.field-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.field-open:hover .field-number-chip {
+  outline: 2px solid var(--color-primary-soft);
+}
+
+.field-modal .modal-content.field-modal-content {
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 12px;
+}
+
+.field-modal-content h3 {
+  text-align: center;
+}
+
+.field-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field-view-section p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.field-view-section .settings-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.field-soil-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.field-modal .settings-field input,
+.field-modal .settings-field select {
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+.field-view-history {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
 .field-number.is-invalid {
   border-color: var(--color-rust);
   box-shadow: 0 0 0 2px rgba(166, 69, 43, 0.25);

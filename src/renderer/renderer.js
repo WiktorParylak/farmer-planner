@@ -122,6 +122,19 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
+        fieldViewOpenHint: "Open this field: soil, pH, fertilization, feed use, work and history",
+        fieldViewTitle: "Field {field}",
+        fieldViewFromGame: "from the game",
+        fieldViewSoil: "Soil",
+        fieldViewSoilHint: "Shares of each soil type in % (Precision Farming's soil map can fill them in: Field soil type → Load soils from game).",
+        fieldViewLime: "pH and lime",
+        fieldViewNoLime: "Not limed yet (no Precision Farming pH map) — use the lime chip in the table.",
+        fieldViewFert: "Nitrogen",
+        fieldViewFeed: "Feed use",
+        fieldViewWork: "Work",
+        fieldViewNextJob: "Next job: {job}",
+        fieldViewHistory: "Past seasons",
+        fieldViewNoHistory: "No earlier season on this field number yet.",
         settingsTabMods: "Mods",
         settingsTabRates: "Rates",
         settingsTabAdvanced: "Advanced",
@@ -826,6 +839,19 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
+        fieldViewOpenHint: "Otwórz pole: gleba, pH, nawożenie, przeznaczenie, prace i historia",
+        fieldViewTitle: "Pole {field}",
+        fieldViewFromGame: "z gry",
+        fieldViewSoil: "Gleba",
+        fieldViewSoilHint: "Udział każdego typu gleby w % (mapa gleb Precision Farming może je uzupełnić: Typ gleby pól → Wczytaj gleby z gry).",
+        fieldViewLime: "pH i wapno",
+        fieldViewNoLime: "Jeszcze nie wapnowane (brak mapy pH z Precision Farming) — użyj chipu wapna w tabeli.",
+        fieldViewFert: "Azot",
+        fieldViewFeed: "Przeznaczenie paszowe",
+        fieldViewWork: "Prace",
+        fieldViewNextJob: "Następna praca: {job}",
+        fieldViewHistory: "Poprzednie sezony",
+        fieldViewNoHistory: "Na tym numerze pola nie ma jeszcze wcześniejszych sezonów.",
         settingsTabMods: "Mody",
         settingsTabRates: "Stawki",
         settingsTabAdvanced: "Zaawansowane",
@@ -1545,6 +1571,8 @@ Object.assign(TRANSLATIONS.en, {
     tut_c8_x: "The chip fills up like a gauge: fill = soil pH level. Green = fine, amber ≈ half, rust = almost none; below 75% it needs lime. With Precision Farming in the save it shows the field's real pH against the optimum for its soil (hover for the numbers and the lime needed); otherwise the app estimates it — every new season lowers it, faster on lighter soils, and grassland, oilseed radish and rice keep it. Click the chip to mark liming in a small dialog.",
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
+    tut_c14_t: "Field view",
+    tut_c14_x: "Click a field number to open everything about that field in one place: its soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
     tut_c12_t: "Work list",
     tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate and lime, then sow and roll, after: fertilizer and weeds; a catch crop's jobs first). Click it to tick jobs off, reorder or add them — then it's the field's own list.",
     tut_c13_t: "Weeds",
@@ -1845,6 +1873,8 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c8_x: "Chip wypełnia się jak wskaźnik: wypełnienie = poziom pH gleby. Zielony = w porządku, bursztynowy ≈ połowa, rdzawy = prawie nic; poniżej 75% trzeba wapnować. Z Precision Farming w zapisie gry pokazuje prawdziwe pH pola wobec optimum dla jego gleby (najedź, żeby zobaczyć liczby i potrzebne wapno); bez niego aplikacja je szacuje — każdy nowy sezon je obniża, szybciej na lżejszych glebach, a użytki zielone, poplon i ryż go nie zmieniają. Kliknij chip, żeby zaznaczyć wapnowanie w małym oknie.",
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
+    tut_c14_t: "Widok pola",
+    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
     tut_c12_t: "Prace",
     tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, potem siew i wałowanie, po: nawóz i chwasty; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność albo dodawać — wtedy to własna lista pola.",
     tut_c13_t: "Chwasty",
@@ -8778,6 +8808,173 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay, age) {
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
 
+// --- Field view ("Pole") -----------------------------------------------------
+// Everything about one field in one place: soil mix (editable), pH and lime,
+// nitrogen and the fertilization plan, feed use, cuts, work, and what grew
+// there in past seasons. Opened from the field number in the table.
+let fieldModalIdx = null;
+
+function renderFieldModal() {
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[fieldModalIdx];
+    const body = document.getElementById('field-modal-body');
+    if (!field || !body) return;
+    const idx = fieldModalIdx;
+    const rates = getSupplyRates();
+    const num = (field.number || '').toString().trim();
+    const soilKey = fertPlanSoilKey(field, idx);
+    const planKey = fertPlanKey(field, idx);
+    const area = parseFloat(field.area) || 0;
+    const season = farm.currentSeason || 1;
+    const fmt = (v, d = 0) => Number(v).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: d });
+
+    document.getElementById('field-modal-title').textContent = t('fieldViewTitle').replace('{field}', num || '–')
+        + (field.crop ? ' · ' + translateCropName(field.crop) : '');
+    const summary = [
+        `${area.toFixed(2)} ha${field.areaSource === 'game' ? ' (' + t('fieldViewFromGame') + ')' : ''}`,
+        field.catchCrop ? t('catchCropShort') + ': ' + translateCropName(field.catchCrop) : '',
+        field.sowingMonth ? t('thSowingMth') + ': ' + translateMonth(field.sowingMonth) : '',
+        field.state === 'Planted' ? t('planted') : t('toPlant'),
+        field.tillage === 'plowed' ? t('tillagePlowed') : (field.tillage === 'noTill' ? t('tillageNoTill') : ''),
+        field.lease ? t('leaseLabel') : ''
+    ].filter(Boolean).join(' · ');
+    document.getElementById('field-modal-summary').textContent = summary;
+
+    let html = '';
+    const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
+
+    // Soil (editable — same data as the Field soil type view).
+    const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
+    html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
+            <span>${escapeHtml(soilLabel(s.id))}</span>
+            <input type="number" min="0" max="100" step="1" class="field-view-soil" data-soil="${s.id}" value="${mix[s.id] != null ? mix[s.id] : ''}" placeholder="0">
+        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>`);
+
+    // pH and lime.
+    const lime = getLimeStatus(field, idx, season, rates);
+    let limeText;
+    if (lime.pf) {
+        limeText = t('limeTitlePf').replace('{ph}', lime.pf.avg.toFixed(2)).replace('{opt}', lime.pf.optimal.toFixed(2))
+            + (lime.pf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', fmt(lime.pf.limeL)) : '');
+    } else if (lime.ph != null) {
+        limeText = buildLimeTitle(lime.ph, lime.status, field.limeAppliedSeason);
+    } else {
+        limeText = t('fieldViewNoLime');
+    }
+    html += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
+
+    // Nitrogen and the fertilization plan.
+    if (field.crop && area > 0) {
+        const d = computeFieldFertPlan(planKey, soilKey, field.crop, area, rates);
+        const rows = [
+            [t('fertPlanColTarget'), fmt(d.targetRate) + ' kg N/ha'],
+            [t('fertPlanColExisting'), fmt(d.existingRate) + ' kg N/ha' + (d.existingFromGame ? ' (' + t('fieldViewFromGame') + ')' : '')],
+            [t('fertPlanColOrg'), fmt(d.orgRate) + ' kg N/ha'],
+            [t('fertPlanColMineralL'), fmt(d.mineralLitres * area) + ' l']
+        ];
+        html += section(t('fieldViewFert'), rows.map(([k, v]) => `<p class="details-category"><span>${k}</span><span class="details-category-value">${v}</span></p>`).join('')
+            + `<button type="button" class="settings-btn field-view-fertplan">${t('fertPlanBtn')}</button>`);
+    }
+
+    // Feed use (same choices as the Feed planner).
+    const plan = getFeedPlan(farm);
+    const feedRows = buildFeedSupply(farm, plan, rates).rows.filter(r => r.key === planKey || r.key === planKey + ':catch');
+    if (feedRows.length) {
+        html += section(t('fieldViewFeed'), feedRows.map(r => {
+            const label = translateCropName(r.crop) + (r.isCatch ? ' (' + t('catchCropShort') + ')' : '');
+            if (r.use === 'cuts') return `<p>${escapeHtml(label)}: ${t('feedUseCuts').replace('{n}', r.cuts)}</p>`;
+            const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
+            return `<label class="settings-field"><span>${escapeHtml(label)}</span><select class="field-view-use" data-key="${escapeHtml(r.key)}">${opts}</select></label>`;
+        }).join(''));
+    }
+
+    // Cuts / work / treatments.
+    const work = [];
+    if (isCutCrop(field.crop)) {
+        const cuts = Array.isArray(field.cuts) ? field.cuts : [];
+        work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
+            <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
+    } else if (field.crop) {
+        const { next, done, total } = nextWorkStep(field, farm.month);
+        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t('workAllDone')}</p>
+            <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
+    }
+    const state = (v, map) => t(map[v] || map['']);
+    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
+    html += section(t('fieldViewWork'), work.join(''));
+
+    // History of this field number.
+    const history = loadSeasonHistory(farm, season);
+    const past = Object.keys(history).map(Number).sort((a, b) => b - a).map(s => {
+        const crops = (history[s] || []).filter(f => (f.number || '').toString().trim() === num && f.crop).map(f => translateCropName(f.crop));
+        return crops.length ? `<li>${t('season')} ${s}: ${escapeHtml(crops.join(', '))}</li>` : '';
+    }).filter(Boolean);
+    html += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
+
+    body.innerHTML = html;
+}
+
+window.openFieldModal = function (idx) {
+    fieldModalIdx = idx;
+    renderFieldModal();
+    const modal = document.getElementById('field-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const content = modal.querySelector('.modal-content');
+        if (content) content.scrollTop = 0;
+    }
+};
+
+(function wireFieldModal() {
+    const modal = document.getElementById('field-modal');
+    const body = document.getElementById('field-modal-body');
+    if (!modal || !body) return;
+    const close = () => { modal.style.display = 'none'; fieldModalIdx = null; renderSeasonView(); };
+    document.getElementById('field-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+    body.addEventListener('change', e => {
+        const el = e.target;
+        const farm = getCurrentFarm();
+        const field = farm && (farm.fields || [])[fieldModalIdx];
+        if (!field) return;
+        if (el.classList.contains('field-view-soil')) {
+            const r = getSupplyRates();
+            const k = fertPlanSoilKey(field, fieldModalIdx);
+            if (!r.fieldSoil) r.fieldSoil = {};
+            if (!r.fieldSoil[k]) r.fieldSoil[k] = {};
+            const n = parseFloat(el.value);
+            if (el.value === '' || isNaN(n) || n <= 0) delete r.fieldSoil[k][el.dataset.soil];
+            else r.fieldSoil[k][el.dataset.soil] = n;
+            if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
+            saveSupplyRates(r);
+            renderFieldModal();
+        } else if (el.classList.contains('field-view-use')) {
+            const plan = getFeedPlan(farm);
+            plan.fieldUse[el.dataset.key] = el.value;
+            saveFeedPlan(plan);
+            renderFieldModal();
+        }
+    });
+    body.addEventListener('click', e => {
+        const farm = getCurrentFarm();
+        const idx = fieldModalIdx;
+        const field = farm && (farm.fields || [])[idx];
+        if (!field) return;
+        if (e.target.closest('.field-view-fertplan')) {
+            close();
+            const num = (field.number || '').toString().trim();
+            openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
+        } else if (e.target.closest('.field-view-cuts')) {
+            close();
+            openCutsModal(idx);
+        } else if (e.target.closest('.field-view-work')) {
+            close();
+            openWorkModal(idx);
+        }
+    });
+})();
+
 // --- Field work queue ("Prace") ----------------------------------------------
 // field.work = [{ step, done }] in the order you do them — catch crop and main
 // crop in one list (e.g. green rye: fertilize, mow, bale, wrap; then beet:
@@ -8950,6 +9147,8 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
+    const fieldBtn = e.target.closest('.field-open');
+    if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
     const workBtn = e.target.closest('.work-open');
     if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
@@ -9202,7 +9401,9 @@ function renderFieldsTable(fields) {
 
             htmlString += `
                 <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
-                    <td class="field-number-cell"${numberCellTitle}><span class="field-number-chips">${numberChipsHtml}</span>${leaseBadgeHtml(field, viewedSeason)}</td>
+                    <td class="field-number-cell"${numberCellTitle}>${isPastSeason
+                        ? `<span class="field-number-chips">${numberChipsHtml}</span>`
+                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
@@ -11807,6 +12008,7 @@ const TUTORIAL_CHAPTERS = [
         prepare: tutOpenDemoPlanner,
         steps: [
             tutInfo('c1', '#fields-table'),
+            tutInfo('c14', () => tq('#fields-body .field-open')),
             tutInfo('c2', '#fields-body .badge--plant-now'),
             tutInfo('c3', () => [tq('#fields-body .badge--planted'), tq('#fields-body .badge--to-plant')]),
             tutInfo('c11', () => tq('#fields-body .cuts-open')),
