@@ -1,6 +1,6 @@
 FARMER PLANNER — ANALIZA UX, LOGIKI I ROZWIĄZAŃ BEZ SENSU
 ========================================================
-Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04, druga tura tego samego dnia)
+Data: 2026-10-03 (zrobione w 0.9.9 punkty usunięte 2026-10-04, druga tura tego samego dnia; trzecia tura 2026-10-12)
 Wersja kodu: gałąź v0.9.8 (src/ identyczne z main)
 Metoda: przeczytany kod (renderer.js, index.html, main.js, moduły pomocnicze).
 Aplikacja NIE była uruchamiana — wszystko poniżej wynika z kodu. Numery linii
@@ -11,22 +11,9 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 
 
 ----------------------------------------------------------------------------
-0. NAJWAŻNIEJSZE (TOP 6)
+0. NAJWAŻNIEJSZE
 ----------------------------------------------------------------------------
- 1. Wapno: aplikacja liczy pH własnym, sztucznym modelem 0–100 % („100 % pH”),
-    a dawki wapna nigdzie nie trafiają na listę zakupów (kod jest, ale martwy).
- 2. Racja paszowa wybierana „w oborze” jest w rzeczywistości globalna dla
-    gatunku — zmiana w oborze A zmienia oborę B bez ostrzeżenia.
- 3. Ustawienia farmy to jeden olbrzymi modal: ścieżka save'a, mapa, auto-sync,
-    foldery upraw/zwierząt, mody, stawki nawozów —
-    wszystko pod jednym „ZAPISZ I IMPORTUJ”.
- 4. getAllFarms() czyta z dysku i parsuje data.json WSZYSTKICH farm przy każdym
-    wywołaniu; getCurrentFarm() woła je dziesiątki razy na jeden render.
- 5. Dane farmy są rozsiane po 5 miejscach i spięte tekstowym numerem pola —
-    zmiana numeru lub uprawy osieraca glebę, plan nawożenia, przeznaczenie
-    paszowe i ostrzeżenie o płodozmianie.
- 6. Wiele wartości domyślnych jest z mapy Solek / Twojej farmy („tuned to this
-    farm”) — dla innych map i graczy liczby są po prostu nieprawdziwe.
+(wszystko zrobione w 0.9.9)
 
 
 ----------------------------------------------------------------------------
@@ -51,44 +38,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
 ----------------------------------------------------------------------------
 
-3.3 Wapno nie ma listy zakupów
-    Co: fieldLimeRate / limeRateForSoil liczą dawki tylko dla martwego
-    finalizeSupplies. Komentarz w l. 5482 przyznaje, że tabelę wapna
-    usunięto. Tymczasem tabela pól pokazuje, gdzie pH spada.
-    Propozycja: wiersz „Wapno” w Zaopatrzeniu dla pól w stanie ostrzeżenia.
-
-3.4 Sztuczne pH
-    Co: limePh 0..1 to model aplikacji: 1.0 po wapnowaniu, spadek o stałą
-    wartość przy każdym „Nowy sezon” (l. 6301-6327). Pokazywane jako „87 % pH”,
-    co nic nie mówi graczowi (pH w grze to np. 6.5). Komentarz sam nazywa to
-    „placeholder”. PF zapisuje prawdziwą mapę pH w save'ie (tak jak mapę gleb,
-    którą już parsujesz).
-    Propozycja: czytać pH z save'a (średnia / % poniżej optimum per pole),
-    a model zostawić tylko jako fallback bez PF.
-
-3.5 „N już w glebie” wpisywane z ręki
-    Co: fertPlan.existingN to ręczne pole. PF zapisuje mapę azotu — ten sam
-    mechanizm co gleby i pH.
-    Propozycja: import z gry jak w 3.4.
-
-3.7 Stawki „pod Solek” jako domyślne dla wszystkich
-    Co: SUPPLY_SEED_RATES, CROP_YIELD_L_PER_HA, FEED_STRAW_L_PER_HA
-    pochodzą z mapy Solek (l. 6055, 6132, 3779); manureN/slurryN opisane
-    „tuned to this farm's actual products” (l. 6349). A map-crops.js i tak
-    czyta foliage XML mapy — mógłby czytać też seeding/harvest litersPerSqm.
-    Propozycja: brać z mapy farmy, wartości bazowej gry jako fallback,
-    Solek tylko jako dane testowe.
-
-3.8 Rozjechane miejsca ustawień
-    Co: stawki nasion/N per uprawa i współczynniki obornika są w Ustawieniach
-    farmy, ale zatwierdzane przyciskiem „ZAPISZ I IMPORTUJ”, a „Przywróć
-    domyślne” działa natychmiast (l. 5529). Gleby per pole są w osobnym
-    widoku, plan N w modalu z tabeli, przeznaczenie paszowe w ustawieniach
-    Planera pasz.
-    Propozycja: jeden widok „Pole” (szczegóły pola) z zakładkami: gleba,
-    nawożenie, wapno, przeznaczenie, pokosy. Stawki globalne w osobnej
-    sekcji „Parametry rolnicze”.
-
 3.9 Pola w widoku „Typ gleby pola” gubią fokus
     Co: każda zmiana procentu = pełny re-render panelu (l. 5318).
     Tab do następnego pola → zmiana → re-render → fokus znika. To samo przy
@@ -99,21 +48,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 4. ZWIERZĘTA I PLANER PASZ
 ----------------------------------------------------------------------------
-
-4.1 Racja „w oborze” jest globalna dla gatunku
-    Co: select racji w karcie obory zapisuje plan.rations[gatunek]
-    (l. 3386-3393); Planer pasz robi to samo w kafelkach (l. 4672).
-    Dwie obory krów nie mogą mieć różnych racji, a UI sugeruje, że mogą.
-    Propozycja: racja per obora (plan.rations[buildingId][gatunek]) albo
-    wyraźny napis „dla wszystkich krów na farmie”.
-
-4.2 Dwa widoki liczą to samo inaczej
-    Co: Zwierzęta liczą „dni zapasu” z dziennego zapotrzebowania, Planer pasz
-    bilans roczny; oba pokazują racje i zapasy. Logika zapotrzebowania jest
-    zduplikowana (l. 3043-3096 vs buildBarnFeedNeed l. 4478 vs buildFeedDemand
-    l. 4010) — przy zmianie jednej łatwo zapomnieć o innych.
-    Propozycja: Zwierzęta = stan teraz (koryto, zdrowie, rozród, produkcja),
-    Planer pasz = racje i bilans. Jedna funkcja zapotrzebowania.
 
 4.3 Progi „mało paszy” z sufitu
     Co: bez wpisanej pojemności „mało” to < 80 L absolutnie (l. 3103),
@@ -133,22 +67,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 5. EKRAN STARTOWY, USTAWIENIA, ONBOARDING
 ----------------------------------------------------------------------------
-
-5.1 Po dodaniu farmy nic się nie dzieje
-    Co: „Dodaj farmę” pyta o nazwę i (ręcznie) o mapę, tworzy farmę i wraca
-    do listy (l. ~9640). Najważniejszy krok — wskazanie savegame'u — jest
-    schowany w Ustawieniach w bocznym menu planera.
-    Propozycja: kreator: nazwa → wybór savegame'u (lista savegame1..20
-    z Dokumentów, z nazwą mapy i farmy) → otwarcie farmy. Nazwę mapy
-    wypełniać automatycznie (res.mapTitle już jest znane).
-
-5.2 Ustawienia farmy — za dużo w jednym miejscu
-    Co: index.html:206-280. Mapa, ścieżka, auto-sync (globalny), powierzchnia
-    działek, folder upraw, folder zwierząt, mody zwierząt, stawki — jeden modal,
-    jeden przycisk. Nieprawidłowa ścieżka save'a jest po cichu ignorowana
-    (l. ~9410, brak komunikatu).
-    Propozycja: podzielić na sekcje/zakładki, walidować ścieżkę na żywo
-    („znaleziono: mapa X, rok 3, saldo Y”).
 
 5.3 Foldery upraw i zwierząt w większości zbędne
     Co: uprawy z moda mapy są już czytane automatycznie (readMapCrops),
@@ -183,14 +101,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 6. ARCHITEKTURA I DŁUG TECHNICZNY (rzeczy „bez sensu” w kodzie)
 ----------------------------------------------------------------------------
 
-6.1 Odczyt dysku przy każdym dostępie do danych
-    getAllFarms (l. 6772) czyta i parsuje data.json każdej farmy;
-    getCurrentFarm (l. 6815) woła je za każdym razem — 41 + 45 wywołań
-    w kodzie, część w pętlach (animalPictureUrl per stado, resolveRation,
-    feedRationOptionsHtml kilka razy na opcję). Przy farmie z dużym
-    animal_needs/feedStock i kilku farmach to setki odczytów na jeden render.
-    Propozycja: jedna kopia farmy w pamięci (currentFarm), zapis przy zmianie.
-
 6.3 Powielone obliczenia
     - parseMoney ×3 (l. 2117, 2242, 2648),
     - średnie zdrowie ważone liczbą zwierząt ×5 (l. 2150, 2217, 2921, 3108,
@@ -198,15 +108,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     - zapotrzebowanie paszowe ×3 (pkt 4.2),
     - getSeasonBalanceHistory i getAnimalHistoryTrend — ta sama pętla po
       archiwach, dwa razy.
-
-6.4 Tożsamość pola = tekst numeru
-    Gleba (rates.fieldSoil[numer]), plan N (numer::uprawa), przeznaczenie
-    paszowe (numer::uprawa[:catch]), płodozmian (numer), rozmiar pola
-    (fieldSizes[numer]), a dla pól bez numeru „idx-<pozycja w tablicy>”,
-    która zmienia się po usunięciu wiersza. Zmiana „12” na „12-13” lub zmiana
-    uprawy po cichu odcina wszystkie powiązane dane.
-    Propozycja: stałe id pola (jak id farmy) i wszystkie dane per pole
-    trzymane pod tym id.
 
 6.5 renderer.js ma ~11 tys. linii
     Tłumaczenia (~1700 linii), logika, HTML-e w template stringach, samouczek.
@@ -250,18 +151,8 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 8. CO BYM ZROBIŁ I W JAKIEJ KOLEJNOŚCI
 ----------------------------------------------------------------------------
-Średnie:
-  g) Farma w pamięci zamiast getAllFarms() przy każdym dostępie (6.1).
-  h) Stałe id pól i dane per pole pod tym id (6.4) — warunek dla j).
-  j) Widok szczegółów pola zamiast 5 rozproszonych miejsc (3.8).
-  k) Kreator nowej farmy z wyborem savegame'u (5.1), podział ustawień (5.2).
-
-Większe:
-  l) pH i azot z map PF w save'ie (3.4, 3.5) + wapno w zaopatrzeniu (3.3).
-  m) Stawki nasion/plonów z mapy farmy zamiast tabel Solek (3.7).
-  n) Racje per obora i jedno źródło obliczeń paszowych (4.1, 4.2).
+Wszystkie punkty „Średnie” i „Większe” (g–n) zrobione w 0.9.9.
 
 Uwaga do docs/propozycje-funkcji.txt: pkt 8 („Co dziś robić”) i 9 (pH/PF)
-mają sens dopiero po h) i i) — bez stałych id pól i danych z gry pulpit
-zadań będzie się opierał na ręcznie przepisanych, łatwo rozjeżdżających się
-danych.
+mogą już korzystać ze stałych id pól i danych z gry (pH, azot, gleby,
+chwasty) — warunek wstępny jest spełniony.
