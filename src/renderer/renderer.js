@@ -7,7 +7,7 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops, readModL10n } = require('./map-crops');
+const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { pathToFileURL } = require('url');
 
@@ -6631,10 +6631,10 @@ const LEGACY_SEED_DEFAULTS = {
 // Precision Farming variable seed rate: with PF the sowing machine uses these
 // litres/ha instead of the foliage seeding rate. lha = [low, standard, high];
 // auto = which of the three PF's automatic mode picks on each soil (the lowest
-// rate reaching the best <soilType yields>). Source: FS25 Solek
-// map/mapUS.xml <precisionFarming><seedRateMap> (Rye, Triticale, Alfalfa,
-// Clover, Buckwheat, Greenrye, Silagemaize, Beans, Millet), the rest from
-// FS25_precisionFarming PrecisionFarming.xml <seedRateMap> (usages x 10000).
+// rate reaching the best <soilType yields>). For a farm with a savegame they're
+// read from PF itself and the map's own seedRateMap (readPfSeedRates, see
+// PF_SEED_RATES); this table is only the fallback without a save — the base
+// game crops from FS25_precisionFarming PrecisionFarming.xml (usages × 10000).
 // Sugarbeet's 302 l/ha "low" is PF's own data (usage 0.03022), kept as the game uses it.
 const PF_AUTO_STD = { loamySand: 2, sandyLoam: 1, loam: 0, siltyClay: 2 };
 const SUPPLY_SEED_RATES_PF = {
@@ -6653,17 +6653,16 @@ const SUPPLY_SEED_RATES_PF = {
     Pea: { lha: [200, 250, 300], auto: PF_AUTO_STD },
     Greenbean: { lha: [240, 280, 320], auto: PF_AUTO_STD },
     Spinach: { lha: [8.5, 10, 11.5], auto: PF_AUTO_STD },
-    Oilseedradish: { lha: [30, 40, 50], auto: { loamySand: 0, sandyLoam: 0, loam: 0, siltyClay: 0 } },
-    Rye: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Triticale: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Alfalfa: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Clover: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Buckwheat: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Beans: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Millet: { lha: [300, 500, 700], auto: PF_AUTO_STD },
-    Greenrye: { lha: [200, 300, 400], auto: { loamySand: 0, sandyLoam: 1, loam: 1, siltyClay: 2 } },
-    Silagemaize: { lha: [45, 56, 67], auto: { loamySand: 0, sandyLoam: 1, loam: 2, siltyClay: 2 } }
+    Oilseedradish: { lha: [30, 40, 50], auto: { loamySand: 0, sandyLoam: 0, loam: 0, siltyClay: 0 } }
 };
+// The open farm's PF seed rates (PF + its map), keyed by cropOrderKey; null =
+// no savegame or nothing readable -> SUPPLY_SEED_RATES_PF.
+let PF_SEED_RATES = null;
+
+function pfSeedRateFor(crop) {
+    if (PF_SEED_RATES) return PF_SEED_RATES[cropOrderKey(crop || '')] || null;
+    return SUPPLY_SEED_RATES_PF[crop] || null;
+}
 
 // Kilograms of nitrogen per hectare for a full season — the flat baseline used
 // only for the per-crop "N" box in the Adjust drawer (and if nitrogen-by-soil
@@ -6783,7 +6782,7 @@ function fieldNRate(crop, soilMix, rates) {
 function fieldSeedRate(crop, soilMix, rates) {
     const o = rates.crops[crop];
     if (o && o.seed !== undefined && o.seed !== '' && !isNaN(o.seed)) return parseFloat(o.seed);
-    const pf = modEnabled('precisionFarming') ? SUPPLY_SEED_RATES_PF[crop] : null;
+    const pf = modEnabled('precisionFarming') ? pfSeedRateFor(crop) : null;
     if (!pf) return getCropSeedRate(crop, rates);
     const rateOn = id => pf.lha[pf.auto[id] !== undefined ? pf.auto[id] : 1];
     const entries = Object.entries(soilMix).filter(([, p]) => p > 0);
@@ -7289,6 +7288,17 @@ function loadFarmConfigs(farm) {
     // defaults instead of replacing the whole list.
     CROP_CALENDAR = JSON.parse(JSON.stringify(DEFAULT_CROPS));
     CROP_AGRONOMY = buildCropAgronomy(null);
+    PF_SEED_RATES = null;
+    if (farm && farm.saveGamePath) {
+        const pfRates = readPfSeedRates(farm.saveGamePath, formatCropName);
+        if (pfRates.ok) {
+            // Built-in base rates first (PF may ship inside the game, out of
+            // reach), then what PF and the map say.
+            PF_SEED_RATES = {};
+            Object.keys(SUPPLY_SEED_RATES_PF).forEach(k => { PF_SEED_RATES[cropOrderKey(k)] = SUPPLY_SEED_RATES_PF[k]; });
+            Object.keys(pfRates.rates).forEach(k => { PF_SEED_RATES[cropOrderKey(k)] = pfRates.rates[k]; });
+        }
+    }
     CROP_ORDER = [...BASE_CROP_ORDER];
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
