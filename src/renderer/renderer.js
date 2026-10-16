@@ -427,6 +427,8 @@ const TRANSLATIONS = {
         limeConfirmOff: "The field is limed ({pct}% pH). Remove the liming (e.g. marked by mistake)?",
         limeConfirmOnBtn: "Lime",
         limeConfirmOffBtn: "Remove",
+        limeUndo: "Undo liming",
+        limeConfirmAgainLimedNow: "You already limed this field this season, but the pH still reads {pct}% (the game's value updates after the next sync). Lime again, or undo this season's liming?",
         confirm: "Confirm",
         stateToggleHint: "Click to mark as sown / not sown",
         cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
@@ -1155,6 +1157,8 @@ const TRANSLATIONS = {
         limeConfirmOff: "Pole jest wapnowane ({pct}% pH). Usunąć wapnowanie (np. zaznaczone przez pomyłkę)?",
         limeConfirmOnBtn: "Wapnuj",
         limeConfirmOffBtn: "Usuń",
+        limeUndo: "Cofnij wapnowanie",
+        limeConfirmAgainLimedNow: "To pole jest już wapnowane w tym sezonie, ale pH wciąż pokazuje {pct}% (wartość z gry zmieni się po następnej synchronizacji). Wapnować ponownie czy cofnąć wapnowanie z tego sezonu?",
         confirm: "Potwierdź",
         stateToggleHint: "Kliknij, żeby oznaczyć jako obsiane / nieobsiane",
         cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
@@ -8607,6 +8611,24 @@ function getLimeStatus(field, i, seasonNum, rates) {
     return { ph, status: ph > 0.75 ? 'active' : 'warning' };
 }
 
+// Lime a field this season. The liming it replaces is kept in limePrev, so a
+// mistaken click can be taken back without losing the older history.
+function applyLiming(field, season) {
+    if (field.limeAppliedSeason !== season) {
+        field.limePrev = { season: field.limeAppliedSeason ?? null, ph: field.limePh ?? null };
+    }
+    field.limeAppliedSeason = season;
+    field.limePh = LIME_PH_IDEAL;
+}
+
+// Take back this season's liming (back to the one before it), or clear it.
+function undoLiming(field, season) {
+    const prev = field.limeAppliedSeason === season ? field.limePrev : null;
+    field.limeAppliedSeason = prev ? prev.season : null;
+    field.limePh = prev ? prev.ph : null;
+    delete field.limePrev;
+}
+
 // Fill color for the lime chip, interpolated across 3 stops as pH drops from
 // ideal (field green) through amber to --color-rust (the
 // old "warning" color). Returns null when never limed (chip stays empty).
@@ -8862,7 +8884,7 @@ window.openCutsModal = function (idx) {
             updateCutsField(f => {
                 f.cuts[+i][el.dataset.key] = el.checked;
                 // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
-                if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
+                if (el.dataset.key === 'limed' && el.checked) applyLiming(f, (getCurrentFarm() || {}).currentSeason || 1);
                 if (el.dataset.key === 'rolled') { f.rolling = f.cuts.some(c => c.rolled); f.rollingDone = f.rolling; }
             });
         }
@@ -9329,21 +9351,26 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
             });
             if (sure !== true) return;
         } else {
+            // Limed in the app this season but the pH still reads low (e.g. the
+            // game's pH before the next sync): offer to take it back.
+            const limedNow = field.limeAppliedSeason === (farm.currentSeason || 1);
             const ok = await showSmallConfirm({
                 title: t('limeConfirmTitle').replace('{field}', label),
-                text: t(status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain').replace('{pct}', pct),
+                text: t(limedNow ? 'limeConfirmAgainLimedNow' : (status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain')).replace('{pct}', pct),
                 ok: t('limeConfirmOnBtn'),
-                icon: 'fa-flask'
+                icon: 'fa-flask',
+                extra: limedNow ? t('limeUndo') : ''
             });
+            if (ok === 'extra') {
+                undoLiming(field, farm.currentSeason || 1);
+                saveFarmData(farm);
+                renderSeasonView();
+                return;
+            }
             if (ok !== true) return;
         }
-        if (remove) {
-            field.limeAppliedSeason = null;
-            field.limePh = null;
-        } else {
-            field.limeAppliedSeason = farm.currentSeason || 1;
-            field.limePh = LIME_PH_IDEAL;
-        }
+        if (remove) undoLiming(field, farm.currentSeason || 1);
+        else applyLiming(field, farm.currentSeason || 1);
     }
     saveFarmData(farm);
     renderSeasonView();
@@ -9648,7 +9675,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size, fertilization plan, feed use and straw are stored under
@@ -10694,6 +10721,8 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.weeds = null;
                 delete field.work;
                 delete field.workCleared;
+                // Undo only covers the season the liming was made in.
+                delete field.limePrev;
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.

@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.11 — unreleased
+
+**Fixed**
+- **Undo a liming**: a field limed this season whose pH still reads low (with Precision Farming, the game's pH only changes after the next sync) asked only *Lime again?*. The dialog now also has *Undo liming*, which puts back the liming from before this season (or none). *Remove liming…* on a well-limed field does the same, so older liming history isn't lost.
+
 ## 0.9.10 — 2026-10-16
 
 **Fixed**
