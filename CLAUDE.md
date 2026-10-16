@@ -119,7 +119,9 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Format GRLE: nagłówek 21 B, szerokość = u16LE@6 × 256, wysokość = u16LE@10 × 256; RLE: bajt v, jeśli następny == v → run, licznik = suma bajtów 0xFF + bajt końcowy, emituj count+1 dodatkowych kopii.
 - `mods/FS25_sowingMachineRollerReady.zip` został spatchowany 2026-09-27 (wał nie potraja zużycia nasion); oryginał w `Documents\Farming - misc\mod_backups`.
 
-Farma testowa `DEV - farma testowa` (kopia Solka, id `1791058275537`) jest w repo w `dev-farm/` — na nowym komputerze `node tools/dev-farm.js install`, po zmianach w aplikacji `save` + commit. Testuj na niej, nie na prawdziwych farmach. Savegame'u (~136 MB) nie ma w repo.
+Farma testowa `DEV – farma testowa` (id `1000000000001`) jest generowana od zera przez `src/renderer/dev-farm.js` — bez savegame'u, nie jest kopią żadnej farmy. Włącza się w ustawieniach aplikacji (zębatka na ekranie startowym → *Deweloper*, widoczne tylko przy `npm start`); *Odtwórz farmę testową* stawia ją od nowa, wyłączenie usuwa. Nowy stan do przetestowania → dopisz go w `dev-farm.js`. Testuj na niej, nie na prawdziwych farmach.
+
+Stara farma testowa (kopia Solka, id `1791058275537`, `dev-farm/` + `tools/dev-farm.js`) jest do usunięcia — czeka na decyzję użytkownika.
 
 Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farmer Planner` (lub zrób eksport kopii zapasowej farmy w aplikacji) i, jeśli potrzebny jest sync, sam folder savegame'u.
 

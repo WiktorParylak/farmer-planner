@@ -313,6 +313,14 @@
                 </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
+                <div id="dev-farm-setting" hidden>
+                    <p data-i18n="devFarmSettingLabel" style="margin-bottom:4px;">Developer</p>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="dev-farm-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                        <span data-i18n="devFarmSettingHint">Test farm built into the app. Turning it off deletes it.</span>
+                    </label>
+                    <button type="button" id="dev-farm-rebuild-btn" class="replay-tutorial-btn" data-i18n="devFarmRebuild" style="margin-top:6px;">Rebuild test farm</button>
+                </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
                 </div>

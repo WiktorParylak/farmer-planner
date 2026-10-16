@@ -9,6 +9,10 @@ const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
+const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
+
+// Running from the repo (npm start) rather than from the installed app.
+const IS_DEV_BUILD = !__dirname.includes('app.asar');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -1523,6 +1527,9 @@ const TRANSLATIONS = {
 Object.assign(TRANSLATIONS.en, {
     tutorialSettingLabel: "Tutorial",
     tutorialReplay: "Open tutorial",
+    devFarmSettingLabel: "Developer",
+    devFarmSettingHint: "Test farm built into the app (fields, animals, feed and history in every state). Turning it off deletes it.",
+    devFarmRebuild: "Rebuild test farm",
     tutorialDemoFarmName: "Demo Farm",
     tutMenuTitle: "Farmer Planner tutorial",
     tutMenuIntro: "Pick a chapter or go through everything. Some steps ask you to click or type something yourself — \"Show me\" will do it for you.",
@@ -1825,6 +1832,9 @@ Object.assign(TRANSLATIONS.en, {
 Object.assign(TRANSLATIONS.pl, {
     tutorialSettingLabel: "Samouczek",
     tutorialReplay: "Otwórz samouczek",
+    devFarmSettingLabel: "Deweloper",
+    devFarmSettingHint: "Farma testowa wbudowana w aplikację (pola, zwierzęta, pasze i historia we wszystkich stanach). Wyłączenie ją usuwa.",
+    devFarmRebuild: "Odtwórz farmę testową",
     tutorialDemoFarmName: "Farma demo",
     tutMenuTitle: "Samouczek Farmer Planner",
     tutMenuIntro: "Wybierz rozdział albo przejdź wszystko. W niektórych krokach musisz sam coś kliknąć lub wpisać — „Pokaż mi” zrobi to za Ciebie.",
@@ -2456,6 +2466,10 @@ if (appSettingsBtn && appSettingsModal) {
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
+        const devSetting = document.getElementById('dev-farm-setting');
+        if (devSetting) devSetting.hidden = !IS_DEV_BUILD;
+        const devToggle = document.getElementById('dev-farm-toggle');
+        if (devToggle) devToggle.checked = devFarmExists();
         appSettingsModal.style.display = 'flex';
     });
 }
@@ -2478,6 +2492,54 @@ if (discordRpcToggle) {
     discordRpcToggle.addEventListener('change', () => {
         localStorage.setItem(CONFIG_KEY_DISCORD_RPC, discordRpcToggle.checked ? '1' : '0');
         updateDiscordPresence();
+    });
+}
+
+// --- Developer test farm (only offered when running from the repo) ---
+function devFarmDir() {
+    return path.join(appDataDir, DEV_FARM_ID);
+}
+
+function devFarmExists() {
+    return fs.existsSync(path.join(devFarmDir(), 'data.json'));
+}
+
+function createDevFarm() {
+    const { farm, seasons, monthly, notes } = buildDevFarm({ pl: currentLang === 'pl' });
+    const dir = devFarmDir();
+    try {
+        fs.mkdirSync(path.join(dir, 'seasons'), { recursive: true });
+        fs.mkdirSync(path.join(dir, 'backups'), { recursive: true });
+        seasons.forEach(s => fs.writeFileSync(path.join(dir, 'seasons', `season_${s.season}.json`), JSON.stringify(s, null, 2), 'utf-8'));
+    } catch (err) {
+        console.error('Could not create the dev farm', err);
+        return;
+    }
+    saveFarmData(farm, { touch: false });
+    saveMonthlyHistory(farm, monthly);
+    saveNotes(farm, notes);
+}
+
+function removeDevFarm() {
+    try { fs.rmSync(devFarmDir(), { recursive: true, force: true }); }
+    catch (err) { console.error('Could not remove the dev farm', err); }
+}
+
+const devFarmToggle = document.getElementById('dev-farm-toggle');
+if (devFarmToggle) {
+    devFarmToggle.addEventListener('change', () => {
+        if (devFarmToggle.checked) createDevFarm();
+        else removeDevFarm();
+        renderFarmList(getAllFarms());
+    });
+}
+const devFarmRebuildBtn = document.getElementById('dev-farm-rebuild-btn');
+if (devFarmRebuildBtn) {
+    devFarmRebuildBtn.addEventListener('click', () => {
+        removeDevFarm();
+        createDevFarm();
+        if (devFarmToggle) devFarmToggle.checked = true;
+        renderFarmList(getAllFarms());
     });
 }
 

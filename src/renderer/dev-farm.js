@@ -1,0 +1,307 @@
+// Developer test farm, built from scratch (not copied from a real savegame).
+// Turned on in the app settings when the app runs from the repo (npm start).
+// It is meant to show every state the planner has in one place:
+//   fields   — sow now / overdue / planted / empty row, a field shared by two
+//              crops with hectares left unassigned, a catch crop, grassland
+//              with cuts, two leases (return / buy), a field with an empty work
+//              list, every lime state (limed this season with an undo history,
+//              limed earlier, low pH, never limed, a crop that takes no lime);
+//   animals  — five barns: cows (lactating, pregnant, heifers, calves), pigs
+//              short of grain, an empty chicken coop, sheep and goats with low
+//              health, horses; troughs with and without a capacity entered;
+//   feed     — stock in every source, bales, two mixer wagons (one without a
+//              capacity);
+//   history  — two archived seasons and 32 in-game months for the charts;
+//   notes    — this month, several months, checklist, no checklist.
+// No savegame path, so nothing is ever synced over it.
+
+const DEV_FARM_ID = '1000000000001';
+
+// period -> month, same order as FS_PERIOD_TO_MONTH in renderer.js
+const DEV_MONTHS = ["MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER", "JANUARY", "FEBRUARY"];
+
+const DEV_YEAR = 3;
+const DEV_MONTH_INDEX = 7;   // OCTOBER
+const DEV_SEASON = 3;
+
+function devField(number, area, crop, sowingMonth, state, tillage, extra) {
+    return {
+        number, area: area.toFixed(2), crop, sowingMonth,
+        rolling: false, catchCrop: "", catchSowingMonth: "",
+        state, tillage,
+        limeAppliedSeason: null, limePh: null,
+        cuts: [], manure: false, fertilizer: false,
+        ...extra
+    };
+}
+
+function devCluster(subType, numAnimals, age, health, extra) {
+    return {
+        subType, numAnimals, age, health,
+        reproduction: 0, isInseminated: false, monthsSinceLastBirth: 0, hadABirth: false,
+        ...extra
+    };
+}
+
+function devFields() {
+    return [
+        // Sow now; limed this season over an older liming, so "Undo liming" brings season 1 back.
+        devField("1", 5.2, "Wheat", "OCTOBER", "To Plant", "plowed", {
+            limeAppliedSeason: DEV_SEASON, limePh: 1, limePrev: { season: 1, ph: 0.62 },
+            work: [{ step: "harvest", done: true }, { step: "plow", done: true }, { step: "lime", done: true },
+                { step: "sow", done: false }, { step: "fertilize", done: false }]
+        }),
+        // Sowing month already passed; never limed; weeds to spray.
+        devField("2", 3.4, "Barley", "SEPTEMBER", "To Plant", null, { weeds: "needed" }),
+        // Two farmlands in one field; planted, rolled, fertilized.
+        devField("3-4", 7.8, "Canola", "AUGUST", "Planted", "noTill", {
+            limeAppliedSeason: 2, limePh: 0.85, fertilizer: true, rolling: true, rollingDone: true
+        }),
+        // One field of 5 ha shared by two crops, 0.5 ha left unassigned; the first has a catch crop.
+        devField("5", 2.0, "Soybean", "APRIL", "To Plant", "noTill", {
+            limeAppliedSeason: 2, limePh: 0.9, catchCrop: "Oilseedradish", catchSowingMonth: "SEPTEMBER"
+        }),
+        devField("5", 2.5, "Maize", "APRIL", "To Plant", "plowed", { limeAppliedSeason: 2, limePh: 0.9, manure: true }),
+        // Grassland: two cuts taken, the third still to do.
+        devField("6", 4.0, "Grass", "MARCH", "Planted", null, {
+            limeAppliedSeason: DEV_SEASON, limePh: 1, fertilizer: true,
+            cuts: [
+                { month: "MAY", use: "silage", harvested: true, fertilized: true, limed: false, rolled: true },
+                { month: "JULY", use: "hay", harvested: true, fertilized: false, limed: false, rolled: false },
+                { month: "SEPTEMBER", use: "hay", harvested: false, fertilized: false, limed: false, rolled: false }
+            ]
+        }),
+        // Leases: one ends and goes back, one is bought at the end.
+        devField("7", 1.2, "Potato", "APRIL", "To Plant", "plowed", {
+            limeAppliedSeason: 1, limePh: 0.7, lease: { since: 1, seasons: 3, then: "return" }
+        }),
+        devField("8", 2.9, "Sugarbeet", "APRIL", "To Plant", "plowed", {
+            lease: { since: DEV_SEASON, seasons: 5, then: "buy" }
+        }),
+        // A crop that takes no lime.
+        devField("9", 0.6, "Rice", "MAY", "To Plant", null, {}),
+        // Big field with the work list cleared on purpose ("No work").
+        devField("10-11-12", 12.4, "Maize", "APRIL", "To Plant", "plowed", {
+            limeAppliedSeason: 2, limePh: 0.95, manure: true, work: []
+        }),
+        // Low pH from an old liming.
+        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55 }),
+        devField("14", 3.1, "Oat", "MARCH", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true }),
+        // A field bought but not planned yet.
+        devField("15", 1.75, "", "", "To Plant", null, {})
+    ];
+}
+
+function devAnimalBuildings() {
+    return [
+        {
+            id: "dev-cowbarn", name: "data/placeables/cowBarnBig/cowBarnBig.xml",
+            clusters: [
+                devCluster("COW_HOLSTEIN", 24, 40, 95, { reproduction: 60, isInseminated: true, hadABirth: true, monthsSinceLastBirth: 5 }),
+                devCluster("COW_HOLSTEIN", 10, 16, 100),
+                devCluster("COW_HOLSTEIN", 6, 2, 100)
+            ],
+            food: [{ fillType: "SILAGE", level: 70000 }, { fillType: "GRASS_WINDROW", level: 40000 }],
+            production: [{ fillType: "MILK", level: 9200 }, { fillType: "LIQUIDMANURE", level: 30000 }, { fillType: "MANURE", level: 12000 }]
+        },
+        {
+            id: "dev-pigbarn", name: "data/placeables/pigBarnBig/pigBarnBig.xml",
+            clusters: [
+                devCluster("PIG_LANDRACE", 40, 18, 90, { reproduction: 35, isInseminated: true }),
+                devCluster("PIG_LANDRACE", 25, 4, 100)
+            ],
+            food: [{ fillType: "MAIZE", level: 1200 }, { fillType: "WHEAT", level: 900 }, { fillType: "SOYBEAN", level: 300 }],
+            production: [{ fillType: "LIQUIDMANURE", level: 18000 }]
+        },
+        {
+            id: "dev-chickencoop", name: "data/placeables/chickenCoop/chickenCoop.xml",
+            clusters: [devCluster("CHICKEN", 120, 10, 100), devCluster("CHICKEN_ROOSTER", 5, 12, 100)],
+            food: [],
+            production: [{ fillType: "EGG", level: 500 }]
+        },
+        {
+            id: "dev-sheeppasture", name: "data/placeables/sheepPasture/sheepPasture.xml",
+            clusters: [devCluster("SHEEP_LANDRACE", 30, 24, 64), devCluster("GOAT", 8, 20, 70)],
+            food: [{ fillType: "GRASS_WINDROW", level: 15000 }],
+            production: [{ fillType: "WOOL", level: 1200 }, { fillType: "GOATMILK", level: 300 }]
+        },
+        {
+            id: "dev-horsestable", name: "data/placeables/horseStable/horseStable.xml",
+            clusters: [devCluster("HORSE_BAY", 3, 36, 100), devCluster("HORSE_BLACK", 1, 60, 85)],
+            food: [{ fillType: "OAT", level: 2000 }, { fillType: "DRYGRASS_WINDROW", level: 3000 }],
+            production: []
+        }
+    ];
+}
+
+function devTotals(buildings) {
+    const breakdown = {}, production = {};
+    let animals = 0;
+    buildings.forEach(b => {
+        b.clusters.forEach(c => {
+            breakdown[c.subType] = (breakdown[c.subType] || 0) + c.numAnimals;
+            animals += c.numAnimals;
+        });
+        b.production.forEach(p => { production[p.fillType] = (production[p.fillType] || 0) + p.level; });
+    });
+    return { animals, breakdown, production };
+}
+
+function devArchivedSeasons() {
+    const archived = (season, fields, balance, loan, animals, avgHealth) => ({
+        season, dateArchived: new Date(Date.UTC(2026, season, 1)).toISOString(),
+        fields, balance, loan, animals, avgHealth
+    });
+    return [
+        archived(1, [
+            devField("1", 5.2, "Canola", "AUGUST", "Planted", "plowed", { limeAppliedSeason: 1, limePh: 1, harvestMonth: "JUNE", fertilizer: true }),
+            devField("2", 3.4, "Wheat", "OCTOBER", "Planted", "plowed", { harvestMonth: "JULY" }),
+            devField("3-4", 7.8, "Maize", "APRIL", "Planted", "plowed", { harvestMonth: "OCTOBER", manure: true }),
+            devField("5", 4.5, "Barley", "SEPTEMBER", "Planted", "noTill", { harvestMonth: "JUNE" }),
+            devField("6", 4.0, "Grass", "MARCH", "Planted", null, { limeAppliedSeason: 1, limePh: 1 })
+        ], 95000, 200000, 62, 88),
+        archived(2, [
+            devField("1", 5.2, "Barley", "SEPTEMBER", "Planted", "noTill", { harvestMonth: "JUNE" }),
+            devField("2", 3.4, "Canola", "AUGUST", "Planted", "plowed", { harvestMonth: "JUNE", fertilizer: true }),
+            devField("3-4", 7.8, "Wheat", "OCTOBER", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 1, harvestMonth: "JULY" }),
+            devField("5", 4.5, "Soybean", "APRIL", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 1, harvestMonth: "SEPTEMBER" }),
+            devField("6", 4.0, "Grass", "MARCH", "Planted", null, {}),
+            devField("7", 1.2, "Sugarbeet", "APRIL", "Planted", "plowed", { harvestMonth: "OCTOBER" }),
+            devField("10-11-12", 12.4, "Sunflower", "APRIL", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 1, harvestMonth: "OCTOBER" }),
+            devField("14", 3.1, "Wheat", "SEPTEMBER", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 1, harvestMonth: "JULY" })
+        ], 214000, 160000, 210, 91)
+    ];
+}
+
+// One row per in-game month from year 1 MARCH to now. Money and the herd grow
+// with a little wobble so the trend charts have something to show.
+function devMonthlyHistory() {
+    const rows = [];
+    const last = (DEV_YEAR - 1) * 12 + DEV_MONTH_INDEX;
+    for (let period = 0; period <= last; period++) {
+        const k = period / last;
+        const wobble = Math.sin(period * 1.7);
+        const season = Math.min(DEV_SEASON, Math.floor(period / 12) + 1);
+        const cows = Math.round(20 + 20 * k);
+        rows.push({
+            period,
+            month: DEV_MONTHS[period % 12],
+            gameYear: Math.floor(period / 12) + 1,
+            gameDay: period * 3 + 1,
+            appSeason: season,
+            recordedAt: new Date(Date.UTC(2026, 0, 1 + period)).toISOString(),
+            balance: Math.round(60000 + 252450 * k + 18000 * wobble),
+            loan: Math.round(200000 - 80000 * k),
+            equipment: 8 + Math.round(15 * k),
+            animals: Math.round(40 + 213 * k),
+            avgHealth: Math.round(86 + 6 * k + 3 * wobble),
+            production: { MILK: Math.round(4000 + 5200 * k), EGG: Math.round(100 + 400 * k), LIQUIDMANURE: Math.round(10000 + 38000 * k) },
+            productionEst: {
+                MILK: Math.round(cows * 2000 * (0.9 + 0.1 * wobble)),
+                EGG: Math.round(3600 * k),
+                WOOL: Math.round(900 * k),
+                GOATMILK: period > 12 ? Math.round(1200 * k) : 0
+            }
+        });
+    }
+    return rows;
+}
+
+function devNotes(pl) {
+    const now = new Date().toISOString();
+    const note = (id, title, body, months, tags, checklist) => ({
+        id: 'note_dev_' + id, title, body, months, tags, checklist, createdAt: now, updatedAt: now
+    });
+    return [
+        note('sow', pl ? "Siew pszenicy na polu 1" : "Sow wheat on field 1",
+            pl ? "Wapno już jest. Najpierw siew, potem nawóz." : "Lime is done. Sow first, then fertilize.",
+            ["OCTOBER"], [pl ? "pola" : "fields"],
+            [{ text: pl ? "Kupić nasiona" : "Buy seed", done: true }, { text: pl ? "Zasiać" : "Sow", done: false }]),
+        note('pigs', pl ? "Zboże dla świń" : "Grain for the pigs",
+            pl ? "W chlewni zostało na kilka dni." : "The pig barn has a few days left.",
+            ["SEPTEMBER", "OCTOBER", "NOVEMBER"], [pl ? "zwierzęta" : "animals"], []),
+        note('lease', pl ? "Dzierżawa pola 7 się kończy" : "Field 7 lease ends",
+            pl ? "Zdecydować: zdać czy przedłużyć." : "Decide: hand it back or extend.",
+            ["FEBRUARY"], [pl ? "dzierżawa" : "lease"],
+            [{ text: pl ? "Sprawdzić plony" : "Check the yields", done: false }])
+    ];
+}
+
+function buildDevFarm({ pl }) {
+    const buildings = devAnimalBuildings();
+    const totals = devTotals(buildings);
+    const farm = {
+        id: DEV_FARM_ID,
+        folderName: DEV_FARM_ID,
+        isDevFarm: true,
+        name: pl ? "DEV – farma testowa" : "DEV – test farm",
+        mapName: "",
+        lastEdited: new Date().toISOString(),
+        balance: 312450,
+        loan: 120000,
+        bankCredit: { count: 1, total: 120000, monthly: 4200 },
+        equipment: 23,
+        playTime: "87h 40m",
+        month: DEV_MONTHS[DEV_MONTH_INDEX],
+        dayInPeriod: 2,
+        daysPerPeriod: 3,
+        yearNumber: DEV_YEAR,
+        currentSeason: DEV_SEASON,
+        seasonStartedGameYear: DEV_YEAR,
+        fieldSizes: { "5": 5 },
+        fields: devFields(),
+        animals: totals.animals,
+        animalBreakdown: totals.breakdown,
+        animalProduction: totals.production,
+        animalBuildings: buildings,
+        animalBuildingNames: { "dev-cowbarn": pl ? "Obora" : "Cow barn" },
+        animalBuildingCapacities: {
+            "dev-cowbarn": { __ALL_FEED__: 120000 },
+            "dev-sheeppasture": { __ALL_FEED__: 20000 }
+        },
+        feedStock: {
+            SILAGE: { bunker: 240000, bale: 28000 },
+            DRYGRASS_WINDROW: { bale: 36000 },
+            STRAW: { bale: 60000 },
+            MINERAL_FEED: { pallet: 1500 },
+            PIGFOOD: { pallet: 3000 },
+            WHEAT: { silo: 42000 },
+            MAIZE: { silo: 18000 },
+            SOYBEAN: { silo: 6000 },
+            OAT: { silo: 4000 },
+            FORAGE: { mixer: 8000 }
+        },
+        feedBales: [
+            { key: "round125|SILAGE|3500", size: "round125", fillType: "SILAGE", litres: 3500, count: 8 },
+            { key: "round125|DRYGRASS_WINDROW|4500", size: "round125", fillType: "DRYGRASS_WINDROW", litres: 4500, count: 8 },
+            { key: "round125|STRAW|5000", size: "round125", fillType: "STRAW", litres: 5000, count: 12 }
+        ],
+        mixerWagons: [
+            { id: "save:dev-mixer1", name: "Siloking TruckLine Premium 2.0", capacity: 24000, source: "save" },
+            { id: "save:dev-mixer2", name: "Kuhn Profile 1880", capacity: null, source: "save" }
+        ],
+        supplyRates: {
+            defaultOverridesCleaned: true,
+            fieldSoil: {
+                "1": { loam: 60, siltyClay: 40 },
+                "2": { sandyLoam: 100 },
+                "3-4": { loamySand: 30, sandyLoam: 50, loam: 20 },
+                "5": { loam: 100 },
+                "10-11-12": { loamySand: 70, siltyClay: 30 }
+            },
+            fertPlan: {
+                "1::Wheat": { existingN: 40, orgN: 60 },
+                "3-4::Canola": { existingN: 120, orgN: 40 },
+                "10-11-12::Maize": { orgN: 90 }
+            }
+        }
+    };
+    return {
+        farm,
+        seasons: devArchivedSeasons(),
+        monthly: devMonthlyHistory(),
+        notes: devNotes(pl)
+    };
+}
+
+module.exports = { DEV_FARM_ID, buildDevFarm };
