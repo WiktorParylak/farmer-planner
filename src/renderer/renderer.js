@@ -353,6 +353,7 @@ const TRANSLATIONS = {
         hubMonthlyTrend: "Monthly trend",
         hubSeasonTrend: "Per season",
         hubMilkProduced: "Produced per month (est.)",
+        feedGaugeDaysHint: "Full bar = {n} days of feed for this barn. Enter the trough capacity to see it as a percentage.",
         hubProductionProxyNote: "Estimated from the month-over-month rise in stored litres — a rough proxy, since the save only records current storage, not true output.",
         hubStoredProduction: "Currently stored",
         hubNoAnimalsYet: "No animal data yet — open Settings, point to your careerSavegame.xml and import.",
@@ -360,7 +361,7 @@ const TRANSLATIONS = {
         hubHealth: "Health",
         hubFeedLevel: "Feed level",
         hubNoFeedTracked: "No feed data tracked for this building.",
-        hubApproxLevelsNote: "Feed bars are relative to your fullest building of that feed type — the save doesn't record real storage capacity, so treat these as \"which pen is running low\", not an exact percentage.",
+        hubApproxLevelsNote: "The save doesn't record trough capacity. Without it, a feed bar shows days of feed (full = 14 days) when the animals' needs are known, otherwise it's relative to your fullest barn. Enter the capacity in a barn to see a real percentage.",
         hubDailyRateNote: "Daily milk/egg output isn't shown yet — that needs each breed's production curve (from the game's animals.xml), which isn't wired up as an import yet. Ask if you'd like that added next.",
         hubNoProductionCurves: "Your animal definitions don't include recognizable production curves (milk/egg/wool), so estimated daily output can't be shown for these breeds yet.",
         hubProductionEstNote: "Estimated from each breed's production curve — real output can vary with the animal's condition and the game's own randomness.",
@@ -1088,6 +1089,7 @@ const TRANSLATIONS = {
         hubMonthlyTrend: "Trend miesięczny",
         hubSeasonTrend: "Wg sezonów",
         hubMilkProduced: "Produkcja na miesiąc (szac.)",
+        feedGaugeDaysHint: "Pełny pasek = paszy na {n} dni dla tej zagrody. Wpisz pojemność koryta, żeby widzieć procent.",
         hubProductionProxyNote: "Szacunek na podstawie miesięcznego przyrostu litrów w magazynie — przybliżenie, bo zapis gry rejestruje tylko bieżący stan magazynu, nie rzeczywistą produkcję.",
         hubStoredProduction: "Aktualnie zmagazynowane",
         hubNoAnimalsYet: "Brak danych o zwierzętach — otwórz Ustawienia, wskaż careerSavegame.xml i zaimportuj.",
@@ -1095,7 +1097,7 @@ const TRANSLATIONS = {
         hubHealth: "Zdrowie",
         hubFeedLevel: "Poziom paszy",
         hubNoFeedTracked: "Brak danych o paszy dla tego budynku.",
-        hubApproxLevelsNote: "Paski paszy są względne wobec Twojego najlepiej zaopatrzonego budynku tego samego typu paszy — zapis gry nie przechowuje realnej pojemności magazynu, więc traktuj to jako \"która zagroda ma mniej niż inne\", a nie dokładny procent.",
+        hubApproxLevelsNote: "Zapis gry nie przechowuje pojemności koryta. Bez niej pasek paszy pokazuje dni zapasu (pełny = 14 dni), gdy znane są potrzeby zwierząt, a w przeciwnym razie jest względny wobec najlepiej zaopatrzonej zagrody. Wpisz pojemność w zagrodzie, żeby widzieć prawdziwy procent.",
         hubDailyRateNote: "Dzienna produkcja mleka/jajek nie jest jeszcze pokazana — wymagałoby to krzywej produkcji każdej rasy (z pliku animals.xml gry), czego jeszcze nie podpiąłem jako import. Daj znać, jeśli chcesz, żebym to dodał.",
         hubNoProductionCurves: "Twoje definicje zwierząt nie zawierają rozpoznanych krzywych produkcji (mleko/jajka/wełna), więc szacowana dzienna produkcja nie może być jeszcze pokazana dla tych ras.",
         hubProductionEstNote: "Szacunek na podstawie krzywej produkcji danej rasy — rzeczywista produkcja może się różnić w zależności od kondycji zwierzęcia i losowości gry.",
@@ -3463,6 +3465,32 @@ function animalsKpisHtml(farm, buildings, monthly, summaries) {
     </div>`;
 }
 
+// Trough gauge: how full the bar is and when it counts as "low feed".
+// With the barn's daily need known, the warning is about days of feed left
+// (< 3 days, the same cut-off as the red days figure) and, without an entered
+// capacity, a full bar means two weeks of feed. A capacity makes the bar a
+// real percentage. Only with neither does it fall back to the old litre
+// threshold and the fullest barn as 100 %.
+const FEED_GAUGE_FULL_DAYS = 14;
+function feedGauge(level, cap, daily, maxLevel) {
+    const days = daily > 0 ? level / daily : null;
+    let pct, title = '';
+    if (cap > 0) pct = level / cap * 100;
+    else if (days !== null) { pct = days / FEED_GAUGE_FULL_DAYS * 100; title = t('feedGaugeDaysHint').replace('{n}', FEED_GAUGE_FULL_DAYS); }
+    else pct = level / (maxLevel || level || 1) * 100;
+    let low, mid;
+    if (days !== null) { low = days < 3; mid = days < 7; }
+    else if (cap > 0) { low = pct < 15; mid = pct < 35; }
+    else { low = level < 80; mid = pct < 35; }
+    return {
+        pct: Math.max(3, Math.min(100, pct)),
+        low,
+        cls: low ? 'pen-bar-fill--low' : (mid ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok'),
+        days,
+        title
+    };
+}
+
 function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
     let html = '';
     const hasHerd = monthly.some(r => (r.animals || 0) > 0);
@@ -3599,9 +3627,8 @@ window.openHubPanel = function (type) {
 
                 const combinedFoodLevel = building.food.reduce((s, f) => s + f.level, 0);
                 const combinedCap = buildingCaps[ANIMAL_FEED_CAPACITY_KEY];
-                const lowFeed = building.food.length > 0 && (combinedCap
-                    ? (combinedFoodLevel / combinedCap) * 100 < 15
-                    : combinedFoodLevel < 80);
+                const gauge = feedGauge(combinedFoodLevel, combinedCap, needsKnownForAll ? dailyNeed.food : 0, maxCombinedFood);
+                const lowFeed = building.food.length > 0 && gauge.low;
                 const noFeedAtAll = building.food.length === 0;
 
                 const warn = lowFeed || noFeedAtAll;
@@ -3663,16 +3690,9 @@ window.openHubPanel = function (type) {
                     // Multiple feed ingredients (e.g. grass windrow + forage)
                     // share one trough, so they're combined into one gauge.
                     const feedTypesLabel = building.food.map(f => formatFillType(f.fillType)).join(' + ');
-                    let pct;
-                    if (combinedCap && combinedCap > 0) {
-                        pct = Math.max(2, Math.min(100, (combinedFoodLevel / combinedCap) * 100));
-                    } else {
-                        anyMissingCapacity = true;
-                        const ref = maxCombinedFood || combinedFoodLevel || 1;
-                        pct = Math.max(3, Math.min(100, (combinedFoodLevel / ref) * 100));
-                    }
-                    const barClass = (combinedCap ? pct < 15 : combinedFoodLevel < 80) ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
-                    const daysLeft = needsKnownForAll && dailyNeed.food > 0 ? combinedFoodLevel / dailyNeed.food : null;
+                    if (!(combinedCap > 0)) anyMissingCapacity = true;
+                    const { pct, cls: barClass, title: barTitle } = gauge;
+                    const daysLeft = gauge.days;
                     const daysClass = daysLeft === null ? '' : (daysLeft < 3 ? 'feed-days--critical' : (daysLeft < 7 ? 'feed-days--warning' : 'feed-days--ok'));
 
                     card += `<div class="feed-headline">
@@ -3682,7 +3702,7 @@ window.openHubPanel = function (type) {
                             </div>
                             ${daysLeft !== null ? `<div class="feed-days ${daysClass}"><span class="feed-days-value">${Math.max(0, Math.floor(daysLeft))}</span><span class="feed-days-label">${t('barnDaysLeft')}</span></div>` : ''}
                         </div>
-                        <div class="feed-gauge">
+                        <div class="feed-gauge"${barTitle ? ` title="${escapeHtml(barTitle)}"` : ''}>
                             <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
                             ${combinedCap ? `<span class="feed-gauge-pct">${Math.round((combinedFoodLevel / combinedCap) * 100)}%</span>` : ''}
                         </div>
@@ -3842,12 +3862,10 @@ window.openHubPanel = function (type) {
                     if (sum.noFeedAtAll) {
                         feedHtml = `<span class="barn-tile-feed-note">${t('hubNoFeedTracked')}</span>`;
                     } else {
-                        const ref = sum.combinedCap || sum.maxCombinedFood || sum.combinedFoodLevel || 1;
-                        const pct = Math.max(3, Math.min(100, (sum.combinedFoodLevel / ref) * 100));
-                        const barClass = sum.lowFeed ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
+                        const { pct, cls: barClass, title: barTitle } = feedGauge(sum.combinedFoodLevel, sum.combinedCap, sum.dailyFood, sum.maxCombinedFood);
                         const days = sum.dailyFood > 0 ? Math.max(0, Math.floor(sum.combinedFoodLevel / sum.dailyFood)) : null;
                         const daysClass = days === null ? '' : (days < 3 ? 'pen-days-left--critical' : (days < 7 ? 'pen-days-left--warning' : ''));
-                        feedHtml = `<div class="barn-tile-feed">
+                        feedHtml = `<div class="barn-tile-feed"${barTitle ? ` title="${escapeHtml(barTitle)}"` : ''}>
                                 <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
                                 <span class="barn-tile-feed-meta">
                                     <span>${Math.round(sum.combinedFoodLevel).toLocaleString()} L${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString()} L` : ''}</span>

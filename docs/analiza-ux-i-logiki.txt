@@ -49,13 +49,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 4. ZWIERZĘTA I PLANER PASZ
 ----------------------------------------------------------------------------
 
-4.3 Progi „mało paszy” z sufitu
-    Co: bez wpisanej pojemności „mało” to < 80 L absolutnie (l. 3103),
-    niezależnie czy to 2 kury, czy 200 krów. Pasek jest liczony względem
-    najpełniejszej obory (l. 3170), więc 100 % nie znaczy „pełne”.
-    Propozycja: progiem powinny być dni zapasu (już liczone, gdy znane
-    są potrzeby), a nie litry.
-
 4.4 „Wyprodukowane mleko” to przyrost stanu magazynu
     Co: getMonthlyHistory liczy produkcję jako dodatnią różnicę litrów
     w zbiorniku (l. 2297). Sprzedaż w trakcie miesiąca = zaniżenie,
