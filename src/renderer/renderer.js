@@ -3973,7 +3973,6 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     // volume. A field with no saved plan gets a CTA instead of a guess.
     html += `<div class="hub-panel-subtitle">${t('suppliesFertilizer')}</div>`;
     if (fert.rows.length) {
-        const esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const orgCell = (r) => r.orgRate > 0
             ? `${num(r.orgRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.orgAbs)} N</span>
                <span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(r.orgVolAbs.manure)}</span>
@@ -3989,7 +3988,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}</td><td colspan="2">${r.area.toFixed(2)} ha</td>
                     <td colspan="4" class="supply-fillplan-cell">
                         <button type="button" class="supply-fillplan-btn" title="${t('suppliesFillPlanHint')}"
-                            onclick="openFieldFertPlan('${esc(r.planKey)}','${esc(r.soilKey)}','${esc(r.displayNumber)}','${esc(r.crop)}',${r.area})">
+                            ${fertPlanOpenAttrs(r.planKey, r.soilKey, r.displayNumber, r.crop, r.area)}>
                             ${t('suppliesFillPlanCta')}
                         </button>
                     </td></tr>`;
@@ -6032,6 +6031,18 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
     };
 }
 
+// Data attributes for a button that opens a field's fertilization plan
+// (handled by the one listener below — no data inside inline onclick).
+function fertPlanOpenAttrs(planKey, soilKey, displayNumber, crop, area) {
+    return `data-fertplan-open data-plan-key="${escapeHtml(planKey)}" data-soil-key="${escapeHtml(soilKey)}" data-number="${escapeHtml(displayNumber)}" data-crop="${escapeHtml(crop || '')}" data-area="${Number(area) || 0}"`;
+}
+document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-fertplan-open]');
+    if (!btn) return;
+    const d = btn.dataset;
+    window.openFieldFertPlan(d.planKey, d.soilKey, d.number, d.crop, parseFloat(d.area) || 0);
+});
+
 window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, area) {
     const titleEl = document.getElementById('fertplan-modal-title');
     const bodyEl = document.getElementById('fertplan-modal-body');
@@ -6345,8 +6356,8 @@ function renderNoteCard(note, currentMonth) {
             <div class="note-card-header">
                 <h4 class="note-card-title">${hasDetails ? '<i class="fa-solid fa-chevron-right note-card-caret" aria-hidden="true"></i>' : ''}${escapeHtml(note.title)}${open ? '' : summary}</h4>
                 <div class="note-card-actions">
-                    <button type="button" class="note-card-action" title="${t('notesEdit')}" onclick="window.openNoteEditModal('${note.id}')"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
-                    <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" onclick="window.deleteNote('${note.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+                    <button type="button" class="note-card-action" title="${t('notesEdit')}" data-note-action="edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" data-note-action="delete"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
                 </div>
             </div>
             ${isCurrent ? `<span class="note-current-badge">${t('notesCurrentMonthBadge')}</span>` : ''}
@@ -6398,6 +6409,13 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
         const tagBtn = e.target.closest('.note-tag-filter');
         if (tagBtn) {
             if (tagSel) { tagSel.value = tagSel.value === tagBtn.dataset.tag ? '' : tagBtn.dataset.tag; refresh(); }
+            return;
+        }
+        const actionBtn = e.target.closest('[data-note-action]');
+        if (actionBtn) {
+            const noteId = actionBtn.closest('.note-card').dataset.noteId;
+            if (actionBtn.dataset.noteAction === 'edit') window.openNoteEditModal(noteId);
+            else window.deleteNote(noteId);
             return;
         }
         if (e.target.closest('button, input, label')) return;
@@ -9660,13 +9678,12 @@ function renderFieldsTable(fields) {
                 const soilK = fertPlanSoilKey(field, origIdx);
                 const planK = fertPlanKey(field, origIdx);
                 const dispNum = numStr || ('#' + (origIdx + 1));
-                const esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 // White = nothing marked yet; brown = natural fertilizer applied;
                 // green = synthetic applied (wins if both are checked — it's the
                 // "topped up to target" state). Flags live on the field itself,
                 // set from the plan modal's Zabiegi checkboxes.
                 const btnState = field.fertilizer ? ' fertplan-open-btn--synthetic' : (field.manure ? ' fertplan-open-btn--natural' : '');
-                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" onclick="openFieldFertPlan('${esc(planK)}','${esc(soilK)}','${esc(dispNum)}','${esc(field.crop)}',${area})">${t('fertPlanBtn')}</button></td>`;
+                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" ${fertPlanOpenAttrs(planK, soilK, dispNum, field.crop, area)}>${t('fertPlanBtn')}</button></td>`;
             }
 
             htmlString += `
@@ -11493,6 +11510,18 @@ if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => { if (s
 // =============================================================
 // SECTION 10: DASHBOARD LOGIC (FARM MANAGEMENT)
 // =============================================================
+// One listener for every farm row's buttons (open / delete / export).
+const farmListClickEl = document.querySelector('.farm-list');
+if (farmListClickEl) farmListClickEl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-farm-action]');
+    const item = btn && btn.closest('.farm-item');
+    if (!item) return;
+    const id = item.dataset.farmId;
+    if (btn.dataset.farmAction === 'open') window.openPlanner(id);
+    else if (btn.dataset.farmAction === 'delete') window.prepareDelete(id);
+    else if (btn.dataset.farmAction === 'export') window.exportFarmBackup(id);
+});
+
 function renderFarmList(farms) {
     const container = document.querySelector('.farm-list');
     if (!container) return;
@@ -11507,17 +11536,18 @@ function renderFarmList(farms) {
     farms.forEach(farm => {
         const item = document.createElement('div');
         item.className = 'farm-item';
+        item.dataset.farmId = farm.id;
         const actionButton = deleteMode
-            ? `<button type="button" class="delete-btn-circle" onclick="prepareDelete('${farm.id}')" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
-            : `<button type="button" class="select-btn" onclick="openPlanner('${farm.id}')" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
+            ? `<button type="button" class="delete-btn-circle" data-farm-action="delete" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+            : `<button type="button" class="select-btn" data-farm-action="open" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
 
         item.innerHTML = `
             <div class="farm-details">
-                <span class="farm-name">${farm.name}${farm.mapName ? ` <span class="farm-map">${farm.mapName}</span>` : ''}</span>
+                <span class="farm-name">${escapeHtml(farm.name)}${farm.mapName ? ` <span class="farm-map">${escapeHtml(farm.mapName)}</span>` : ''}</span>
                 <span class="farm-dates">${t('lastEdited')}: ${escapeHtml(formatLastEdited(farm.lastEdited))}</span>
             </div>
             <div class="farm-item-actions">
-                <p class="export-btn-circle" onclick="exportFarmBackup('${farm.id}')" title="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></p>
+                <button type="button" class="export-btn-circle" data-farm-action="export" title="${t('exportBackup')}" aria-label="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
                 ${actionButton}
             </div>
         `;
@@ -11925,8 +11955,7 @@ function tutPickOption(select, preferred) {
 
 function tutDemoItem() {
     if (!tut.demoId) return null;
-    const btn = tq(`.farm-list [onclick*="'${tut.demoId}'"]`);
-    return btn ? btn.closest('.farm-item') : null;
+    return tqa('.farm-list .farm-item').find(el => el.dataset.farmId === String(tut.demoId)) || null;
 }
 
 // Read-only fields table row by its displayed field number ("1", "5–6").

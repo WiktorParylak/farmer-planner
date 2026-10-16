@@ -115,12 +115,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     feed.js, supplies.js, fields-table.js, tutorial.js) — już tak robisz
     z savegame-soil.js czy animal-mods.js.
 
-6.6 Inline onclick z danymi
-    14 × onclick="...('${...}')" z ręcznym escapowaniem (np. esc() w l. 3475
-    i 8279). renderFarmList wstawia farm.name bez escapeHtml (l. 9476) —
-    nazwa z „<” lub cudzysłowem rozwali listę.
-    Propozycja: data-* + jeden listener (jak już robisz w tabeli pól).
-
 6.7 Konfiguracja rozrzucona między localStorage a data.json
     Język, auto-sync, Discord, samouczek, sortowania — localStorage
     (nie trafia do kopii zapasowej, nie przenosi się na drugi komputer).
