@@ -599,7 +599,7 @@ const TRANSLATIONS = {
         feedStockNoSave: "Set the path to careerSavegame.xml in Farm settings to read what's already in your silos and bales.",
         feedStockNotRead: "Stock not read yet — it appears after the next sync with the game save.",
         feedStockEmpty: "No feed found in silos, bunker silos, bales or pallets in the last game save.",
-        feedStockNote: "From the last game save. All grain and oilseeds in your silos count as feed — including what you plan to sell. Wrapped grass bales count as silage; a bunker silo counts as silage whatever its fermentation stage.",
+        feedStockNote: "From the last game save. All grain and oilseeds in your silos count as feed — including what you plan to sell. Wrapped grass bales count as silage; a bunker silo counts as silage whatever its fermentation stage. Feed already in the barns' troughs counts too.",
         feedPlanIntro: "Yearly feed need of your herd, split by the ration you choose for each species, against the harvest of the fields you set aside for feed. Litres throughout; the field yield is the soil-adjusted ceiling from \"Predicted yields\".",
         feedPlanRations: "Rations",
         feedPlanFields: "Feed fields",
@@ -717,6 +717,7 @@ const TRANSLATIONS = {
         feedIngredients: "Ingredients for a year",
         feedYouHave: "You have",
         feedStockShort: "storage",
+        feedInBarns: "in barns",
         feedHarvestShort: "harvest",
         feedOfNeeded: "of {n} l needed",
         feedEnough: "Enough",
@@ -1329,7 +1330,7 @@ const TRANSLATIONS = {
         feedStockNoSave: "Ustaw ścieżkę do careerSavegame.xml w Ustawieniach farmy, żeby odczytać, co już jest w silosach i belach.",
         feedStockNotRead: "Zapasy nie zostały jeszcze odczytane — pojawią się po następnej synchronizacji z zapisem gry.",
         feedStockEmpty: "W ostatnim zapisie gry nie ma paszy w silosach, pryzmach, belach ani na paletach.",
-        feedStockNote: "Stan z ostatniego zapisu gry. Całe zboże i oleiste w silosach liczą się jako pasza — także to, co planujesz sprzedać. Owinięte bele z trawą liczą się jako kiszonka; pryzma liczy się jako kiszonka niezależnie od etapu fermentacji.",
+        feedStockNote: "Stan z ostatniego zapisu gry. Całe zboże i oleiste w silosach liczą się jako pasza — także to, co planujesz sprzedać. Owinięte bele z trawą liczą się jako kiszonka; pryzma liczy się jako kiszonka niezależnie od etapu fermentacji. Liczy się też pasza leżąca już w korytach w zagrodach.",
         feedPlanIntro: "Roczne zapotrzebowanie stada na paszę, rozbite według dawki wybranej dla każdego gatunku, zestawione z plonem pól przeznaczonych na paszę. Wszystko w litrach; plon pola to pułap zależny od gleby, tak jak w „Przewidywanych plonach”.",
         feedPlanRations: "Dawki",
         feedPlanFields: "Pola paszowe",
@@ -1447,6 +1448,7 @@ const TRANSLATIONS = {
         feedIngredients: "Składniki na rok",
         feedYouHave: "Masz",
         feedStockShort: "magazyn",
+        feedInBarns: "w zagrodach",
         feedHarvestShort: "zbiór",
         feedOfNeeded: "z {n} l potrzebnych",
         feedEnough: "Wystarczy",
@@ -4493,13 +4495,40 @@ function mixerRation(mixer, type) {
 
 // Stock litres per category with ready-mixed pig food split the way the
 // pigs' chosen mixer recipe uses it (else the game's pig mixture).
+// Feed already in the barns' troughs counts as stock too (source "barn").
 function feedStockCategoriesFor(farm, plan) {
+    const stock = {};
+    Object.entries((farm && farm.feedStock) || {}).forEach(([ft, sources]) => { stock[ft] = { ...sources }; });
+    Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => {
+        stock[ft] = { ...(stock[ft] || {}), barn: litres };
+    });
+    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+}
+
+// Litres per feed category lying in the barns' troughs (part of the stock above).
+function feedBarnStockCategoriesFor(farm, plan) {
+    const stock = {};
+    Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => { stock[ft] = { barn: litres }; });
+    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+}
+
+function feedStockSplitOverride(plan) {
     const ration = resolveRation('PIG', plan);
     const override = {};
     if (ration && ration.mixer && ration.absolute) {
         override.PIGFOOD = Object.fromEntries(ration.ingredients.map(i => [i.category, i.pct / 100]));
     }
-    return feedStockByCategory(farm && farm.feedStock, override);
+    return override;
+}
+
+// fillType -> litres in every barn's trough (<husbandryFood> in the save).
+function feedBarnStock(farm) {
+    const out = {};
+    ((farm && farm.animalBuildings) || []).forEach(b => (b.food || []).forEach(f => {
+        if (!isFeedFillType(f.fillType) || !(f.level > 0)) return;
+        out[f.fillType] = (out[f.fillType] || 0) + f.level;
+    }));
+    return out;
 }
 
 // Picks a barn's ration for one species (the other barns keep theirs).
@@ -4653,7 +4682,7 @@ const FEED_FILLTYPE_CATEGORY = {
     // Mod-map crops, grouped as the maps' animalFood.xml does (e.g. Solek).
     RYE: 'GRAIN', TRITICALE: 'GRAIN', MILLET: 'PIG_BASE', BUCKWHEAT: 'PROTEIN'
 };
-const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer'];
+const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer', 'barn'];
 
 // Ready-mixed feeds count toward the categories they're made of — pig food is
 // the game's PIGFOOD mixture (animalFood.xml <mixture animalType="PIG">: base
@@ -4939,8 +4968,9 @@ function feedStockByCategory(stock, splitOverride = {}) {
 // harvest (s.ROUGHAGE) can become any of the three, so it's handed out to
 // cover their shortfalls first and any surplus split by need. Maize chaff
 // (s.SILAGE) only ever counts as silage.
-function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {}) {
+function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {}, barnByCategory = {}) {
     const d = demand.byCategory, s = supply.byCategory, st = stockByCategory;
+    const barn = c => barnByCategory[c] || 0;
     const rows = [];
     const grassPerHa = (getCropYieldRate('Grass') || 0) * plan.grassCuts * avgFactor;
     // s.GRASS / s.HAY / s.SILAGE = harvest already assigned to that category
@@ -4960,7 +4990,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         const need = d[c] || 0, stock = st[c] || 0;
         const have = meadow + direct(c);
         if (need <= 0 && have <= 0 && stock <= 0) return;
-        rows.push({ id: c, need, have, stock, perHa: grassPerHa });
+        rows.push({ id: c, need, have, stock, barn: barn(c), perHa: grassPerHa });
     });
     FEED_CATEGORIES.filter(c => !FEED_ROUGHAGE.includes(c)).forEach(c => {
         const need = d[c] || 0, have = s[c] || 0, stock = st[c] || 0;
@@ -4969,7 +4999,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         const perHa = c === 'STRAW'
             ? (plan.strawYield || cropStrawRate('Wheat') || 0) * avgFactor
             : (ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0);
-        rows.push({ id: c, need, have, stock, perHa, buyOnly: c === 'MINERAL' });
+        rows.push({ id: c, need, have, stock, barn: barn(c), perHa, buyOnly: c === 'MINERAL' });
     });
     return rows;
 }
@@ -5060,7 +5090,7 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
     }
     status += allBarns;
     const haveParts = [];
-    if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}`);
+    if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}${row.barn > 0 ? ` (${t('feedInBarns')}: ${num(row.barn)} l)` : ''}`);
     if (row && !row.buyOnly && row.have > 0) haveParts.push(`${t('feedHarvestShort')} ${num(row.have)}`);
     return `<div class="feed-ing-tile feed-ing-tile--${state}">
         <div class="feed-ing-head">
@@ -5168,7 +5198,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const demand = buildFeedDemand(farm, plan);
     const supply = buildFeedSupply(farm, plan, rates);
     const stock = (farm && farm.feedStock) || null;
-    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan));
+    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan), feedBarnStockCategoriesFor(farm, plan));
     const num = n => Math.round(n).toLocaleString();
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 

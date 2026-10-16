@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Fixed**
 - **Undo a liming**: a field limed this season whose pH still reads low (with Precision Farming, the game's pH only changes after the next sync) asked only *Lime again?*. The dialog now also has *Undo liming*, which puts back the liming from before this season (or none). *Remove liming…* on a well-limed field does the same, so older liming history isn't lost.
+- **Feed planner ignored feed in the barns**: grain (and any other feed) already lying in the barns' troughs now counts as stock, so with empty silos the planner no longer says *missing* while the Animals panel shows the barn full. The tile says how much of the stock is in the barns (*storage 12 000 (in barns: 3 000 l)*), and the Animals panel's "stock lasts N days" counts it too.
 
 ## 0.9.10 — 2026-10-16
 
