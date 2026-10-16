@@ -233,7 +233,7 @@ const TRANSLATIONS = {
         cutsGrassAge: "Grassland here for {n} season(s) in a row (plough up after {max}).",
         sownAreaSum: "sown {ha} ha",
         overdue: "Overdue",
-        overdueHint: "The sowing window for this crop is over and the field isn't sown",
+        overdueHint: "The sowing window for this crop is over in this sowing year (July–June) and the field isn't sown",
         grassAge: "season {n}",
         grassAgeHint: "Grassland on this field for {n} season(s) in a row (plough it up after {max})",
         grassAgeOverHint: "Grassland on this field for {n} seasons in a row — time to plough it up (set to {max} in Settings)",
@@ -972,7 +972,7 @@ const TRANSLATIONS = {
         cutsGrassAge: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max}).",
         sownAreaSum: "obsiane {ha} ha",
         overdue: "Po terminie",
-        overdueHint: "Termin siewu tej uprawy minął, a pole nie jest obsiane",
+        overdueHint: "Termin siewu tej uprawy minął w tym roku siewnym (lipiec–czerwiec), a pole nie jest obsiane",
         grassAge: "{n}. sezon",
         grassAgeHint: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max})",
         grassAgeOverHint: "Użytek zielony na tym polu od {n} sezonów z rzędu — pora przeorać (ustawione na {max} w Ustawieniach)",
@@ -1607,7 +1607,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c2_t: "Plant now",
     tut_c2_x: "Orange \"Plant now\": the field isn't sown yet and its sowing month is the current in-game month.",
     tut_c3_t: "Planted / To plant",
-    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Red \"Overdue\" — the crop's sowing window has just ended and the field isn't sown. Click the badge to switch sown / not sown right in the table, no edit mode needed.",
+    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Red \"Overdue\" — the crop's sowing window has ended and the field isn't sown. The sowing year runs July to June, so in July an April sowing counts as next spring's, not a missed one. Click the badge to switch sown / not sown right in the table, no edit mode needed.",
     tut_c11_t: "Grass cuts ✂",
     tut_c11_x: "Grass, meadow and other grassland fields have a \"Cuts\" button instead of \"Planted\". It opens this season's cuts on a timeline: when each cut was made, what it went to (fresh grass, hay, silage, sale) and whether you fertilized, limed or rolled after it — those checks update the field too. Next to it: how many seasons in a row the grassland has been there — highlighted when it's time to plough it up (after 4 by default, set in Settings).",
     tut_c4_t: "Rotation warning ⟳",
@@ -1912,7 +1912,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c2_t: "Siej teraz",
     tut_c2_x: "Pomarańczowe „Siej teraz”: pole nie jest obsiane, a jego miesiąc siewu to bieżący miesiąc w grze.",
     tut_c3_t: "Obsiane / Do obsiania",
-    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Czerwone „Po terminie” — okno siewu tej uprawy właśnie minęło, a pole nie jest obsiane. Kliknij plakietkę, żeby przełączyć obsiane / nieobsiane od razu w tabeli, bez trybu edycji.",
+    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Czerwone „Po terminie” — okno siewu tej uprawy minęło, a pole nie jest obsiane. Rok siewny trwa od lipca do czerwca, więc w lipcu siew w kwietniu to siew przyszłej wiosny, a nie spóźniony. Kliknij plakietkę, żeby przełączyć obsiane / nieobsiane od razu w tabeli, bez trybu edycji.",
     tut_c11_t: "Pokosy ✂",
     tut_c11_x: "Pola z trawą, łąką i innymi użytkami zielonymi mają zamiast „Obsiane” przycisk „Pokosy”. Otwiera on pokosy tego sezonu na osi czasu: kiedy był każdy pokos, na co poszedł (zielonka, siano, kiszonka, sprzedaż) i czy po nim nawożono, wapnowano lub wałowano — te zaznaczenia aktualizują też pole. Obok: od ilu sezonów z rzędu jest tu użytek zielony — wyróżnione, gdy pora go przeorać (domyślnie po 4, ustawienie w Ustawieniach).",
     tut_c4_t: "Ostrzeżenie o płodozmianie ⟳",
@@ -9676,10 +9676,10 @@ function grasslandAge(field, history, seasonNum, limit) {
 }
 
 // Sowing window = the run of months in the crop calendar that holds the
-// planned month. Overdue: not sown and the window ended at most
-// SOWING_OVERDUE_MONTHS ago (and we're closer to its end than to its next
-// start) — further out it's more likely a plan for the next round.
-const SOWING_OVERDUE_MONTHS = 3;
+// planned month. Overdue: not sown and the window already ended in this
+// sowing year, which runs July..June — so in July an April sowing is next
+// spring's, not a missed one.
+const SOWING_YEAR_START = ALL_MONTHS.indexOf('JULY');
 function isSowingOverdue(field, currentMonth) {
     if (!field.crop || field.state === 'Planted' || !currentMonth) return false;
     const cal = CROP_CALENDAR[field.crop];
@@ -9689,12 +9689,10 @@ function isSowingOverdue(field, currentMonth) {
     const inWindow = m => !!cal[ALL_MONTHS[(m + 12) % 12]];
     const cur = idx(currentMonth);
     if (cur < 0 || inWindow(cur)) return false;
-    let end = idx(sow), start = idx(sow);
+    let end = idx(sow);
     for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
-    for (let i = 0; i < 11 && inWindow(start - 1); i++) start--;
-    const sinceEnd = (cur - end + 24) % 12;
-    const untilStart = (start - cur + 24) % 12;
-    return sinceEnd <= SOWING_OVERDUE_MONTHS && sinceEnd <= untilStart;
+    const posInYear = m => (m - SOWING_YEAR_START + 24) % 12;
+    return posInYear(end) < posInYear(cur);
 }
 
 // Small stacked bar of the field's soil types (only when its soil is known).
