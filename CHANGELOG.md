@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.11 — unreleased
+## 0.9.11 — 2026-10-16
 
 **New**
 - **Test farm for development**: when the app runs from the source code (`npm start`), *Settings* has a *Developer* switch that adds a test farm built by the app itself — fields, animals, feed, history and notes covering every state the planner can show — and *Rebuild test farm* to start it over. Turning the switch off deletes it. The installed app doesn't show the switch. It replaces the old test farm kept in the repo (a copy of a real savegame) and its `tools/dev-farm.js` script.
