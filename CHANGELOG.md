@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.10 — unreleased
+## 0.9.10 — 2026-10-16
 
 **Fixed**
 - **Soil bars after loading soils from the game**: going back to the plan from a panel (e.g. *Field soil type*) redraws the fields table, so the soil mix bars show the imported soils straight away instead of after reopening the farm.

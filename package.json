@@ -1,6 +1,6 @@
 {
   "name": "farmer-planner",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
