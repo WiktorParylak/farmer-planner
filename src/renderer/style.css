@@ -6593,6 +6593,12 @@ button.tillage-switch-option {
   gap: 8px;
 }
 
+.work-item--empty {
+  list-style: none;
+  color: var(--color-ink-faint);
+  font-style: italic;
+}
+
 .work-item.is-done label {
   text-decoration: line-through;
   color: var(--color-ink-faint);

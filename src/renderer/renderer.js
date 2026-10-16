@@ -178,6 +178,8 @@ const TRANSLATIONS = {
         workDown: "Move down",
         workRemove: "Remove step",
         workAllDone: "All done",
+        workEmpty: "No work",
+        workListEmpty: "No steps — add one below or use \"Suggest by month\".",
         workOpenHint: "Open the work list for this field",
         workSuggestedHint: "Next step suggested from the sowing month — click for the full list",
         work_fertilize: "Fertilize",
@@ -895,6 +897,8 @@ const TRANSLATIONS = {
         workDown: "W dół",
         workRemove: "Usuń krok",
         workAllDone: "Gotowe",
+        workEmpty: "Brak prac",
+        workListEmpty: "Brak kroków — dodaj krok poniżej albo użyj „Podpowiedz wg miesiąca”.",
         workOpenHint: "Otwórz listę prac tego pola",
         workSuggestedHint: "Następny krok podpowiedziany wg miesiąca siewu — kliknij, żeby zobaczyć całą listę",
         work_fertilize: "Nawóz",
@@ -8901,7 +8905,7 @@ function renderFieldModal() {
             <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
     } else if (field.crop) {
         const { next, done, total } = nextWorkStep(field, farm.month);
-        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t('workAllDone')}</p>
+        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t(total ? 'workAllDone' : 'workEmpty')}</p>
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
@@ -9006,8 +9010,12 @@ function suggestedWork(field, currentMonth) {
     return steps.map(step => ({ step, done: false }));
 }
 
+// The field's own list, or null when it never had one (then the month-based
+// suggestion shows). A list you emptied stays empty (field.workCleared) — an
+// empty field.work without the flag is how older versions cleared it.
 function fieldWork(field) {
-    return Array.isArray(field.work) && field.work.length ? field.work : null;
+    if (!Array.isArray(field.work)) return null;
+    return field.work.length || field.workCleared ? field.work : null;
 }
 
 // Next step for the table button: your list, else the month-based suggestion.
@@ -9023,7 +9031,7 @@ function nextWorkStep(field, currentMonth) {
 function workCellHtml(field, idx, isPastSeason, currentMonth) {
     if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
     const { next, done, total, own } = nextWorkStep(field, currentMonth);
-    const label = next ? t('work_' + next.step) : t('workAllDone');
+    const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
     const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
     return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
 }
@@ -9040,7 +9048,8 @@ function renderWorkModal() {
     document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
     const list = own || suggestedWork(field, farm.month);
     const listEl = document.getElementById('work-list');
-    listEl.innerHTML = list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
+    listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
+    listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
         <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
         <span class="work-item-btns">
             <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
@@ -9058,6 +9067,9 @@ function updateWorkField(fn) {
     if (!field) return;
     field.work = (fieldWork(field) || suggestedWork(field, farm.month)).map(w => ({ ...w }));
     fn(field.work, field, farm);
+    // Emptied on purpose: keep it empty instead of suggesting again.
+    if (field.work.length) delete field.workCleared;
+    else field.workCleared = true;
     saveFarmData(farm);
     renderWorkModal();
 }
@@ -9487,7 +9499,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size, fertilization plan, feed use and straw are stored under
@@ -10530,7 +10542,8 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.manure = false;
                 field.fertilizer = false;
                 field.weeds = null;
-                field.work = [];
+                delete field.work;
+                delete field.workCleared;
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
