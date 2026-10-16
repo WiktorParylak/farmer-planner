@@ -7,6 +7,10 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Fixed**
 - **Soil bars after loading soils from the game**: going back to the plan from a panel (e.g. *Field soil type*) redraws the fields table, so the soil mix bars show the imported soils straight away instead of after reopening the farm.
 - **Work list stays empty**: removing every step from a field's work list keeps it empty (*No work* in the table) instead of bringing the month-based suggestion back. A suggestion now shows only for a field that never had a list of its own, or when you click *Suggest by month*; a new season starts with the suggestion again.
+- **No lime in the suggested work when the pH is fine**: *Suggest by month* adds *Lime* only when the field's pH needs it (below 75 %, or never limed) — using the game's own pH when Precision Farming is in the save — and never for crops that don't use lime up (grassland, oilseed radish, rice).
+
+**Changed**
+- **No weeds step on a ploughed field**: the suggested work list leaves out *Weeds* when the field is ploughed.
 
 ## 0.9.9 — 2026-10-12
 

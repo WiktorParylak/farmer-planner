@@ -8904,7 +8904,7 @@ function renderFieldModal() {
         work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
             <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
     } else if (field.crop) {
-        const { next, done, total } = nextWorkStep(field, farm.month);
+        const { next, done, total } = nextWorkStep(field, idx, farm);
         work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t(total ? 'workAllDone' : 'workEmpty')}</p>
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
@@ -8990,23 +8990,29 @@ window.openFieldModal = function (idx) {
 // cultivate, sow, fertilize, weeds). The button next to the state shows the
 // next step. Without a list of your own it suggests one from the sowing month:
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
+// Lime only while the pH needs it (the game's pH with Precision Farming) and
+// the crop uses lime up; no weeds step on a ploughed field.
 const WORK_STEPS = ['fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
 
-function suggestedWork(field, currentMonth) {
+// idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
+function suggestedWork(field, idx, farm) {
     const steps = [];
     if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
     const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
-    const cur = ALL_MONTHS.indexOf((currentMonth || '').toUpperCase());
+    const cur = ALL_MONTHS.indexOf(((farm && farm.month) || '').toUpperCase());
     // Months until the sowing month (0 = this month), wrapping round the year.
     const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
     const sown = field.state === 'Planted';
+    const plowed = field.tillage === 'plowed';
     if (!sown) {
-        steps.push(field.tillage === 'plowed' ? 'plow' : 'cultivate');
-        if (until > 0 && !(field.limeAppliedSeason != null && field.limePh != null && field.limePh > 0.75)) steps.push('lime');
+        steps.push(plowed ? 'plow' : 'cultivate');
+        if (until > 0 && !cropKeepsLime(field.crop)
+            && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
         if (field.rolling) steps.push('roll');
     }
-    steps.push('fertilize', 'weeds');
+    steps.push('fertilize');
+    if (!plowed) steps.push('weeds');
     return steps.map(step => ({ step, done: false }));
 }
 
@@ -9019,8 +9025,8 @@ function fieldWork(field) {
 }
 
 // Next step for the table button: your list, else the month-based suggestion.
-function nextWorkStep(field, currentMonth) {
-    const list = fieldWork(field) || suggestedWork(field, currentMonth).map(w => {
+function nextWorkStep(field, idx, farm) {
+    const list = fieldWork(field) || suggestedWork(field, idx, farm).map(w => {
         if (w.step === 'sow' && field.state === 'Planted') return { ...w, done: true };
         return w;
     });
@@ -9028,9 +9034,9 @@ function nextWorkStep(field, currentMonth) {
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-function workCellHtml(field, idx, isPastSeason, currentMonth) {
+function workCellHtml(field, idx, isPastSeason, farm) {
     if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
-    const { next, done, total, own } = nextWorkStep(field, currentMonth);
+    const { next, done, total, own } = nextWorkStep(field, idx, farm);
     const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
     const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
     return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
@@ -9046,7 +9052,7 @@ function renderWorkModal() {
     document.getElementById('work-title').textContent = t('workTitle').replace('{field}', label);
     const own = fieldWork(field);
     document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
-    const list = own || suggestedWork(field, farm.month);
+    const list = own || suggestedWork(field, workFieldIdx, farm);
     const listEl = document.getElementById('work-list');
     listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
     listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
@@ -9065,7 +9071,7 @@ function updateWorkField(fn) {
     const farm = allFarms.find(f => f.id === currentFarmId);
     const field = farm && (farm.fields || [])[workFieldIdx];
     if (!field) return;
-    field.work = (fieldWork(field) || suggestedWork(field, farm.month)).map(w => ({ ...w }));
+    field.work = (fieldWork(field) || suggestedWork(field, workFieldIdx, farm)).map(w => ({ ...w }));
     fn(field.work, field, farm);
     // Emptied on purpose: keep it empty instead of suggesting again.
     if (field.work.length) delete field.workCleared;
@@ -9114,7 +9120,7 @@ window.openWorkModal = function (idx) {
         if (step) updateWorkField(work => { work.push({ step, done: false }); });
     });
     document.getElementById('work-suggest-btn').addEventListener('click', () => {
-        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, farm.month)); });
+        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, workFieldIdx, farm)); });
     });
 })();
 
@@ -9426,7 +9432,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
