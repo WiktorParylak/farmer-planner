@@ -29,6 +29,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
   - Sidebar: *Settings* and *Exit* are written like the menu items above them; *+ Add note* matches the other panel buttons; note edit/delete buttons are round like the rest of the icon buttons.
   - Barn tiles: health and the feed figures use the normal text font instead of the typewriter one; soil % boxes are wide enough for *100*.
   - Buttons: one shared style in three sizes (page actions, panel buttons, small buttons in tables) with the same font, border and hover everywhere — filled green for the main action, outline for the rest, amber for *Fill from plan* / *This month*, dashed for *add another*, rust for resets and deletes.
+  - The app settings gear sits in the top-right corner of the *My Farms* card instead of floating in the corner of the window.
   - Text sizes come from one scale instead of 23 slightly different pixel sizes (e.g. 10.5, 12.5, 17 px).
 - **No farms yet**: the empty farm list has an *Add your first farm* button.
 
