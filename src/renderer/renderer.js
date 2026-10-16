@@ -8887,15 +8887,15 @@ window.openCutsModal = function (idx) {
 // State column: grassland gets a "Cuts" button (done / planned) that opens
 // the cuts timeline; everything else the sown / not sown badge (a toggle in
 // the current season).
-// age: grasslandAge() result — "· season N" is added to the cuts badge.
-function stateCellHtml(field, idx, isPastSeason, stateDisplay, age) {
+// Grassland age is shown under the crop name (grassAgeCaption), not here, so
+// the state column stays narrow.
+function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
-        let text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
-        if (age) text += ` · <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span>`;
+        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
         const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
-        const title = age ? age.title : t('cutsOpenHint');
+        const title = t('cutsOpenHint');
         return isPastSeason
             ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
             : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
@@ -9376,6 +9376,12 @@ function grasslandSeasonLimit(farm) {
     return v > 0 ? v : GRASSLAND_SEASONS_DEFAULT;
 }
 
+// "⟳ season 3" on its own line under the crop name (the repeat badge moves
+// down with it, so a monoculture never widens the row).
+function grassAgeCaption(age, rotationBadge) {
+    return `<span class="ha-caption grass-age-caption" title="${escapeHtml(age.title)}">${rotationBadge.trim()} <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span></span>`;
+}
+
 function grasslandAge(field, history, seasonNum, limit) {
     if (!isPerennialCrop(field.crop)) return null;
     const n = grasslandSeasonCount(field, history, seasonNum);
@@ -9486,6 +9492,7 @@ function renderFieldsTable(fields) {
             const rotationBadge = isRotationRepeat
                 ? ` <span class="badge badge--rotation-warn" title="${t('rotationWarning')}"><i class="fa-solid fa-rotate" aria-hidden="true"></i></span>`
                 : '';
+            const grassAge = grasslandAge(field, seasonHistory, viewedSeason, grassLimit);
 
             let areaCell = `${area.toFixed(2)} ha`;
             if (isSplit) {
@@ -9566,9 +9573,9 @@ function renderFieldsTable(fields) {
                         ? `<span class="field-number-chips">${numberChipsHtml}</span>`
                         : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
-                    <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
+                    <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {

@@ -3270,6 +3270,16 @@ tr.field-split-row.field-lease-row {
   color: var(--color-rust);
 }
 
+/* "⟳ season 3" under the crop name — wraps with the cell, never widens it. */
+.grass-age-caption {
+  white-space: normal;
+}
+
+.grass-age-caption .badge--rotation-warn {
+  font-size: 10px;
+  padding: 0 5px;
+}
+
 .tillage-chip {
   display: inline-block;
   min-width: 64px;
