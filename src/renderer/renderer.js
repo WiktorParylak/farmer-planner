@@ -25,7 +25,7 @@ const appDataDir = ipcRenderer.sendSync('get-data-dir') || path.join(
 
 if (!fs.existsSync(appDataDir)) {
     try { fs.mkdirSync(appDataDir, { recursive: true }); }
-    catch (err) { console.error("Błąd tworzenia folderu!", err); }
+    catch (err) { console.error("Could not create the data folder", err); }
 }
 
 // =============================================================
@@ -54,7 +54,8 @@ const TRANSLATIONS = {
         deleteErrorMissingOnDisk: "Couldn't delete — the farm's folder no longer exists on disk.",
         deleteErrorLocked: "Couldn't delete — the folder is locked by the system or open in another program.",
         cancelDelete: "CANCEL DELETE",
-        noFarmsYet: "No farms yet. Add your first one below to start tracking a season.",
+        noFarmsYet: "No farms yet. Add your first one to start tracking a season.",
+        addFirstFarm: "Add your first farm",
         lastEdited: "Last edited",
         balance: "BALANCE",
         month: "MONTH",
@@ -443,6 +444,9 @@ const TRANSLATIONS = {
         totalHa: "ha total",
         discordSettingLabel: "Discord Rich Presence",
         discordSettingHint: "Show your current farm and field count on your Discord profile.",
+        discordAskTitle: "Show your farm on Discord?",
+        discordAskText: "Farmer Planner can show the farm you're working on and its field count in your Discord status, visible to others. You can change this later in Settings.",
+        discordAskYes: "Show on Discord",
         discordBrowsing: "Browsing farms",
         discordManagingFields: "Managing {n} {fields}",
         discordFieldOne: "field",
@@ -785,7 +789,8 @@ const TRANSLATIONS = {
         deleteErrorMissingOnDisk: "Nie udało się usunąć — folder farmy już nie istnieje na dysku.",
         deleteErrorLocked: "Nie udało się usunąć — folder jest zablokowany przez system albo otwarty w innym programie.",
         cancelDelete: "ANULUJ USUWANIE",
-        noFarmsYet: "Brak farm. Dodaj pierwszą poniżej, żeby zacząć śledzić sezon.",
+        noFarmsYet: "Brak farm. Dodaj pierwszą, żeby zacząć śledzić sezon.",
+        addFirstFarm: "Dodaj pierwszą farmę",
         lastEdited: "Ostatnia edycja",
         balance: "SALDO",
         month: "MIESIĄC",
@@ -1174,6 +1179,9 @@ const TRANSLATIONS = {
         totalHa: "ha całości",
         discordSettingLabel: "Discord Rich Presence",
         discordSettingHint: "Pokazuj aktualną farmę i liczbę pól na Twoim profilu Discord.",
+        discordAskTitle: "Pokazywać farmę na Discordzie?",
+        discordAskText: "Farmer Planner może pokazywać w Twoim statusie Discorda farmę, nad którą pracujesz, i liczbę pól — widzą to inni. Możesz to później zmienić w Ustawieniach.",
+        discordAskYes: "Pokazuj na Discordzie",
         discordBrowsing: "Przegląda farmy",
         discordManagingFields: "Zarządza {n} {fields}",
         discordFieldOne: "polem",
@@ -2297,8 +2305,24 @@ const DISCORD_SESSION_START = Date.now();
 let _lastDiscordPayload = null;
 
 function isDiscordRpcEnabled() {
-    // Opt-out: on unless the user explicitly turned it off.
-    return localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== '0';
+    // Opt-in: off until the user says yes (asked once at start, see askDiscordOnce).
+    return localStorage.getItem(CONFIG_KEY_DISCORD_RPC) === '1';
+}
+
+// Asks once whether to show the farm on Discord — the profile status is
+// public, so it is never switched on without a yes.
+async function askDiscordOnce() {
+    if (localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== null) return;
+    const yes = await showSmallConfirm({
+        title: t('discordAskTitle'),
+        text: t('discordAskText'),
+        ok: t('discordAskYes'),
+        icon: 'fa-display'
+    });
+    localStorage.setItem(CONFIG_KEY_DISCORD_RPC, yes === true ? '1' : '0');
+    const toggle = document.getElementById('discord-rpc-toggle');
+    if (toggle) toggle.checked = yes === true;
+    updateDiscordPresence();
 }
 
 // Polish needs three plural forms (1 / 2-4 / 5+); English just two.
@@ -2763,7 +2787,7 @@ window.updateBuildingCapacity = function (input) {
     if (!farm.animalBuildingCapacities) farm.animalBuildingCapacities = {};
     if (!farm.animalBuildingCapacities[buildingId]) farm.animalBuildingCapacities[buildingId] = {};
 
-    const value = parseFloat(input.value.replace(',', '.'));
+    const value = parseDecimal(input.value);
     if (!isNaN(value) && value > 0) {
         farm.animalBuildingCapacities[buildingId][fillType] = value;
     } else {
@@ -3047,6 +3071,27 @@ function parseMoney(v) {
     if (typeof v === 'number') return v;
     const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
     return isNaN(n) ? 0 : n;
+}
+
+// Number typed by the player: "1,5", "1.5", "1 234,5", "1.234,5", "1,234.5".
+// When both "," and "." appear the last one is the decimal point; a single
+// kind appearing more than once is a thousands separator. Anything else that
+// isn't a plain number (e.g. "1,234,5") gives NaN instead of a wrong value.
+function parseDecimal(v) {
+    let s = String(v ?? '').replace(/[\s  ]/g, '');
+    if (!s) return NaN;
+    const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.');
+    let dec = '', group = '';
+    if (comma >= 0 && dot >= 0) { dec = comma > dot ? ',' : '.'; group = dec === ',' ? '.' : ','; }
+    else if (comma >= 0) { if (s.split(',').length > 2) group = ','; else dec = ','; }
+    else if (dot >= 0) { if (s.split('.').length > 2) group = '.'; else dec = '.'; }
+    let [int, frac] = dec ? s.split(dec) : [s, undefined];
+    if (group) {
+        if (!new RegExp(`^[-+]?\\d{1,3}(\\${group}\\d{3})+$`).test(int)) return NaN;
+        int = int.split(group).join('');
+    }
+    const plain = frac !== undefined ? `${int}.${frac}` : int;
+    return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(plain) ? parseFloat(plain) : NaN;
 }
 
 // Currency symbol of the open farm: chosen in Settings, or the game's own
@@ -7373,7 +7418,7 @@ function getAllFarms() {
                 }
             }
         } catch (e) {
-            console.error(`Błąd odczytu pliku w folderze: ${folder}. Plik jest uszkodzony.`);
+            console.error(`Could not read the farm file in ${folder} — it is damaged.`);
         }
     });
     return farms;
@@ -8416,7 +8461,7 @@ function refreshPlannerHeader(farm) {
         // Day of the in-game month next to its name ("MARCH 2") — only when a
         // month has more than one day, otherwise it'd always read "1".
         const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
-        plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
+        plannerMonth.innerText = farm.month ? translateMonth(farm.month) + (showDay ? ` ${farm.dayInPeriod}` : '') : '–';
     }
     if (plannerYear) {
         plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
@@ -9957,7 +10002,7 @@ function updateSplitHints() {
 
         if (!key) return;
         const areaInput = row.querySelector('.field-area');
-        const area = parseFloat((areaInput.value || '0').replace(',', '.')) || 0;
+        const area = parseDecimal(areaInput.value || '0') || 0;
         if (!groups[key]) groups[key] = [];
         groups[key].push({ row, area });
     });
@@ -9976,7 +10021,7 @@ function updateSplitHints() {
             if (sizeInput) {
                 sizeInput.style.display = 'block';
                 if (fieldSize === null && sizeInput.value) {
-                    const parsed = parseFloat(sizeInput.value.replace(',', '.'));
+                    const parsed = parseDecimal(sizeInput.value);
                     if (!isNaN(parsed)) fieldSize = parsed;
                 }
             }
@@ -10301,7 +10346,8 @@ function collectEditedFields(farm) {
             return;
         }
         let rawArea = row.querySelector('.field-area').value || "0";
-        rawArea = rawArea.replace(',', '.');
+        const parsedArea = parseDecimal(rawArea);
+        rawArea = isNaN(parsedArea) ? '0' : String(parsedArea);
         // An area typed by hand overrides the one from the game.
         const areaInput = row.querySelector('.field-area');
         const areaEdited = areaInput && areaInput.dataset.orig !== undefined && areaInput.value !== areaInput.dataset.orig;
@@ -10364,7 +10410,7 @@ function collectEditedFields(farm) {
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {
-            const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
+            const parsedSize = parseDecimal(sizeInput.value);
             if (!isNaN(parsedSize)) fieldSizes[numInput.value.trim()] = parsedSize;
         }
     });
@@ -10434,7 +10480,7 @@ if (editSeasonBtn) {
         const createBackup = (fieldsData, prefix) => writeFieldsBackup(farm, fieldsData, prefix);
 
         if (isEditMode) {
-            // >>> WYJŚCIE Z EDYCJI (ZAPIS) <<<
+            // Leaving edit mode: save.
 
             const { fields: newFields, fieldSizes: newFieldSizes, missingNumber } = collectEditedFields(allFarms[idx]);
             fieldsBody.querySelectorAll('.field-number.is-invalid').forEach(el => el.classList.remove('is-invalid'));
@@ -10445,23 +10491,23 @@ if (editSeasonBtn) {
                 return;
             }
 
-            // 1. Zapisz nowe dane do farmy
+            // 1. Store the edited fields on the farm.
             migrateFieldKeys(allFarms[idx], allFarms[idx].fields || [], newFields);
             allFarms[idx].fields = newFields;
             allFarms[idx].fieldSizes = newFieldSizes;
             saveFarmData(allFarms[idx]);
 
-            // 2. ZRÓB BACKUP "POST-EDIT" (stan po zmianach)
+            // 2. Back up the fields as they are after the edit.
             createBackup(newFields, "post-edit");
 
             setEditModeUi(false);
             renderSeasonView();
 
         } else {
-            // >>> WEJŚCIE W TRYB EDYCJI <<<
+            // Entering edit mode.
 
-            // 1. ZRÓB BACKUP "PRE-EDIT" (stan obecny, przed zmianami)
-            // Dzięki temu jak coś zepsujesz, masz kopię tego co było przed chwilą
+            // Back up the fields as they are now, so a botched edit can be undone
+            // from the copy made just before it.
             createBackup(farm.fields || [], "pre-edit");
 
             renderEditTableWithDropdowns(farm.fields || []);
@@ -10892,7 +10938,7 @@ if (resetSeasonsBtn) {
             try {
                 fs.rmSync(seasonsDirPath, { recursive: true, force: true });
             } catch (err) {
-                console.error("Błąd podczas usuwania archiwum:", err);
+                console.error("Could not delete the season archive:", err);
                 await showSeasonNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
                 return;
             }
@@ -11451,6 +11497,13 @@ function renderFarmList(farms) {
     const container = document.querySelector('.farm-list');
     if (!container) return;
     container.innerHTML = "";
+    if (!farms.length) {
+        container.innerHTML = `<div class="farm-list-empty">
+            <p>${t('noFarmsYet')}</p>
+            <button type="button" class="farm-list-empty-cta"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('addFirstFarm')}</button>
+        </div>`;
+        container.querySelector('.farm-list-empty-cta').addEventListener('click', () => { if (addFarmBtn) addFarmBtn.click(); });
+    }
     farms.forEach(farm => {
         const item = document.createElement('div');
         item.className = 'farm-item';
@@ -11929,7 +11982,7 @@ function tutFeed(sel) {
 }
 
 function tutNumValue(el) {
-    return el ? (parseFloat(String(el.value).replace(',', '.')) || 0) : 0;
+    return el ? (parseDecimal(el.value) || 0) : 0;
 }
 
 // ---------- demo farm ----------
@@ -12948,6 +13001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await askFirstLanguage();
         renderFarmList(getAllFarms());
     }
+    await askDiscordOnce();
     if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

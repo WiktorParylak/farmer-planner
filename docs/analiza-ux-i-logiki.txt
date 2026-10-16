@@ -132,20 +132,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 7. DROBIAZGI
 ----------------------------------------------------------------------------
- - Domyślny miesiąc to „SIERPIEŃ”, gdy nic nie wiadomo (l. 7630) — lepiej „–”.
- - Nagłówek w HTML ma na sztywno „Solek”, „1000$”, „JANUARY” (index.html:52-60)
-   — mignie przy starcie, a „$” kłóci się z „€” w reszcie aplikacji.
- - Pusta lista farm: tekst „No farms yet…” w atrybucie data-empty-text
-   (index.html:37) — dobrze, ale brak przycisku-CTA w środku pustego stanu.
- - Komentarze i logi po polsku w kodzie (np. l. 28, 6794, 8636-8665) wbrew
-   zasadzie „kod po angielsku”.
- - Discord Rich Presence jest domyślnie WŁĄCZONY (opt-out, l. 1921) —
-   pokazuje nazwę farmy publicznie bez pytania. Lepiej zapytać przy
-   pierwszym uruchomieniu.
- - Przecinek dziesiętny zamieniany tylko pierwszy (replace(',', '.')) —
-   „1,234,5” da śmieci; użyj parsera z walidacją.
- - Wykres z jednym punktem (pierwszy miesiąc) — komunikat „potrzeba więcej
-   miesięcy” jest, ale KPI „zmiana w sezonie” pokazuje „–” bez wyjaśnienia.
+(wszystko zrobione w 0.9.11)
 
 
 ----------------------------------------------------------------------------
