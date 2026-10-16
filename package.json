@@ -19,7 +19,16 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "files": [
+      "**/*",
+      "!FS25_CropDependentRolling${/*}",
+      "!.claude${/*}",
+      "!dev-farm${/*}",
+      "!docs${/*}",
+      "!tools${/*}",
+      "!CLAUDE.md"
+    ]
   },
   "devDependencies": {
     "electron": "^40.4.1",
