@@ -354,7 +354,8 @@ const TRANSLATIONS = {
         hubSeasonTrend: "Per season",
         hubMilkProduced: "Produced per month (est.)",
         feedGaugeDaysHint: "Full bar = {n} days of feed for this barn. Enter the trough capacity to see it as a percentage.",
-        hubProductionProxyNote: "Estimated from the month-over-month rise in stored litres — a rough proxy, since the save only records current storage, not true output.",
+        hubProductionEstNote: "Milk, eggs and wool estimated from the herd in each month (breed, age, ration and lactation) — the same figures as “Estimated daily output”. Manure and slurry aren't included.",
+        hubProductionProxyNote: "Estimated from the month-over-month rise in stored litres — a rough proxy, since the save only records current storage, not true output. From the next synced months on, the chart switches to an estimate from the herd.",
         hubStoredProduction: "Currently stored",
         hubNoAnimalsYet: "No animal data yet — open Settings, point to your careerSavegame.xml and import.",
         hubFeedLow: "Feed low!",
@@ -1090,7 +1091,8 @@ const TRANSLATIONS = {
         hubSeasonTrend: "Wg sezonów",
         hubMilkProduced: "Produkcja na miesiąc (szac.)",
         feedGaugeDaysHint: "Pełny pasek = paszy na {n} dni dla tej zagrody. Wpisz pojemność koryta, żeby widzieć procent.",
-        hubProductionProxyNote: "Szacunek na podstawie miesięcznego przyrostu litrów w magazynie — przybliżenie, bo zapis gry rejestruje tylko bieżący stan magazynu, nie rzeczywistą produkcję.",
+        hubProductionEstNote: "Mleko, jaja i wełna oszacowane ze stada w każdym miesiącu (rasa, wiek, racja i laktacja) — te same liczby co „Szacowana dzienna produkcja”. Bez obornika i gnojowicy.",
+        hubProductionProxyNote: "Szacunek na podstawie miesięcznego przyrostu litrów w magazynie — przybliżenie, bo zapis gry rejestruje tylko bieżący stan magazynu, nie rzeczywistą produkcję. Od kolejnych zsynchronizowanych miesięcy wykres przejdzie na szacunek ze stada.",
         hubStoredProduction: "Aktualnie zmagazynowane",
         hubNoAnimalsYet: "Brak danych o zwierzętach — otwórz Ustawienia, wskaż careerSavegame.xml i zaimportuj.",
         hubFeedLow: "Mało paszy!",
@@ -2660,7 +2662,10 @@ function buildMonthlyRow(farm, gameData) {
         avgHealth: avgHealthFromBuildings(gameData.animalBuildings || farm.animalBuildings),
         // fillType -> litres currently in storage/tank (a stock level, not
         // throughput — the delta between months is charted as an output proxy).
-        production: gameData.animalProduction || farm.animalProduction || {}
+        production: gameData.animalProduction || farm.animalProduction || {},
+        // fillType -> litres made this month, estimated from the herd's
+        // production curves (null when the curves aren't loaded).
+        productionEst: estimateMonthlyOutput(farm, gameData.animalBuildings || farm.animalBuildings)
     };
 }
 
@@ -2763,6 +2768,11 @@ function getMonthlyHistory(farm) {
         });
         rows[i].productionDelta = delta;
         rows[i].productionDeltaTotal = total;
+        // Milk/eggs/wool only — manure and slurry would swamp the line.
+        const est = rows[i].productionEst;
+        rows[i].productionEstTotal = est
+            ? Object.entries(est).filter(([ft]) => !FEED_UNSCALED_OUTPUT.includes(ft)).reduce((a, [, v]) => a + v, 0)
+            : null;
     }
     return rows;
 }
@@ -3494,7 +3504,11 @@ function feedGauge(level, cap, daily, maxLevel) {
 function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
     let html = '';
     const hasHerd = monthly.some(r => (r.animals || 0) > 0);
-    const hasProd = monthly.some(r => (r.productionDeltaTotal || 0) > 0);
+    // Months recorded since 0.9.11 carry an estimate from the herd's curves;
+    // older ones only the tank level, charted as its rise per month.
+    const estRows = monthly.filter(r => r.productionEstTotal != null);
+    const useEst = estRows.length > 1 && estRows.some(r => r.productionEstTotal > 0);
+    const hasProd = useEst || monthly.some(r => (r.productionDeltaTotal || 0) > 0);
     const int = v => Math.round(v).toLocaleString(FIN_LOCALE());
     const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
     if (monthly.length > 1 && hasHerd) {
@@ -3505,8 +3519,8 @@ function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
             w => buildTrendChart(monthly, w, [{ key: 'avgHealth', label: t('avgHealthLabel'), cls: 'health' }],
                 { format: v => Math.round(v) + '%', formatFull: v => Math.round(v) + '%', deltaFull: d => signedInt(d) + ' pp', domain: [0, 100], ariaLabel: t('animChartHealth') }), width);
         if (hasProd) {
-            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t('hubProductionProxyNote')}</p>`,
-                w => buildTrendChart(monthly, w, [{ key: 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
+            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t(useEst ? 'hubProductionEstNote' : 'hubProductionProxyNote')}</p>`,
+                w => buildTrendChart(useEst ? estRows : monthly, w, [{ key: useEst ? 'productionEstTotal' : 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
                     { format: (v, end) => finCompact(v) + (end ? ' l' : ''), formatFull: v => int(v) + ' l', ariaLabel: t('hubMilkProduced') }), width);
         }
     } else if (seasonHistory.length > 1) {
@@ -3602,10 +3616,6 @@ window.openHubPanel = function (type) {
                 building.clusters.forEach(c => {
                     if (!ANIMAL_NEEDS_DATA[c.subType]) { needsKnownForAll = false; return; }
                     const animalType = animalTypeOf(c.subType);
-                    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
-                    // The ration's productionWeight scales milk/eggs/wool the way
-                    // the game does; manure/slurry don't depend on the feed.
-                    const outputFactor = ration ? ration.efficiency / 100 : 1;
                     // EAS lactation: same food factor as the feed planner.
                     const clusterFood = clusterDailyFood(farm, animalType, c);
                     if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
@@ -3613,15 +3623,7 @@ window.openHubPanel = function (type) {
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
                     dailyNeed.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
 
-                    const def = ANIMAL_NEEDS_DATA[c.subType];
-                    if (def && def.production) {
-                        Object.keys(def.production).forEach(fillType => {
-                            const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
-                            const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
-                                * clusterMilkFactor(farm, animalType, c, fillType);
-                            if (rate > 0) dailyOutput[fillType] = (dailyOutput[fillType] || 0) + rate * c.numAnimals * factor;
-                        });
-                    }
+                    addClusterOutput(farm, building, c, feedPlan, dailyOutput);
                 });
                 if (Object.keys(dailyOutput).length > 0) anyProductionFound = true;
 
@@ -7940,6 +7942,34 @@ function getDailyAnimalNeed(subType, ageMonth, needType) {
     const def = ANIMAL_NEEDS_DATA[subType];
     if (!def || !def[needType]) return 0;
     return interpolateNeedCurve(def[needType], ageMonth);
+}
+
+// Adds one cluster's output (milk/eggs/wool/manure..., litres per in-game
+// month from the breed's curves) into `into` (fillType -> litres).
+function addClusterOutput(farm, building, c, feedPlan, into) {
+    const def = ANIMAL_NEEDS_DATA[c.subType];
+    if (!def || !def.production) return;
+    const animalType = animalTypeOf(c.subType);
+    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
+    // The ration's productionWeight scales milk/eggs/wool the way
+    // the game does; manure/slurry don't depend on the feed.
+    const outputFactor = ration ? ration.efficiency / 100 : 1;
+    Object.keys(def.production).forEach(fillType => {
+        const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
+        const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
+            * clusterMilkFactor(farm, animalType, c, fillType);
+        if (rate > 0) into[fillType] = (into[fillType] || 0) + rate * c.numAnimals * factor;
+    });
+}
+
+// The whole herd's estimated output for one in-game month, or null when the
+// breeds' curves aren't loaded (they're per farm — only the open farm's are).
+function estimateMonthlyOutput(farm, buildings) {
+    if (!farm || farm.id !== currentFarmId || !Object.keys(ANIMAL_NEEDS_DATA).length) return null;
+    const feedPlan = getFeedPlan(farm);
+    const out = {};
+    (buildings || []).forEach(b => (b.clusters || []).forEach(c => addClusterOutput(farm, b, c, feedPlan, out)));
+    return out;
 }
 
 function getDailyAnimalProduction(subType, ageMonth, fillType) {

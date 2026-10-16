@@ -14,6 +14,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Changed**
 - **Discord Rich Presence is opt-in**: it shows your farm publicly, so the app now asks once at start (also if you've never changed the setting) and stays off until you say yes. *Settings* still switches it either way.
 - **“Low feed” in days, not litres**: when the animals' needs are known, a barn is flagged as low on feed with less than 3 days left (the same red as the days figure), whether it's 2 chickens or 200 cows. Without an entered trough capacity the bar shows days of feed (full = 2 weeks) instead of comparing with your fullest barn; with a capacity it's still a real percentage.
+- **“Produced per month” chart**: milk, eggs and wool are now estimated from the herd each month (breed, age, ration, lactation — the same as *Estimated daily output*) instead of the rise in the tank, which sank whenever you sold mid-month. Months recorded before this version don't have the estimate, so the old chart stays until two new months are synced.
 - **No farms yet**: the empty farm list has an *Add your first farm* button.
 
 ## 0.9.10 — 2026-10-16

@@ -49,13 +49,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 4. ZWIERZĘTA I PLANER PASZ
 ----------------------------------------------------------------------------
 
-4.4 „Wyprodukowane mleko” to przyrost stanu magazynu
-    Co: getMonthlyHistory liczy produkcję jako dodatnią różnicę litrów
-    w zbiorniku (l. 2297). Sprzedaż w trakcie miesiąca = zaniżenie,
-    brak sprzedaży przez dwa miesiące = wykres jak sinusoida.
-    Jest notka o przybliżeniu, ale wykres i tak wprowadza w błąd.
-    Propozycja: pokazywać produkcję szacowaną z krzywych (już liczona jako
-    „szacowana dzienna produkcja”) albo nazwać wykres „Stan zbiornika”.
+(wszystko zrobione w 0.9.11)
 
 ----------------------------------------------------------------------------
 5. EKRAN STARTOWY, USTAWIENIA, ONBOARDING
