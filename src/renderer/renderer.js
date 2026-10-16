@@ -414,7 +414,13 @@ const TRANSLATIONS = {
         rollingOff: "No rolling planned",
         rollingDone: "Rolled",
         rollingClickHint: "click to switch",
-        limeClickHint: "click to lime / undo",
+        limeClickHint: "click for details / to lime",
+        limedThisSeason: "limed this season",
+        limeInfoPh: "pH at {pct}% — no lime needed now.",
+        limeInfoDue: "Estimate: lime will be needed again in about {n} season(s) (season {season}). It's based on the usual pH drop per harvest for this field's soil, not read from the game.",
+        limeInfoKeeps: "{crop} doesn't lower the pH when harvested or cut (game data), so no more lime is needed while it grows here.",
+        limeInfoOk: "OK",
+        limeInfoRemove: "Remove liming…",
         limeConfirmTitle: "Lime field {field}?",
         limeConfirmOn: "Mark the field as limed this season — pH goes to 100%.",
         limeConfirmAgain: "pH is down to {pct}%. Lime again this season — back to 100%?",
@@ -1133,7 +1139,13 @@ const TRANSLATIONS = {
         rollingOff: "Wałowanie niezaplanowane",
         rollingDone: "Wałowanie zrobione",
         rollingClickHint: "kliknij, żeby przełączyć",
-        limeClickHint: "kliknij, żeby wapnować / cofnąć",
+        limeClickHint: "kliknij: szczegóły / wapnowanie",
+        limedThisSeason: "wapnowane w tym sezonie",
+        limeInfoPh: "pH na poziomie {pct}% — wapno nie jest teraz potrzebne.",
+        limeInfoDue: "Szacunek: wapno będzie znowu potrzebne za ok. {n} sez. (sezon {season}). Liczone z typowego spadku pH po zbiorze dla gleby tego pola, a nie odczytane z gry.",
+        limeInfoKeeps: "{crop} nie obniża pH przy zbiorze ani koszeniu (dane gry), więc dopóki tu rośnie, ponowne wapnowanie nie jest potrzebne.",
+        limeInfoOk: "OK",
+        limeInfoRemove: "Usuń wapnowanie…",
         limeConfirmTitle: "Wapnowanie pola {field}",
         limeConfirmOn: "Oznaczyć pole jako wapnowane w tym sezonie? pH wróci do 100%.",
         limeConfirmAgain: "pH spadło do {pct}%. Wapnować ponownie w tym sezonie — z powrotem do 100%?",
@@ -8575,6 +8587,28 @@ function buildLimeTitle(ph, status, appliedSeason) {
     return title;
 }
 
+// What a well-limed field's chip means, for the info box and tooltip. The
+// "lime again in about n seasons" figure is the app's own model — the same
+// per-harvest pH drop for the field's soil that New season applies — so it's
+// labelled as an estimate. Crops with consumesLime="false" in the game don't
+// lower pH at harvest or cutting, so they get no number at all.
+function limeDueText(field, idx, farm, ph) {
+    if (field.crop && cropKeepsLime(field.crop)) return t('limeInfoKeeps').replace('{crop}', translateCropName(field.crop));
+    const drop = fieldLimePhDrop(getFieldSoilMix(fertPlanSoilKey(field, idx), getSupplyRates()));
+    if (ph == null || !(drop > 0)) return '';
+    const n = Math.max(1, Math.ceil((ph - 0.75) / drop - 1e-9));
+    return t('limeInfoDue').replace('{n}', n).replace('{season}', ((farm && farm.currentSeason) || 1) + n);
+}
+
+function limeInfoText(field, idx, farm) {
+    const { ph, pf } = getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates());
+    const parts = [t('limeInfoPh').replace('{pct}', ph != null ? Math.round(ph * 100) : 0)];
+    if (pf) parts.push(t('limeTitlePf').replace('{ph}', pf.avg.toFixed(2)).replace('{opt}', pf.optimal.toFixed(2)) + '.');
+    parts.push(limeDueText(field, idx, farm, ph));
+    if (pf && pf.limeL >= 1) parts.push(t('limeTitlePfNeed').replace('{l}', Math.round(pf.limeL).toLocaleString(FIN_LOCALE())) + '.');
+    return parts.filter(Boolean).join(' ');
+}
+
 // Cycles the lime chip: off -> active (fresh application) -> dismissed (off)
 // from either active or warning. Manure/fertilizer keep the simpler generic
 // toggle since they don't carry this multi-season state.
@@ -9135,8 +9169,9 @@ window.openWorkModal = function (idx) {
 })();
 
 // Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
-// cancels, Enter confirms.
-function showSmallConfirm({ title, text, ok, icon, danger }) {
+// cancels, Enter confirms. Optional: `extra` = label of a third button on the
+// left (resolves 'extra'); `noCancel` hides Cancel (an info box with one OK).
+function showSmallConfirm({ title, text, ok, icon, danger, extra, noCancel }) {
     const modal = document.getElementById('small-confirm-modal');
     if (!modal) return Promise.resolve(confirm(text));
     document.getElementById('small-confirm-title').textContent = title;
@@ -9144,9 +9179,16 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
     document.getElementById('small-confirm-icon').className = 'fa-solid ' + (icon || 'fa-circle-question');
     const okBtn = document.getElementById('small-confirm-ok');
     const cancelBtn = document.getElementById('small-confirm-cancel');
+    const extraBtn = document.getElementById('small-confirm-extra');
     okBtn.textContent = ok || t('confirm');
     okBtn.classList.toggle('danger-btn', !!danger);
     cancelBtn.textContent = t('cancel');
+    cancelBtn.style.display = noCancel ? 'none' : '';
+    if (extraBtn) {
+        extraBtn.hidden = !extra;
+        extraBtn.style.display = extra ? '' : 'none';
+        extraBtn.textContent = extra || '';
+    }
     modal.style.display = 'flex';
     okBtn.focus();
     return new Promise(resolve => {
@@ -9154,12 +9196,14 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
             modal.style.display = 'none';
             okBtn.removeEventListener('click', onOk);
             cancelBtn.removeEventListener('click', onCancel);
+            if (extraBtn) extraBtn.removeEventListener('click', onExtra);
             modal.removeEventListener('click', onBackdrop);
             document.removeEventListener('keydown', onKey, true);
             resolve(value);
         };
         const onOk = () => done(true);
         const onCancel = () => done(false);
+        const onExtra = () => done('extra');
         const onBackdrop = (e) => { if (e.target === modal) done(false); };
         const onKey = (e) => {
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
@@ -9167,6 +9211,7 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
         };
         okBtn.addEventListener('click', onOk);
         cancelBtn.addEventListener('click', onCancel);
+        if (extraBtn) extraBtn.addEventListener('click', onExtra);
         modal.addEventListener('click', onBackdrop);
         document.addEventListener('keydown', onKey, true);
     });
@@ -9208,16 +9253,38 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
+        const pct = ph != null ? Math.round(ph * 100) : 0;
         const remove = status === 'active';
-        const key = status === 'off' ? 'limeConfirmOn' : (status === 'warning' ? 'limeConfirmAgain' : 'limeConfirmOff');
-        const ok = await showSmallConfirm({
-            title: t('limeConfirmTitle').replace('{field}', label),
-            text: t(key).replace('{pct}', ph != null ? Math.round(ph * 100) : 0),
-            ok: t(remove ? 'limeConfirmOffBtn' : 'limeConfirmOnBtn'),
-            icon: remove ? 'fa-rotate-left' : 'fa-flask',
-            danger: remove
-        });
-        if (!ok) return;
+        if (remove) {
+            // pH is fine: the chip is a gauge — show what it means and when
+            // lime is due again. Taking a liming back is a separate, deliberate step.
+            const canRemove = field.limeAppliedSeason != null || field.limePh != null;
+            const choice = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: limeInfoText(field, idx, farm),
+                ok: t('limeInfoOk'),
+                icon: 'fa-flask',
+                noCancel: true,
+                extra: canRemove ? t('limeInfoRemove') : ''
+            });
+            if (choice !== 'extra') return;
+            const sure = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: t('limeConfirmOff').replace('{pct}', pct),
+                ok: t('limeConfirmOffBtn'),
+                icon: 'fa-rotate-left',
+                danger: true
+            });
+            if (sure !== true) return;
+        } else {
+            const ok = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: t(status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain').replace('{pct}', pct),
+                ok: t('limeConfirmOnBtn'),
+                icon: 'fa-flask'
+            });
+            if (ok !== true) return;
+        }
         if (remove) {
             field.limeAppliedSeason = null;
             field.limePh = null;
@@ -9413,6 +9480,12 @@ function renderFieldsTable(fields) {
                 ? t('limeTitlePf').replace('{ph}', limePf.avg.toFixed(2)).replace('{opt}', limePf.optimal.toFixed(2))
                     + (limePf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', Math.round(limePf.limeL).toLocaleString(FIN_LOCALE())) : '')
                 : buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
+            const limedNow = !isPastSeason && field.limeAppliedSeason != null && field.limeAppliedSeason === ((farm && farm.currentSeason) || 1);
+            let limeHint = limeTitle + (limedNow ? ` · ${t('limedThisSeason')}` : '');
+            if (!isPastSeason && limeStatus === 'active') {
+                const due = limeDueText(field, origIdx, farm, limePh);
+                if (due) limeHint += `\n${due}`;
+            }
 
             const numberParts = String(field.number || '').split('-').map(n => n.trim()).filter(Boolean);
             const numberChipsHtml = numberParts.length
@@ -9450,7 +9523,7 @@ function renderFieldsTable(fields) {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
                             const tag = isPastSeason ? 'span' : 'button';
                             const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
-                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
+                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limedNow ? ' is-limed-now' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${escapeHtml(limeHint)}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
                                 <span class="lime-fill"></span>
                                 <span class="lime-letter">${t('limeLetter')}</span>
                             </${tag}>`;

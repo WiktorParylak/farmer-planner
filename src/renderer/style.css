@@ -5877,9 +5877,18 @@ button.treatment-chip--lime.is-warning {
   box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 
-/* Letter readable on a chip filled at least halfway. */
-.treatment-chip--lime.lime-strong .lime-letter {
-  color: var(--color-surface);
+/* Black letter with a light halo: readable on the empty chip, on any fill
+   colour and in the dark theme. */
+.treatment-chip--lime .lime-letter {
+  color: #000;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+/* Limed this season: a clear ring so it's obvious it's been marked. */
+.treatment-chip--lime.is-limed-now {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  font-weight: 700;
 }
 
 .fc-check input[type="checkbox"] {
@@ -5923,6 +5932,14 @@ button.treatment-chip--lime.is-warning {
   background-color: transparent;
   color: var(--color-ink-soft);
   border-color: var(--color-border-strong);
+}
+
+/* Optional third action (e.g. "Remove liming…"), kept apart on the left. */
+.small-confirm .modal-buttons .small-confirm-extra {
+  margin-right: auto;
+  background-color: transparent;
+  color: var(--color-rust);
+  border-color: var(--color-rust);
 }
 
 .small-confirm .modal-buttons .small-confirm-cancel:hover {

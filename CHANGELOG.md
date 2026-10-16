@@ -10,6 +10,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **No lime in the suggested work when the pH is fine**: *Suggest by month* adds *Lime* only when the field's pH needs it (below 75 %, or never limed) — using the game's own pH when Precision Farming is in the save — and never for crops that don't use lime up (grassland, oilseed radish, rice).
 
 **Changed**
+- **Lime chip “L”/“W”**: the letter is black (with a light outline), so it's readable at any fill and in the dark theme. A field limed this season gets a clear ring around the chip and says so on hover.
+- **Clicking a well-limed field's lime chip** no longer asks to remove the liming. It shows what the chip means: the pH, the game's pH and optimum with Precision Farming, and an estimate of when lime will be needed again (*in about 2 seasons*), worked out from the usual pH drop for the field's soil and labelled as an estimate. Grass, meadows and other crops that don't use lime up say so instead of a number. Removing a liming made by mistake is a separate *Remove liming…* button with its own confirmation.
 - **No weeds step on a ploughed field**: the suggested work list leaves out *Weeds* when the field is ploughed.
 - **Sowing and the work list always agree**: the *Sow* step is ticked exactly when the field is sown. Switching the state badge (*To plant* ↔ *Planted*), ticking or unticking *Sow* in the work list, or *Fields from game* finding the crop growing all change both — click again to take a mistake back.
 
