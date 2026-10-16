@@ -2807,7 +2807,7 @@ window.updateBuildingCapacity = function (input) {
     }
 
     saveFarmData(farm);
-    openHubPanel('animals');
+    rerenderKeepingFocus(() => openHubPanel('animals'));
 };
 
 // --- Animals panel: barn tiles, one-barn detail and custom barn names ---
@@ -5992,9 +5992,31 @@ function wireSoilInputs(bodyEl) {
             else r.fieldSoil[k][soil] = n;
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
-            openHubPanel('fieldsoil');
+            rerenderKeepingFocus(() => openHubPanel('fieldsoil'));
         });
     });
+}
+
+// Re-renders a panel without losing the player's place: a change event fires
+// when Tab or a click has already moved focus to the next input, so that
+// input (found again by its tag, first class and data-* attributes) gets the
+// focus and caret back, and the panel keeps its scroll position.
+function rerenderKeepingFocus(render, scroller = hubView) {
+    const el = document.activeElement;
+    let sel = null, start = null, end = null;
+    if (el && el !== document.body && el.matches('input, select, textarea, button')) {
+        const data = Array.from(el.attributes).filter(a => a.name.startsWith('data-'))
+            .map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('');
+        sel = el.tagName.toLowerCase() + (el.classList[0] ? '.' + CSS.escape(el.classList[0]) : '') + data;
+        try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* not a text input */ }
+    }
+    const scroll = scroller ? scroller.scrollTop : 0;
+    render();
+    if (scroller) scroller.scrollTop = scroll;
+    const again = sel && document.querySelector(sel);
+    if (!again) return;
+    again.focus({ preventScroll: true });
+    try { if (start != null) again.setSelectionRange(start, end); } catch (e) { /* not a text input */ }
 }
 
 // Per-field fertilization plan — opened from the "Plan" button in each row of
@@ -9206,7 +9228,7 @@ window.openFieldModal = function (idx) {
             else r.fieldSoil[k][el.dataset.soil] = n;
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
-            renderFieldModal();
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-use')) {
             const plan = getFeedPlan(farm);
             plan.fieldUse[el.dataset.key] = el.value;

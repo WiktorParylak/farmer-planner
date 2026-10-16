@@ -38,11 +38,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
 ----------------------------------------------------------------------------
 
-3.9 Pola w widoku „Typ gleby pola” gubią fokus
-    Co: każda zmiana procentu = pełny re-render panelu (l. 5318).
-    Tab do następnego pola → zmiana → re-render → fokus znika. To samo przy
-    pojemności koryta w Zwierzętach (updateBuildingCapacity, l. 2348).
-    Propozycja: zapisywać bez re-renderu albo przywracać fokus.
+(wszystko zrobione w 0.9.11)
 
 
 ----------------------------------------------------------------------------

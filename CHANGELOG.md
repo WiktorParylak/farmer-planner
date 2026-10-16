@@ -9,6 +9,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Feed planner ignored feed in the barns**: grain (and any other feed) already lying in the barns' troughs now counts as stock, so with empty silos the planner no longer says *missing* while the Animals panel shows the barn full. The tile says how much of the stock is in the barns (*storage 12 000 (in barns: 3 000 l)*), and the Animals panel's "stock lasts N days" counts it too.
 - **Decimal numbers**: areas, field sizes, trough capacities and feed amounts accept `1,5`, `1 234,5`, `1.234,5` and `1,234.5`; something that isn't a number (e.g. `1,234,5`) is no longer read as a wrong value.
 - **Farm names with special characters**: a farm or map name containing `<`, `&` or quotes no longer breaks the farm list, and *Fertilizer* buttons work for crops and field numbers with quotes in them.
+- **Typing soil shares or a trough capacity**: Tab or a click to the next box no longer loses focus when the panel redraws — the cursor stays where you moved it and the panel keeps its scroll position (*Field soil type*, the field window, a barn's trough capacity).
 - **Header before a farm loads**: no more “Solek / 1000$ / JANUARY” flashing at start; an unknown month shows `–` instead of *August*.
 
 **Changed**
