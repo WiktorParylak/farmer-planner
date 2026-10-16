@@ -31,6 +31,9 @@ function getIpcPath(id) {
     return `${prefix}/discord-ipc-${id}`;
 }
 
+const RECONNECT_MIN_MS = 5000;
+const RECONNECT_MAX_MS = 60000;
+
 class DiscordPresence extends EventEmitter {
     constructor(clientId) {
         super();
@@ -41,7 +44,10 @@ class DiscordPresence extends EventEmitter {
         this.readBuffer = Buffer.alloc(0);
         this.currentActivity = null; // last activity we were asked to show
         this.reconnectTimer = null;
-        this.reconnectDelay = 5000;
+        // While Discord isn't running, wait longer between attempts (5 s,
+        // 10 s, 20 s … up to a minute) and say so in the log only once.
+        this.reconnectDelay = RECONNECT_MIN_MS;
+        this.missingLogged = false;
         // If Discord rejects our art asset (none uploaded named "logo" in the
         // dev portal), stop sending image keys so the text still shows.
         this.assetsRejected = false;
@@ -69,8 +75,12 @@ class DiscordPresence extends EventEmitter {
         if (this.destroyed || this.connected || this.socket) return;
         if (id > 9) {
             // Exhausted ipc-0..9 — Discord probably isn't running. Retry later.
-            this._log('no Discord client found (is the desktop app running?) — retrying in 5s');
+            if (!this.missingLogged || this.debug) {
+                this._log('no Discord client found (is the desktop app running?) — will keep checking quietly');
+                this.missingLogged = true;
+            }
             this._scheduleReconnect();
+            this.reconnectDelay = Math.min(this.reconnectDelay * 2, RECONNECT_MAX_MS);
             return;
         }
 
@@ -145,6 +155,8 @@ class DiscordPresence extends EventEmitter {
                 if (payload.evt === 'READY') {
                     const user = payload.data && payload.data.user;
                     this.connected = true;
+                    this.reconnectDelay = RECONNECT_MIN_MS;
+                    this.missingLogged = false;
                     this._log(`connected${user && user.username ? ' as ' + user.username : ''} — pushing activity`);
                     this.emit('connected');
                     // Flush whatever we were last asked to display.

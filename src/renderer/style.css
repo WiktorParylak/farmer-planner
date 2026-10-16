@@ -51,6 +51,29 @@
   --radius-medium: 16px;
   --radius-small: 8px;
   --radius-pill: 999px;
+
+  /* Type scale — use these instead of raw pixel sizes.
+     Text: 2xs..3xl; display (titles and big numbers): 4xl..hero. */
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 17px;
+  --fs-2xl: 20px;
+  --fs-3xl: 22px;
+  --fs-4xl: 26px;
+  --fs-5xl: 30px;
+  --fs-6xl: 36px;
+  --fs-7xl: 40px;
+  --fs-hero: 46px;
+
+  /* Buttons: three sizes, one border width */
+  --btn-border: 1.5px;
+  --btn-pad-lg: 11px 22px;
+  --btn-pad: 8px 16px;
+  --btn-pad-sm: 5px 12px;
 }
 
 /* ========================================================= */
@@ -114,7 +137,7 @@ body {
 
 .titlebar-title {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -139,7 +162,7 @@ body {
   border: none;
   color: var(--color-surface-alt);
   opacity: 0.75;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.15s ease, opacity 0.15s ease;
@@ -221,20 +244,21 @@ body {
   position: relative;
 }
 
+/* Top-right corner of the "My Farms" card. */
 .app-settings-btn {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 34px;
+  right: 32px;
   width: 38px;
   height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-canvas-alt);
-  color: var(--color-surface-alt);
-  font-size: 17px;
+  border: var(--btn-border) solid var(--color-border-strong);
+  background-color: transparent;
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xl);
   cursor: pointer;
   transition: all 0.2s ease;
   z-index: 10;
@@ -263,7 +287,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -312,7 +336,7 @@ body {
 .logo-author {
   font-family: var(--font-mono);
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: 0.14em;
   color: var(--color-surface-alt);
   opacity: 0.75;
@@ -363,7 +387,7 @@ body {
 .card-title {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: var(--fs-7xl);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-ink);
@@ -394,11 +418,46 @@ body {
 .farm-list:empty::after {
   content: attr(data-empty-text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--color-ink-soft);
   text-align: center;
   padding: 40px 20px;
   line-height: 1.5;
+}
+
+.farm-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  font-size: var(--fs-lg);
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}
+
+.farm-list-empty p { margin: 0; }
+
+.farm-list-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-primary);
+  background-color: transparent;
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.farm-list-empty-cta:hover {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
 }
 
 /* --- Farm List Item --- */
@@ -423,7 +482,7 @@ body {
 .farm-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--fs-3xl);
   letter-spacing: 0.01em;
   color: var(--color-ink);
 }
@@ -431,7 +490,7 @@ body {
 .farm-dates {
   font-family: var(--font-mono);
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.03em;
   color: var(--color-ink-faint);
   text-transform: uppercase;
@@ -446,7 +505,7 @@ body {
   border: 1px solid var(--color-border);
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.02em;
   text-transform: none;
   color: var(--color-ink-soft);
@@ -517,7 +576,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .export-btn-circle:hover {
@@ -544,40 +603,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-pill);
-  padding: 13px 26px;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.add-farm-btn {
-  background-color: var(--color-primary);
-  color: var(--color-surface);
-  border: 1px solid var(--color-primary);
-}
 
-.add-farm-btn:hover {
-  background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
 
-.delete-farm-btn {
-  background-color: transparent;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-ink-soft);
-}
 
-.delete-farm-btn:hover {
-  background-color: var(--color-rust);
-  border-color: var(--color-rust);
-  color: var(--color-surface);
-  transform: translateY(-1px);
-}
 
 .dashboard-actions {
   display: flex;
@@ -592,7 +622,7 @@ body {
   padding: 0;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.04em;
   color: var(--color-ink-faint);
   cursor: pointer;
@@ -700,7 +730,7 @@ body {
 .settings-advanced > summary {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -719,7 +749,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--color-ink);
 }
@@ -728,7 +758,7 @@ body {
 #settings-modal .settings-field select {
   margin: 0;
   padding: 9px 12px;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .settings-path-row {
@@ -755,7 +785,7 @@ body {
 
 .settings-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 400;
   line-height: 1.4;
   color: var(--color-ink-faint);
@@ -769,7 +799,7 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   cursor: pointer;
 }
 
@@ -782,7 +812,7 @@ body {
 .settings-check small {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--color-ink-faint);
 }
@@ -811,7 +841,7 @@ body {
 .modal-content h3 {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 30px;
+  font-size: var(--fs-5xl);
   text-transform: uppercase;
   color: var(--color-ink);
   margin: 0;
@@ -820,7 +850,7 @@ body {
 .modal-field-label {
   display: block;
   margin-top: 10px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   text-align: left;
   color: var(--color-ink-soft);
 }
@@ -828,7 +858,7 @@ body {
 .modal-content p,
 .hub-view p {
   font-weight: 400;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-soft);
   line-height: 1.5;
 }
@@ -838,7 +868,7 @@ body {
 :where(.hub-view) input {
   font-family: var(--font-body);
   font-weight: 400;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   width: 100%;
   padding: 12px 14px;
   margin: 4px 0;
@@ -846,6 +876,25 @@ body {
   border: 1px solid var(--color-border-strong);
   background-color: var(--color-surface-soft);
   color: var(--color-ink);
+}
+
+/* Every drop-down in panels and dialogs looks like the text inputs next to it
+   (parchment, same border and radius). :where() keeps it overridable by the
+   few selects that are styled on purpose (chips, compact table selects). */
+:where(.modal-content, .hub-view) select {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  border-radius: var(--radius-small);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+:where(.modal-content, .hub-view) select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .modal-content input:focus,
@@ -867,9 +916,10 @@ body {
 
 .modal-buttons button,
 .modal-buttons p {
+  white-space: nowrap;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   letter-spacing: 0.03em;
   padding: 11px 22px;
   border: 1px solid var(--color-primary);
@@ -933,7 +983,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: var(--fs-3xl);
   background: var(--color-primary-soft);
   color: var(--color-primary);
   margin-bottom: -6px;
@@ -1035,7 +1085,7 @@ body {
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
   opacity: 0;
@@ -1061,7 +1111,7 @@ body {
 .save-name {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 46px;
+  font-size: var(--fs-hero);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--color-ink);
@@ -1093,7 +1143,7 @@ body {
 .year-label {
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.08em;
   color: var(--color-ink-soft);
   margin: 0;
@@ -1102,7 +1152,7 @@ body {
 .balance-value {
   font-family: var(--font-mono);
   font-weight: 600;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   color: var(--color-primary-dark);
   border: none;
   background: transparent;
@@ -1112,7 +1162,7 @@ body {
 .month-value {
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: 0.05em;
   color: var(--color-surface);
   margin: 0;
@@ -1124,7 +1174,7 @@ body {
 .year-value-input {
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: 0.05em;
   color: var(--color-surface);
   margin: 0;
@@ -1190,7 +1240,7 @@ thead th {
   background-color: var(--color-surface-alt);
   text-align: left;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--color-ink-soft);
@@ -1202,7 +1252,7 @@ thead th {
 tbody td {
   padding: 13px 16px;
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 500;
   color: var(--color-ink);
   border-bottom: 1px solid var(--color-border);
@@ -1226,7 +1276,7 @@ tbody tr:hover {
 
 .table-footer-controls .footer-label {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--color-ink-soft);
@@ -1235,7 +1285,7 @@ tbody tr:hover {
 
 #total-ha-sum {
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--fs-xl);
   color: var(--color-primary-dark);
 }
 
@@ -1253,7 +1303,7 @@ tbody tr:hover {
 .season-number {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 28px;
+  font-size: var(--fs-4xl);
   text-transform: uppercase;
   color: var(--color-ink);
   margin: 0;
@@ -1274,7 +1324,7 @@ tbody tr:hover {
 .fertplan-open-btn {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-base);
   text-transform: uppercase;
   letter-spacing: .04em;
   padding: 10px 22px;
@@ -1319,7 +1369,7 @@ tbody tr:hover {
   gap: 12px;
   margin: 12px 0;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .fertplan-field .fertplan-input-wrap {
@@ -1358,13 +1408,13 @@ tbody tr:hover {
   padding: 8px 10px;
   border-left: 2px solid var(--color-border-strong);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
 .fertplan-org-vol-hint {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-style: italic;
   color: var(--color-ink-faint);
   margin-bottom: 2px;
@@ -1375,7 +1425,7 @@ tbody tr:hover {
   min-width: 72px;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: .03em;
   color: var(--color-ink-faint);
@@ -1383,7 +1433,7 @@ tbody tr:hover {
 
 .fertplan-status {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-faint);
 }
 
@@ -1402,7 +1452,7 @@ tbody tr:hover {
 .hub-panel-note {
   margin-top: 10px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-style: italic;
   color: var(--color-ink-faint);
   text-align: center;
@@ -1413,11 +1463,11 @@ tbody tr:hover {
   margin: 10px 0 2px;
   padding-top: 10px;
   border-top: 1px solid var(--color-border);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
   color: var(--color-ink-soft);
   text-align: left;
 }
@@ -1463,7 +1513,7 @@ tbody tr:hover {
 .pen-card-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--fs-xl);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: var(--color-ink);
@@ -1477,7 +1527,7 @@ tbody tr:hover {
   color: var(--color-surface);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -1494,13 +1544,13 @@ tbody tr:hover {
   justify-content: space-between;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
 }
 
 .pen-cluster-meta {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--color-ink-faint);
 }
@@ -1509,7 +1559,7 @@ tbody tr:hover {
   margin-top: 4px;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-ink-faint);
@@ -1524,7 +1574,7 @@ tbody tr:hover {
 .pen-bar-label {
   flex: 0 0 72px;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--color-ink-soft);
   overflow: hidden;
@@ -1561,7 +1611,7 @@ tbody tr:hover {
 .pen-bar-value {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--color-ink-faint);
   white-space: nowrap;
 }
@@ -1576,7 +1626,7 @@ tbody tr:hover {
 
 .pen-capacity-label {
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--color-ink-faint);
 }
 
@@ -1584,7 +1634,7 @@ tbody tr:hover {
   width: 56px;
   padding: 2px 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-align: right;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
@@ -1600,7 +1650,7 @@ tbody tr:hover {
 .pen-days-left {
   margin: 2px 0 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--color-ink-faint);
   text-align: right;
 }
@@ -1636,7 +1686,7 @@ tbody tr:hover {
   background-color: var(--color-primary-soft);
   color: var(--color-primary-dark);
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -1649,7 +1699,7 @@ tbody tr:hover {
 
 .chart-caption {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1670,7 +1720,7 @@ tbody tr:hover {
   align-items: center;
   gap: 6px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--color-ink-soft);
 }
@@ -1756,7 +1806,7 @@ tbody tr:hover {
 
 .chart-axis-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   fill: var(--color-ink-faint);
 }
 
@@ -1767,14 +1817,14 @@ tbody tr:hover {
   font-family: var(--font-body);
   font-weight: 600;
   margin-bottom: 14px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-soft);
 }
 
 .details-category-value {
   font-family: var(--font-mono);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--color-ink);
   margin-left: 8px;
 }
@@ -1807,7 +1857,7 @@ tbody tr:hover {
 .crops-container h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--fs-2xl);
   line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.01em;
@@ -1827,7 +1877,7 @@ tbody tr:hover {
 
 .crops-header-cell {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--color-ink-soft);
@@ -1835,7 +1885,7 @@ tbody tr:hover {
 
 #crops-body td {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--fs-md);
   padding: 11px 14px;
 }
 
@@ -1857,7 +1907,7 @@ tbody tr:hover {
   padding: 24px 16px;
   color: var(--color-ink-faint);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   line-height: 1.5;
 }
 
@@ -1868,7 +1918,7 @@ tbody tr:hover {
   color: var(--color-primary-dark);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: 0.04em;
   padding: 12px;
   transition: background-color 0.2s ease;
@@ -1914,7 +1964,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .crops-sort-hint {
   margin: 8px 0 0;
   min-height: 1.2em;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-faint);
   text-align: center;
 }
@@ -1922,7 +1972,7 @@ th.is-sortable[aria-sort="descending"]::after {
 #crops-body .crops-section-row td {
   padding-top: 16px;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1934,48 +1984,166 @@ th.is-sortable[aria-sort="descending"]::after {
 /* 6. BUTTON COMPONENTS                                       */
 /* ========================================================= */
 
-/* General Green Pill Button (Add, Save, primary actions) */
+/* One button system: .btn + a look (--primary, --secondary, --accent,
+   --dashed, --danger) + a size (--lg, default, --sm). The older per-view
+   classes are listed next to the look and size they use, so their own rules
+   only add layout. New buttons should use .btn classes. */
+.btn,
+.add-farm-btn,
+.delete-farm-btn,
 .new-season-btn,
+.edit-season-btn,
 .add-crop,
-.exit-btn {
+.edit-crop,
+.exit-btn,
+.settings-btn,
+.notes-add-btn,
+.barn-back-btn,
+.tutorial-prev-btn,
+.tutorial-next-btn,
+.replay-tutorial-btn,
+.note-edit-add-item-btn,
+.mixer-add-btn,
+.supply-fillplan-btn,
+.supply-reset-btn,
+.notes-filter-thismonth-btn {
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-base);
   letter-spacing: 0.03em;
-  color: var(--color-surface);
-  width: fit-content;
-  padding: 9px 18px;
+  line-height: 1.2;
+  padding: var(--btn-pad);
+  border: var(--btn-border) solid var(--color-border-strong);
   border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
+  background-color: transparent;
+  color: var(--color-ink);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid var(--color-primary);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease, transform 0.15s ease;
 }
 
+/* Sizes: large = page actions next to a title, small = inside tables and lists */
+.btn--lg,
+.add-farm-btn,
+.delete-farm-btn,
+.new-season-btn,
+.edit-season-btn {
+  font-size: var(--fs-md);
+  padding: var(--btn-pad-lg);
+}
+
+.btn--sm,
+.note-edit-add-item-btn,
+.supply-fillplan-btn,
+.supply-reset-btn,
+.notes-filter-thismonth-btn,
+.field-view-section .settings-btn {
+  font-size: var(--fs-sm);
+  padding: var(--btn-pad-sm);
+}
+
+/* Primary: filled green */
+.btn--primary,
+.add-farm-btn,
+.new-season-btn,
+.add-crop,
+.exit-btn,
+.notes-add-btn,
+.tutorial-next-btn {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.btn--primary:hover:not(:disabled),
+.add-farm-btn:hover,
 .new-season-btn:hover,
 .add-crop:hover,
-.exit-btn:hover {
+.exit-btn:hover,
+.notes-add-btn:hover,
+.tutorial-next-btn:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
   box-shadow: var(--shadow-hover);
   transform: translateY(-1px);
 }
 
-/* General Outline Button (Edit, Settings, etc.) */
+/* Secondary: outline that fills with ink on hover */
+.btn--secondary:hover:not(:disabled),
+.edit-season-btn:hover,
+.edit-crop:hover,
+.settings-btn:hover,
+.barn-back-btn:hover,
+.tutorial-prev-btn:hover,
+.replay-tutorial-btn:hover,
+.note-edit-add-item-btn:hover {
+  background-color: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-surface);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+/* Accent: amber chip-like action (fill from plan, this month) */
+.btn--accent,
+.supply-fillplan-btn,
+.notes-filter-thismonth-btn {
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+}
+
+.btn--accent:hover:not(:disabled),
+.supply-fillplan-btn:hover:not(:disabled),
+.notes-filter-thismonth-btn:hover {
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+}
+
+/* Dashed: "add another" inside a list */
+.btn--dashed,
+.mixer-add-btn {
+  border-style: dashed;
+  color: var(--color-ink-soft);
+}
+
+.btn--dashed:hover:not(:disabled),
+.mixer-add-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Danger: outline in rust, fills on hover (resets, deletes) */
+.btn--danger,
+.reset-btn {
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.btn--danger:hover:not(:disabled),
+.reset-btn:hover,
+.delete-farm-btn:hover,
+.supply-reset-btn:hover {
+  background-color: var(--color-rust);
+  border-color: var(--color-rust);
+  color: var(--color-surface);
+  box-shadow: 0 6px 16px rgba(166, 69, 43, 0.25);
+  transform: translateY(-1px);
+}
+
+/* The old page and modal buttons never stretch in a column layout. */
+.new-season-btn,
 .edit-season-btn,
+.add-crop,
 .edit-crop,
+.exit-btn,
 .settings-btn {
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.03em;
-  color: var(--color-ink);
   width: fit-content;
-  padding: 9px 18px;
-  border-radius: var(--radius-pill);
-  background-color: transparent;
-  border: 1.5px solid var(--color-border-strong);
-  cursor: pointer;
-  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Edit mode: the Edit button turns into a filled "Save changes". */
@@ -1987,30 +2155,6 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .cancel-edit-btn[hidden] {
   display: none;
-}
-
-.reset-btn {
-  color: var(--color-rust);
-  border: 1.5px solid var(--color-rust);
-  background-color: transparent;
-}
-
-.edit-season-btn:hover,
-.edit-crop:hover,
-.settings-btn:hover {
-  background-color: var(--color-ink);
-  color: var(--color-surface);
-  border-color: var(--color-ink);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
-
-.reset-btn:hover {
-  background-color: var(--color-rust);
-  color: var(--color-surface);
-  border-color: var(--color-rust);
-  box-shadow: 0 6px 16px rgba(166, 69, 43, 0.25);
-  transform: translateY(-1px);
 }
 
 /* --- Planner sidebar + tool views --- */
@@ -2066,7 +2210,7 @@ th.is-sortable[aria-sort="descending"]::after {
   background-color: transparent;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink);
   text-align: left;
   cursor: pointer;
@@ -2100,7 +2244,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .sidebar-item-icon i {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .sidebar-item-label {
@@ -2121,11 +2265,6 @@ th.is-sortable[aria-sort="descending"]::after {
   box-shadow: 0 0 0 2px var(--color-surface);
 }
 
-.sidebar-item--util {
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
 
 .sidebar-item--util .sidebar-item-icon {
   background-color: transparent;
@@ -2160,7 +2299,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .hub-view-title {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 30px;
+  font-size: var(--fs-5xl);
   text-transform: uppercase;
   color: var(--color-ink);
   margin: 0;
@@ -2221,7 +2360,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .barn-tile-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--fs-3xl);
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -2233,7 +2372,7 @@ th.is-sortable[aria-sort="descending"]::after {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-soft);
 }
 
@@ -2243,9 +2382,8 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-tile-health {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-ink-faint);
+  font-size: var(--fs-base);
+  color: var(--color-ink-soft);
 }
 
 .barn-tile-section-label {
@@ -2253,7 +2391,7 @@ th.is-sortable[aria-sort="descending"]::after {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2278,20 +2416,20 @@ th.is-sortable[aria-sort="descending"]::after {
   justify-content: space-between;
   gap: 2px 12px;
   white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--color-ink-soft);
 }
 
 .barn-tile-feed-note {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-faint);
 }
 
 .barn-tile-open {
   margin-top: auto;
   align-self: flex-end;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--color-primary);
 }
@@ -2317,7 +2455,7 @@ th.is-sortable[aria-sort="descending"]::after {
   background: transparent;
   color: var(--color-ink-faint);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-base);
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -2335,7 +2473,7 @@ th.is-sortable[aria-sort="descending"]::after {
   padding: 6px 10px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--fs-2xl);
   text-transform: uppercase;
 }
 
@@ -2349,22 +2487,8 @@ th.is-sortable[aria-sort="descending"]::after {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--color-border-strong);
-  background: transparent;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--color-ink);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.barn-back-btn:hover {
-  background-color: var(--color-ink);
-  color: var(--color-surface);
-}
 
 /* Breed picture (from the mods) or a species icon fallback. */
 .animal-pic {
@@ -2397,7 +2521,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-tile-pic.animal-pic--icon {
-  font-size: 26px;
+  font-size: var(--fs-4xl);
 }
 
 /* --- One barn --- */
@@ -2437,7 +2561,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-hero-pic.animal-pic--icon {
-  font-size: 46px;
+  font-size: var(--fs-hero);
 }
 
 .barn-hero-text {
@@ -2456,7 +2580,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .barn-hero-title {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: var(--fs-7xl);
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.01em;
@@ -2468,13 +2592,13 @@ th.is-sortable[aria-sort="descending"]::after {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 22px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--color-ink-soft);
 }
 
 .barn-hero-meta strong {
   color: var(--color-ink);
-  font-size: 18px;
+  font-size: var(--fs-xl);
 }
 
 .barn-hero-badge {
@@ -2482,14 +2606,14 @@ th.is-sortable[aria-sort="descending"]::after {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 6px 14px;
 }
 
 .barn-section-title {
   margin: 0 0 12px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2519,7 +2643,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .herd-pic.animal-pic--icon {
-  font-size: 34px;
+  font-size: var(--fs-6xl);
 }
 
 .herd-info {
@@ -2533,7 +2657,7 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .herd-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--color-ink);
   overflow-wrap: break-word;
 }
@@ -2541,14 +2665,14 @@ th.is-sortable[aria-sort="descending"]::after {
 .herd-count {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--fs-4xl);
   line-height: 1;
   color: var(--color-primary-dark);
 }
 
 .herd-age {
   grid-column: 1 / -1;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
 }
 
@@ -2558,7 +2682,7 @@ th.is-sortable[aria-sort="descending"]::after {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -2595,7 +2719,7 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .barn-empty {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-faint);
 }
 
@@ -2616,13 +2740,13 @@ th.is-sortable[aria-sort="descending"]::after {
 .feed-amount-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 36px;
+  font-size: var(--fs-6xl);
   line-height: 1;
   color: var(--color-ink);
 }
 
 .feed-amount-types {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
 }
 
@@ -2641,12 +2765,12 @@ th.is-sortable[aria-sort="descending"]::after {
 .feed-days-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 32px;
+  font-size: var(--fs-5xl);
   line-height: 1;
 }
 
 .feed-days-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2675,7 +2799,7 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .feed-gauge-pct {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--color-ink-soft);
 }
@@ -2684,7 +2808,7 @@ th.is-sortable[aria-sort="descending"]::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
 }
 
@@ -2692,7 +2816,7 @@ th.is-sortable[aria-sort="descending"]::after {
   width: 110px;
   padding: 6px 10px;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--fs-md);
   text-align: right;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
@@ -2710,7 +2834,7 @@ th.is-sortable[aria-sort="descending"]::after {
   margin-top: 6px;
   padding-top: 14px;
   border-top: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2721,7 +2845,7 @@ th.is-sortable[aria-sort="descending"]::after {
   width: 100%;
   padding: 9px 12px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-md);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   background-color: var(--color-surface);
@@ -2747,13 +2871,13 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .ration-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink);
 }
 
 .ration-rate {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--color-ink);
   text-align: right;
@@ -2764,7 +2888,7 @@ th.is-sortable[aria-sort="descending"]::after {
   justify-self: start;
   padding: 1px 8px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -2798,7 +2922,7 @@ th.is-sortable[aria-sort="descending"]::after {
   flex: 0 0 auto;
   border-radius: var(--radius-pill);
   color: var(--color-surface);
-  font-size: 15px;
+  font-size: var(--fs-lg);
 }
 
 .barn-stat-icon--water { background-color: var(--color-sky); }
@@ -2814,7 +2938,7 @@ th.is-sortable[aria-sort="descending"]::after {
   align-items: center;
   gap: 6px;
   margin-top: 4px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--color-ink-soft);
 }
@@ -2845,7 +2969,7 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .herd-repro-last {
   grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-faint);
 }
 
@@ -2862,7 +2986,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-tile-repro {
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: #9A3F68;
 }
@@ -2873,13 +2997,13 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .barn-stat-label {
   flex: 1;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--color-ink);
 }
 
 .barn-stat-value {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--color-ink);
   white-space: nowrap;
@@ -2888,7 +3012,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .barn-notes {
   margin-top: 16px;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
 }
 
@@ -2909,7 +3033,7 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-hero input.barn-name-input {
-  font-size: 28px;
+  font-size: var(--fs-4xl);
 }
 
 /* ========================================================= */
@@ -2922,7 +3046,7 @@ th.is-sortable[aria-sort="descending"]::after {
   padding: 4px 12px;
   border-radius: var(--radius-pill);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2948,14 +3072,14 @@ th.is-sortable[aria-sort="descending"]::after {
 .badge--split {
   background-color: rgba(62, 112, 137, 0.15);
   color: var(--color-sky);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding: 2px 8px;
 }
 
 .badge--rotation-warn {
   background-color: var(--color-accent-soft);
   color: var(--color-accent-dark);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   padding: 1px 6px;
   cursor: help;
@@ -2983,7 +3107,7 @@ th.is-sortable[aria-sort="descending"]::after {
   border: 1px solid var(--color-border-strong);
   font-family: var(--font-mono);
   font-weight: 800;
-  font-size: 13px;
+  font-size: var(--fs-base);
   line-height: 1.25;
   color: var(--color-primary-dark);
 }
@@ -2996,7 +3120,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .field-number-sep {
   color: var(--color-ink-faint);
   font-weight: 400;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .field-number-cell[title] {
@@ -3021,7 +3145,7 @@ th.is-sortable[aria-sort="descending"]::after {
   color: var(--color-ink-faint);
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 0;
   cursor: default;
   user-select: none;
@@ -3105,7 +3229,7 @@ button.treatment-chip:hover {
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.02em;
   color: var(--color-ink-faint);
   cursor: pointer;
@@ -3146,7 +3270,7 @@ span.tillage-switch-option {
 .ha-caption {
   display: block;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 400;
   color: var(--color-ink-faint);
   margin-top: 2px;
@@ -3169,7 +3293,7 @@ span.tillage-switch-option {
 .farmland-ha-sum {
   margin-left: 10px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -3192,7 +3316,7 @@ span.tillage-switch-option {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   text-align: left;
   cursor: pointer;
 }
@@ -3213,7 +3337,7 @@ span.tillage-switch-option {
   margin-left: 6px;
   padding: 1px 7px;
   border-radius: var(--radius-pill);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -3228,7 +3352,7 @@ span.tillage-switch-option {
 }
 
 .animal-mods-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   opacity: 0.75;
   margin: 0;
 }
@@ -3253,7 +3377,7 @@ tr.field-split-row.field-lease-row {
 .lease-caption {
   display: block;
   margin-top: 3px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--color-ink-soft);
 }
 
@@ -3276,7 +3400,7 @@ tr.field-split-row.field-lease-row {
 }
 
 .grass-age-caption .badge--rotation-warn {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding: 0 5px;
 }
 
@@ -3289,7 +3413,7 @@ tr.field-split-row.field-lease-row {
   background: transparent;
   color: var(--color-ink-faint);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-align: center;
 }
 
@@ -3317,7 +3441,7 @@ button.tillage-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .lease-check input {
@@ -3351,7 +3475,7 @@ button.tillage-chip {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--fs-md);
   background-color: var(--color-surface-soft);
   color: var(--color-ink);
 }
@@ -3365,7 +3489,7 @@ button.tillage-chip {
 
 .field-size-input {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 6px 8px;
   border-color: var(--color-sky);
 }
@@ -3373,7 +3497,7 @@ button.tillage-chip {
 .split-hint {
   display: block;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--color-sky);
   margin-top: 4px;
@@ -3384,7 +3508,7 @@ button.tillage-chip {
   display: block;
   flex-basis: 100%;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--color-accent-dark);
   margin-top: 4px;
@@ -3397,7 +3521,7 @@ button.tillage-chip {
   font-weight: bold;
   cursor: pointer;
   margin-right: 8px;
-  font-size: 16px;
+  font-size: var(--fs-xl);
 }
 
 .delete-row-btn:hover {
@@ -3440,7 +3564,7 @@ button.tillage-chip {
 
 .field-card .edit-input {
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .field-edit-tr.field-split-row .field-card {
@@ -3473,7 +3597,7 @@ button.tillage-chip {
 
 .fc-label {
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -3514,7 +3638,7 @@ button.tillage-chip {
   background: var(--color-surface-soft);
   color: var(--color-ink-soft);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -3650,7 +3774,7 @@ select:focus-visible,
   }
 
   .planner-header h1 {
-    font-size: 34px;
+    font-size: var(--fs-6xl);
   }
 
   .balance,
@@ -3667,7 +3791,7 @@ select:focus-visible,
   .sidebar-item {
     gap: 9px;
     padding: 5px 8px;
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 
   .sidebar-item-icon {
@@ -3689,13 +3813,13 @@ select:focus-visible,
 
   thead th {
     padding: 10px 10px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.05em;
   }
 
   tbody td {
     padding: 9px 10px;
-    font-size: 14px;
+    font-size: var(--fs-md);
   }
 
   .tillage-switch-option {
@@ -3717,7 +3841,7 @@ select:focus-visible,
   .sidebar-item {
     gap: 7px;
     padding: 4px 6px;
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
   }
 
   .planner-crops {
@@ -3725,37 +3849,37 @@ select:focus-visible,
   }
 
   .crops-container h1 {
-    font-size: 17px;
+    font-size: var(--fs-xl);
   }
 
   #crops-body td {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 
   thead th {
     padding: 9px 7px;
-    font-size: 10.5px;
+    font-size: var(--fs-2xs);
     letter-spacing: 0.03em;
   }
 
   tbody td {
     padding: 8px 7px;
-    font-size: 13px;
+    font-size: var(--fs-base);
   }
 
   .tillage-switch-option {
     padding: 4px 7px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
 
   .fertplan-open-btn {
     padding: 7px 10px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 
   .badge {
-    font-size: 10px;
+    font-size: var(--fs-2xs);
   }
 }
 
@@ -3788,7 +3912,7 @@ select:focus-visible,
   }
 
   .planner-header h1 {
-    font-size: 28px;
+    font-size: var(--fs-4xl);
   }
 
   #fields-table:not(.is-edit-cards) {
@@ -3829,7 +3953,7 @@ select:focus-visible,
 .yield-season-label {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 16px;
+  font-size: var(--fs-xl);
   text-transform: uppercase;
   color: var(--color-ink);
   min-width: 110px;
@@ -3847,7 +3971,7 @@ select:focus-visible,
   background: transparent;
   color: var(--color-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .yield-season-arrow:hover {
@@ -3866,7 +3990,7 @@ select:focus-visible,
 .supply-intro {
   width: 100%;
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
 }
 
@@ -3875,18 +3999,18 @@ select:focus-visible,
   border-collapse: collapse;
   margin: 4px 0 2px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .supply-table th {
   padding: 4px 8px;
   text-align: left;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-ink-faint);
+  letter-spacing: 0.08em;
+  color: var(--color-ink-soft);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -3900,8 +4024,14 @@ select:focus-visible,
 .supply-table td:not(:first-child) {
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   white-space: nowrap;
+}
+
+/* Column headers stay in the label font even over number columns. */
+.supply-table th:not(:first-child) {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
 }
 
 .supply-table tbody tr:last-child td {
@@ -3917,16 +4047,16 @@ select:focus-visible,
 }
 
 .supply-table .supply-total-row td:first-child {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-size: var(--fs-xs);
 }
 
 .supply-table .supply-subtotal-row td {
   border-bottom: none;
   padding-top: 2px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-style: italic;
   color: var(--color-ink-faint);
 }
@@ -3934,7 +4064,7 @@ select:focus-visible,
 .supply-sub {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 400;
   color: var(--color-ink-faint);
   margin-top: 1px;
@@ -3949,7 +4079,7 @@ select:focus-visible,
   border-radius: 50%;
   background-color: var(--color-accent-soft);
   color: var(--color-accent-dark);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: help;
 }
@@ -3964,7 +4094,7 @@ select:focus-visible,
   border-radius: var(--radius-pill);
   text-transform: uppercase;
   letter-spacing: .02em;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -3976,22 +4106,7 @@ select:focus-visible,
   text-align: center;
 }
 
-.supply-fillplan-btn {
-  padding: 5px 12px;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 12px;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-accent-soft);
-  color: var(--color-accent-dark);
-  cursor: pointer;
-}
 
-.supply-fillplan-btn:hover {
-  background-color: var(--color-accent);
-  color: var(--color-surface);
-}
 
 /* --- Adjust rates drawer --- */
 .supply-adjust {
@@ -4005,7 +4120,7 @@ select:focus-visible,
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-ink-soft);
@@ -4027,7 +4142,7 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -4048,7 +4163,7 @@ select:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -4057,7 +4172,7 @@ select:focus-visible,
   width: 100%;
   padding: 5px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   background-color: var(--color-surface);
@@ -4105,27 +4220,14 @@ select:focus-visible,
 .supply-unit {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--color-ink-faint);
 }
 
 .supply-reset-btn {
   align-self: flex-start;
-  padding: 6px 14px;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-small);
-  background-color: var(--color-surface-soft);
-  color: var(--color-ink-soft);
-  cursor: pointer;
 }
 
-.supply-reset-btn:hover {
-  border-color: var(--color-rust);
-  color: var(--color-rust);
-}
 
 .hub-panel-note + .supply-adjust {
   margin-top: 8px;
@@ -4151,7 +4253,7 @@ select:focus-visible,
 .field-soil-import-hint {
   flex: 1 1 260px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -4164,7 +4266,7 @@ select:focus-visible,
 .supply-soil-cell {
   white-space: normal !important;
   font-family: var(--font-body) !important;
-  font-size: 11px !important;
+  font-size: var(--fs-xs) !important;
   color: var(--color-ink-soft);
 }
 
@@ -4173,11 +4275,11 @@ select:focus-visible,
 }
 
 .supply-soil-table .supply-soil-input {
-  width: 48px;
+  width: 62px;
   padding: 4px 6px;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   background-color: var(--color-surface);
@@ -4192,7 +4294,7 @@ select:focus-visible,
 .supply-soil-table .supply-unit {
   margin-left: 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--color-ink-faint);
 }
 
@@ -4208,29 +4310,11 @@ select:focus-visible,
   margin-bottom: 12px;
 }
 
-.notes-add-btn {
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  padding: 10px 18px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
-  color: var(--color-surface);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
 
-.notes-add-btn:hover {
-  background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
 
 .notes-filter-select {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 9px 12px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
@@ -4239,23 +4323,7 @@ select:focus-visible,
   cursor: pointer;
 }
 
-.notes-filter-thismonth-btn {
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 9px 14px;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-accent-soft);
-  color: var(--color-accent-dark);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
 
-.notes-filter-thismonth-btn:hover {
-  background-color: var(--color-accent);
-  color: var(--color-surface);
-}
 
 .notes-list {
   display: flex;
@@ -4268,7 +4336,7 @@ select:focus-visible,
   content: attr(data-empty-text);
   display: block;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-soft);
   text-align: center;
   padding: 30px 20px;
@@ -4299,7 +4367,7 @@ select:focus-visible,
 }
 
 .note-card-caret {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   margin-right: 8px;
   color: var(--color-ink-faint);
   transition: transform 0.15s ease;
@@ -4312,7 +4380,7 @@ select:focus-visible,
 .note-card-count {
   margin-left: 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--color-ink-faint);
 }
@@ -4343,7 +4411,7 @@ select:focus-visible,
 .note-card-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   color: var(--color-ink);
   margin: 0;
 }
@@ -4355,11 +4423,16 @@ select:focus-visible,
 }
 
 .note-card-action {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--fs-base);
   line-height: 1;
-  padding: 6px 9px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-small);
+  padding: 0;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
   background-color: var(--color-surface);
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -4380,7 +4453,7 @@ select:focus-visible,
   align-self: flex-start;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 3px 10px;
@@ -4391,7 +4464,7 @@ select:focus-visible,
 
 .note-card-body {
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
   margin: 0;
   line-height: 1.5;
@@ -4406,7 +4479,7 @@ select:focus-visible,
 .note-month-chip {
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 3px 9px;
   border-radius: var(--radius-pill);
   background-color: var(--color-surface-alt);
@@ -4424,7 +4497,7 @@ select:focus-visible,
   gap: 5px;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 3px 9px;
   border-radius: var(--radius-pill);
   background-color: color-mix(in srgb, var(--tag-color) 18%, var(--color-surface-soft));
@@ -4436,7 +4509,7 @@ select:focus-visible,
   border: none;
   background: none;
   padding: 0;
-  font-size: 13px;
+  font-size: var(--fs-base);
   line-height: 1;
   color: inherit;
   cursor: pointer;
@@ -4456,7 +4529,7 @@ select:focus-visible,
 
 .note-checklist-progress {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--color-ink-faint);
   margin-bottom: 2px;
@@ -4466,7 +4539,7 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -4495,7 +4568,7 @@ select:focus-visible,
 #note-edit-modal .modal-content > p {
   margin: 0;
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-ink-soft);
@@ -4503,7 +4576,7 @@ select:focus-visible,
 
 #note-edit-modal textarea {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-md);
   width: 100%;
   min-height: 70px;
   padding: 12px 14px;
@@ -4532,7 +4605,7 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -4571,7 +4644,7 @@ select:focus-visible,
 .note-edit-checklist-row .note-edit-checklist-text {
   flex: 1;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   padding: 8px 10px;
   border-radius: var(--radius-small);
   border: 1px solid var(--color-border-strong);
@@ -4582,7 +4655,7 @@ select:focus-visible,
 .note-edit-checklist-remove {
   border: none;
   background: none;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   line-height: 1;
   color: var(--color-ink-faint);
   cursor: pointer;
@@ -4595,45 +4668,15 @@ select:focus-visible,
 
 .note-edit-add-item-btn {
   align-self: flex-start;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-surface);
-  color: var(--color-ink-soft);
-  cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.note-edit-add-item-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
 
 /* =============================================================
    FIRST-RUN TUTORIAL (spotlight + bubble)
    Above modals (1000), below the titlebar (3000) so the window
    controls keep working during the tour.
    ============================================================= */
-.replay-tutorial-btn {
-  padding: 12px 18px;
-  border-radius: var(--radius-medium);
-  border: 1.5px solid var(--color-border-strong);
-  background-color: transparent;
-  color: var(--color-ink);
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
 
-.replay-tutorial-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
 
 /* The overlay itself lets clicks through; the four blockers around the
    spotlight hole catch them instead, so only the highlighted element is
@@ -4695,7 +4738,7 @@ select:focus-visible,
 
 .tutorial-step-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--color-ink-faint);
   margin-bottom: 6px;
 }
@@ -4703,7 +4746,7 @@ select:focus-visible,
 .tutorial-title {
   margin: 0 0 8px;
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: var(--fs-2xl);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: var(--color-primary-dark);
@@ -4711,7 +4754,7 @@ select:focus-visible,
 
 .tutorial-text {
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--color-ink-soft);
 }
@@ -4734,7 +4777,7 @@ select:focus-visible,
   border-radius: var(--radius-small);
   background-color: var(--color-accent-soft);
   color: var(--color-accent-dark);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
 }
 
@@ -4758,7 +4801,7 @@ select:focus-visible,
   background: none;
   color: var(--color-ink-faint);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -4805,7 +4848,7 @@ select:focus-visible,
   background: transparent;
   color: var(--color-ink);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -4825,47 +4868,21 @@ select:focus-visible,
 
 .tutorial-chapter-meta {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--color-ink-faint);
 }
 
 .tutorial-chapter-btn.is-done .tutorial-chapter-meta {
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
 .tutorial-prev-btn,
-.tutorial-next-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
 
-.tutorial-prev-btn {
-  border: 1.5px solid var(--color-border-strong);
-  background: transparent;
-  color: var(--color-ink);
-}
 
-.tutorial-prev-btn:hover {
-  border-color: var(--color-primary);
-}
 
-.tutorial-next-btn {
-  border: 1.5px solid var(--color-primary);
-  background-color: var(--color-primary);
-  color: var(--color-surface);
-}
 
-.tutorial-next-btn:hover {
-  background-color: var(--color-primary-dark);
-  border-color: var(--color-primary-dark);
-}
 
 /* ========================================================= */
 /* 12. FEED PLANNER (hub panel)                               */
@@ -4876,7 +4893,7 @@ select:focus-visible,
   margin: 0;
   padding: 4px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   background-color: var(--color-surface);
@@ -4914,7 +4931,7 @@ select:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -4956,12 +4973,12 @@ select:focus-visible,
 .feed-custom-meta {
   flex: 1;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--color-ink-faint);
 }
 
 .feed-custom-head .note-card-action {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 4px 7px;
 }
 
@@ -4989,7 +5006,7 @@ select:focus-visible,
 .feed-editor-sub {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-ink-soft);
@@ -5008,7 +5025,7 @@ select:focus-visible,
   padding: 0;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-primary);
   cursor: pointer;
 }
@@ -5016,7 +5033,7 @@ select:focus-visible,
 .feed-ed-sum,
 .feed-ed-error {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .feed-ed-error:empty {
@@ -5085,7 +5102,7 @@ select:focus-visible,
   padding: 12px 14px;
   border-radius: var(--radius-medium);
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .feed-barn-tile:hover,
@@ -5108,7 +5125,7 @@ select:focus-visible,
   width: 100%;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -5136,7 +5153,7 @@ select:focus-visible,
 
 .feed-barn-need {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--color-ink);
 }
@@ -5159,14 +5176,14 @@ select:focus-visible,
 }
 
 .feed-need-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
 .feed-need-value {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--fs-3xl);
   color: var(--color-ink);
 }
 
@@ -5182,7 +5199,7 @@ select:focus-visible,
   gap: 8px;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
 }
 
@@ -5190,7 +5207,7 @@ select:focus-visible,
   padding: 1px 7px;
   border-radius: var(--radius-pill);
   background-color: var(--color-surface-alt);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--color-ink-soft);
 }
@@ -5248,7 +5265,7 @@ select:focus-visible,
   border-radius: 50%;
   background-color: var(--color-primary-soft);
   color: var(--color-primary);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .feed-ing-tile--short .feed-ing-icon {
@@ -5259,19 +5276,19 @@ select:focus-visible,
 .feed-ing-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .feed-ing-barn,
 .feed-ing-have {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
 .feed-ing-status {
-  font-size: 16px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--color-primary);
 }
@@ -5285,7 +5302,7 @@ select:focus-visible,
 }
 
 .feed-ing-extra {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   opacity: 0.8;
 }
@@ -5322,7 +5339,7 @@ select:focus-visible,
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: var(--color-ink-soft);
@@ -5341,7 +5358,7 @@ select:focus-visible,
   width: 100%;
   padding: 4px 8px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-small);
   background-color: var(--color-surface);
@@ -5357,7 +5374,7 @@ select:focus-visible,
   display: block;
   margin-top: 1px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 400;
   color: var(--color-ink-faint);
 }
@@ -5414,7 +5431,7 @@ select:focus-visible,
   border-radius: var(--radius-pill);
   background-color: var(--color-accent);
   color: var(--color-surface);
-  font-size: 17px;
+  font-size: var(--fs-xl);
 }
 
 .mixer-wagon-text {
@@ -5428,13 +5445,13 @@ select:focus-visible,
 .mixer-wagon-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: var(--fs-xl);
   text-transform: uppercase;
   color: var(--color-ink);
 }
 
 .mixer-wagon-meta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -5442,21 +5459,8 @@ select:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  border: 1.5px dashed var(--color-border-strong);
-  background: transparent;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--color-ink-soft);
-  cursor: pointer;
 }
 
-.mixer-add-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
 
 .mixer-add-btn:disabled,
 .mixer .supply-fillplan-btn:disabled {
@@ -5480,7 +5484,7 @@ select:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--color-ink-soft);
 }
@@ -5504,7 +5508,7 @@ select:focus-visible,
 }
 
 .mixer-col-title {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5529,7 +5533,7 @@ select:focus-visible,
   border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-surface);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .mixer-row-icon--bulk { background-color: var(--color-accent); }
@@ -5538,7 +5542,7 @@ select:focus-visible,
   width: 100%;
   min-width: 0;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .mixer-qty {
@@ -5560,7 +5564,7 @@ select:focus-visible,
   border: 1px solid var(--color-border-strong);
   background-color: var(--color-surface);
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1;
   color: var(--color-ink);
   cursor: pointer;
@@ -5573,7 +5577,7 @@ select:focus-visible,
 
 .mixer-row-litres {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
@@ -5599,7 +5603,7 @@ select:focus-visible,
   padding: 3px 4px 3px 10px;
   border-radius: var(--radius-pill);
   background-color: var(--color-primary-soft);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink);
 }
 
@@ -5624,14 +5628,14 @@ select:focus-visible,
   grid-template-columns: 110px 1fr 56px 80px;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .mixer-mix-name { font-weight: 600; }
 
 .mixer-mix-optional {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 400;
   color: var(--color-ink-faint);
 }
@@ -5697,7 +5701,7 @@ select:focus-visible,
   margin-top: 6px;
   padding: 10px 14px;
   border-radius: var(--radius-medium);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
@@ -5713,7 +5717,7 @@ select:focus-visible,
 
 .mixer-days {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink-soft);
 }
 
@@ -5733,7 +5737,7 @@ select:focus-visible,
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-medium);
   background-color: var(--color-surface-soft);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .feed-mixer-tile--relevant {
@@ -5750,7 +5754,7 @@ select:focus-visible,
 
 .feed-mixer-name {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: var(--fs-xl);
   text-transform: uppercase;
   color: var(--color-ink);
 }
@@ -5761,7 +5765,7 @@ select:focus-visible,
   border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-surface);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -5784,19 +5788,19 @@ select:focus-visible,
 .feed-plan .feed-mixer-product-rate,
 .feed-plan .feed-mixer-inputs {
   color: var(--color-ink-soft);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   margin: 0;
 }
 
 .feed-plan .feed-mixer-warn {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-accent-dark);
 }
 
 .feed-mixer-recipes summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -5804,7 +5808,7 @@ select:focus-visible,
   margin: 6px 0 0;
   padding-left: 4px;
   list-style: none;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-faint);
 }
 
@@ -5827,7 +5831,7 @@ select:focus-visible,
 }
 
 .feed-ing-scope {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.8;
   white-space: nowrap;
@@ -5843,7 +5847,7 @@ select:focus-visible,
 .feed-plan input.feed-input.feed-mixer-name-input {
   width: 180px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 /* Field card: checkbox + its caption (state "Sown", rolling "I want to roll"). */
@@ -5852,7 +5856,7 @@ select:focus-visible,
   align-items: center;
   gap: 6px;
   min-height: 34px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
 }
 
@@ -5924,6 +5928,11 @@ button.treatment-chip--lime.is-warning {
   gap: 10px;
 }
 
+/* Room for a third button (e.g. "Undo liming") on the same row. */
+.small-confirm-modal .modal-content.small-confirm:has(.small-confirm-extra:not([hidden])) {
+  max-width: 460px;
+}
+
 .small-confirm-icon {
   display: flex;
   align-items: center;
@@ -5933,16 +5942,20 @@ button.treatment-chip--lime.is-warning {
   border-radius: var(--radius-pill);
   background-color: var(--color-primary-soft);
   color: var(--color-primary-dark);
-  font-size: 20px;
+  font-size: var(--fs-2xl);
 }
 
 .small-confirm h3 {
-  font-size: 22px;
+  font-size: var(--fs-3xl);
 }
 
 .small-confirm p {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
+}
+
+.small-confirm .modal-buttons {
+  flex-wrap: wrap;
 }
 
 .small-confirm .modal-buttons button {
@@ -5980,7 +5993,7 @@ button.table-chip-toggle:hover {
 }
 
 .treatment-chip--rolling {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 /* ========================================================= */
@@ -6016,7 +6029,7 @@ button.table-chip-toggle:hover {
 }
 
 .fin-kpi-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6025,7 +6038,7 @@ button.table-chip-toggle:hover {
 
 .fin-kpi-value {
   font-family: var(--font-body);
-  font-size: 26px;
+  font-size: var(--fs-4xl);
   font-weight: 700;
   color: var(--color-ink);
   white-space: nowrap;
@@ -6034,7 +6047,7 @@ button.table-chip-toggle:hover {
 }
 
 .fin-kpi--hero .fin-kpi-value {
-  font-size: 40px;
+  font-size: var(--fs-7xl);
   line-height: 1.1;
 }
 
@@ -6043,13 +6056,13 @@ button.table-chip-toggle:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
 .fin-delta {
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-base);
   white-space: nowrap;
 }
 
@@ -6076,7 +6089,7 @@ button.table-chip-toggle:hover {
 .fin-card-head h4 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-ink);
@@ -6096,7 +6109,7 @@ button.table-chip-toggle:hover {
 
 .fin-axis {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   fill: var(--color-ink-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -6131,7 +6144,7 @@ button.table-chip-toggle:hover {
 
 .fin-endlabel {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   fill: var(--color-ink);
 }
@@ -6160,7 +6173,7 @@ button.table-chip-toggle:hover {
   background-color: var(--color-surface);
   box-shadow: var(--shadow-card);
   pointer-events: none;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .fin-tip-head {
@@ -6177,7 +6190,7 @@ button.table-chip-toggle:hover {
 }
 
 .fin-tip-row strong {
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--color-ink);
 }
 
@@ -6202,7 +6215,7 @@ button.table-chip-toggle:hover {
 .fin-legend {
   display: flex;
   gap: 14px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -6236,14 +6249,14 @@ button.table-chip-toggle:hover {
 
 .fin-barlabel {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   fill: var(--color-ink);
 }
 
 .fin-table-wrap summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--color-ink-soft);
 }
@@ -6252,7 +6265,7 @@ button.table-chip-toggle:hover {
   width: 100%;
   margin-top: 10px;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .fin-table th,
@@ -6264,7 +6277,7 @@ button.table-chip-toggle:hover {
 
 .fin-table th {
   position: static;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-ink-soft);
@@ -6297,7 +6310,7 @@ button.table-chip-toggle:hover {
 
 .cuts-intro {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink-soft);
   text-align: center;
 }
@@ -6323,7 +6336,7 @@ button.table-chip-toggle:hover {
   position: absolute;
   top: -22px;
   left: 4px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--color-ink);
 }
@@ -6335,7 +6348,7 @@ button.table-chip-toggle:hover {
   border: 1px solid var(--color-border-strong);
   background-color: var(--color-surface-soft);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
 }
 
@@ -6343,7 +6356,7 @@ button.table-chip-toggle:hover {
   width: auto;
   align-self: flex-start;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .cuts-node.is-done select.cuts-month {
@@ -6363,7 +6376,7 @@ button.table-chip-toggle:hover {
   border-radius: 50%;
   background-color: var(--color-surface);
   color: var(--color-ink-soft);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -6376,7 +6389,7 @@ button.table-chip-toggle:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--color-ink);
 }
 
@@ -6414,7 +6427,7 @@ button.table-chip-toggle:hover {
   background: transparent;
   color: var(--color-primary-dark);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -6448,7 +6461,7 @@ button.table-chip-toggle:hover {
 }
 
 .feed-use-cuts {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
 
@@ -6492,11 +6505,12 @@ button.table-chip-toggle:hover {
 
 .anim-section-title {
   margin: 4px 0 -4px;
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
   font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-ink);
+  color: var(--color-ink-soft);
 }
 
 .anim-view .barn-tile-grid {
@@ -6587,7 +6601,7 @@ button.tillage-switch-option {
   background: none;
   color: var(--color-ink-soft);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-align: left;
   cursor: pointer;
 }
@@ -6693,7 +6707,7 @@ button.tillage-switch-option {
 .fertplan-from-game {
   display: block;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--color-ink-faint);
 }
 
@@ -6729,11 +6743,11 @@ button.tillage-switch-option {
 
 .save-choice-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .save-choice-sub {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--color-ink-faint);
 }
 
@@ -6771,13 +6785,11 @@ button.field-open:hover .field-number-chip {
 
 .field-view-section p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .field-view-section .settings-btn {
   align-self: flex-start;
-  padding: 6px 14px;
-  font-size: 12px;
 }
 
 .field-soil-grid {
@@ -6786,17 +6798,23 @@ button.field-open:hover .field-number-chip {
   gap: 8px;
 }
 
+.field-view-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
 .field-modal .settings-field input,
 .field-modal .settings-field select {
   margin: 0;
   padding: 7px 10px;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .field-view-history {
   margin: 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .field-number.is-invalid {
@@ -6818,7 +6836,7 @@ button.field-open:hover .field-number-chip {
 
 #settings-supply-adjust .supply-adjust > summary {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
 }
 
@@ -6837,7 +6855,7 @@ button.field-open:hover .field-number-chip {
   background: transparent;
   color: var(--color-ink-soft);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
   cursor: pointer;
 }
@@ -6870,7 +6888,7 @@ button.field-open:hover .field-number-chip {
 
 .settings-danger-zone > p:first-child {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

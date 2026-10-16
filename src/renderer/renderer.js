@@ -9,6 +9,10 @@ const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
+const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
+
+// Running from the repo (npm start) rather than from the installed app.
+const IS_DEV_BUILD = !__dirname.includes('app.asar');
 const { pathToFileURL } = require('url');
 
 // Bundled game data (default crops/animals, nitrogen by soil) lives in /data.
@@ -25,7 +29,7 @@ const appDataDir = ipcRenderer.sendSync('get-data-dir') || path.join(
 
 if (!fs.existsSync(appDataDir)) {
     try { fs.mkdirSync(appDataDir, { recursive: true }); }
-    catch (err) { console.error("Błąd tworzenia folderu!", err); }
+    catch (err) { console.error("Could not create the data folder", err); }
 }
 
 // =============================================================
@@ -54,7 +58,8 @@ const TRANSLATIONS = {
         deleteErrorMissingOnDisk: "Couldn't delete — the farm's folder no longer exists on disk.",
         deleteErrorLocked: "Couldn't delete — the folder is locked by the system or open in another program.",
         cancelDelete: "CANCEL DELETE",
-        noFarmsYet: "No farms yet. Add your first one below to start tracking a season.",
+        noFarmsYet: "No farms yet. Add your first one to start tracking a season.",
+        addFirstFarm: "Add your first farm",
         lastEdited: "Last edited",
         balance: "BALANCE",
         month: "MONTH",
@@ -122,10 +127,12 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
-        fieldViewOpenHint: "Open this field: soil, pH, fertilization, feed use, work and history",
+        fieldViewOpenHint: "Open this field: crop, soil, pH, fertilization, feed use, work and history",
         fieldViewTitle: "Field {field}",
         fieldViewFromGame: "from the game",
         fieldViewSoil: "Soil",
+        fieldViewCrop: "Crop",
+        fieldViewCropHint: "Changes are saved straight away. Field number, area, lease and adding or removing fields are in Edit.",
         fieldViewSoilHint: "Shares of each soil type in % (Precision Farming's soil map can fill them in: Field soil type → Load soils from game).",
         fieldViewLime: "pH and lime",
         fieldViewNoLime: "Not limed yet (no Precision Farming pH map) — use the lime chip in the table.",
@@ -226,7 +233,7 @@ const TRANSLATIONS = {
         cutsGrassAge: "Grassland here for {n} season(s) in a row (plough up after {max}).",
         sownAreaSum: "sown {ha} ha",
         overdue: "Overdue",
-        overdueHint: "The sowing window for this crop is over and the field isn't sown",
+        overdueHint: "The sowing window for this crop is over in this sowing year (July–June) and the field isn't sown",
         grassAge: "season {n}",
         grassAgeHint: "Grassland on this field for {n} season(s) in a row (plough it up after {max})",
         grassAgeOverHint: "Grassland on this field for {n} seasons in a row — time to plough it up (set to {max} in Settings)",
@@ -260,8 +267,8 @@ const TRANSLATIONS = {
         detailAnimals: "Animals",
         cropsListTitle: "List of all crops that are being farmed",
         resetSeasons: "RESET SEASONS",
-        settings: "SETTINGS",
-        exit: "EXIT",
+        settings: "Settings",
+        exit: "Exit",
         settingsTitle: "Settings",
         gameSavePathLabel: "Game Save Path (careerSavegame.xml):",
         gameSavePathPlaceholder: "Path to careerSavegame.xml",
@@ -271,8 +278,8 @@ const TRANSLATIONS = {
         autoSyncLabel: "Auto-sync this farm with the savegame while playing",
         autoSyncHint: "The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously. Lower the autosave interval in-game for fresher data.",
         autoSyncedToast: "Synced from savegame",
-        saveAndImport: "SAVE & IMPORT",
-        cancel: "CANCEL",
+        saveAndImport: "Save & import",
+        cancel: "Cancel",
         appSettingsTitle: "Settings",
         languageLabel: "Language",
         close: "Close",
@@ -298,7 +305,7 @@ const TRANSLATIONS = {
         seasonModalOk: "OK",
         seasonModalErrorTitle: "Something went wrong",
         deleteFarmConfirm: "Do you really want to delete this farm? This action cannot be undone.",
-        delete: "DELETE",
+        delete: "Delete",
         planted: "Planted",
         plantNow: "Plant now",
         toPlant: "To plant",
@@ -352,14 +359,16 @@ const TRANSLATIONS = {
         hubMonthlyTrend: "Monthly trend",
         hubSeasonTrend: "Per season",
         hubMilkProduced: "Produced per month (est.)",
-        hubProductionProxyNote: "Estimated from the month-over-month rise in stored litres — a rough proxy, since the save only records current storage, not true output.",
+        feedGaugeDaysHint: "Full bar = {n} days of feed for this barn. Enter the trough capacity to see it as a percentage.",
+        hubProductionEstNote: "Milk, eggs and wool estimated from the herd in each month (breed, age, ration and lactation) — the same figures as “Estimated daily output”. Manure and slurry aren't included.",
+        hubProductionProxyNote: "Estimated from the month-over-month rise in stored litres — a rough proxy, since the save only records current storage, not true output. From the next synced months on, the chart switches to an estimate from the herd.",
         hubStoredProduction: "Currently stored",
         hubNoAnimalsYet: "No animal data yet — open Settings, point to your careerSavegame.xml and import.",
         hubFeedLow: "Feed low!",
         hubHealth: "Health",
         hubFeedLevel: "Feed level",
         hubNoFeedTracked: "No feed data tracked for this building.",
-        hubApproxLevelsNote: "Feed bars are relative to your fullest building of that feed type — the save doesn't record real storage capacity, so treat these as \"which pen is running low\", not an exact percentage.",
+        hubApproxLevelsNote: "The save doesn't record trough capacity. Without it, a feed bar shows days of feed (full = 14 days) when the animals' needs are known, otherwise it's relative to your fullest barn. Enter the capacity in a barn to see a real percentage.",
         hubDailyRateNote: "Daily milk/egg output isn't shown yet — that needs each breed's production curve (from the game's animals.xml), which isn't wired up as an import yet. Ask if you'd like that added next.",
         hubNoProductionCurves: "Your animal definitions don't include recognizable production curves (milk/egg/wool), so estimated daily output can't be shown for these breeds yet.",
         hubProductionEstNote: "Estimated from each breed's production curve — real output can vary with the animal's condition and the game's own randomness.",
@@ -427,6 +436,8 @@ const TRANSLATIONS = {
         limeConfirmOff: "The field is limed ({pct}% pH). Remove the liming (e.g. marked by mistake)?",
         limeConfirmOnBtn: "Lime",
         limeConfirmOffBtn: "Remove",
+        limeUndo: "Undo liming",
+        limeConfirmAgainLimedNow: "You already limed this field this season, but the pH still reads {pct}% (the game's value updates after the next sync). Lime again, or undo this season's liming?",
         confirm: "Confirm",
         stateToggleHint: "Click to mark as sown / not sown",
         cropsFromMapMod: "Crop list and order read automatically from map mod {mod}.",
@@ -441,6 +452,9 @@ const TRANSLATIONS = {
         totalHa: "ha total",
         discordSettingLabel: "Discord Rich Presence",
         discordSettingHint: "Show your current farm and field count on your Discord profile.",
+        discordAskTitle: "Show your farm on Discord?",
+        discordAskText: "Farmer Planner can show the farm you're working on and its field count in your Discord status, visible to others. You can change this later in Settings.",
+        discordAskYes: "Show",
         discordBrowsing: "Browsing farms",
         discordManagingFields: "Managing {n} {fields}",
         discordFieldOne: "field",
@@ -542,7 +556,7 @@ const TRANSLATIONS = {
         yieldForecastUnknownFlag: "No yield data for this crop — total is missing this field's contribution.",
         yieldForecastUnknownNote: "{n} crop(s) have no known yield rate — their totals are underestimated.",
         yieldForecastNote: "An upper bound, not a forecast: real yield is lower whenever nitrogen, pH or weeds aren't perfect.",
-        notesAdd: "+ ADD NOTE",
+        notesAdd: "+ Add note",
         notesEmpty: "No notes yet. Add one to get reminded when the month comes around.",
         notesTitleLabel: "Title",
         notesTitlePlaceholder: "e.g. Fertilize field 3",
@@ -555,8 +569,8 @@ const TRANSLATIONS = {
         notesChecklistLabel: "Checklist",
         notesAddChecklistItem: "+ Add item",
         notesChecklistItemPlaceholder: "Checklist item",
-        notesSave: "SAVE NOTE",
-        notesCancel: "CANCEL",
+        notesSave: "Save note",
+        notesCancel: "Cancel",
         notesEditTitle: "Edit note",
         notesNewTitle: "New note",
         notesDeleteConfirm: "Delete this note? This action cannot be undone.",
@@ -597,7 +611,7 @@ const TRANSLATIONS = {
         feedStockNoSave: "Set the path to careerSavegame.xml in Farm settings to read what's already in your silos and bales.",
         feedStockNotRead: "Stock not read yet — it appears after the next sync with the game save.",
         feedStockEmpty: "No feed found in silos, bunker silos, bales or pallets in the last game save.",
-        feedStockNote: "From the last game save. All grain and oilseeds in your silos count as feed — including what you plan to sell. Wrapped grass bales count as silage; a bunker silo counts as silage whatever its fermentation stage.",
+        feedStockNote: "From the last game save. All grain and oilseeds in your silos count as feed — including what you plan to sell. Wrapped grass bales count as silage; a bunker silo counts as silage whatever its fermentation stage. Feed already in the barns' troughs counts too.",
         feedPlanIntro: "Yearly feed need of your herd, split by the ration you choose for each species, against the harvest of the fields you set aside for feed. Litres throughout; the field yield is the soil-adjusted ceiling from \"Predicted yields\".",
         feedPlanRations: "Rations",
         feedPlanFields: "Feed fields",
@@ -715,6 +729,7 @@ const TRANSLATIONS = {
         feedIngredients: "Ingredients for a year",
         feedYouHave: "You have",
         feedStockShort: "storage",
+        feedInBarns: "in barns",
         feedHarvestShort: "harvest",
         feedOfNeeded: "of {n} l needed",
         feedEnough: "Enough",
@@ -782,7 +797,8 @@ const TRANSLATIONS = {
         deleteErrorMissingOnDisk: "Nie udało się usunąć — folder farmy już nie istnieje na dysku.",
         deleteErrorLocked: "Nie udało się usunąć — folder jest zablokowany przez system albo otwarty w innym programie.",
         cancelDelete: "ANULUJ USUWANIE",
-        noFarmsYet: "Brak farm. Dodaj pierwszą poniżej, żeby zacząć śledzić sezon.",
+        noFarmsYet: "Brak farm. Dodaj pierwszą, żeby zacząć śledzić sezon.",
+        addFirstFarm: "Dodaj pierwszą farmę",
         lastEdited: "Ostatnia edycja",
         balance: "SALDO",
         month: "MIESIĄC",
@@ -850,10 +866,12 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
-        fieldViewOpenHint: "Otwórz pole: gleba, pH, nawożenie, przeznaczenie, prace i historia",
+        fieldViewOpenHint: "Otwórz pole: uprawa, gleba, pH, nawożenie, przeznaczenie, prace i historia",
         fieldViewTitle: "Pole {field}",
         fieldViewFromGame: "z gry",
         fieldViewSoil: "Gleba",
+        fieldViewCrop: "Uprawa",
+        fieldViewCropHint: "Zmiany zapisują się od razu. Numer pola, powierzchnia, dzierżawa oraz dodawanie i usuwanie pól są w Edycji.",
         fieldViewSoilHint: "Udział każdego typu gleby w % (mapa gleb Precision Farming może je uzupełnić: Typ gleby pól → Wczytaj gleby z gry).",
         fieldViewLime: "pH i wapno",
         fieldViewNoLime: "Jeszcze nie wapnowane (brak mapy pH z Precision Farming) — użyj chipu wapna w tabeli.",
@@ -954,7 +972,7 @@ const TRANSLATIONS = {
         cutsGrassAge: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max}).",
         sownAreaSum: "obsiane {ha} ha",
         overdue: "Po terminie",
-        overdueHint: "Termin siewu tej uprawy minął, a pole nie jest obsiane",
+        overdueHint: "Termin siewu tej uprawy minął w tym roku siewnym (lipiec–czerwiec), a pole nie jest obsiane",
         grassAge: "{n}. sezon",
         grassAgeHint: "Użytek zielony na tym polu od {n} sezonu(ów) z rzędu (przeorać po {max})",
         grassAgeOverHint: "Użytek zielony na tym polu od {n} sezonów z rzędu — pora przeorać (ustawione na {max} w Ustawieniach)",
@@ -988,8 +1006,8 @@ const TRANSLATIONS = {
         detailAnimals: "Zwierzęta",
         cropsListTitle: "Lista wszystkich uprawianych roślin",
         resetSeasons: "RESETUJ SEZONY",
-        settings: "USTAWIENIA",
-        exit: "WYJŚCIE",
+        settings: "Ustawienia",
+        exit: "Wyjście",
         settingsTitle: "Ustawienia",
         gameSavePathLabel: "Ścieżka zapisu gry (careerSavegame.xml):",
         gameSavePathPlaceholder: "Ścieżka do careerSavegame.xml",
@@ -999,8 +1017,8 @@ const TRANSLATIONS = {
         autoSyncLabel: "Automatyczna synchronizacja tej farmy z zapisem gry podczas grania",
         autoSyncHint: "Gra zapisuje stan na dysk tylko przy ręcznym zapisie / autozapisie, więc planer odświeża się przy każdym (auto)zapisie — nie na bieżąco. Skróć interwał autozapisu w grze, aby dane były świeższe.",
         autoSyncedToast: "Zsynchronizowano z zapisem gry",
-        saveAndImport: "ZAPISZ I IMPORTUJ",
-        cancel: "ANULUJ",
+        saveAndImport: "Zapisz i importuj",
+        cancel: "Anuluj",
         appSettingsTitle: "Ustawienia",
         languageLabel: "Język",
         close: "Zamknij",
@@ -1026,7 +1044,7 @@ const TRANSLATIONS = {
         seasonModalOk: "OK",
         seasonModalErrorTitle: "Coś poszło nie tak",
         deleteFarmConfirm: "Czy na pewno chcesz usunąć tę farmę? Tej operacji nie można cofnąć.",
-        delete: "USUŃ",
+        delete: "Usuń",
         planted: "Obsiane",
         plantNow: "Siej teraz",
         toPlant: "Do obsiania",
@@ -1080,14 +1098,16 @@ const TRANSLATIONS = {
         hubMonthlyTrend: "Trend miesięczny",
         hubSeasonTrend: "Wg sezonów",
         hubMilkProduced: "Produkcja na miesiąc (szac.)",
-        hubProductionProxyNote: "Szacunek na podstawie miesięcznego przyrostu litrów w magazynie — przybliżenie, bo zapis gry rejestruje tylko bieżący stan magazynu, nie rzeczywistą produkcję.",
+        feedGaugeDaysHint: "Pełny pasek = paszy na {n} dni dla tej zagrody. Wpisz pojemność koryta, żeby widzieć procent.",
+        hubProductionEstNote: "Mleko, jaja i wełna oszacowane ze stada w każdym miesiącu (rasa, wiek, racja i laktacja) — te same liczby co „Szacowana dzienna produkcja”. Bez obornika i gnojowicy.",
+        hubProductionProxyNote: "Szacunek na podstawie miesięcznego przyrostu litrów w magazynie — przybliżenie, bo zapis gry rejestruje tylko bieżący stan magazynu, nie rzeczywistą produkcję. Od kolejnych zsynchronizowanych miesięcy wykres przejdzie na szacunek ze stada.",
         hubStoredProduction: "Aktualnie zmagazynowane",
         hubNoAnimalsYet: "Brak danych o zwierzętach — otwórz Ustawienia, wskaż careerSavegame.xml i zaimportuj.",
         hubFeedLow: "Mało paszy!",
         hubHealth: "Zdrowie",
         hubFeedLevel: "Poziom paszy",
         hubNoFeedTracked: "Brak danych o paszy dla tego budynku.",
-        hubApproxLevelsNote: "Paski paszy są względne wobec Twojego najlepiej zaopatrzonego budynku tego samego typu paszy — zapis gry nie przechowuje realnej pojemności magazynu, więc traktuj to jako \"która zagroda ma mniej niż inne\", a nie dokładny procent.",
+        hubApproxLevelsNote: "Zapis gry nie przechowuje pojemności koryta. Bez niej pasek paszy pokazuje dni zapasu (pełny = 14 dni), gdy znane są potrzeby zwierząt, a w przeciwnym razie jest względny wobec najlepiej zaopatrzonej zagrody. Wpisz pojemność w zagrodzie, żeby widzieć prawdziwy procent.",
         hubDailyRateNote: "Dzienna produkcja mleka/jajek nie jest jeszcze pokazana — wymagałoby to krzywej produkcji każdej rasy (z pliku animals.xml gry), czego jeszcze nie podpiąłem jako import. Daj znać, jeśli chcesz, żebym to dodał.",
         hubNoProductionCurves: "Twoje definicje zwierząt nie zawierają rozpoznanych krzywych produkcji (mleko/jajka/wełna), więc szacowana dzienna produkcja nie może być jeszcze pokazana dla tych ras.",
         hubProductionEstNote: "Szacunek na podstawie krzywej produkcji danej rasy — rzeczywista produkcja może się różnić w zależności od kondycji zwierzęcia i losowości gry.",
@@ -1155,6 +1175,8 @@ const TRANSLATIONS = {
         limeConfirmOff: "Pole jest wapnowane ({pct}% pH). Usunąć wapnowanie (np. zaznaczone przez pomyłkę)?",
         limeConfirmOnBtn: "Wapnuj",
         limeConfirmOffBtn: "Usuń",
+        limeUndo: "Cofnij wapnowanie",
+        limeConfirmAgainLimedNow: "To pole jest już wapnowane w tym sezonie, ale pH wciąż pokazuje {pct}% (wartość z gry zmieni się po następnej synchronizacji). Wapnować ponownie czy cofnąć wapnowanie z tego sezonu?",
         confirm: "Potwierdź",
         stateToggleHint: "Kliknij, żeby oznaczyć jako obsiane / nieobsiane",
         cropsFromMapMod: "Lista i kolejność upraw odczytane automatycznie z moda mapy {mod}.",
@@ -1169,6 +1191,9 @@ const TRANSLATIONS = {
         totalHa: "ha całości",
         discordSettingLabel: "Discord Rich Presence",
         discordSettingHint: "Pokazuj aktualną farmę i liczbę pól na Twoim profilu Discord.",
+        discordAskTitle: "Pokazywać farmę na Discordzie?",
+        discordAskText: "Farmer Planner może pokazywać w Twoim statusie Discorda farmę, nad którą pracujesz, i liczbę pól — widzą to inni. Możesz to później zmienić w Ustawieniach.",
+        discordAskYes: "Pokazuj",
         discordBrowsing: "Przegląda farmy",
         discordManagingFields: "Zarządza {n} {fields}",
         discordFieldOne: "polem",
@@ -1270,7 +1295,7 @@ const TRANSLATIONS = {
         yieldForecastUnknownFlag: "Brak danych o plonie tej uprawy — sumie brakuje wkładu tego pola.",
         yieldForecastUnknownNote: "{n} upraw(y) nie ma znanej stawki plonu — ich sumy są zaniżone.",
         yieldForecastNote: "To górny pułap, nie prognoza: realny plon jest niższy, gdy azot, pH lub chwasty nie są idealne.",
-        notesAdd: "+ DODAJ NOTATKĘ",
+        notesAdd: "+ Dodaj notatkę",
         notesEmpty: "Brak notatek. Dodaj jedną, żeby dostać przypomnienie, gdy nadejdzie ten miesiąc.",
         notesTitleLabel: "Tytuł",
         notesTitlePlaceholder: "np. Nawieźć pole 3",
@@ -1283,8 +1308,8 @@ const TRANSLATIONS = {
         notesChecklistLabel: "Checklista",
         notesAddChecklistItem: "+ Dodaj punkt",
         notesChecklistItemPlaceholder: "Punkt checklisty",
-        notesSave: "ZAPISZ NOTATKĘ",
-        notesCancel: "ANULUJ",
+        notesSave: "Zapisz notatkę",
+        notesCancel: "Anuluj",
         notesEditTitle: "Edytuj notatkę",
         notesNewTitle: "Nowa notatka",
         notesDeleteConfirm: "Usunąć tę notatkę? Tej akcji nie można odwrócić.",
@@ -1325,7 +1350,7 @@ const TRANSLATIONS = {
         feedStockNoSave: "Ustaw ścieżkę do careerSavegame.xml w Ustawieniach farmy, żeby odczytać, co już jest w silosach i belach.",
         feedStockNotRead: "Zapasy nie zostały jeszcze odczytane — pojawią się po następnej synchronizacji z zapisem gry.",
         feedStockEmpty: "W ostatnim zapisie gry nie ma paszy w silosach, pryzmach, belach ani na paletach.",
-        feedStockNote: "Stan z ostatniego zapisu gry. Całe zboże i oleiste w silosach liczą się jako pasza — także to, co planujesz sprzedać. Owinięte bele z trawą liczą się jako kiszonka; pryzma liczy się jako kiszonka niezależnie od etapu fermentacji.",
+        feedStockNote: "Stan z ostatniego zapisu gry. Całe zboże i oleiste w silosach liczą się jako pasza — także to, co planujesz sprzedać. Owinięte bele z trawą liczą się jako kiszonka; pryzma liczy się jako kiszonka niezależnie od etapu fermentacji. Liczy się też pasza leżąca już w korytach w zagrodach.",
         feedPlanIntro: "Roczne zapotrzebowanie stada na paszę, rozbite według dawki wybranej dla każdego gatunku, zestawione z plonem pól przeznaczonych na paszę. Wszystko w litrach; plon pola to pułap zależny od gleby, tak jak w „Przewidywanych plonach”.",
         feedPlanRations: "Dawki",
         feedPlanFields: "Pola paszowe",
@@ -1443,6 +1468,7 @@ const TRANSLATIONS = {
         feedIngredients: "Składniki na rok",
         feedYouHave: "Masz",
         feedStockShort: "magazyn",
+        feedInBarns: "w zagrodach",
         feedHarvestShort: "zbiór",
         feedOfNeeded: "z {n} l potrzebnych",
         feedEnough: "Wystarczy",
@@ -1501,6 +1527,9 @@ const TRANSLATIONS = {
 Object.assign(TRANSLATIONS.en, {
     tutorialSettingLabel: "Tutorial",
     tutorialReplay: "Open tutorial",
+    devFarmSettingLabel: "Developer",
+    devFarmSettingHint: "Test farm built into the app (fields, animals, feed and history in every state). Turning it off deletes it.",
+    devFarmRebuild: "Rebuild test farm",
     tutorialDemoFarmName: "Demo Farm",
     tutMenuTitle: "Farmer Planner tutorial",
     tutMenuIntro: "Pick a chapter or go through everything. Some steps ask you to click or type something yourself — \"Show me\" will do it for you.",
@@ -1578,7 +1607,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c2_t: "Plant now",
     tut_c2_x: "Orange \"Plant now\": the field isn't sown yet and its sowing month is the current in-game month.",
     tut_c3_t: "Planted / To plant",
-    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Red \"Overdue\" — the crop's sowing window has just ended and the field isn't sown. Click the badge to switch sown / not sown right in the table, no edit mode needed.",
+    tut_c3_x: "Green \"Planted\" — already sown. Grey \"To plant\" — waiting for its month. Red \"Overdue\" — the crop's sowing window has ended and the field isn't sown. The sowing year runs July to June, so in July an April sowing counts as next spring's, not a missed one. Click the badge to switch sown / not sown right in the table, no edit mode needed.",
     tut_c11_t: "Grass cuts ✂",
     tut_c11_x: "Grass, meadow and other grassland fields have a \"Cuts\" button instead of \"Planted\". It opens this season's cuts on a timeline: when each cut was made, what it went to (fresh grass, hay, silage, sale) and whether you fertilized, limed or rolled after it — those checks update the field too. Next to it: how many seasons in a row the grassland has been there — highlighted when it's time to plough it up (after 4 by default, set in Settings).",
     tut_c4_t: "Rotation warning ⟳",
@@ -1594,7 +1623,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c14_t: "Field view",
-    tut_c14_x: "Click a field number to open everything about that field in one place: its soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
+    tut_c14_x: "Click a field number to open everything about that field in one place: its crop, catch crop and sowing month (change them right here, no Edit needed), soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
     tut_c12_t: "Work list",
     tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate, and lime if the pH needs it, then sow and roll, after: fertilizer and weeds, no weeds on a ploughed field; a catch crop's jobs first). Click it to tick jobs off, reorder, add or remove them — then it's the field's own list, and it stays empty if you empty it. Ticking Sow and the sown state are the same thing.",
     tut_c13_t: "Weeds",
@@ -1718,11 +1747,11 @@ Object.assign(TRANSLATIONS.en, {
     tut_k20_t: "Ration",
     tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner (change it in either place) and it's this barn's own — other barns with the same animals keep theirs.",
     tut_k9_t: "Low feed warning",
-    tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the trough is below 15% of its capacity, below 80 L if you haven't entered a capacity, or when there's no feed at all.",
+    tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the feed lasts less than 3 days (when the animals' needs are known), otherwise below 15% of the trough capacity or 80 l without one — and when there's no feed at all.",
     tut_k10_t: "Enter the capacity",
     tut_k10_x: "The coop has no capacity yet (\"?\"), so its bar is only compared with your other barns. Type 1000 and press Tab.",
     tut_k11_t: "Real percentage",
-    tut_k11_x: "Now the bar is 60 L out of 1000 L — a real 6%, in red. Enter capacities for every barn to get reliable bars and warnings.",
+    tut_k11_x: "Now the bar is 60 l out of 1000 l — a real 6%, in red. Enter capacities for every barn to get reliable bars and warnings.",
     tut_k12_t: "Low health",
     tut_k12_x: "These sheep are only at 72% health, their trough is below 35% (amber) and the feed lasts less than a week. Check their water, straw and cleaning — and top up the feed.",
     tut_k13_t: "Daily need",
@@ -1803,6 +1832,9 @@ Object.assign(TRANSLATIONS.en, {
 Object.assign(TRANSLATIONS.pl, {
     tutorialSettingLabel: "Samouczek",
     tutorialReplay: "Otwórz samouczek",
+    devFarmSettingLabel: "Deweloper",
+    devFarmSettingHint: "Farma testowa wbudowana w aplikację (pola, zwierzęta, pasze i historia we wszystkich stanach). Wyłączenie ją usuwa.",
+    devFarmRebuild: "Odtwórz farmę testową",
     tutorialDemoFarmName: "Farma demo",
     tutMenuTitle: "Samouczek Farmer Planner",
     tutMenuIntro: "Wybierz rozdział albo przejdź wszystko. W niektórych krokach musisz sam coś kliknąć lub wpisać — „Pokaż mi” zrobi to za Ciebie.",
@@ -1880,7 +1912,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c2_t: "Siej teraz",
     tut_c2_x: "Pomarańczowe „Siej teraz”: pole nie jest obsiane, a jego miesiąc siewu to bieżący miesiąc w grze.",
     tut_c3_t: "Obsiane / Do obsiania",
-    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Czerwone „Po terminie” — okno siewu tej uprawy właśnie minęło, a pole nie jest obsiane. Kliknij plakietkę, żeby przełączyć obsiane / nieobsiane od razu w tabeli, bez trybu edycji.",
+    tut_c3_x: "Zielone „Obsiane” — już obsiane. Szare „Do obsiania” — czeka na swój miesiąc. Czerwone „Po terminie” — okno siewu tej uprawy minęło, a pole nie jest obsiane. Rok siewny trwa od lipca do czerwca, więc w lipcu siew w kwietniu to siew przyszłej wiosny, a nie spóźniony. Kliknij plakietkę, żeby przełączyć obsiane / nieobsiane od razu w tabeli, bez trybu edycji.",
     tut_c11_t: "Pokosy ✂",
     tut_c11_x: "Pola z trawą, łąką i innymi użytkami zielonymi mają zamiast „Obsiane” przycisk „Pokosy”. Otwiera on pokosy tego sezonu na osi czasu: kiedy był każdy pokos, na co poszedł (zielonka, siano, kiszonka, sprzedaż) i czy po nim nawożono, wapnowano lub wałowano — te zaznaczenia aktualizują też pole. Obok: od ilu sezonów z rzędu jest tu użytek zielony — wyróżnione, gdy pora go przeorać (domyślnie po 4, ustawienie w Ustawieniach).",
     tut_c4_t: "Ostrzeżenie o płodozmianie ⟳",
@@ -1896,7 +1928,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c14_t: "Widok pola",
-    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
+    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: uprawę, międzyplon i miesiąc siewu (zmienisz je tutaj, bez Edycji), skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
     tut_c12_t: "Prace",
     tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, jeśli pH go wymaga, potem siew i wałowanie, po: nawóz i chwasty, przy orce bez chwastów; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność, dodawać albo usuwać — wtedy to własna lista pola i zostaje pusta, jeśli ją wyczyścisz. Odhaczony Siew to to samo co stan „Obsiane”.",
     tut_c13_t: "Chwasty",
@@ -2020,11 +2052,11 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k20_t: "Dawka",
     tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz (zmienisz go w dowolnym miejscu) i dotyczy tylko tego budynku — inne budynki z tymi samymi zwierzętami mają swój.",
     tut_k9_t: "Ostrzeżenie o paszy",
-    tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy w korycie jest poniżej 15% pojemności, poniżej 80 L przy niepodanej pojemności albo gdy paszy nie ma wcale.",
+    tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy paszy starczy na mniej niż 3 dni (gdy znane są potrzeby zwierząt), w przeciwnym razie poniżej 15% pojemności koryta albo 80 l bez niej — i gdy paszy nie ma wcale.",
     tut_k10_t: "Wpisz pojemność",
     tut_k10_x: "Kurnik nie ma jeszcze pojemności („?”), więc jego pasek jest tylko porównywany z innymi budynkami. Wpisz 1000 i naciśnij Tab.",
     tut_k11_t: "Prawdziwy procent",
-    tut_k11_x: "Teraz pasek to 60 L z 1000 L — prawdziwe 6%, na czerwono. Wpisz pojemności wszystkich budynków, żeby paski i ostrzeżenia były wiarygodne.",
+    tut_k11_x: "Teraz pasek to 60 l z 1000 l — prawdziwe 6%, na czerwono. Wpisz pojemności wszystkich budynków, żeby paski i ostrzeżenia były wiarygodne.",
     tut_k12_t: "Słabe zdrowie",
     tut_k12_x: "Te owce mają tylko 72% zdrowia, koryto jest poniżej 35% (bursztynowy pasek), a paszy starczy na mniej niż tydzień. Sprawdź wodę, słomę i sprzątanie — i dosyp paszy.",
     tut_k13_t: "Dzienne zapotrzebowanie",
@@ -2291,8 +2323,24 @@ const DISCORD_SESSION_START = Date.now();
 let _lastDiscordPayload = null;
 
 function isDiscordRpcEnabled() {
-    // Opt-out: on unless the user explicitly turned it off.
-    return localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== '0';
+    // Opt-in: off until the user says yes (asked once at start, see askDiscordOnce).
+    return localStorage.getItem(CONFIG_KEY_DISCORD_RPC) === '1';
+}
+
+// Asks once whether to show the farm on Discord — the profile status is
+// public, so it is never switched on without a yes.
+async function askDiscordOnce() {
+    if (localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== null) return;
+    const yes = await showSmallConfirm({
+        title: t('discordAskTitle'),
+        text: t('discordAskText'),
+        ok: t('discordAskYes'),
+        icon: 'fa-display'
+    });
+    localStorage.setItem(CONFIG_KEY_DISCORD_RPC, yes === true ? '1' : '0');
+    const toggle = document.getElementById('discord-rpc-toggle');
+    if (toggle) toggle.checked = yes === true;
+    updateDiscordPresence();
 }
 
 // Polish needs three plural forms (1 / 2-4 / 5+); English just two.
@@ -2418,6 +2466,10 @@ if (appSettingsBtn && appSettingsModal) {
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
+        const devSetting = document.getElementById('dev-farm-setting');
+        if (devSetting) devSetting.hidden = !IS_DEV_BUILD;
+        const devToggle = document.getElementById('dev-farm-toggle');
+        if (devToggle) devToggle.checked = devFarmExists();
         appSettingsModal.style.display = 'flex';
     });
 }
@@ -2440,6 +2492,54 @@ if (discordRpcToggle) {
     discordRpcToggle.addEventListener('change', () => {
         localStorage.setItem(CONFIG_KEY_DISCORD_RPC, discordRpcToggle.checked ? '1' : '0');
         updateDiscordPresence();
+    });
+}
+
+// --- Developer test farm (only offered when running from the repo) ---
+function devFarmDir() {
+    return path.join(appDataDir, DEV_FARM_ID);
+}
+
+function devFarmExists() {
+    return fs.existsSync(path.join(devFarmDir(), 'data.json'));
+}
+
+function createDevFarm() {
+    const { farm, seasons, monthly, notes } = buildDevFarm({ pl: currentLang === 'pl' });
+    const dir = devFarmDir();
+    try {
+        fs.mkdirSync(path.join(dir, 'seasons'), { recursive: true });
+        fs.mkdirSync(path.join(dir, 'backups'), { recursive: true });
+        seasons.forEach(s => fs.writeFileSync(path.join(dir, 'seasons', `season_${s.season}.json`), JSON.stringify(s, null, 2), 'utf-8'));
+    } catch (err) {
+        console.error('Could not create the dev farm', err);
+        return;
+    }
+    saveFarmData(farm, { touch: false });
+    saveMonthlyHistory(farm, monthly);
+    saveNotes(farm, notes);
+}
+
+function removeDevFarm() {
+    try { fs.rmSync(devFarmDir(), { recursive: true, force: true }); }
+    catch (err) { console.error('Could not remove the dev farm', err); }
+}
+
+const devFarmToggle = document.getElementById('dev-farm-toggle');
+if (devFarmToggle) {
+    devFarmToggle.addEventListener('change', () => {
+        if (devFarmToggle.checked) createDevFarm();
+        else removeDevFarm();
+        renderFarmList(getAllFarms());
+    });
+}
+const devFarmRebuildBtn = document.getElementById('dev-farm-rebuild-btn');
+if (devFarmRebuildBtn) {
+    devFarmRebuildBtn.addEventListener('click', () => {
+        removeDevFarm();
+        createDevFarm();
+        if (devFarmToggle) devFarmToggle.checked = true;
+        renderFarmList(getAllFarms());
     });
 }
 
@@ -2628,7 +2728,10 @@ function buildMonthlyRow(farm, gameData) {
         avgHealth: avgHealthFromBuildings(gameData.animalBuildings || farm.animalBuildings),
         // fillType -> litres currently in storage/tank (a stock level, not
         // throughput — the delta between months is charted as an output proxy).
-        production: gameData.animalProduction || farm.animalProduction || {}
+        production: gameData.animalProduction || farm.animalProduction || {},
+        // fillType -> litres made this month, estimated from the herd's
+        // production curves (null when the curves aren't loaded).
+        productionEst: estimateMonthlyOutput(farm, gameData.animalBuildings || farm.animalBuildings)
     };
 }
 
@@ -2731,6 +2834,11 @@ function getMonthlyHistory(farm) {
         });
         rows[i].productionDelta = delta;
         rows[i].productionDeltaTotal = total;
+        // Milk/eggs/wool only — manure and slurry would swamp the line.
+        const est = rows[i].productionEst;
+        rows[i].productionEstTotal = est
+            ? Object.entries(est).filter(([ft]) => !FEED_UNSCALED_OUTPUT.includes(ft)).reduce((a, [, v]) => a + v, 0)
+            : null;
     }
     return rows;
 }
@@ -2757,7 +2865,7 @@ window.updateBuildingCapacity = function (input) {
     if (!farm.animalBuildingCapacities) farm.animalBuildingCapacities = {};
     if (!farm.animalBuildingCapacities[buildingId]) farm.animalBuildingCapacities[buildingId] = {};
 
-    const value = parseFloat(input.value.replace(',', '.'));
+    const value = parseDecimal(input.value);
     if (!isNaN(value) && value > 0) {
         farm.animalBuildingCapacities[buildingId][fillType] = value;
     } else {
@@ -2765,7 +2873,7 @@ window.updateBuildingCapacity = function (input) {
     }
 
     saveFarmData(farm);
-    openHubPanel('animals');
+    rerenderKeepingFocus(() => openHubPanel('animals'));
 };
 
 // --- Animals panel: barn tiles, one-barn detail and custom barn names ---
@@ -3041,6 +3149,27 @@ function parseMoney(v) {
     if (typeof v === 'number') return v;
     const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
     return isNaN(n) ? 0 : n;
+}
+
+// Number typed by the player: "1,5", "1.5", "1 234,5", "1.234,5", "1,234.5".
+// When both "," and "." appear the last one is the decimal point; a single
+// kind appearing more than once is a thousands separator. Anything else that
+// isn't a plain number (e.g. "1,234,5") gives NaN instead of a wrong value.
+function parseDecimal(v) {
+    let s = String(v ?? '').replace(/[\s  ]/g, '');
+    if (!s) return NaN;
+    const comma = s.lastIndexOf(','), dot = s.lastIndexOf('.');
+    let dec = '', group = '';
+    if (comma >= 0 && dot >= 0) { dec = comma > dot ? ',' : '.'; group = dec === ',' ? '.' : ','; }
+    else if (comma >= 0) { if (s.split(',').length > 2) group = ','; else dec = ','; }
+    else if (dot >= 0) { if (s.split('.').length > 2) group = '.'; else dec = '.'; }
+    let [int, frac] = dec ? s.split(dec) : [s, undefined];
+    if (group) {
+        if (!new RegExp(`^[-+]?\\d{1,3}(\\${group}\\d{3})+$`).test(int)) return NaN;
+        int = int.split(group).join('');
+    }
+    const plain = frac !== undefined ? `${int}.${frac}` : int;
+    return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(plain) ? parseFloat(plain) : NaN;
 }
 
 // Currency symbol of the open farm: chosen in Settings, or the game's own
@@ -3412,10 +3541,40 @@ function animalsKpisHtml(farm, buildings, monthly, summaries) {
     </div>`;
 }
 
+// Trough gauge: how full the bar is and when it counts as "low feed".
+// With the barn's daily need known, the warning is about days of feed left
+// (< 3 days, the same cut-off as the red days figure) and, without an entered
+// capacity, a full bar means two weeks of feed. A capacity makes the bar a
+// real percentage. Only with neither does it fall back to the old litre
+// threshold and the fullest barn as 100 %.
+const FEED_GAUGE_FULL_DAYS = 14;
+function feedGauge(level, cap, daily, maxLevel) {
+    const days = daily > 0 ? level / daily : null;
+    let pct, title = '';
+    if (cap > 0) pct = level / cap * 100;
+    else if (days !== null) { pct = days / FEED_GAUGE_FULL_DAYS * 100; title = t('feedGaugeDaysHint').replace('{n}', FEED_GAUGE_FULL_DAYS); }
+    else pct = level / (maxLevel || level || 1) * 100;
+    let low, mid;
+    if (days !== null) { low = days < 3; mid = days < 7; }
+    else if (cap > 0) { low = pct < 15; mid = pct < 35; }
+    else { low = level < 80; mid = pct < 35; }
+    return {
+        pct: Math.max(3, Math.min(100, pct)),
+        low,
+        cls: low ? 'pen-bar-fill--low' : (mid ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok'),
+        days,
+        title
+    };
+}
+
 function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
     let html = '';
     const hasHerd = monthly.some(r => (r.animals || 0) > 0);
-    const hasProd = monthly.some(r => (r.productionDeltaTotal || 0) > 0);
+    // Months recorded since 0.9.11 carry an estimate from the herd's curves;
+    // older ones only the tank level, charted as its rise per month.
+    const estRows = monthly.filter(r => r.productionEstTotal != null);
+    const useEst = estRows.length > 1 && estRows.some(r => r.productionEstTotal > 0);
+    const hasProd = useEst || monthly.some(r => (r.productionDeltaTotal || 0) > 0);
     const int = v => Math.round(v).toLocaleString(FIN_LOCALE());
     const signedInt = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(Math.round(d)).toLocaleString(FIN_LOCALE());
     if (monthly.length > 1 && hasHerd) {
@@ -3426,8 +3585,8 @@ function animalsTrendsHtml(farm, monthly, seasonHistory, width) {
             w => buildTrendChart(monthly, w, [{ key: 'avgHealth', label: t('avgHealthLabel'), cls: 'health' }],
                 { format: v => Math.round(v) + '%', formatFull: v => Math.round(v) + '%', deltaFull: d => signedInt(d) + ' pp', domain: [0, 100], ariaLabel: t('animChartHealth') }), width);
         if (hasProd) {
-            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t('hubProductionProxyNote')}</p>`,
-                w => buildTrendChart(monthly, w, [{ key: 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
+            html += trendCardHtml('anim-prod', t('hubMilkProduced'), '', `<p class="hub-panel-note">${t(useEst ? 'hubProductionEstNote' : 'hubProductionProxyNote')}</p>`,
+                w => buildTrendChart(useEst ? estRows : monthly, w, [{ key: useEst ? 'productionEstTotal' : 'productionDeltaTotal', label: t('hubMilkProduced'), cls: 'production' }],
                     { format: (v, end) => finCompact(v) + (end ? ' l' : ''), formatFull: v => int(v) + ' l', ariaLabel: t('hubMilkProduced') }), width);
         }
     } else if (seasonHistory.length > 1) {
@@ -3523,10 +3682,6 @@ window.openHubPanel = function (type) {
                 building.clusters.forEach(c => {
                     if (!ANIMAL_NEEDS_DATA[c.subType]) { needsKnownForAll = false; return; }
                     const animalType = animalTypeOf(c.subType);
-                    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
-                    // The ration's productionWeight scales milk/eggs/wool the way
-                    // the game does; manure/slurry don't depend on the feed.
-                    const outputFactor = ration ? ration.efficiency / 100 : 1;
                     // EAS lactation: same food factor as the feed planner.
                     const clusterFood = clusterDailyFood(farm, animalType, c);
                     if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
@@ -3534,29 +3689,20 @@ window.openHubPanel = function (type) {
                     dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
                     dailyNeed.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
 
-                    const def = ANIMAL_NEEDS_DATA[c.subType];
-                    if (def && def.production) {
-                        Object.keys(def.production).forEach(fillType => {
-                            const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
-                            const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
-                                * clusterMilkFactor(farm, animalType, c, fillType);
-                            if (rate > 0) dailyOutput[fillType] = (dailyOutput[fillType] || 0) + rate * c.numAnimals * factor;
-                        });
-                    }
+                    addClusterOutput(farm, building, c, feedPlan, dailyOutput);
                 });
                 if (Object.keys(dailyOutput).length > 0) anyProductionFound = true;
 
                 const combinedFoodLevel = building.food.reduce((s, f) => s + f.level, 0);
                 const combinedCap = buildingCaps[ANIMAL_FEED_CAPACITY_KEY];
-                const lowFeed = building.food.length > 0 && (combinedCap
-                    ? (combinedFoodLevel / combinedCap) * 100 < 15
-                    : combinedFoodLevel < 80);
+                const gauge = feedGauge(combinedFoodLevel, combinedCap, needsKnownForAll ? dailyNeed.food : 0, maxCombinedFood);
+                const lowFeed = building.food.length > 0 && gauge.low;
                 const noFeedAtAll = building.food.length === 0;
 
                 const warn = lowFeed || noFeedAtAll;
                 const heads = building.clusters.reduce((s, c) => s + c.numAnimals, 0);
                 const avgHealth = heads ? building.clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : 0;
-                const num = n => Math.round(n).toLocaleString();
+                const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
                 const statRow = (fillType, label, value) => `
                     <div class="barn-stat">
                         <span class="barn-stat-icon barn-stat-icon--${fillIconTone(fillType)}" aria-hidden="true"><i class="fa-solid ${fillIcon(fillType)}" aria-hidden="true"></i></span>
@@ -3612,26 +3758,19 @@ window.openHubPanel = function (type) {
                     // Multiple feed ingredients (e.g. grass windrow + forage)
                     // share one trough, so they're combined into one gauge.
                     const feedTypesLabel = building.food.map(f => formatFillType(f.fillType)).join(' + ');
-                    let pct;
-                    if (combinedCap && combinedCap > 0) {
-                        pct = Math.max(2, Math.min(100, (combinedFoodLevel / combinedCap) * 100));
-                    } else {
-                        anyMissingCapacity = true;
-                        const ref = maxCombinedFood || combinedFoodLevel || 1;
-                        pct = Math.max(3, Math.min(100, (combinedFoodLevel / ref) * 100));
-                    }
-                    const barClass = (combinedCap ? pct < 15 : combinedFoodLevel < 80) ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
-                    const daysLeft = needsKnownForAll && dailyNeed.food > 0 ? combinedFoodLevel / dailyNeed.food : null;
+                    if (!(combinedCap > 0)) anyMissingCapacity = true;
+                    const { pct, cls: barClass, title: barTitle } = gauge;
+                    const daysLeft = gauge.days;
                     const daysClass = daysLeft === null ? '' : (daysLeft < 3 ? 'feed-days--critical' : (daysLeft < 7 ? 'feed-days--warning' : 'feed-days--ok'));
 
                     card += `<div class="feed-headline">
                             <div class="feed-amount">
-                                <span class="feed-amount-value">${num(combinedFoodLevel)} L</span>
+                                <span class="feed-amount-value">${num(combinedFoodLevel)} l</span>
                                 <span class="feed-amount-types">${escapeHtml(feedTypesLabel)}</span>
                             </div>
                             ${daysLeft !== null ? `<div class="feed-days ${daysClass}"><span class="feed-days-value">${Math.max(0, Math.floor(daysLeft))}</span><span class="feed-days-label">${t('barnDaysLeft')}</span></div>` : ''}
                         </div>
-                        <div class="feed-gauge">
+                        <div class="feed-gauge"${barTitle ? ` title="${escapeHtml(barTitle)}"` : ''}>
                             <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
                             ${combinedCap ? `<span class="feed-gauge-pct">${Math.round((combinedFoodLevel / combinedCap) * 100)}%</span>` : ''}
                         </div>
@@ -3640,7 +3779,7 @@ window.openHubPanel = function (type) {
                             <input type="text" class="feed-capacity-input" value="${combinedCap || ''}" placeholder="?"
                                 data-building="${building.id}" data-filltype="${ANIMAL_FEED_CAPACITY_KEY}"
                                 onchange="updateBuildingCapacity(this)">
-                            <span>L</span>
+                            <span>l</span>
                         </label>`;
                 } else {
                     card += `<p class="barn-empty">${t('hubNoFeedTracked')}</p>`;
@@ -3662,11 +3801,11 @@ window.openHubPanel = function (type) {
                         const days = farmDailyByCat[cat] > 0 ? stockL / farmDailyByCat[cat] : 0;
                         const cls = days < 3 ? 'feed-days--critical' : (days < 7 ? 'feed-days--warning' : 'feed-days--ok');
                         const stockNote = farm.feedStock
-                            ? `<span class="ration-stock ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString()) : t('hubRationNoStock')}</span>`
+                            ? `<span class="ration-stock ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString(FIN_LOCALE())) : t('hubRationNoStock')}</span>`
                             : '';
                         card += `<div class="ration-item">
                             <span class="ration-name">${feedCategoryLabel(cat)}</span>
-                            <span class="ration-rate">${num(parts[cat])} L${t('perDayShort')}</span>
+                            <span class="ration-rate">${num(parts[cat])} l${t('perDayShort')}</span>
                             ${stockNote}
                         </div>`;
                     });
@@ -3679,9 +3818,9 @@ window.openHubPanel = function (type) {
                     <h4 class="barn-section-title">${t('hubDailyNeed')}</h4>`;
                 if (needsKnownForAll && (dailyNeed.food > 0 || dailyNeed.water > 0 || dailyNeed.straw > 0)) {
                     card += `<div class="barn-stat-list">`;
-                    if (dailyNeed.food > 0) card += statRow('FOOD', formatFillType('FOOD'), `${num(dailyNeed.food)} L${t('perDayShort')}`);
-                    if (dailyNeed.water > 0) card += statRow('WATER', formatFillType('WATER'), `${num(dailyNeed.water)} L${t('perDayShort')}`);
-                    if (dailyNeed.straw > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(dailyNeed.straw)} L${t('perDayShort')}`);
+                    if (dailyNeed.food > 0) card += statRow('FOOD', formatFillType('FOOD'), `${num(dailyNeed.food)} l${t('perDayShort')}`);
+                    if (dailyNeed.water > 0) card += statRow('WATER', formatFillType('WATER'), `${num(dailyNeed.water)} l${t('perDayShort')}`);
+                    if (dailyNeed.straw > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(dailyNeed.straw)} l${t('perDayShort')}`);
                     card += `</div>`;
                 } else {
                     card += `<p class="barn-empty">${t('barnNeedsUnknown')}</p>`;
@@ -3724,7 +3863,7 @@ window.openHubPanel = function (type) {
                         <h4 class="barn-section-title">${t('hubEstDailyOutput')}</h4>
                         <div class="barn-stat-list">`;
                     Object.keys(dailyOutput).forEach(fillType => {
-                        card += statRow(fillType, formatFillType(fillType), `${num(dailyOutput[fillType])} L${t('perDayShort')}`);
+                        card += statRow(fillType, formatFillType(fillType), `${num(dailyOutput[fillType])} l${t('perDayShort')}`);
                     });
                     card += `</div></section>`;
                 }
@@ -3735,7 +3874,7 @@ window.openHubPanel = function (type) {
                         <h4 class="barn-section-title">${t('hubStoredProduction')}</h4>
                         <div class="barn-stat-list">`;
                     building.production.forEach(p => {
-                        card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} L`);
+                        card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} l`);
                     });
                     card += `</div></section>`;
                 }
@@ -3785,21 +3924,19 @@ window.openHubPanel = function (type) {
                         headTotal += c.numAnimals;
                     });
                     const speciesHtml = Object.keys(heads).map(type =>
-                        `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString()}</span>`).join('');
+                        `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString(FIN_LOCALE())}</span>`).join('');
 
                     let feedHtml;
                     if (sum.noFeedAtAll) {
                         feedHtml = `<span class="barn-tile-feed-note">${t('hubNoFeedTracked')}</span>`;
                     } else {
-                        const ref = sum.combinedCap || sum.maxCombinedFood || sum.combinedFoodLevel || 1;
-                        const pct = Math.max(3, Math.min(100, (sum.combinedFoodLevel / ref) * 100));
-                        const barClass = sum.lowFeed ? 'pen-bar-fill--low' : (pct < 35 ? 'pen-bar-fill--mid' : 'pen-bar-fill--ok');
+                        const { pct, cls: barClass, title: barTitle } = feedGauge(sum.combinedFoodLevel, sum.combinedCap, sum.dailyFood, sum.maxCombinedFood);
                         const days = sum.dailyFood > 0 ? Math.max(0, Math.floor(sum.combinedFoodLevel / sum.dailyFood)) : null;
                         const daysClass = days === null ? '' : (days < 3 ? 'pen-days-left--critical' : (days < 7 ? 'pen-days-left--warning' : ''));
-                        feedHtml = `<div class="barn-tile-feed">
+                        feedHtml = `<div class="barn-tile-feed"${barTitle ? ` title="${escapeHtml(barTitle)}"` : ''}>
                                 <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
                                 <span class="barn-tile-feed-meta">
-                                    <span>${Math.round(sum.combinedFoodLevel).toLocaleString()} L${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString()} L` : ''}</span>
+                                    <span>${Math.round(sum.combinedFoodLevel).toLocaleString(FIN_LOCALE())} l${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString(FIN_LOCALE())} l` : ''}</span>
                                     ${days !== null ? `<span class="${daysClass}">${days} ${t('hubDaysRemaining')}</span>` : ''}
                                 </span>
                             </div>`;
@@ -3816,7 +3953,7 @@ window.openHubPanel = function (type) {
                             ${(() => {
                                 const r = barnReproSummary(building);
                                 if (!r || !r.pregnant) return '';
-                                return `<span class="barn-tile-repro"><i class="fa-solid fa-baby-carriage" aria-hidden="true"></i> ${t('reproPregnant')}: ${r.pregnant.toLocaleString()}${r.nextBirth !== null ? ' · ' + reproDueText(r.nextBirth) : ''}</span>`;
+                                return `<span class="barn-tile-repro"><i class="fa-solid fa-baby-carriage" aria-hidden="true"></i> ${t('reproPregnant')}: ${r.pregnant.toLocaleString(FIN_LOCALE())}${r.nextBirth !== null ? ' · ' + reproDueText(r.nextBirth) : ''}</span>`;
                             })()}
                         </div>
                         <div class="barn-tile-section-label">${t('hubFeedLevel')}${warn ? `<span class="pen-warning-badge">${t('hubFeedLow')}</span>` : ''}</div>
@@ -3879,9 +4016,9 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     const seed = buildSuppliesSeedRows(farm, rates);
     const fert = buildSuppliesFertRows(farm, rates);
 
-    const fmtL = n => `${Math.round(n).toLocaleString()} l`;
-    const fmtKg = n => `${Math.round(n).toLocaleString()} kg`;
-    const num = n => Math.round(n).toLocaleString();
+    const fmtL = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} l`;
+    const fmtKg = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} kg`;
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const plannedArea = (farm.fields || []).reduce((s, f) => {
         const area = parseFloat(f.area) || 0;
@@ -3922,7 +4059,6 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     // volume. A field with no saved plan gets a CTA instead of a guess.
     html += `<div class="hub-panel-subtitle">${t('suppliesFertilizer')}</div>`;
     if (fert.rows.length) {
-        const esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const orgCell = (r) => r.orgRate > 0
             ? `${num(r.orgRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.orgAbs)} N</span>
                <span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(r.orgVolAbs.manure)}</span>
@@ -3938,7 +4074,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}</td><td colspan="2">${r.area.toFixed(2)} ha</td>
                     <td colspan="4" class="supply-fillplan-cell">
                         <button type="button" class="supply-fillplan-btn" title="${t('suppliesFillPlanHint')}"
-                            onclick="openFieldFertPlan('${esc(r.planKey)}','${esc(r.soilKey)}','${esc(r.displayNumber)}','${esc(r.crop)}',${r.area})">
+                            ${fertPlanOpenAttrs(r.planKey, r.soilKey, r.displayNumber, r.crop, r.area)}>
                             ${t('suppliesFillPlanCta')}
                         </button>
                     </td></tr>`;
@@ -4162,7 +4298,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
 
     const rates = getSupplyRates();
     const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
-    const num = n => Math.round(n).toLocaleString();
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
         ? `<button type="button" class="yield-season-arrow" data-season="${season + dir}" aria-label="${t('season')} ${season + dir}"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}" aria-hidden="true"></i></button>`
@@ -4489,13 +4625,40 @@ function mixerRation(mixer, type) {
 
 // Stock litres per category with ready-mixed pig food split the way the
 // pigs' chosen mixer recipe uses it (else the game's pig mixture).
+// Feed already in the barns' troughs counts as stock too (source "barn").
 function feedStockCategoriesFor(farm, plan) {
+    const stock = {};
+    Object.entries((farm && farm.feedStock) || {}).forEach(([ft, sources]) => { stock[ft] = { ...sources }; });
+    Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => {
+        stock[ft] = { ...(stock[ft] || {}), barn: litres };
+    });
+    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+}
+
+// Litres per feed category lying in the barns' troughs (part of the stock above).
+function feedBarnStockCategoriesFor(farm, plan) {
+    const stock = {};
+    Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => { stock[ft] = { barn: litres }; });
+    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+}
+
+function feedStockSplitOverride(plan) {
     const ration = resolveRation('PIG', plan);
     const override = {};
     if (ration && ration.mixer && ration.absolute) {
         override.PIGFOOD = Object.fromEntries(ration.ingredients.map(i => [i.category, i.pct / 100]));
     }
-    return feedStockByCategory(farm && farm.feedStock, override);
+    return override;
+}
+
+// fillType -> litres in every barn's trough (<husbandryFood> in the save).
+function feedBarnStock(farm) {
+    const out = {};
+    ((farm && farm.animalBuildings) || []).forEach(b => (b.food || []).forEach(f => {
+        if (!isFeedFillType(f.fillType) || !(f.level > 0)) return;
+        out[f.fillType] = (out[f.fillType] || 0) + f.level;
+    }));
+    return out;
 }
 
 // Picks a barn's ration for one species (the other barns keep theirs).
@@ -4649,7 +4812,7 @@ const FEED_FILLTYPE_CATEGORY = {
     // Mod-map crops, grouped as the maps' animalFood.xml does (e.g. Solek).
     RYE: 'GRAIN', TRITICALE: 'GRAIN', MILLET: 'PIG_BASE', BUCKWHEAT: 'PROTEIN'
 };
-const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer'];
+const FEED_STOCK_SOURCES = ['silo', 'bunker', 'bale', 'pallet', 'mixer', 'barn'];
 
 // Ready-mixed feeds count toward the categories they're made of — pig food is
 // the game's PIGFOOD mixture (animalFood.xml <mixture animalType="PIG">: base
@@ -4935,8 +5098,9 @@ function feedStockByCategory(stock, splitOverride = {}) {
 // harvest (s.ROUGHAGE) can become any of the three, so it's handed out to
 // cover their shortfalls first and any surplus split by need. Maize chaff
 // (s.SILAGE) only ever counts as silage.
-function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {}) {
+function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {}, barnByCategory = {}) {
     const d = demand.byCategory, s = supply.byCategory, st = stockByCategory;
+    const barn = c => barnByCategory[c] || 0;
     const rows = [];
     const grassPerHa = (getCropYieldRate('Grass') || 0) * plan.grassCuts * avgFactor;
     // s.GRASS / s.HAY / s.SILAGE = harvest already assigned to that category
@@ -4956,7 +5120,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         const need = d[c] || 0, stock = st[c] || 0;
         const have = meadow + direct(c);
         if (need <= 0 && have <= 0 && stock <= 0) return;
-        rows.push({ id: c, need, have, stock, perHa: grassPerHa });
+        rows.push({ id: c, need, have, stock, barn: barn(c), perHa: grassPerHa });
     });
     FEED_CATEGORIES.filter(c => !FEED_ROUGHAGE.includes(c)).forEach(c => {
         const need = d[c] || 0, have = s[c] || 0, stock = st[c] || 0;
@@ -4965,7 +5129,7 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {})
         const perHa = c === 'STRAW'
             ? (plan.strawYield || cropStrawRate('Wheat') || 0) * avgFactor
             : (ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0);
-        rows.push({ id: c, need, have, stock, perHa, buyOnly: c === 'MINERAL' });
+        rows.push({ id: c, need, have, stock, barn: barn(c), perHa, buyOnly: c === 'MINERAL' });
     });
     return rows;
 }
@@ -5056,7 +5220,7 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
     }
     status += allBarns;
     const haveParts = [];
-    if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}`);
+    if (row && row.stock > 0) haveParts.push(`${t('feedStockShort')} ${num(row.stock)}${row.barn > 0 ? ` (${t('feedInBarns')}: ${num(row.barn)} l)` : ''}`);
     if (row && !row.buyOnly && row.have > 0) haveParts.push(`${t('feedHarvestShort')} ${num(row.have)}`);
     return `<div class="feed-ing-tile feed-ing-tile--${state}">
         <div class="feed-ing-head">
@@ -5164,8 +5328,8 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const demand = buildFeedDemand(farm, plan);
     const supply = buildFeedSupply(farm, plan, rates);
     const stock = (farm && farm.feedStock) || null;
-    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan));
-    const num = n => Math.round(n).toLocaleString();
+    const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan), feedBarnStockCategoriesFor(farm, plan));
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 
     let html = `<div class="feed-plan"><p class="supply-intro">${t('feedIntroShort')}</p>`;
@@ -5363,7 +5527,7 @@ function baleContentLabel(b) {
 
 function baleTypeLabel(b) {
     const what = baleContentLabel(b);
-    return `${b.label} · ${what} · ${Math.round(b.litres).toLocaleString()} l`;
+    return `${b.label} · ${what} · ${Math.round(b.litres).toLocaleString(FIN_LOCALE())} l`;
 }
 
 // Litres per feed category in the current load.
@@ -5894,9 +6058,34 @@ function wireSoilInputs(bodyEl) {
             else r.fieldSoil[k][soil] = n;
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
-            openHubPanel('fieldsoil');
+            rerenderKeepingFocus(() => openHubPanel('fieldsoil'));
         });
     });
+}
+
+// Re-renders a panel without losing the player's place. A change event fires
+// while the edited input still has focus — Tab or a click moves it on only
+// afterwards — so the redraw waits for that, then gives the focus and caret
+// back to the input the player moved to (found again by its tag, first class
+// and data-* attributes) and keeps the panel's scroll position.
+function rerenderKeepingFocus(render, scroller = hubView) {
+    setTimeout(() => {
+        const el = document.activeElement;
+        let sel = null, start = null, end = null;
+        if (el && el !== document.body && el.matches('input, select, textarea, button')) {
+            const data = Array.from(el.attributes).filter(a => a.name.startsWith('data-'))
+                .map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('');
+            sel = el.tagName.toLowerCase() + (el.classList[0] ? '.' + CSS.escape(el.classList[0]) : '') + data;
+            try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* not a text input */ }
+        }
+        const scroll = scroller ? scroller.scrollTop : 0;
+        render();
+        if (scroller) scroller.scrollTop = scroll;
+        const again = sel && document.querySelector(sel);
+        if (!again) return;
+        again.focus({ preventScroll: true });
+        try { if (start != null) again.setSelectionRange(start, end); } catch (e) { /* not a text input */ }
+    }, 0);
 }
 
 // Per-field fertilization plan — opened from the "Plan" button in each row of
@@ -5953,6 +6142,18 @@ function computeFieldFertPlan(planKey, soilKey, cropKey, area, rates) {
     };
 }
 
+// Data attributes for a button that opens a field's fertilization plan
+// (handled by the one listener below — no data inside inline onclick).
+function fertPlanOpenAttrs(planKey, soilKey, displayNumber, crop, area) {
+    return `data-fertplan-open data-plan-key="${escapeHtml(planKey)}" data-soil-key="${escapeHtml(soilKey)}" data-number="${escapeHtml(displayNumber)}" data-crop="${escapeHtml(crop || '')}" data-area="${Number(area) || 0}"`;
+}
+document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-fertplan-open]');
+    if (!btn) return;
+    const d = btn.dataset;
+    window.openFieldFertPlan(d.planKey, d.soilKey, d.number, d.crop, parseFloat(d.area) || 0);
+});
+
 window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, area) {
     const titleEl = document.getElementById('fertplan-modal-title');
     const bodyEl = document.getElementById('fertplan-modal-body');
@@ -5966,7 +6167,7 @@ window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, a
 function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area) {
     const rates = getSupplyRates();
     const d = computeFieldFertPlan(planKey, soilKey, cropKey, area, rates);
-    const num = n => Math.round(n).toLocaleString();
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
     const kgN = t('suppliesNRateUnit');
     const match = findFertPlanField(getCurrentFarm(), planKey);
     const fieldRow = match ? match.field : null;
@@ -6266,8 +6467,8 @@ function renderNoteCard(note, currentMonth) {
             <div class="note-card-header">
                 <h4 class="note-card-title">${hasDetails ? '<i class="fa-solid fa-chevron-right note-card-caret" aria-hidden="true"></i>' : ''}${escapeHtml(note.title)}${open ? '' : summary}</h4>
                 <div class="note-card-actions">
-                    <button type="button" class="note-card-action" title="${t('notesEdit')}" onclick="window.openNoteEditModal('${note.id}')"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
-                    <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" onclick="window.deleteNote('${note.id}')"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+                    <button type="button" class="note-card-action" title="${t('notesEdit')}" data-note-action="edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button type="button" class="note-card-action note-card-action--danger" title="${t('notesDelete')}" data-note-action="delete"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
                 </div>
             </div>
             ${isCurrent ? `<span class="note-current-badge">${t('notesCurrentMonthBadge')}</span>` : ''}
@@ -6319,6 +6520,13 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
         const tagBtn = e.target.closest('.note-tag-filter');
         if (tagBtn) {
             if (tagSel) { tagSel.value = tagSel.value === tagBtn.dataset.tag ? '' : tagBtn.dataset.tag; refresh(); }
+            return;
+        }
+        const actionBtn = e.target.closest('[data-note-action]');
+        if (actionBtn) {
+            const noteId = actionBtn.closest('.note-card').dataset.noteId;
+            if (actionBtn.dataset.noteAction === 'edit') window.openNoteEditModal(noteId);
+            else window.deleteNote(noteId);
             return;
         }
         if (e.target.closest('button, input, label')) return;
@@ -7339,7 +7547,7 @@ function getAllFarms() {
                 }
             }
         } catch (e) {
-            console.error(`Błąd odczytu pliku w folderze: ${folder}. Plik jest uszkodzony.`);
+            console.error(`Could not read the farm file in ${folder} — it is damaged.`);
         }
     });
     return farms;
@@ -7371,7 +7579,7 @@ function farmDir(farm) {
 // formatted in whatever locale the system had then — show those as they are.
 function formatLastEdited(value) {
     if (!value) return '–';
-    if (!/^d{4}-d{2}-d{2}T/.test(value)) return value;
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
     const d = new Date(value);
     return isNaN(d) ? value : d.toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
 }
@@ -7825,6 +8033,34 @@ function getDailyAnimalNeed(subType, ageMonth, needType) {
     const def = ANIMAL_NEEDS_DATA[subType];
     if (!def || !def[needType]) return 0;
     return interpolateNeedCurve(def[needType], ageMonth);
+}
+
+// Adds one cluster's output (milk/eggs/wool/manure..., litres per in-game
+// month from the breed's curves) into `into` (fillType -> litres).
+function addClusterOutput(farm, building, c, feedPlan, into) {
+    const def = ANIMAL_NEEDS_DATA[c.subType];
+    if (!def || !def.production) return;
+    const animalType = animalTypeOf(c.subType);
+    const ration = animalType ? resolveRation(animalType, feedPlan, building.id) : null;
+    // The ration's productionWeight scales milk/eggs/wool the way
+    // the game does; manure/slurry don't depend on the feed.
+    const outputFactor = ration ? ration.efficiency / 100 : 1;
+    Object.keys(def.production).forEach(fillType => {
+        const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
+        const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
+            * clusterMilkFactor(farm, animalType, c, fillType);
+        if (rate > 0) into[fillType] = (into[fillType] || 0) + rate * c.numAnimals * factor;
+    });
+}
+
+// The whole herd's estimated output for one in-game month, or null when the
+// breeds' curves aren't loaded (they're per farm — only the open farm's are).
+function estimateMonthlyOutput(farm, buildings) {
+    if (!farm || farm.id !== currentFarmId || !Object.keys(ANIMAL_NEEDS_DATA).length) return null;
+    const feedPlan = getFeedPlan(farm);
+    const out = {};
+    (buildings || []).forEach(b => (b.clusters || []).forEach(c => addClusterOutput(farm, b, c, feedPlan, out)));
+    return out;
 }
 
 function getDailyAnimalProduction(subType, ageMonth, fillType) {
@@ -8382,7 +8618,7 @@ function refreshPlannerHeader(farm) {
         // Day of the in-game month next to its name ("MARCH 2") — only when a
         // month has more than one day, otherwise it'd always read "1".
         const showDay = parseInt(farm.daysPerPeriod) > 1 && parseInt(farm.dayInPeriod) > 0;
-        plannerMonth.innerText = translateMonth(farm.month || "AUGUST") + (showDay ? ` ${farm.dayInPeriod}` : '');
+        plannerMonth.innerText = farm.month ? translateMonth(farm.month) + (showDay ? ` ${farm.dayInPeriod}` : '') : '–';
     }
     if (plannerYear) {
         plannerYear.value = parseInt(farm.yearNumber, 10) || 1;
@@ -8605,6 +8841,24 @@ function getLimeStatus(field, i, seasonNum, rates) {
     const ph = resolveLimePh(field, seasonNum, soilMix);
     if (ph == null) return { ph: null, status: 'off' };
     return { ph, status: ph > 0.75 ? 'active' : 'warning' };
+}
+
+// Lime a field this season. The liming it replaces is kept in limePrev, so a
+// mistaken click can be taken back without losing the older history.
+function applyLiming(field, season) {
+    if (field.limeAppliedSeason !== season) {
+        field.limePrev = { season: field.limeAppliedSeason ?? null, ph: field.limePh ?? null };
+    }
+    field.limeAppliedSeason = season;
+    field.limePh = LIME_PH_IDEAL;
+}
+
+// Take back this season's liming (back to the one before it), or clear it.
+function undoLiming(field, season) {
+    const prev = field.limeAppliedSeason === season ? field.limePrev : null;
+    field.limeAppliedSeason = prev ? prev.season : null;
+    field.limePh = prev ? prev.ph : null;
+    delete field.limePrev;
 }
 
 // Fill color for the lime chip, interpolated across 3 stops as pH drops from
@@ -8862,7 +9116,7 @@ window.openCutsModal = function (idx) {
             updateCutsField(f => {
                 f.cuts[+i][el.dataset.key] = el.checked;
                 // Linked to the field: limed = fresh liming (pH 100%), rolled = rolling chip on.
-                if (el.dataset.key === 'limed' && el.checked) { f.limeAppliedSeason = (getCurrentFarm() || {}).currentSeason || 1; f.limePh = LIME_PH_IDEAL; }
+                if (el.dataset.key === 'limed' && el.checked) applyLiming(f, (getCurrentFarm() || {}).currentSeason || 1);
                 if (el.dataset.key === 'rolled') { f.rolling = f.cuts.some(c => c.rolled); f.rollingDone = f.rolling; }
             });
         }
@@ -8937,6 +9191,16 @@ function renderFieldModal() {
 
     let html = '';
     const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
+
+    // Crop, catch crop and sowing months — editable here, so changing a crop
+    // doesn't need the whole table in Edit mode.
+    const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
+    html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
+        ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
+        ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
+        ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
+        ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>`);
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
@@ -9033,7 +9297,24 @@ window.openFieldModal = function (idx) {
         const farm = getCurrentFarm();
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
-        if (el.classList.contains('field-view-soil')) {
+        if (el.matches('.field-view-crop, .field-view-sow, .field-view-catch, .field-view-catch-sow')) {
+            const before = JSON.parse(JSON.stringify(farm.fields));
+            if (el.classList.contains('field-view-crop')) {
+                field.crop = el.value;
+                field.sowingMonth = '';
+            } else if (el.classList.contains('field-view-sow')) {
+                field.sowingMonth = el.value;
+            } else if (el.classList.contains('field-view-catch')) {
+                field.catchCrop = el.value;
+                field.catchSowingMonth = '';
+            } else {
+                field.catchSowingMonth = el.value;
+            }
+            // Fertilization plan, feed use and straw are keyed by number + crop.
+            migrateFieldKeys(farm, before, farm.fields);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-soil')) {
             const r = getSupplyRates();
             const k = fertPlanSoilKey(field, fieldModalIdx);
             if (!r.fieldSoil) r.fieldSoil = {};
@@ -9043,7 +9324,7 @@ window.openFieldModal = function (idx) {
             else r.fieldSoil[k][el.dataset.soil] = n;
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
-            renderFieldModal();
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-use')) {
             const plan = getFeedPlan(farm);
             plan.fieldUse[el.dataset.key] = el.value;
@@ -9329,21 +9610,26 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
             });
             if (sure !== true) return;
         } else {
+            // Limed in the app this season but the pH still reads low (e.g. the
+            // game's pH before the next sync): offer to take it back.
+            const limedNow = field.limeAppliedSeason === (farm.currentSeason || 1);
             const ok = await showSmallConfirm({
                 title: t('limeConfirmTitle').replace('{field}', label),
-                text: t(status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain').replace('{pct}', pct),
+                text: t(limedNow ? 'limeConfirmAgainLimedNow' : (status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain')).replace('{pct}', pct),
                 ok: t('limeConfirmOnBtn'),
-                icon: 'fa-flask'
+                icon: 'fa-flask',
+                extra: limedNow ? t('limeUndo') : ''
             });
+            if (ok === 'extra') {
+                undoLiming(field, farm.currentSeason || 1);
+                saveFarmData(farm);
+                renderSeasonView();
+                return;
+            }
             if (ok !== true) return;
         }
-        if (remove) {
-            field.limeAppliedSeason = null;
-            field.limePh = null;
-        } else {
-            field.limeAppliedSeason = farm.currentSeason || 1;
-            field.limePh = LIME_PH_IDEAL;
-        }
+        if (remove) undoLiming(field, farm.currentSeason || 1);
+        else applyLiming(field, farm.currentSeason || 1);
     }
     saveFarmData(farm);
     renderSeasonView();
@@ -9390,10 +9676,10 @@ function grasslandAge(field, history, seasonNum, limit) {
 }
 
 // Sowing window = the run of months in the crop calendar that holds the
-// planned month. Overdue: not sown and the window ended at most
-// SOWING_OVERDUE_MONTHS ago (and we're closer to its end than to its next
-// start) — further out it's more likely a plan for the next round.
-const SOWING_OVERDUE_MONTHS = 3;
+// planned month. Overdue: not sown and the window already ended in this
+// sowing year, which runs July..June — so in July an April sowing is next
+// spring's, not a missed one.
+const SOWING_YEAR_START = ALL_MONTHS.indexOf('JULY');
 function isSowingOverdue(field, currentMonth) {
     if (!field.crop || field.state === 'Planted' || !currentMonth) return false;
     const cal = CROP_CALENDAR[field.crop];
@@ -9403,12 +9689,10 @@ function isSowingOverdue(field, currentMonth) {
     const inWindow = m => !!cal[ALL_MONTHS[(m + 12) % 12]];
     const cur = idx(currentMonth);
     if (cur < 0 || inWindow(cur)) return false;
-    let end = idx(sow), start = idx(sow);
+    let end = idx(sow);
     for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
-    for (let i = 0; i < 11 && inWindow(start - 1); i++) start--;
-    const sinceEnd = (cur - end + 24) % 12;
-    const untilStart = (start - cur + 24) % 12;
-    return sinceEnd <= SOWING_OVERDUE_MONTHS && sinceEnd <= untilStart;
+    const posInYear = m => (m - SOWING_YEAR_START + 24) % 12;
+    return posInYear(end) < posInYear(cur);
 }
 
 // Small stacked bar of the field's soil types (only when its soil is known).
@@ -9558,13 +9842,12 @@ function renderFieldsTable(fields) {
                 const soilK = fertPlanSoilKey(field, origIdx);
                 const planK = fertPlanKey(field, origIdx);
                 const dispNum = numStr || ('#' + (origIdx + 1));
-                const esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 // White = nothing marked yet; brown = natural fertilizer applied;
                 // green = synthetic applied (wins if both are checked — it's the
                 // "topped up to target" state). Flags live on the field itself,
                 // set from the plan modal's Zabiegi checkboxes.
                 const btnState = field.fertilizer ? ' fertplan-open-btn--synthetic' : (field.manure ? ' fertplan-open-btn--natural' : '');
-                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" onclick="openFieldFertPlan('${esc(planK)}','${esc(soilK)}','${esc(dispNum)}','${esc(field.crop)}',${area})">${t('fertPlanBtn')}</button></td>`;
+                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" ${fertPlanOpenAttrs(planK, soilK, dispNum, field.crop, area)}>${t('fertPlanBtn')}</button></td>`;
             }
 
             htmlString += `
@@ -9648,7 +9931,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size, fertilization plan, feed use and straw are stored under
@@ -9900,7 +10183,7 @@ function updateSplitHints() {
 
         if (!key) return;
         const areaInput = row.querySelector('.field-area');
-        const area = parseFloat((areaInput.value || '0').replace(',', '.')) || 0;
+        const area = parseDecimal(areaInput.value || '0') || 0;
         if (!groups[key]) groups[key] = [];
         groups[key].push({ row, area });
     });
@@ -9919,7 +10202,7 @@ function updateSplitHints() {
             if (sizeInput) {
                 sizeInput.style.display = 'block';
                 if (fieldSize === null && sizeInput.value) {
-                    const parsed = parseFloat(sizeInput.value.replace(',', '.'));
+                    const parsed = parseDecimal(sizeInput.value);
                     if (!isNaN(parsed)) fieldSize = parsed;
                 }
             }
@@ -10244,7 +10527,8 @@ function collectEditedFields(farm) {
             return;
         }
         let rawArea = row.querySelector('.field-area').value || "0";
-        rawArea = rawArea.replace(',', '.');
+        const parsedArea = parseDecimal(rawArea);
+        rawArea = isNaN(parsedArea) ? '0' : String(parsedArea);
         // An area typed by hand overrides the one from the game.
         const areaInput = row.querySelector('.field-area');
         const areaEdited = areaInput && areaInput.dataset.orig !== undefined && areaInput.value !== areaInput.dataset.orig;
@@ -10307,7 +10591,7 @@ function collectEditedFields(farm) {
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {
-            const parsedSize = parseFloat(sizeInput.value.replace(',', '.'));
+            const parsedSize = parseDecimal(sizeInput.value);
             if (!isNaN(parsedSize)) fieldSizes[numInput.value.trim()] = parsedSize;
         }
     });
@@ -10377,7 +10661,7 @@ if (editSeasonBtn) {
         const createBackup = (fieldsData, prefix) => writeFieldsBackup(farm, fieldsData, prefix);
 
         if (isEditMode) {
-            // >>> WYJŚCIE Z EDYCJI (ZAPIS) <<<
+            // Leaving edit mode: save.
 
             const { fields: newFields, fieldSizes: newFieldSizes, missingNumber } = collectEditedFields(allFarms[idx]);
             fieldsBody.querySelectorAll('.field-number.is-invalid').forEach(el => el.classList.remove('is-invalid'));
@@ -10388,23 +10672,23 @@ if (editSeasonBtn) {
                 return;
             }
 
-            // 1. Zapisz nowe dane do farmy
+            // 1. Store the edited fields on the farm.
             migrateFieldKeys(allFarms[idx], allFarms[idx].fields || [], newFields);
             allFarms[idx].fields = newFields;
             allFarms[idx].fieldSizes = newFieldSizes;
             saveFarmData(allFarms[idx]);
 
-            // 2. ZRÓB BACKUP "POST-EDIT" (stan po zmianach)
+            // 2. Back up the fields as they are after the edit.
             createBackup(newFields, "post-edit");
 
             setEditModeUi(false);
             renderSeasonView();
 
         } else {
-            // >>> WEJŚCIE W TRYB EDYCJI <<<
+            // Entering edit mode.
 
-            // 1. ZRÓB BACKUP "PRE-EDIT" (stan obecny, przed zmianami)
-            // Dzięki temu jak coś zepsujesz, masz kopię tego co było przed chwilą
+            // Back up the fields as they are now, so a botched edit can be undone
+            // from the copy made just before it.
             createBackup(farm.fields || [], "pre-edit");
 
             renderEditTableWithDropdowns(farm.fields || []);
@@ -10694,6 +10978,8 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.weeds = null;
                 delete field.work;
                 delete field.workCleared;
+                // Undo only covers the season the liming was made in.
+                delete field.limePrev;
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
@@ -10833,7 +11119,7 @@ if (resetSeasonsBtn) {
             try {
                 fs.rmSync(seasonsDirPath, { recursive: true, force: true });
             } catch (err) {
-                console.error("Błąd podczas usuwania archiwum:", err);
+                console.error("Could not delete the season archive:", err);
                 await showSeasonNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
                 return;
             }
@@ -11388,24 +11674,44 @@ if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => { if (s
 // =============================================================
 // SECTION 10: DASHBOARD LOGIC (FARM MANAGEMENT)
 // =============================================================
+// One listener for every farm row's buttons (open / delete / export).
+const farmListClickEl = document.querySelector('.farm-list');
+if (farmListClickEl) farmListClickEl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-farm-action]');
+    const item = btn && btn.closest('.farm-item');
+    if (!item) return;
+    const id = item.dataset.farmId;
+    if (btn.dataset.farmAction === 'open') window.openPlanner(id);
+    else if (btn.dataset.farmAction === 'delete') window.prepareDelete(id);
+    else if (btn.dataset.farmAction === 'export') window.exportFarmBackup(id);
+});
+
 function renderFarmList(farms) {
     const container = document.querySelector('.farm-list');
     if (!container) return;
     container.innerHTML = "";
+    if (!farms.length) {
+        container.innerHTML = `<div class="farm-list-empty">
+            <p>${t('noFarmsYet')}</p>
+            <button type="button" class="farm-list-empty-cta"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('addFirstFarm')}</button>
+        </div>`;
+        container.querySelector('.farm-list-empty-cta').addEventListener('click', () => { if (addFarmBtn) addFarmBtn.click(); });
+    }
     farms.forEach(farm => {
         const item = document.createElement('div');
         item.className = 'farm-item';
+        item.dataset.farmId = farm.id;
         const actionButton = deleteMode
-            ? `<button type="button" class="delete-btn-circle" onclick="prepareDelete('${farm.id}')" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
-            : `<button type="button" class="select-btn" onclick="openPlanner('${farm.id}')" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
+            ? `<button type="button" class="delete-btn-circle" data-farm-action="delete" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
+            : `<button type="button" class="select-btn" data-farm-action="open" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
 
         item.innerHTML = `
             <div class="farm-details">
-                <span class="farm-name">${farm.name}${farm.mapName ? ` <span class="farm-map">${farm.mapName}</span>` : ''}</span>
+                <span class="farm-name">${escapeHtml(farm.name)}${farm.mapName ? ` <span class="farm-map">${escapeHtml(farm.mapName)}</span>` : ''}</span>
                 <span class="farm-dates">${t('lastEdited')}: ${escapeHtml(formatLastEdited(farm.lastEdited))}</span>
             </div>
             <div class="farm-item-actions">
-                <p class="export-btn-circle" onclick="exportFarmBackup('${farm.id}')" title="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></p>
+                <button type="button" class="export-btn-circle" data-farm-action="export" title="${t('exportBackup')}" aria-label="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
                 ${actionButton}
             </div>
         `;
@@ -11813,8 +12119,7 @@ function tutPickOption(select, preferred) {
 
 function tutDemoItem() {
     if (!tut.demoId) return null;
-    const btn = tq(`.farm-list [onclick*="'${tut.demoId}'"]`);
-    return btn ? btn.closest('.farm-item') : null;
+    return tqa('.farm-list .farm-item').find(el => el.dataset.farmId === String(tut.demoId)) || null;
 }
 
 // Read-only fields table row by its displayed field number ("1", "5–6").
@@ -11870,7 +12175,7 @@ function tutFeed(sel) {
 }
 
 function tutNumValue(el) {
-    return el ? (parseFloat(String(el.value).replace(',', '.')) || 0) : 0;
+    return el ? (parseDecimal(el.value) || 0) : 0;
 }
 
 // ---------- demo farm ----------
@@ -12889,6 +13194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await askFirstLanguage();
         renderFarmList(getAllFarms());
     }
+    await askDiscordOnce();
     if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

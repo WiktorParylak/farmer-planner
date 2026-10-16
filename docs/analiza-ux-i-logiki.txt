@@ -26,43 +26,20 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 2. TABELA PÓL I SEZONY — UX
 ----------------------------------------------------------------------------
 
-2.3 Dwa tryby edycji naraz
-    Co: w widoku tylko-do-odczytu część rzeczy klika się od razu (stan
-    zasiewu, wapno z potwierdzeniem, wał, pokosy), a część tylko w trybie
-    edycji (uprawa, miesiąc, uprawa gleby). Uprawa gleby w widoku wygląda jak
-    przełącznik, ale nie reaguje.
-    Propozycja: wybrać jeden model. Najprościej: edycja inline per wiersz
-    (klik w komórkę), bez globalnego trybu edycji.
+(wszystko zrobione w 0.9.11)
 
 ----------------------------------------------------------------------------
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA
 ----------------------------------------------------------------------------
 
-3.9 Pola w widoku „Typ gleby pola” gubią fokus
-    Co: każda zmiana procentu = pełny re-render panelu (l. 5318).
-    Tab do następnego pola → zmiana → re-render → fokus znika. To samo przy
-    pojemności koryta w Zwierzętach (updateBuildingCapacity, l. 2348).
-    Propozycja: zapisywać bez re-renderu albo przywracać fokus.
+(wszystko zrobione w 0.9.11)
 
 
 ----------------------------------------------------------------------------
 4. ZWIERZĘTA I PLANER PASZ
 ----------------------------------------------------------------------------
 
-4.3 Progi „mało paszy” z sufitu
-    Co: bez wpisanej pojemności „mało” to < 80 L absolutnie (l. 3103),
-    niezależnie czy to 2 kury, czy 200 krów. Pasek jest liczony względem
-    najpełniejszej obory (l. 3170), więc 100 % nie znaczy „pełne”.
-    Propozycja: progiem powinny być dni zapasu (już liczone, gdy znane
-    są potrzeby), a nie litry.
-
-4.4 „Wyprodukowane mleko” to przyrost stanu magazynu
-    Co: getMonthlyHistory liczy produkcję jako dodatnią różnicę litrów
-    w zbiorniku (l. 2297). Sprzedaż w trakcie miesiąca = zaniżenie,
-    brak sprzedaży przez dwa miesiące = wykres jak sinusoida.
-    Jest notka o przybliżeniu, ale wykres i tak wprowadza w błąd.
-    Propozycja: pokazywać produkcję szacowaną z krzywych (już liczona jako
-    „szacowana dzienna produkcja”) albo nazwać wykres „Stan zbiornika”.
+(wszystko zrobione w 0.9.11)
 
 ----------------------------------------------------------------------------
 5. EKRAN STARTOWY, USTAWIENIA, ONBOARDING
@@ -115,12 +92,6 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
     feed.js, supplies.js, fields-table.js, tutorial.js) — już tak robisz
     z savegame-soil.js czy animal-mods.js.
 
-6.6 Inline onclick z danymi
-    14 × onclick="...('${...}')" z ręcznym escapowaniem (np. esc() w l. 3475
-    i 8279). renderFarmList wstawia farm.name bez escapeHtml (l. 9476) —
-    nazwa z „<” lub cudzysłowem rozwali listę.
-    Propozycja: data-* + jeden listener (jak już robisz w tabeli pól).
-
 6.7 Konfiguracja rozrzucona między localStorage a data.json
     Język, auto-sync, Discord, samouczek, sortowania — localStorage
     (nie trafia do kopii zapasowej, nie przenosi się na drugi komputer).
@@ -132,20 +103,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 ----------------------------------------------------------------------------
 7. DROBIAZGI
 ----------------------------------------------------------------------------
- - Domyślny miesiąc to „SIERPIEŃ”, gdy nic nie wiadomo (l. 7630) — lepiej „–”.
- - Nagłówek w HTML ma na sztywno „Solek”, „1000$”, „JANUARY” (index.html:52-60)
-   — mignie przy starcie, a „$” kłóci się z „€” w reszcie aplikacji.
- - Pusta lista farm: tekst „No farms yet…” w atrybucie data-empty-text
-   (index.html:37) — dobrze, ale brak przycisku-CTA w środku pustego stanu.
- - Komentarze i logi po polsku w kodzie (np. l. 28, 6794, 8636-8665) wbrew
-   zasadzie „kod po angielsku”.
- - Discord Rich Presence jest domyślnie WŁĄCZONY (opt-out, l. 1921) —
-   pokazuje nazwę farmy publicznie bez pytania. Lepiej zapytać przy
-   pierwszym uruchomieniu.
- - Przecinek dziesiętny zamieniany tylko pierwszy (replace(',', '.')) —
-   „1,234,5” da śmieci; użyj parsera z walidacją.
- - Wykres z jednym punktem (pierwszy miesiąc) — komunikat „potrzeba więcej
-   miesięcy” jest, ale KPI „zmiana w sezonie” pokazuje „–” bez wyjaśnienia.
+(wszystko zrobione w 0.9.11)
 
 
 ----------------------------------------------------------------------------

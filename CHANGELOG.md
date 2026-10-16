@@ -2,6 +2,39 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.11 — 2026-10-16
+
+**New**
+- **Test farm for development**: when the app runs from the source code (`npm start`), *Settings* has a *Developer* switch that adds a test farm built by the app itself — fields, animals, feed, history and notes covering every state the planner can show — and *Rebuild test farm* to start it over. Turning the switch off deletes it. The installed app doesn't show the switch. It replaces the old test farm kept in the repo (a copy of a real savegame) and its `tools/dev-farm.js` script.
+
+**Fixed**
+- **Undo a liming**: a field limed this season whose pH still reads low (with Precision Farming, the game's pH only changes after the next sync) asked only *Lime again?*. The dialog now also has *Undo liming*, which puts back the liming from before this season (or none). *Remove liming…* on a well-limed field does the same, so older liming history isn't lost.
+- **Feed planner ignored feed in the barns**: grain (and any other feed) already lying in the barns' troughs now counts as stock, so with empty silos the planner no longer says *missing* while the Animals panel shows the barn full. The tile says how much of the stock is in the barns (*storage 12 000 (in barns: 3 000 l)*), and the Animals panel's "stock lasts N days" counts it too.
+- **Decimal numbers**: areas, field sizes, trough capacities and feed amounts accept `1,5`, `1 234,5`, `1.234,5` and `1,234.5`; something that isn't a number (e.g. `1,234,5`) is no longer read as a wrong value.
+- **Farm names with special characters**: a farm or map name containing `<`, `&` or quotes no longer breaks the farm list, and *Fertilizer* buttons work for crops and field numbers with quotes in them.
+- **Typing soil shares or a trough capacity**: Tab or a click to the next box no longer loses focus when the panel redraws — the cursor stays where you moved it and the panel keeps its scroll position (*Field soil type*, the field window, a barn's trough capacity).
+- **“Last edited” dates on the farm list**: shown in the app's language and format (e.g. *3.10.2026, 22:18*) instead of the raw saved timestamp.
+- **Header before a farm loads**: no more “Solek / 1000$ / JANUARY” flashing at start; an unknown month shows `–` instead of *August*.
+
+**Changed**
+- **Change a crop without Edit**: the field window (click a field number) now has the crop, sowing month, catch crop and its sowing month at the top, saved straight away — together with the clickable state, lime, rolling and tillage chips, Edit is only needed for field numbers, areas, leases and adding or removing fields. The fertilization plan, feed use and straw follow the new crop as they do in Edit.
+- **Discord Rich Presence is opt-in**: it shows your farm publicly, so the app now asks once at start (also if you've never changed the setting) and stays off until you say yes. *Settings* still switches it either way.
+- **“Low feed” in days, not litres**: when the animals' needs are known, a barn is flagged as low on feed with less than 3 days left (the same red as the days figure), whether it's 2 chickens or 200 cows. Without an entered trough capacity the bar shows days of feed (full = 2 weeks) instead of comparing with your fullest barn; with a capacity it's still a real percentage.
+- **“Produced per month” chart**: milk, eggs and wool are now estimated from the herd each month (breed, age, ration, lactation — the same as *Estimated daily output*) instead of the rise in the tank, which sank whenever you sold mid-month. Months recorded before this version don't have the estimate, so the old chart stays until two new months are synced.
+- **More consistent look**:
+  - Section headings (*Buildings*, *Barn*, *Feed*, *Mixer wagon*, the Supplies tables) all use the same small label style; card and page titles keep the display font.
+  - Litres are always a lowercase *l* (`40 083 l`, `4182 l/day`), and every number uses the app language's separators — no more `13,040` next to `26 565 €`.
+  - Drop-downs in panels and dialogs look like the text boxes next to them instead of plain white system boxes.
+  - Dialog buttons: *Cancel* first and the main action last everywhere (also in *Settings*), sentence case (*Cancel*, *Save & import*, *Delete*), never wrapped onto two lines; a dialog with three buttons is wider so they fit on one row.
+  - Sidebar: *Settings* and *Exit* are written like the menu items above them; *+ Add note* matches the other panel buttons; note edit/delete buttons are round like the rest of the icon buttons.
+  - Barn tiles: health and the feed figures use the normal text font instead of the typewriter one; soil % boxes are wide enough for *100*.
+  - Buttons: one shared style in three sizes (page actions, panel buttons, small buttons in tables) with the same font, border and hover everywhere — filled green for the main action, outline for the rest, amber for *Fill from plan* / *This month*, dashed for *add another*, rust for resets and deletes.
+  - The app settings gear sits in the top-right corner of the *My Farms* card instead of floating in the corner of the window.
+  - Text sizes come from one scale instead of 23 slightly different pixel sizes (e.g. 10.5, 12.5, 17 px).
+- **Overdue sowing follows the sowing year**: the year is cut at the end of June, so *Overdue* means the crop's sowing window has passed in this July–June year. In July a field planned for April sowing shows *To plant* (next spring), not *Overdue*; a canola field not sown by October stays *Overdue* until June instead of only for three months.
+- **Discord not running**: with Discord Rich Presence on, the app looks for Discord less and less often (every 5 s up to once a minute) and writes *no Discord client found* to the log once instead of every 5 seconds. It still connects as soon as Discord starts.
+- **No farms yet**: the empty farm list has an *Add your first farm* button.
+
 ## 0.9.10 — 2026-10-16
 
 **Fixed**

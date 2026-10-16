@@ -22,7 +22,6 @@
     </div>
     <div class="app-container">
         <div id="dashboard-view" class="dashboard-view">
-            <button id="app-settings-btn" class="app-settings-btn" data-i18n-title="appSettings" title="Settings"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
             <section class="brand-section">
                 <div class="logo-wrapper">
                     <img src="../../Assets/Logo.svg" alt="Farmer Planner" class="logo">
@@ -31,6 +30,7 @@
             </section>
             <section class="menu-section">
                 <div class="white-card">
+                    <button id="app-settings-btn" class="app-settings-btn" data-i18n-title="appSettings" title="Settings"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
                     <h1 class="card-title" data-i18n="myFarms">My Farms</h1>
                     <div class="stripe-divider"></div>
                     <div class="white-card-content">
@@ -49,15 +49,15 @@
         </div>
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
-                <h1 id="planner-farm-name" class="save-name">Solek</h1>
+                <h1 id="planner-farm-name" class="save-name"></h1>
                 <div class="header-info">
                     <div class="balance">
                         <h3 class="balance-label" data-i18n="balance">BALANCE</h3>
-                        <p id="planner-balance" class="balance-value">1000$</p>
+                        <p id="planner-balance" class="balance-value">–</p>
                     </div>
                     <div class="month">
                         <h3 class="month-label" data-i18n="month">MONTH</h3>
-                        <p id="planner-month" class="month-value">JANUARY</p>
+                        <p id="planner-month" class="month-value">–</p>
                     </div>
                     <div class="year">
                         <h3 class="year-label" data-i18n="yearLabel">YEAR</h3>
@@ -105,11 +105,11 @@
                 <div class="sidebar-footer">
                     <button type="button" id="settings-btn" class="sidebar-item sidebar-item--util">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="settings">SETTINGS</span>
+                        <span class="sidebar-item-label" data-i18n="settings">Settings</span>
                     </button>
                     <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="exit">EXIT</span>
+                        <span class="sidebar-item-label" data-i18n="exit">Exit</span>
                     </button>
                 </div>
             </nav>
@@ -284,8 +284,8 @@
                 </div>
 
                 <div class="modal-buttons">
-                    <button id="save-settings-btn" data-i18n="saveAndImport">SAVE & IMPORT</button>
-                    <button id="cancel-settings-btn" data-i18n="cancel">CANCEL</button>
+                    <button id="cancel-settings-btn" data-i18n="cancel">Cancel</button>
+                    <button id="save-settings-btn" data-i18n="saveAndImport">Save &amp; import</button>
                 </div>
             </div>
         </div>
@@ -313,6 +313,14 @@
                 </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
+                <div id="dev-farm-setting" hidden>
+                    <p data-i18n="devFarmSettingLabel" style="margin-bottom:4px;">Developer</p>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="dev-farm-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                        <span data-i18n="devFarmSettingHint">Test farm built into the app. Turning it off deletes it.</span>
+                    </label>
+                    <button type="button" id="dev-farm-rebuild-btn" class="replay-tutorial-btn" data-i18n="devFarmRebuild" style="margin-top:6px;">Rebuild test farm</button>
+                </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
                 </div>
@@ -421,8 +429,8 @@
                 <h3 data-i18n="areYouSure">Are you sure?</h3>
                 <p data-i18n="deleteFarmConfirm">Do you really want to delete this farm? This action cannot be undone.</p>
                 <div class="modal-buttons">
-                    <button type="button" id="cancel-delete-btn" data-i18n="cancel">CANCEL</button>
-                    <button type="button" id="confirm-delete-btn" class="danger-btn" data-i18n="delete">DELETE</button>
+                    <button type="button" id="cancel-delete-btn" data-i18n="cancel">Cancel</button>
+                    <button type="button" id="confirm-delete-btn" class="danger-btn" data-i18n="delete">Delete</button>
                 </div>
             </div>
         </div>

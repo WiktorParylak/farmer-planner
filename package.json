@@ -1,6 +1,6 @@
 {
   "name": "farmer-planner",
-  "version": "0.9.10",
+  "version": "0.9.11",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
@@ -24,7 +24,6 @@
       "**/*",
       "!FS25_CropDependentRolling${/*}",
       "!.claude${/*}",
-      "!dev-farm${/*}",
       "!docs${/*}",
       "!tools${/*}",
       "!CLAUDE.md"
