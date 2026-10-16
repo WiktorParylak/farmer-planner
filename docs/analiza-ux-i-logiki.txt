@@ -26,13 +26,7 @@ szczegóły w podziale na obszary, na końcu kolejność napraw.
 2. TABELA PÓL I SEZONY — UX
 ----------------------------------------------------------------------------
 
-2.3 Dwa tryby edycji naraz
-    Co: w widoku tylko-do-odczytu część rzeczy klika się od razu (stan
-    zasiewu, wapno z potwierdzeniem, wał, pokosy), a część tylko w trybie
-    edycji (uprawa, miesiąc, uprawa gleby). Uprawa gleby w widoku wygląda jak
-    przełącznik, ale nie reaguje.
-    Propozycja: wybrać jeden model. Najprościej: edycja inline per wiersz
-    (klik w komórkę), bez globalnego trybu edycji.
+(wszystko zrobione w 0.9.11)
 
 ----------------------------------------------------------------------------
 3. NAWOŻENIE, ZAOPATRZENIE, WAPNO — LOGIKA

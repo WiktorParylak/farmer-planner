@@ -123,10 +123,12 @@ const TRANSLATIONS = {
         thSoil: "Treatments",
         thHa: "Ha",
         totalPlantedArea: "Planned area",
-        fieldViewOpenHint: "Open this field: soil, pH, fertilization, feed use, work and history",
+        fieldViewOpenHint: "Open this field: crop, soil, pH, fertilization, feed use, work and history",
         fieldViewTitle: "Field {field}",
         fieldViewFromGame: "from the game",
         fieldViewSoil: "Soil",
+        fieldViewCrop: "Crop",
+        fieldViewCropHint: "Changes are saved straight away. Field number, area, lease and adding or removing fields are in Edit.",
         fieldViewSoilHint: "Shares of each soil type in % (Precision Farming's soil map can fill them in: Field soil type → Load soils from game).",
         fieldViewLime: "pH and lime",
         fieldViewNoLime: "Not limed yet (no Precision Farming pH map) — use the lime chip in the table.",
@@ -860,10 +862,12 @@ const TRANSLATIONS = {
         thSoil: "Zabiegi",
         thHa: "Ha",
         totalPlantedArea: "Zaplanowana powierzchnia",
-        fieldViewOpenHint: "Otwórz pole: gleba, pH, nawożenie, przeznaczenie, prace i historia",
+        fieldViewOpenHint: "Otwórz pole: uprawa, gleba, pH, nawożenie, przeznaczenie, prace i historia",
         fieldViewTitle: "Pole {field}",
         fieldViewFromGame: "z gry",
         fieldViewSoil: "Gleba",
+        fieldViewCrop: "Uprawa",
+        fieldViewCropHint: "Zmiany zapisują się od razu. Numer pola, powierzchnia, dzierżawa oraz dodawanie i usuwanie pól są w Edycji.",
         fieldViewSoilHint: "Udział każdego typu gleby w % (mapa gleb Precision Farming może je uzupełnić: Typ gleby pól → Wczytaj gleby z gry).",
         fieldViewLime: "pH i wapno",
         fieldViewNoLime: "Jeszcze nie wapnowane (brak mapy pH z Precision Farming) — użyj chipu wapna w tabeli.",
@@ -1612,7 +1616,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c9_t: "Fertilization button",
     tut_c9_x: "Opens the field's fertilization plan. White = nothing applied yet, brown = natural fertilizer applied, green = mineral fertilizer applied.",
     tut_c14_t: "Field view",
-    tut_c14_x: "Click a field number to open everything about that field in one place: its soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
+    tut_c14_x: "Click a field number to open everything about that field in one place: its crop, catch crop and sowing month (change them right here, no Edit needed), soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
     tut_c12_t: "Work list",
     tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate, and lime if the pH needs it, then sow and roll, after: fertilizer and weeds, no weeds on a ploughed field; a catch crop's jobs first). Click it to tick jobs off, reorder, add or remove them — then it's the field's own list, and it stays empty if you empty it. Ticking Sow and the sown state are the same thing.",
     tut_c13_t: "Weeds",
@@ -1914,7 +1918,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c9_t: "Przycisk nawożenia",
     tut_c9_x: "Otwiera plan nawożenia pola. Biały = jeszcze nic nie zastosowano, brązowy = nawóz naturalny, zielony = nawóz mineralny.",
     tut_c14_t: "Widok pola",
-    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
+    tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: uprawę, międzyplon i miesiąc siewu (zmienisz je tutaj, bez Edycji), skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
     tut_c12_t: "Prace",
     tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, jeśli pH go wymaga, potem siew i wałowanie, po: nawóz i chwasty, przy orce bez chwastów; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność, dodawać albo usuwać — wtedy to własna lista pola i zostaje pusta, jeśli ją wyczyścisz. Odhaczony Siew to to samo co stan „Obsiane”.",
     tut_c13_t: "Chwasty",
@@ -9123,6 +9127,16 @@ function renderFieldModal() {
     let html = '';
     const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
 
+    // Crop, catch crop and sowing months — editable here, so changing a crop
+    // doesn't need the whole table in Edit mode.
+    const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
+    html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
+        ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
+        ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
+        ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
+        ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>`);
+
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
     html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
@@ -9218,7 +9232,24 @@ window.openFieldModal = function (idx) {
         const farm = getCurrentFarm();
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
-        if (el.classList.contains('field-view-soil')) {
+        if (el.matches('.field-view-crop, .field-view-sow, .field-view-catch, .field-view-catch-sow')) {
+            const before = JSON.parse(JSON.stringify(farm.fields));
+            if (el.classList.contains('field-view-crop')) {
+                field.crop = el.value;
+                field.sowingMonth = '';
+            } else if (el.classList.contains('field-view-sow')) {
+                field.sowingMonth = el.value;
+            } else if (el.classList.contains('field-view-catch')) {
+                field.catchCrop = el.value;
+                field.catchSowingMonth = '';
+            } else {
+                field.catchSowingMonth = el.value;
+            }
+            // Fertilization plan, feed use and straw are keyed by number + crop.
+            migrateFieldKeys(farm, before, farm.fields);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-soil')) {
             const r = getSupplyRates();
             const k = fertPlanSoilKey(field, fieldModalIdx);
             if (!r.fieldSoil) r.fieldSoil = {};

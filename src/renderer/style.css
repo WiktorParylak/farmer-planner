@@ -6821,6 +6821,12 @@ button.field-open:hover .field-number-chip {
   gap: 8px;
 }
 
+.field-view-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
 .field-modal .settings-field input,
 .field-modal .settings-field select {
   margin: 0;
