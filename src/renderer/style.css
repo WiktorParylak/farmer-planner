@@ -5619,6 +5619,18 @@ select:focus-visible,
 
 .mixer-mix-name { font-weight: 600; }
 
+.mixer-mix-optional {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-ink-faint);
+}
+
+.mixer-mix-row--sum {
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
+}
+
 .mixer-mix-track {
   position: relative;
   height: 12px;

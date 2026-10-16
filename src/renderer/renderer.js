@@ -690,6 +690,9 @@ const TRANSLATIONS = {
         feedCustomIngredients: "Ingredients",
         feedCustomAddIng: "Add ingredient",
         feedCustomSum: "Total: {s}% (must be 100%)",
+        feedCustomSumRound: "— evened out to 100% when you save.",
+        mixerSum: "Total",
+        mixerOptional: "optional",
         feedCustomDeleteConfirm: "Delete this feed? Species using it go back to their default ration.",
         feedErrName: "Enter a name for the feed.",
         feedErrNoIng: "Add at least one ingredient.",
@@ -1415,6 +1418,9 @@ const TRANSLATIONS = {
         feedCustomIngredients: "Składniki",
         feedCustomAddIng: "Dodaj składnik",
         feedCustomSum: "Suma: {s}% (musi być 100%)",
+        feedCustomSumRound: "— przy zapisie zostanie wyrównana do 100%.",
+        mixerSum: "Suma",
+        mixerOptional: "opcjonalnie",
         feedCustomDeleteConfirm: "Usunąć tę paszę? Gatunki, które jej używają, wrócą do dawki domyślnej.",
         feedErrName: "Podaj nazwę paszy.",
         feedErrNoIng: "Dodaj co najmniej jeden składnik.",
@@ -5546,6 +5552,8 @@ function renderMixerSection(farm, plan, barnNeed, num) {
         if (totals.total > 0) {
             const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
             const problems = [];
+            // Shares rounded to 0.1 % so the shown figures add up to exactly 100.
+            const shownPct = sharesTo100(Object.fromEntries(Object.entries(totals.byCategory).map(([c, l]) => [c, l / totals.total * 100])));
             html += `<div class="mixer-mix">`;
             MIXER_TMR_CATEGORIES.forEach(c => {
                 const litres = totals.byCategory[c] || 0;
@@ -5554,17 +5562,24 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 const target = (parseFloat(plan.tmr[c]) || 0) / recipeSum * 100;
                 const ok = pct >= min - 0.05 && pct <= max + 0.05;
                 if (!ok) problems.push(feedCategoryLabel(c));
+                // Ingredients the recipe allows at 0 % (mineral feed, straw) are optional.
+                const optional = min === 0 ? ` <span class="mixer-mix-optional">${t('mixerOptional')}</span>` : '';
                 html += `<div class="mixer-mix-row ${ok ? '' : 'mixer-mix-row--bad'}">
-                    <span class="mixer-mix-name">${feedCategoryLabel(c)}</span>
+                    <span class="mixer-mix-name">${feedCategoryLabel(c)}${optional}</span>
                     <span class="mixer-mix-track" title="${t('mixerRange').replace('{a}', min).replace('{b}', max)}">
                         <span class="mixer-mix-range" style="left:${min}%;width:${max - min}%"></span>
                         <span class="mixer-mix-fill" style="width:${Math.min(100, pct)}%"></span>
                         <span class="mixer-mix-target" style="left:${Math.min(100, target)}%" title="${t('mixerTarget')}: ${Math.round(target)}%"></span>
                     </span>
-                    <span class="mixer-mix-pct">${pct.toFixed(1)}%</span>
+                    <span class="mixer-mix-pct">${(shownPct[c] || 0).toFixed(1)}%</span>
                     <span class="mixer-mix-l">${num(litres)} l</span>
                 </div>`;
             });
+            html += `<div class="mixer-mix-row mixer-mix-row--sum">
+                    <span class="mixer-mix-name">${t('mixerSum')}</span><span></span>
+                    <span class="mixer-mix-pct">${Object.values(shownPct).reduce((s, v) => s + v, 0).toFixed(1)}%</span>
+                    <span class="mixer-mix-l">${num(totals.total)} l</span>
+                </div>`;
             html += `</div>`;
             const foreign = Object.keys(totals.byCategory).filter(c => !MIXER_TMR_CATEGORIES.includes(c));
             if (foreign.length) problems.push(...foreign.map(c => feedCategoryLabel(c) + ' ✕'));
@@ -5660,7 +5675,7 @@ function wireMixerSection(bodyEl) {
 }
 
 function renderFeedEditor(d) {
-    const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+    const sumState = feedSumState(d.ingredients);
     let html = `<div class="feed-editor">
         <div class="feed-editor-row">
             <label>${t('feedCustomName')}<input type="text" class="feed-input feed-ed-name" value="${escapeHtml(d.name)}" placeholder="${t('feedCustomNamePh')}"></label>
@@ -5676,7 +5691,7 @@ function renderFeedEditor(d) {
         </div>`;
     });
     html += `<button type="button" class="feed-ed-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomAddIng')}</button>
-        <p class="feed-ed-sum ${Math.round(sum) === 100 ? '' : 'feed-warn'}">${t('feedCustomSum').replace('{s}', Math.round(sum))}</p>
+        <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
         <p class="feed-ed-error feed-warn"></p>
         <div class="feed-editor-actions">
             <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
@@ -5686,6 +5701,41 @@ function renderFeedEditor(d) {
     return html;
 }
 
+// { key: percent } -> the same rounded to 0.1 %, adding up to exactly 100
+// (largest remainder), so a list of shares never reads 99.9 % in total.
+function sharesTo100(shares) {
+    const keys = Object.keys(shares);
+    const tenths = keys.map(k => ({ k, raw: shares[k] * 10, n: Math.floor(shares[k] * 10) }));
+    let left = 1000 - tenths.reduce((s, x) => s + x.n, 0);
+    tenths.slice().sort((a, b) => (b.raw - b.n) - (a.raw - a.n)).forEach(x => { if (left > 0) { x.n++; left--; } });
+    return Object.fromEntries(tenths.map(x => [x.k, x.n / 10]));
+}
+
+// Shares off 100 by rounding only (99–101 %, e.g. 33 + 33 + 33) are evened
+// out once, on the largest ingredient; anything further off is left for the
+// validation to reject. Returns a new list — the input is never changed.
+const FEED_SUM_ROUNDING = 1;
+function feedIngredientsTo100(ingredients) {
+    const list = ingredients.map(i => ({ category: i.category, pct: parseFloat(i.pct) || 0 }));
+    const sum = list.reduce((s, i) => s + i.pct, 0);
+    const diff = 100 - sum;
+    if (list.length && Math.abs(diff) > 0.001 && Math.abs(diff) <= FEED_SUM_ROUNDING) {
+        const big = list.reduce((a, b) => (b.pct > a.pct ? b : a));
+        big.pct = Math.round((big.pct + diff) * 100) / 100;
+    }
+    return list;
+}
+
+// "Total: 99% (must be 100%)" + whether it will be evened out on save.
+function feedSumState(ingredients) {
+    const sum = ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+    const shown = Math.round(sum * 10) / 10;
+    const off = Math.abs(sum - 100);
+    let text = t('feedCustomSum').replace('{s}', shown);
+    if (off > 0.001 && off <= FEED_SUM_ROUNDING) text += ' ' + t('feedCustomSumRound');
+    return { text, warn: off > FEED_SUM_ROUNDING };
+}
+
 function validateFeedDraft(d) {
     if (!d.name.trim()) return t('feedErrName');
     if (!d.ingredients.length) return t('feedErrNoIng');
@@ -5693,7 +5743,7 @@ function validateFeedDraft(d) {
     if (new Set(cats).size !== cats.length) return t('feedErrDuplicate');
     if (d.ingredients.some(i => !(parseFloat(i.pct) > 0))) return t('feedErrPct');
     const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
-    if (Math.abs(sum - 100) > 0.01) return t('feedCustomSum').replace('{s}', Math.round(sum));
+    if (Math.abs(sum - 100) > 0.01) return t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10);
     const eff = parseFloat(d.efficiency);
     if (!(eff >= 1 && eff <= 100)) return t('feedErrEfficiency');
     return '';
@@ -5785,10 +5835,10 @@ function wireFeedPlanPanel(bodyEl) {
     if (!editor || !feedEditorDraft) return;
     const d = feedEditorDraft;
     const refreshSum = () => {
-        const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+        const state = feedSumState(d.ingredients);
         const el = editor.querySelector('.feed-ed-sum');
-        el.textContent = t('feedCustomSum').replace('{s}', Math.round(sum));
-        el.classList.toggle('feed-warn', Math.round(sum) !== 100);
+        el.textContent = state.text;
+        el.classList.toggle('feed-warn', state.warn);
     };
     editor.querySelector('.feed-ed-name').addEventListener('input', e => { d.name = e.target.value; });
     editor.querySelector('.feed-ed-type').addEventListener('change', e => { d.animalType = e.target.value; });
@@ -5803,14 +5853,16 @@ function wireFeedPlanPanel(bodyEl) {
     });
     editor.querySelector('.feed-ed-cancel').addEventListener('click', () => { feedEditorDraft = null; rerenderFeedPlan(); });
     editor.querySelector('.feed-ed-save').addEventListener('click', () => {
-        const err = validateFeedDraft(d);
+        // Rounded to 100 on a copy, so the draft (and its inputs) keep what you typed.
+        const ingredients = feedIngredientsTo100(d.ingredients);
+        const err = validateFeedDraft({ ...d, ingredients });
         if (err) { editor.querySelector('.feed-ed-error').textContent = err; return; }
         const feed = {
             id: d.id || ('f' + Date.now().toString(36)),
             animalType: d.animalType,
             name: d.name.trim(),
             efficiency: Math.round(parseFloat(d.efficiency)),
-            ingredients: d.ingredients.map(i => ({ category: i.category, pct: parseFloat(i.pct) }))
+            ingredients
         };
         feedEditorDraft = null;
         update(p => {
