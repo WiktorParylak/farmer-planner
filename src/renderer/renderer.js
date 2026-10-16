@@ -9025,11 +9025,20 @@ function fieldWork(field) {
 }
 
 // Next step for the table button: your list, else the month-based suggestion.
+// The field's state is the one truth for sowing: a Sow step is done exactly
+// when the field is sown (the state badge and the checklist can't disagree).
+function withSowFromState(field, list) {
+    return list.map(w => w.step === 'sow' ? { ...w, done: field.state === 'Planted' } : w);
+}
+
+// Writes the state into the field's own list (after the state changed elsewhere).
+function syncSowStep(field) {
+    const own = fieldWork(field);
+    if (own) field.work = withSowFromState(field, own);
+}
+
 function nextWorkStep(field, idx, farm) {
-    const list = fieldWork(field) || suggestedWork(field, idx, farm).map(w => {
-        if (w.step === 'sow' && field.state === 'Planted') return { ...w, done: true };
-        return w;
-    });
+    const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     const next = list.find(w => !w.done);
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
@@ -9052,7 +9061,7 @@ function renderWorkModal() {
     document.getElementById('work-title').textContent = t('workTitle').replace('{field}', label);
     const own = fieldWork(field);
     document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
-    const list = own || suggestedWork(field, workFieldIdx, farm);
+    const list = withSowFromState(field, own || suggestedWork(field, workFieldIdx, farm));
     const listEl = document.getElementById('work-list');
     listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
     listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
@@ -9071,8 +9080,9 @@ function updateWorkField(fn) {
     const farm = allFarms.find(f => f.id === currentFarmId);
     const field = farm && (farm.fields || [])[workFieldIdx];
     if (!field) return;
-    field.work = (fieldWork(field) || suggestedWork(field, workFieldIdx, farm)).map(w => ({ ...w }));
+    field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, workFieldIdx, farm));
     fn(field.work, field, farm);
+    syncSowStep(field);
     // Emptied on purpose: keep it empty instead of suggesting again.
     if (field.work.length) delete field.workCleared;
     else field.workCleared = true;
@@ -9184,6 +9194,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
 
     if (btn.classList.contains('state-toggle')) {
         field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
+        syncSowStep(field);
     } else if (btn.classList.contains('rolling-toggle')) {
         // none -> to roll -> rolled -> none
         if (!field.rolling) { field.rolling = true; field.rollingDone = false; }
@@ -9958,6 +9969,7 @@ async function loadFieldsFromGame() {
         // Sown: the planned crop is what's growing there in the game.
         if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
             field.state = 'Planted';
+            syncSowStep(field);
             sown++;
         }
     });

@@ -11,6 +11,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Changed**
 - **No weeds step on a ploughed field**: the suggested work list leaves out *Weeds* when the field is ploughed.
+- **Sowing and the work list always agree**: the *Sow* step is ticked exactly when the field is sown. Switching the state badge (*To plant* ↔ *Planted*), ticking or unticking *Sow* in the work list, or *Fields from game* finding the crop growing all change both — click again to take a mistake back.
 
 ## 0.9.9 — 2026-10-12
 
