@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Decimal numbers**: areas, field sizes, trough capacities and feed amounts accept `1,5`, `1 234,5`, `1.234,5` and `1,234.5`; something that isn't a number (e.g. `1,234,5`) is no longer read as a wrong value.
 - **Farm names with special characters**: a farm or map name containing `<`, `&` or quotes no longer breaks the farm list, and *Fertilizer* buttons work for crops and field numbers with quotes in them.
 - **Typing soil shares or a trough capacity**: Tab or a click to the next box no longer loses focus when the panel redraws — the cursor stays where you moved it and the panel keeps its scroll position (*Field soil type*, the field window, a barn's trough capacity).
+- **“Last edited” dates on the farm list**: shown in the app's language and format (e.g. *3.10.2026, 22:18*) instead of the raw saved timestamp.
 - **Header before a farm loads**: no more “Solek / 1000$ / JANUARY” flashing at start; an unknown month shows `–` instead of *August*.
 
 **Changed**
@@ -17,6 +18,13 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Discord Rich Presence is opt-in**: it shows your farm publicly, so the app now asks once at start (also if you've never changed the setting) and stays off until you say yes. *Settings* still switches it either way.
 - **“Low feed” in days, not litres**: when the animals' needs are known, a barn is flagged as low on feed with less than 3 days left (the same red as the days figure), whether it's 2 chickens or 200 cows. Without an entered trough capacity the bar shows days of feed (full = 2 weeks) instead of comparing with your fullest barn; with a capacity it's still a real percentage.
 - **“Produced per month” chart**: milk, eggs and wool are now estimated from the herd each month (breed, age, ration, lactation — the same as *Estimated daily output*) instead of the rise in the tank, which sank whenever you sold mid-month. Months recorded before this version don't have the estimate, so the old chart stays until two new months are synced.
+- **More consistent look**:
+  - Section headings (*Buildings*, *Barn*, *Feed*, *Mixer wagon*, the Supplies tables) all use the same small label style; card and page titles keep the display font.
+  - Litres are always a lowercase *l* (`40 083 l`, `4182 l/day`), and every number uses the app language's separators — no more `13,040` next to `26 565 €`.
+  - Drop-downs in panels and dialogs look like the text boxes next to them instead of plain white system boxes.
+  - Dialog buttons: *Cancel* first and the main action last everywhere (also in *Settings*), sentence case (*Cancel*, *Save & import*, *Delete*), never wrapped onto two lines; a dialog with three buttons is wider so they fit on one row.
+  - Sidebar: *Settings* and *Exit* are written like the menu items above them; *+ Add note* matches the other panel buttons; note edit/delete buttons are round like the rest of the icon buttons.
+  - Barn tiles: health and the feed figures use the normal text font instead of the typewriter one; soil % boxes are wide enough for *100*.
 - **No farms yet**: the empty farm list has an *Add your first farm* button.
 
 ## 0.9.10 — 2026-10-16

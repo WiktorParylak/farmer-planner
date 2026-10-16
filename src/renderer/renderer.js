@@ -263,8 +263,8 @@ const TRANSLATIONS = {
         detailAnimals: "Animals",
         cropsListTitle: "List of all crops that are being farmed",
         resetSeasons: "RESET SEASONS",
-        settings: "SETTINGS",
-        exit: "EXIT",
+        settings: "Settings",
+        exit: "Exit",
         settingsTitle: "Settings",
         gameSavePathLabel: "Game Save Path (careerSavegame.xml):",
         gameSavePathPlaceholder: "Path to careerSavegame.xml",
@@ -274,8 +274,8 @@ const TRANSLATIONS = {
         autoSyncLabel: "Auto-sync this farm with the savegame while playing",
         autoSyncHint: "The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously. Lower the autosave interval in-game for fresher data.",
         autoSyncedToast: "Synced from savegame",
-        saveAndImport: "SAVE & IMPORT",
-        cancel: "CANCEL",
+        saveAndImport: "Save & import",
+        cancel: "Cancel",
         appSettingsTitle: "Settings",
         languageLabel: "Language",
         close: "Close",
@@ -301,7 +301,7 @@ const TRANSLATIONS = {
         seasonModalOk: "OK",
         seasonModalErrorTitle: "Something went wrong",
         deleteFarmConfirm: "Do you really want to delete this farm? This action cannot be undone.",
-        delete: "DELETE",
+        delete: "Delete",
         planted: "Planted",
         plantNow: "Plant now",
         toPlant: "To plant",
@@ -450,7 +450,7 @@ const TRANSLATIONS = {
         discordSettingHint: "Show your current farm and field count on your Discord profile.",
         discordAskTitle: "Show your farm on Discord?",
         discordAskText: "Farmer Planner can show the farm you're working on and its field count in your Discord status, visible to others. You can change this later in Settings.",
-        discordAskYes: "Show on Discord",
+        discordAskYes: "Show",
         discordBrowsing: "Browsing farms",
         discordManagingFields: "Managing {n} {fields}",
         discordFieldOne: "field",
@@ -552,7 +552,7 @@ const TRANSLATIONS = {
         yieldForecastUnknownFlag: "No yield data for this crop — total is missing this field's contribution.",
         yieldForecastUnknownNote: "{n} crop(s) have no known yield rate — their totals are underestimated.",
         yieldForecastNote: "An upper bound, not a forecast: real yield is lower whenever nitrogen, pH or weeds aren't perfect.",
-        notesAdd: "+ ADD NOTE",
+        notesAdd: "+ Add note",
         notesEmpty: "No notes yet. Add one to get reminded when the month comes around.",
         notesTitleLabel: "Title",
         notesTitlePlaceholder: "e.g. Fertilize field 3",
@@ -565,8 +565,8 @@ const TRANSLATIONS = {
         notesChecklistLabel: "Checklist",
         notesAddChecklistItem: "+ Add item",
         notesChecklistItemPlaceholder: "Checklist item",
-        notesSave: "SAVE NOTE",
-        notesCancel: "CANCEL",
+        notesSave: "Save note",
+        notesCancel: "Cancel",
         notesEditTitle: "Edit note",
         notesNewTitle: "New note",
         notesDeleteConfirm: "Delete this note? This action cannot be undone.",
@@ -1002,8 +1002,8 @@ const TRANSLATIONS = {
         detailAnimals: "Zwierzęta",
         cropsListTitle: "Lista wszystkich uprawianych roślin",
         resetSeasons: "RESETUJ SEZONY",
-        settings: "USTAWIENIA",
-        exit: "WYJŚCIE",
+        settings: "Ustawienia",
+        exit: "Wyjście",
         settingsTitle: "Ustawienia",
         gameSavePathLabel: "Ścieżka zapisu gry (careerSavegame.xml):",
         gameSavePathPlaceholder: "Ścieżka do careerSavegame.xml",
@@ -1013,8 +1013,8 @@ const TRANSLATIONS = {
         autoSyncLabel: "Automatyczna synchronizacja tej farmy z zapisem gry podczas grania",
         autoSyncHint: "Gra zapisuje stan na dysk tylko przy ręcznym zapisie / autozapisie, więc planer odświeża się przy każdym (auto)zapisie — nie na bieżąco. Skróć interwał autozapisu w grze, aby dane były świeższe.",
         autoSyncedToast: "Zsynchronizowano z zapisem gry",
-        saveAndImport: "ZAPISZ I IMPORTUJ",
-        cancel: "ANULUJ",
+        saveAndImport: "Zapisz i importuj",
+        cancel: "Anuluj",
         appSettingsTitle: "Ustawienia",
         languageLabel: "Język",
         close: "Zamknij",
@@ -1040,7 +1040,7 @@ const TRANSLATIONS = {
         seasonModalOk: "OK",
         seasonModalErrorTitle: "Coś poszło nie tak",
         deleteFarmConfirm: "Czy na pewno chcesz usunąć tę farmę? Tej operacji nie można cofnąć.",
-        delete: "USUŃ",
+        delete: "Usuń",
         planted: "Obsiane",
         plantNow: "Siej teraz",
         toPlant: "Do obsiania",
@@ -1189,7 +1189,7 @@ const TRANSLATIONS = {
         discordSettingHint: "Pokazuj aktualną farmę i liczbę pól na Twoim profilu Discord.",
         discordAskTitle: "Pokazywać farmę na Discordzie?",
         discordAskText: "Farmer Planner może pokazywać w Twoim statusie Discorda farmę, nad którą pracujesz, i liczbę pól — widzą to inni. Możesz to później zmienić w Ustawieniach.",
-        discordAskYes: "Pokazuj na Discordzie",
+        discordAskYes: "Pokazuj",
         discordBrowsing: "Przegląda farmy",
         discordManagingFields: "Zarządza {n} {fields}",
         discordFieldOne: "polem",
@@ -1291,7 +1291,7 @@ const TRANSLATIONS = {
         yieldForecastUnknownFlag: "Brak danych o plonie tej uprawy — sumie brakuje wkładu tego pola.",
         yieldForecastUnknownNote: "{n} upraw(y) nie ma znanej stawki plonu — ich sumy są zaniżone.",
         yieldForecastNote: "To górny pułap, nie prognoza: realny plon jest niższy, gdy azot, pH lub chwasty nie są idealne.",
-        notesAdd: "+ DODAJ NOTATKĘ",
+        notesAdd: "+ Dodaj notatkę",
         notesEmpty: "Brak notatek. Dodaj jedną, żeby dostać przypomnienie, gdy nadejdzie ten miesiąc.",
         notesTitleLabel: "Tytuł",
         notesTitlePlaceholder: "np. Nawieźć pole 3",
@@ -1304,8 +1304,8 @@ const TRANSLATIONS = {
         notesChecklistLabel: "Checklista",
         notesAddChecklistItem: "+ Dodaj punkt",
         notesChecklistItemPlaceholder: "Punkt checklisty",
-        notesSave: "ZAPISZ NOTATKĘ",
-        notesCancel: "ANULUJ",
+        notesSave: "Zapisz notatkę",
+        notesCancel: "Anuluj",
         notesEditTitle: "Edytuj notatkę",
         notesNewTitle: "Nowa notatka",
         notesDeleteConfirm: "Usunąć tę notatkę? Tej akcji nie można odwrócić.",
@@ -1740,11 +1740,11 @@ Object.assign(TRANSLATIONS.en, {
     tut_k20_t: "Ration",
     tut_k20_x: "What this barn is fed. Below: its daily need split into ingredients and how many days your stock of each lasts. It's the same choice as in the Feed planner (change it in either place) and it's this barn's own — other barns with the same animals keep theirs.",
     tut_k9_t: "Low feed warning",
-    tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the trough is below 15% of its capacity, below 80 L if you haven't entered a capacity, or when there's no feed at all.",
+    tut_k9_x: "The chicken coop is almost empty, so the card turns red with \"Feed low!\". It shows when the feed lasts less than 3 days (when the animals' needs are known), otherwise below 15% of the trough capacity or 80 l without one — and when there's no feed at all.",
     tut_k10_t: "Enter the capacity",
     tut_k10_x: "The coop has no capacity yet (\"?\"), so its bar is only compared with your other barns. Type 1000 and press Tab.",
     tut_k11_t: "Real percentage",
-    tut_k11_x: "Now the bar is 60 L out of 1000 L — a real 6%, in red. Enter capacities for every barn to get reliable bars and warnings.",
+    tut_k11_x: "Now the bar is 60 l out of 1000 l — a real 6%, in red. Enter capacities for every barn to get reliable bars and warnings.",
     tut_k12_t: "Low health",
     tut_k12_x: "These sheep are only at 72% health, their trough is below 35% (amber) and the feed lasts less than a week. Check their water, straw and cleaning — and top up the feed.",
     tut_k13_t: "Daily need",
@@ -2042,11 +2042,11 @@ Object.assign(TRANSLATIONS.pl, {
     tut_k20_t: "Dawka",
     tut_k20_x: "Czym karmisz ten budynek. Niżej: dzienne zapotrzebowanie rozbite na składniki i na ile dni wystarczy Twój zapas każdego z nich. To ten sam wybór co w planerze pasz (zmienisz go w dowolnym miejscu) i dotyczy tylko tego budynku — inne budynki z tymi samymi zwierzętami mają swój.",
     tut_k9_t: "Ostrzeżenie o paszy",
-    tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy w korycie jest poniżej 15% pojemności, poniżej 80 L przy niepodanej pojemności albo gdy paszy nie ma wcale.",
+    tut_k9_x: "Kurnik jest prawie pusty, więc karta robi się czerwona z napisem „Mało paszy!”. Pojawia się, gdy paszy starczy na mniej niż 3 dni (gdy znane są potrzeby zwierząt), w przeciwnym razie poniżej 15% pojemności koryta albo 80 l bez niej — i gdy paszy nie ma wcale.",
     tut_k10_t: "Wpisz pojemność",
     tut_k10_x: "Kurnik nie ma jeszcze pojemności („?”), więc jego pasek jest tylko porównywany z innymi budynkami. Wpisz 1000 i naciśnij Tab.",
     tut_k11_t: "Prawdziwy procent",
-    tut_k11_x: "Teraz pasek to 60 L z 1000 L — prawdziwe 6%, na czerwono. Wpisz pojemności wszystkich budynków, żeby paski i ostrzeżenia były wiarygodne.",
+    tut_k11_x: "Teraz pasek to 60 l z 1000 l — prawdziwe 6%, na czerwono. Wpisz pojemności wszystkich budynków, żeby paski i ostrzeżenia były wiarygodne.",
     tut_k12_t: "Słabe zdrowie",
     tut_k12_x: "Te owce mają tylko 72% zdrowia, koryto jest poniżej 35% (bursztynowy pasek), a paszy starczy na mniej niż tydzień. Sprawdź wodę, słomę i sprzątanie — i dosyp paszy.",
     tut_k13_t: "Dzienne zapotrzebowanie",
@@ -3640,7 +3640,7 @@ window.openHubPanel = function (type) {
                 const warn = lowFeed || noFeedAtAll;
                 const heads = building.clusters.reduce((s, c) => s + c.numAnimals, 0);
                 const avgHealth = heads ? building.clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : 0;
-                const num = n => Math.round(n).toLocaleString();
+                const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
                 const statRow = (fillType, label, value) => `
                     <div class="barn-stat">
                         <span class="barn-stat-icon barn-stat-icon--${fillIconTone(fillType)}" aria-hidden="true"><i class="fa-solid ${fillIcon(fillType)}" aria-hidden="true"></i></span>
@@ -3703,7 +3703,7 @@ window.openHubPanel = function (type) {
 
                     card += `<div class="feed-headline">
                             <div class="feed-amount">
-                                <span class="feed-amount-value">${num(combinedFoodLevel)} L</span>
+                                <span class="feed-amount-value">${num(combinedFoodLevel)} l</span>
                                 <span class="feed-amount-types">${escapeHtml(feedTypesLabel)}</span>
                             </div>
                             ${daysLeft !== null ? `<div class="feed-days ${daysClass}"><span class="feed-days-value">${Math.max(0, Math.floor(daysLeft))}</span><span class="feed-days-label">${t('barnDaysLeft')}</span></div>` : ''}
@@ -3717,7 +3717,7 @@ window.openHubPanel = function (type) {
                             <input type="text" class="feed-capacity-input" value="${combinedCap || ''}" placeholder="?"
                                 data-building="${building.id}" data-filltype="${ANIMAL_FEED_CAPACITY_KEY}"
                                 onchange="updateBuildingCapacity(this)">
-                            <span>L</span>
+                            <span>l</span>
                         </label>`;
                 } else {
                     card += `<p class="barn-empty">${t('hubNoFeedTracked')}</p>`;
@@ -3739,11 +3739,11 @@ window.openHubPanel = function (type) {
                         const days = farmDailyByCat[cat] > 0 ? stockL / farmDailyByCat[cat] : 0;
                         const cls = days < 3 ? 'feed-days--critical' : (days < 7 ? 'feed-days--warning' : 'feed-days--ok');
                         const stockNote = farm.feedStock
-                            ? `<span class="ration-stock ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString()) : t('hubRationNoStock')}</span>`
+                            ? `<span class="ration-stock ${cls}">${stockL > 0 ? t('hubRationStockDays').replace('{d}', Math.floor(days).toLocaleString(FIN_LOCALE())) : t('hubRationNoStock')}</span>`
                             : '';
                         card += `<div class="ration-item">
                             <span class="ration-name">${feedCategoryLabel(cat)}</span>
-                            <span class="ration-rate">${num(parts[cat])} L${t('perDayShort')}</span>
+                            <span class="ration-rate">${num(parts[cat])} l${t('perDayShort')}</span>
                             ${stockNote}
                         </div>`;
                     });
@@ -3756,9 +3756,9 @@ window.openHubPanel = function (type) {
                     <h4 class="barn-section-title">${t('hubDailyNeed')}</h4>`;
                 if (needsKnownForAll && (dailyNeed.food > 0 || dailyNeed.water > 0 || dailyNeed.straw > 0)) {
                     card += `<div class="barn-stat-list">`;
-                    if (dailyNeed.food > 0) card += statRow('FOOD', formatFillType('FOOD'), `${num(dailyNeed.food)} L${t('perDayShort')}`);
-                    if (dailyNeed.water > 0) card += statRow('WATER', formatFillType('WATER'), `${num(dailyNeed.water)} L${t('perDayShort')}`);
-                    if (dailyNeed.straw > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(dailyNeed.straw)} L${t('perDayShort')}`);
+                    if (dailyNeed.food > 0) card += statRow('FOOD', formatFillType('FOOD'), `${num(dailyNeed.food)} l${t('perDayShort')}`);
+                    if (dailyNeed.water > 0) card += statRow('WATER', formatFillType('WATER'), `${num(dailyNeed.water)} l${t('perDayShort')}`);
+                    if (dailyNeed.straw > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(dailyNeed.straw)} l${t('perDayShort')}`);
                     card += `</div>`;
                 } else {
                     card += `<p class="barn-empty">${t('barnNeedsUnknown')}</p>`;
@@ -3801,7 +3801,7 @@ window.openHubPanel = function (type) {
                         <h4 class="barn-section-title">${t('hubEstDailyOutput')}</h4>
                         <div class="barn-stat-list">`;
                     Object.keys(dailyOutput).forEach(fillType => {
-                        card += statRow(fillType, formatFillType(fillType), `${num(dailyOutput[fillType])} L${t('perDayShort')}`);
+                        card += statRow(fillType, formatFillType(fillType), `${num(dailyOutput[fillType])} l${t('perDayShort')}`);
                     });
                     card += `</div></section>`;
                 }
@@ -3812,7 +3812,7 @@ window.openHubPanel = function (type) {
                         <h4 class="barn-section-title">${t('hubStoredProduction')}</h4>
                         <div class="barn-stat-list">`;
                     building.production.forEach(p => {
-                        card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} L`);
+                        card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} l`);
                     });
                     card += `</div></section>`;
                 }
@@ -3862,7 +3862,7 @@ window.openHubPanel = function (type) {
                         headTotal += c.numAnimals;
                     });
                     const speciesHtml = Object.keys(heads).map(type =>
-                        `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString()}</span>`).join('');
+                        `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString(FIN_LOCALE())}</span>`).join('');
 
                     let feedHtml;
                     if (sum.noFeedAtAll) {
@@ -3874,7 +3874,7 @@ window.openHubPanel = function (type) {
                         feedHtml = `<div class="barn-tile-feed"${barTitle ? ` title="${escapeHtml(barTitle)}"` : ''}>
                                 <div class="pen-bar-track"><div class="pen-bar-fill ${barClass}" style="width:${pct}%"></div></div>
                                 <span class="barn-tile-feed-meta">
-                                    <span>${Math.round(sum.combinedFoodLevel).toLocaleString()} L${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString()} L` : ''}</span>
+                                    <span>${Math.round(sum.combinedFoodLevel).toLocaleString(FIN_LOCALE())} l${sum.combinedCap ? ` / ${Math.round(sum.combinedCap).toLocaleString(FIN_LOCALE())} l` : ''}</span>
                                     ${days !== null ? `<span class="${daysClass}">${days} ${t('hubDaysRemaining')}</span>` : ''}
                                 </span>
                             </div>`;
@@ -3891,7 +3891,7 @@ window.openHubPanel = function (type) {
                             ${(() => {
                                 const r = barnReproSummary(building);
                                 if (!r || !r.pregnant) return '';
-                                return `<span class="barn-tile-repro"><i class="fa-solid fa-baby-carriage" aria-hidden="true"></i> ${t('reproPregnant')}: ${r.pregnant.toLocaleString()}${r.nextBirth !== null ? ' · ' + reproDueText(r.nextBirth) : ''}</span>`;
+                                return `<span class="barn-tile-repro"><i class="fa-solid fa-baby-carriage" aria-hidden="true"></i> ${t('reproPregnant')}: ${r.pregnant.toLocaleString(FIN_LOCALE())}${r.nextBirth !== null ? ' · ' + reproDueText(r.nextBirth) : ''}</span>`;
                             })()}
                         </div>
                         <div class="barn-tile-section-label">${t('hubFeedLevel')}${warn ? `<span class="pen-warning-badge">${t('hubFeedLow')}</span>` : ''}</div>
@@ -3954,9 +3954,9 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     const seed = buildSuppliesSeedRows(farm, rates);
     const fert = buildSuppliesFertRows(farm, rates);
 
-    const fmtL = n => `${Math.round(n).toLocaleString()} l`;
-    const fmtKg = n => `${Math.round(n).toLocaleString()} kg`;
-    const num = n => Math.round(n).toLocaleString();
+    const fmtL = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} l`;
+    const fmtKg = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} kg`;
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const plannedArea = (farm.fields || []).reduce((s, f) => {
         const area = parseFloat(f.area) || 0;
@@ -4236,7 +4236,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
 
     const rates = getSupplyRates();
     const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
-    const num = n => Math.round(n).toLocaleString();
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
         ? `<button type="button" class="yield-season-arrow" data-season="${season + dir}" aria-label="${t('season')} ${season + dir}"><i class="fa-solid fa-chevron-${dir < 0 ? 'left' : 'right'}" aria-hidden="true"></i></button>`
@@ -5267,7 +5267,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const supply = buildFeedSupply(farm, plan, rates);
     const stock = (farm && farm.feedStock) || null;
     const balance = buildFeedBalance(demand, supply, plan, farmAverageYieldFactor(farm, rates), feedStockCategoriesFor(farm, plan), feedBarnStockCategoriesFor(farm, plan));
-    const num = n => Math.round(n).toLocaleString();
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 
     let html = `<div class="feed-plan"><p class="supply-intro">${t('feedIntroShort')}</p>`;
@@ -5465,7 +5465,7 @@ function baleContentLabel(b) {
 
 function baleTypeLabel(b) {
     const what = baleContentLabel(b);
-    return `${b.label} · ${what} · ${Math.round(b.litres).toLocaleString()} l`;
+    return `${b.label} · ${what} · ${Math.round(b.litres).toLocaleString(FIN_LOCALE())} l`;
 }
 
 // Litres per feed category in the current load.
@@ -6102,7 +6102,7 @@ window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, a
 function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area) {
     const rates = getSupplyRates();
     const d = computeFieldFertPlan(planKey, soilKey, cropKey, area, rates);
-    const num = n => Math.round(n).toLocaleString();
+    const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
     const kgN = t('suppliesNRateUnit');
     const match = findFertPlanField(getCurrentFarm(), planKey);
     const fieldRow = match ? match.field : null;
@@ -7514,7 +7514,7 @@ function farmDir(farm) {
 // formatted in whatever locale the system had then — show those as they are.
 function formatLastEdited(value) {
     if (!value) return '–';
-    if (!/^d{4}-d{2}-d{2}T/.test(value)) return value;
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
     const d = new Date(value);
     return isNaN(d) ? value : d.toLocaleString(FIN_LOCALE(), { dateStyle: 'short', timeStyle: 'short' });
 }

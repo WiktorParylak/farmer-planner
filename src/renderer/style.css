@@ -735,7 +735,7 @@ body {
 .settings-advanced > summary {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -883,6 +883,25 @@ body {
   color: var(--color-ink);
 }
 
+/* Every drop-down in panels and dialogs looks like the text inputs next to it
+   (parchment, same border and radius). :where() keeps it overridable by the
+   few selects that are styled on purpose (chips, compact table selects). */
+:where(.modal-content, .hub-view) select {
+  font-family: var(--font-body);
+  font-size: 14px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+:where(.modal-content, .hub-view) select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
 .modal-content input:focus,
 #settings-modal select:focus,
 :where(.hub-view) input:focus {
@@ -902,6 +921,7 @@ body {
 
 .modal-buttons button,
 .modal-buttons p {
+  white-space: nowrap;
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 14px;
@@ -1448,11 +1468,11 @@ tbody tr:hover {
   margin: 10px 0 2px;
   padding-top: 10px;
   border-top: 1px solid var(--color-border);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
   color: var(--color-ink-soft);
   text-align: left;
 }
@@ -2156,11 +2176,6 @@ th.is-sortable[aria-sort="descending"]::after {
   box-shadow: 0 0 0 2px var(--color-surface);
 }
 
-.sidebar-item--util {
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
 
 .sidebar-item--util .sidebar-item-icon {
   background-color: transparent;
@@ -2278,9 +2293,8 @@ th.is-sortable[aria-sort="descending"]::after {
 }
 
 .barn-tile-health {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-ink-faint);
+  font-size: 13px;
+  color: var(--color-ink-soft);
 }
 
 .barn-tile-section-label {
@@ -2313,8 +2327,8 @@ th.is-sortable[aria-sort="descending"]::after {
   justify-content: space-between;
   gap: 2px 12px;
   white-space: nowrap;
-  font-family: var(--font-mono);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-ink-soft);
 }
 
@@ -3916,12 +3930,12 @@ select:focus-visible,
 .supply-table th {
   padding: 4px 8px;
   text-align: left;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-ink-faint);
+  letter-spacing: 0.08em;
+  color: var(--color-ink-soft);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -3939,6 +3953,12 @@ select:focus-visible,
   white-space: nowrap;
 }
 
+/* Column headers stay in the label font even over number columns. */
+.supply-table th:not(:first-child) {
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
 .supply-table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -3952,10 +3972,10 @@ select:focus-visible,
 }
 
 .supply-table .supply-total-row td:first-child {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-size: 11px;
 }
 
 .supply-table .supply-subtotal-row td {
@@ -4208,7 +4228,7 @@ select:focus-visible,
 }
 
 .supply-soil-table .supply-soil-input {
-  width: 48px;
+  width: 62px;
   padding: 4px 6px;
   text-align: right;
   font-family: var(--font-mono);
@@ -4390,11 +4410,16 @@ select:focus-visible,
 }
 
 .note-card-action {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
   line-height: 1;
-  padding: 6px 9px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-small);
+  padding: 0;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
   background-color: var(--color-surface);
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -5959,6 +5984,11 @@ button.treatment-chip--lime.is-warning {
   gap: 10px;
 }
 
+/* Room for a third button (e.g. "Undo liming") on the same row. */
+.small-confirm-modal .modal-content.small-confirm:has(.small-confirm-extra:not([hidden])) {
+  max-width: 460px;
+}
+
 .small-confirm-icon {
   display: flex;
   align-items: center;
@@ -5978,6 +6008,10 @@ button.treatment-chip--lime.is-warning {
 .small-confirm p {
   margin: 0 0 6px;
   font-size: 14px;
+}
+
+.small-confirm .modal-buttons {
+  flex-wrap: wrap;
 }
 
 .small-confirm .modal-buttons button {
@@ -6527,11 +6561,12 @@ button.table-chip-toggle:hover {
 
 .anim-section-title {
   margin: 4px 0 -4px;
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-family: var(--font-body);
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-ink);
+  color: var(--color-ink-soft);
 }
 
 .anim-view .barn-tile-grid {
