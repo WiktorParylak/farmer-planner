@@ -2442,6 +2442,9 @@ window.showPlannerView = function (view) {
         setActiveSidebarItem('plan');
         if (hubView) hubView.hidden = true;
         if (plannerContentEl) plannerContentEl.style.display = '';
+        // Hub panels can change what the table shows (soil import, feed use…)
+        // — redraw it, unless the edit table is open.
+        if (currentFarmId != null && !isEditMode) renderSeasonView();
         return;
     }
     if (view === 'animals') animalSelectedBuilding = null;   // sidebar always opens the barn overview
@@ -8189,11 +8192,14 @@ function readGameSave(pathToFile) {
 // SECTION 5: PLANNER VIEW LOGIC
 // =============================================================
 window.openPlanner = function (id) {
-    const farm = getAllFarms().find(f => f.id === id);
+    let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
         currentFarmId = farm.id;
 
         loadFarmConfigs(farm);
+        // Work on a fresh read, so the sync below never writes an older copy
+        // of the farm over something saved while opening it.
+        farm = getCurrentFarm() || farm;
 
         if (farm.saveGamePath) applyGameSaveToFarm(farm);
         refreshFarmlandInfo(farm);
@@ -8206,8 +8212,7 @@ window.openPlanner = function (id) {
         setEditModeUi(false);
 
         viewedSeason = farm.currentSeason || 1;
-        renderSeasonView();
-        showPlannerView('plan');
+        showPlannerView('plan');   // renders the season table
         maybeSuggestNewSeason(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
