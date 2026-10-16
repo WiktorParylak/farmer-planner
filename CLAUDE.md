@@ -128,3 +128,7 @@ Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farme
 - Styl kodu: dopasuj się do otoczenia w `renderer.js` (4 spacje, `function`, bez klas/modułów ES, DOM przez `document.getElementById`).
 - Commity: krótki tytuł po angielsku w trybie rozkazującym („Show the in-game day next to the month in the header").
 - Nie commituj binariów (instalatorów, zipów, PDF-ów z materiałami do KingMods) — należą do GitHub Releases albo poza repo.
+
+## Odłożone — przypomnij użytkownikowi
+
+- **Wałowanie zależne od uprawy** (punkt 9 z listy do 0.9.10, odłożony 2026-10-16). Przyciski/krok wałowania tylko dla upraw, które go wymagają, jak w modzie `FS25_CropDependentRolling`. Mod nie ma własnej listy: domyślnie czyta z gry atrybut `needsRolling` definicji owocu (fruitType), a zmiany gracza zapisuje w `<savegame>/cropDependentRolling.xml` (`<cropDependentRolling><fruit name="WHEAT" needsRolling="false"/>`, tylko odstępstwa). Plan: czytać `needsRolling` w `tools/generate-default-agronomy.js` i `cropAgronomyFromXml` (wymaga `<FS25>\data\foliage`), nałożyć odstępstwa z zapisu, ręczne wyjątki jak `NO_LIME_CROPS`; nieznana uprawa → wałowanie pokazywane jak dziś.

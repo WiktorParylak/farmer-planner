@@ -178,6 +178,8 @@ const TRANSLATIONS = {
         workDown: "Move down",
         workRemove: "Remove step",
         workAllDone: "All done",
+        workEmpty: "No work",
+        workListEmpty: "No steps — add one below or use \"Suggest by month\".",
         workOpenHint: "Open the work list for this field",
         workSuggestedHint: "Next step suggested from the sowing month — click for the full list",
         work_fertilize: "Fertilize",
@@ -412,7 +414,13 @@ const TRANSLATIONS = {
         rollingOff: "No rolling planned",
         rollingDone: "Rolled",
         rollingClickHint: "click to switch",
-        limeClickHint: "click to lime / undo",
+        limeClickHint: "click for details / to lime",
+        limedThisSeason: "limed this season",
+        limeInfoPh: "pH at {pct}% — no lime needed now.",
+        limeInfoDue: "Estimate: lime will be needed again in about {n} season(s) (season {season}). It's based on the usual pH drop per harvest for this field's soil, not read from the game.",
+        limeInfoKeeps: "{crop} doesn't lower the pH when harvested or cut (game data), so no more lime is needed while it grows here.",
+        limeInfoOk: "OK",
+        limeInfoRemove: "Remove liming…",
         limeConfirmTitle: "Lime field {field}?",
         limeConfirmOn: "Mark the field as limed this season — pH goes to 100%.",
         limeConfirmAgain: "pH is down to {pct}%. Lime again this season — back to 100%?",
@@ -682,6 +690,9 @@ const TRANSLATIONS = {
         feedCustomIngredients: "Ingredients",
         feedCustomAddIng: "Add ingredient",
         feedCustomSum: "Total: {s}% (must be 100%)",
+        feedCustomSumRound: "— evened out to 100% when you save.",
+        mixerSum: "Total",
+        mixerOptional: "optional",
         feedCustomDeleteConfirm: "Delete this feed? Species using it go back to their default ration.",
         feedErrName: "Enter a name for the feed.",
         feedErrNoIng: "Add at least one ingredient.",
@@ -895,6 +906,8 @@ const TRANSLATIONS = {
         workDown: "W dół",
         workRemove: "Usuń krok",
         workAllDone: "Gotowe",
+        workEmpty: "Brak prac",
+        workListEmpty: "Brak kroków — dodaj krok poniżej albo użyj „Podpowiedz wg miesiąca”.",
         workOpenHint: "Otwórz listę prac tego pola",
         workSuggestedHint: "Następny krok podpowiedziany wg miesiąca siewu — kliknij, żeby zobaczyć całą listę",
         work_fertilize: "Nawóz",
@@ -1129,7 +1142,13 @@ const TRANSLATIONS = {
         rollingOff: "Wałowanie niezaplanowane",
         rollingDone: "Wałowanie zrobione",
         rollingClickHint: "kliknij, żeby przełączyć",
-        limeClickHint: "kliknij, żeby wapnować / cofnąć",
+        limeClickHint: "kliknij: szczegóły / wapnowanie",
+        limedThisSeason: "wapnowane w tym sezonie",
+        limeInfoPh: "pH na poziomie {pct}% — wapno nie jest teraz potrzebne.",
+        limeInfoDue: "Szacunek: wapno będzie znowu potrzebne za ok. {n} sez. (sezon {season}). Liczone z typowego spadku pH po zbiorze dla gleby tego pola, a nie odczytane z gry.",
+        limeInfoKeeps: "{crop} nie obniża pH przy zbiorze ani koszeniu (dane gry), więc dopóki tu rośnie, ponowne wapnowanie nie jest potrzebne.",
+        limeInfoOk: "OK",
+        limeInfoRemove: "Usuń wapnowanie…",
         limeConfirmTitle: "Wapnowanie pola {field}",
         limeConfirmOn: "Oznaczyć pole jako wapnowane w tym sezonie? pH wróci do 100%.",
         limeConfirmAgain: "pH spadło do {pct}%. Wapnować ponownie w tym sezonie — z powrotem do 100%?",
@@ -1399,6 +1418,9 @@ const TRANSLATIONS = {
         feedCustomIngredients: "Składniki",
         feedCustomAddIng: "Dodaj składnik",
         feedCustomSum: "Suma: {s}% (musi być 100%)",
+        feedCustomSumRound: "— przy zapisie zostanie wyrównana do 100%.",
+        mixerSum: "Suma",
+        mixerOptional: "opcjonalnie",
         feedCustomDeleteConfirm: "Usunąć tę paszę? Gatunki, które jej używają, wrócą do dawki domyślnej.",
         feedErrName: "Podaj nazwę paszy.",
         feedErrNoIng: "Dodaj co najmniej jeden składnik.",
@@ -1574,7 +1596,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_c14_t: "Field view",
     tut_c14_x: "Click a field number to open everything about that field in one place: its soil mix (editable), pH and lime, nitrogen with a shortcut to the fertilization plan, feed use, cuts or the work list, and what grew there in past seasons.",
     tut_c12_t: "Work list",
-    tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate and lime, then sow and roll, after: fertilizer and weeds; a catch crop's jobs first). Click it to tick jobs off, reorder or add them — then it's the field's own list.",
+    tut_c12_x: "The small \"→\" line under the state is the field's next job — suggested from the sowing month (before it: cultivate, and lime if the pH needs it, then sow and roll, after: fertilizer and weeds, no weeds on a ploughed field; a catch crop's jobs first). Click it to tick jobs off, reorder, add or remove them — then it's the field's own list, and it stays empty if you empty it. Ticking Sow and the sown state are the same thing.",
     tut_c13_t: "Weeds",
     tut_c13_x: "The spray chip: nothing to do / to spray (red) / done (green) — click to switch. With a savegame it follows the game: live weeds on the field mark it red, dead ones green.",
     tut_i10_t: "Grassland & currency",
@@ -1876,7 +1898,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_c14_t: "Widok pola",
     tut_c14_x: "Kliknij numer pola, żeby zobaczyć wszystko o tym polu w jednym miejscu: skład gleby (do edycji), pH i wapno, azot ze skrótem do planu nawożenia, przeznaczenie paszowe, pokosy albo listę prac i co rosło tu w poprzednich sezonach.",
     tut_c12_t: "Prace",
-    tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, potem siew i wałowanie, po: nawóz i chwasty; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność albo dodawać — wtedy to własna lista pola.",
+    tut_c12_x: "Mała linijka „→” pod stanem to następna praca na polu — podpowiedziana wg miesiąca siewu (przed: uprawa i wapno, jeśli pH go wymaga, potem siew i wałowanie, po: nawóz i chwasty, przy orce bez chwastów; prace międzyplonu najpierw). Kliknij ją, żeby odhaczać prace, zmieniać kolejność, dodawać albo usuwać — wtedy to własna lista pola i zostaje pusta, jeśli ją wyczyścisz. Odhaczony Siew to to samo co stan „Obsiane”.",
     tut_c13_t: "Chwasty",
     tut_c13_x: "Chip z opryskiwaczem: nic / do oprysku (czerwony) / zrobione (zielony) — kliknij, żeby przełączyć. Z zapisem gry podąża za grą: żywe chwasty na polu = czerwony, martwe = zielony.",
     tut_i10_t: "Łąki i waluta",
@@ -2442,6 +2464,9 @@ window.showPlannerView = function (view) {
         setActiveSidebarItem('plan');
         if (hubView) hubView.hidden = true;
         if (plannerContentEl) plannerContentEl.style.display = '';
+        // Hub panels can change what the table shows (soil import, feed use…)
+        // — redraw it, unless the edit table is open.
+        if (currentFarmId != null && !isEditMode) renderSeasonView();
         return;
     }
     if (view === 'animals') animalSelectedBuilding = null;   // sidebar always opens the barn overview
@@ -5527,6 +5552,8 @@ function renderMixerSection(farm, plan, barnNeed, num) {
         if (totals.total > 0) {
             const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
             const problems = [];
+            // Shares rounded to 0.1 % so the shown figures add up to exactly 100.
+            const shownPct = sharesTo100(Object.fromEntries(Object.entries(totals.byCategory).map(([c, l]) => [c, l / totals.total * 100])));
             html += `<div class="mixer-mix">`;
             MIXER_TMR_CATEGORIES.forEach(c => {
                 const litres = totals.byCategory[c] || 0;
@@ -5535,17 +5562,24 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 const target = (parseFloat(plan.tmr[c]) || 0) / recipeSum * 100;
                 const ok = pct >= min - 0.05 && pct <= max + 0.05;
                 if (!ok) problems.push(feedCategoryLabel(c));
+                // Ingredients the recipe allows at 0 % (mineral feed, straw) are optional.
+                const optional = min === 0 ? ` <span class="mixer-mix-optional">${t('mixerOptional')}</span>` : '';
                 html += `<div class="mixer-mix-row ${ok ? '' : 'mixer-mix-row--bad'}">
-                    <span class="mixer-mix-name">${feedCategoryLabel(c)}</span>
+                    <span class="mixer-mix-name">${feedCategoryLabel(c)}${optional}</span>
                     <span class="mixer-mix-track" title="${t('mixerRange').replace('{a}', min).replace('{b}', max)}">
                         <span class="mixer-mix-range" style="left:${min}%;width:${max - min}%"></span>
                         <span class="mixer-mix-fill" style="width:${Math.min(100, pct)}%"></span>
                         <span class="mixer-mix-target" style="left:${Math.min(100, target)}%" title="${t('mixerTarget')}: ${Math.round(target)}%"></span>
                     </span>
-                    <span class="mixer-mix-pct">${pct.toFixed(1)}%</span>
+                    <span class="mixer-mix-pct">${(shownPct[c] || 0).toFixed(1)}%</span>
                     <span class="mixer-mix-l">${num(litres)} l</span>
                 </div>`;
             });
+            html += `<div class="mixer-mix-row mixer-mix-row--sum">
+                    <span class="mixer-mix-name">${t('mixerSum')}</span><span></span>
+                    <span class="mixer-mix-pct">${Object.values(shownPct).reduce((s, v) => s + v, 0).toFixed(1)}%</span>
+                    <span class="mixer-mix-l">${num(totals.total)} l</span>
+                </div>`;
             html += `</div>`;
             const foreign = Object.keys(totals.byCategory).filter(c => !MIXER_TMR_CATEGORIES.includes(c));
             if (foreign.length) problems.push(...foreign.map(c => feedCategoryLabel(c) + ' ✕'));
@@ -5641,7 +5675,7 @@ function wireMixerSection(bodyEl) {
 }
 
 function renderFeedEditor(d) {
-    const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+    const sumState = feedSumState(d.ingredients);
     let html = `<div class="feed-editor">
         <div class="feed-editor-row">
             <label>${t('feedCustomName')}<input type="text" class="feed-input feed-ed-name" value="${escapeHtml(d.name)}" placeholder="${t('feedCustomNamePh')}"></label>
@@ -5657,7 +5691,7 @@ function renderFeedEditor(d) {
         </div>`;
     });
     html += `<button type="button" class="feed-ed-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomAddIng')}</button>
-        <p class="feed-ed-sum ${Math.round(sum) === 100 ? '' : 'feed-warn'}">${t('feedCustomSum').replace('{s}', Math.round(sum))}</p>
+        <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
         <p class="feed-ed-error feed-warn"></p>
         <div class="feed-editor-actions">
             <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
@@ -5667,6 +5701,41 @@ function renderFeedEditor(d) {
     return html;
 }
 
+// { key: percent } -> the same rounded to 0.1 %, adding up to exactly 100
+// (largest remainder), so a list of shares never reads 99.9 % in total.
+function sharesTo100(shares) {
+    const keys = Object.keys(shares);
+    const tenths = keys.map(k => ({ k, raw: shares[k] * 10, n: Math.floor(shares[k] * 10) }));
+    let left = 1000 - tenths.reduce((s, x) => s + x.n, 0);
+    tenths.slice().sort((a, b) => (b.raw - b.n) - (a.raw - a.n)).forEach(x => { if (left > 0) { x.n++; left--; } });
+    return Object.fromEntries(tenths.map(x => [x.k, x.n / 10]));
+}
+
+// Shares off 100 by rounding only (99–101 %, e.g. 33 + 33 + 33) are evened
+// out once, on the largest ingredient; anything further off is left for the
+// validation to reject. Returns a new list — the input is never changed.
+const FEED_SUM_ROUNDING = 1;
+function feedIngredientsTo100(ingredients) {
+    const list = ingredients.map(i => ({ category: i.category, pct: parseFloat(i.pct) || 0 }));
+    const sum = list.reduce((s, i) => s + i.pct, 0);
+    const diff = 100 - sum;
+    if (list.length && Math.abs(diff) > 0.001 && Math.abs(diff) <= FEED_SUM_ROUNDING) {
+        const big = list.reduce((a, b) => (b.pct > a.pct ? b : a));
+        big.pct = Math.round((big.pct + diff) * 100) / 100;
+    }
+    return list;
+}
+
+// "Total: 99% (must be 100%)" + whether it will be evened out on save.
+function feedSumState(ingredients) {
+    const sum = ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+    const shown = Math.round(sum * 10) / 10;
+    const off = Math.abs(sum - 100);
+    let text = t('feedCustomSum').replace('{s}', shown);
+    if (off > 0.001 && off <= FEED_SUM_ROUNDING) text += ' ' + t('feedCustomSumRound');
+    return { text, warn: off > FEED_SUM_ROUNDING };
+}
+
 function validateFeedDraft(d) {
     if (!d.name.trim()) return t('feedErrName');
     if (!d.ingredients.length) return t('feedErrNoIng');
@@ -5674,7 +5743,7 @@ function validateFeedDraft(d) {
     if (new Set(cats).size !== cats.length) return t('feedErrDuplicate');
     if (d.ingredients.some(i => !(parseFloat(i.pct) > 0))) return t('feedErrPct');
     const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
-    if (Math.abs(sum - 100) > 0.01) return t('feedCustomSum').replace('{s}', Math.round(sum));
+    if (Math.abs(sum - 100) > 0.01) return t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10);
     const eff = parseFloat(d.efficiency);
     if (!(eff >= 1 && eff <= 100)) return t('feedErrEfficiency');
     return '';
@@ -5766,10 +5835,10 @@ function wireFeedPlanPanel(bodyEl) {
     if (!editor || !feedEditorDraft) return;
     const d = feedEditorDraft;
     const refreshSum = () => {
-        const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
+        const state = feedSumState(d.ingredients);
         const el = editor.querySelector('.feed-ed-sum');
-        el.textContent = t('feedCustomSum').replace('{s}', Math.round(sum));
-        el.classList.toggle('feed-warn', Math.round(sum) !== 100);
+        el.textContent = state.text;
+        el.classList.toggle('feed-warn', state.warn);
     };
     editor.querySelector('.feed-ed-name').addEventListener('input', e => { d.name = e.target.value; });
     editor.querySelector('.feed-ed-type').addEventListener('change', e => { d.animalType = e.target.value; });
@@ -5784,14 +5853,16 @@ function wireFeedPlanPanel(bodyEl) {
     });
     editor.querySelector('.feed-ed-cancel').addEventListener('click', () => { feedEditorDraft = null; rerenderFeedPlan(); });
     editor.querySelector('.feed-ed-save').addEventListener('click', () => {
-        const err = validateFeedDraft(d);
+        // Rounded to 100 on a copy, so the draft (and its inputs) keep what you typed.
+        const ingredients = feedIngredientsTo100(d.ingredients);
+        const err = validateFeedDraft({ ...d, ingredients });
         if (err) { editor.querySelector('.feed-ed-error').textContent = err; return; }
         const feed = {
             id: d.id || ('f' + Date.now().toString(36)),
             animalType: d.animalType,
             name: d.name.trim(),
             efficiency: Math.round(parseFloat(d.efficiency)),
-            ingredients: d.ingredients.map(i => ({ category: i.category, pct: parseFloat(i.pct) }))
+            ingredients
         };
         feedEditorDraft = null;
         update(p => {
@@ -8189,11 +8260,14 @@ function readGameSave(pathToFile) {
 // SECTION 5: PLANNER VIEW LOGIC
 // =============================================================
 window.openPlanner = function (id) {
-    const farm = getAllFarms().find(f => f.id === id);
+    let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
         currentFarmId = farm.id;
 
         loadFarmConfigs(farm);
+        // Work on a fresh read, so the sync below never writes an older copy
+        // of the farm over something saved while opening it.
+        farm = getCurrentFarm() || farm;
 
         if (farm.saveGamePath) applyGameSaveToFarm(farm);
         refreshFarmlandInfo(farm);
@@ -8206,8 +8280,7 @@ window.openPlanner = function (id) {
         setEditModeUi(false);
 
         viewedSeason = farm.currentSeason || 1;
-        renderSeasonView();
-        showPlannerView('plan');
+        showPlannerView('plan');   // renders the season table
         maybeSuggestNewSeason(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
@@ -8566,6 +8639,28 @@ function buildLimeTitle(ph, status, appliedSeason) {
     return title;
 }
 
+// What a well-limed field's chip means, for the info box and tooltip. The
+// "lime again in about n seasons" figure is the app's own model — the same
+// per-harvest pH drop for the field's soil that New season applies — so it's
+// labelled as an estimate. Crops with consumesLime="false" in the game don't
+// lower pH at harvest or cutting, so they get no number at all.
+function limeDueText(field, idx, farm, ph) {
+    if (field.crop && cropKeepsLime(field.crop)) return t('limeInfoKeeps').replace('{crop}', translateCropName(field.crop));
+    const drop = fieldLimePhDrop(getFieldSoilMix(fertPlanSoilKey(field, idx), getSupplyRates()));
+    if (ph == null || !(drop > 0)) return '';
+    const n = Math.max(1, Math.ceil((ph - 0.75) / drop - 1e-9));
+    return t('limeInfoDue').replace('{n}', n).replace('{season}', ((farm && farm.currentSeason) || 1) + n);
+}
+
+function limeInfoText(field, idx, farm) {
+    const { ph, pf } = getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates());
+    const parts = [t('limeInfoPh').replace('{pct}', ph != null ? Math.round(ph * 100) : 0)];
+    if (pf) parts.push(t('limeTitlePf').replace('{ph}', pf.avg.toFixed(2)).replace('{opt}', pf.optimal.toFixed(2)) + '.');
+    parts.push(limeDueText(field, idx, farm, ph));
+    if (pf && pf.limeL >= 1) parts.push(t('limeTitlePfNeed').replace('{l}', Math.round(pf.limeL).toLocaleString(FIN_LOCALE())) + '.');
+    return parts.filter(Boolean).join(' ');
+}
+
 // Cycles the lime chip: off -> active (fresh application) -> dismissed (off)
 // from either active or warning. Manure/fertilizer keep the simpler generic
 // toggle since they don't carry this multi-season state.
@@ -8792,15 +8887,15 @@ window.openCutsModal = function (idx) {
 // State column: grassland gets a "Cuts" button (done / planned) that opens
 // the cuts timeline; everything else the sown / not sown badge (a toggle in
 // the current season).
-// age: grasslandAge() result — "· season N" is added to the cuts badge.
-function stateCellHtml(field, idx, isPastSeason, stateDisplay, age) {
+// Grassland age is shown under the crop name (grassAgeCaption), not here, so
+// the state column stays narrow.
+function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
-        let text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
-        if (age) text += ` · <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span>`;
+        const text = cuts.length ? t('cutsBadge').replace('{done}', done).replace('{n}', cuts.length) : t('cutsBadgeEmpty');
         const cls = `badge badge--cuts${cuts.length && done === cuts.length ? ' is-complete' : ''}`;
-        const title = age ? age.title : t('cutsOpenHint');
+        const title = t('cutsOpenHint');
         return isPastSeason
             ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
             : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
@@ -8895,8 +8990,8 @@ function renderFieldModal() {
         work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
             <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
     } else if (field.crop) {
-        const { next, done, total } = nextWorkStep(field, farm.month);
-        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t('workAllDone')}</p>
+        const { next, done, total } = nextWorkStep(field, idx, farm);
+        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t(total ? 'workAllDone' : 'workEmpty')}</p>
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
@@ -8981,44 +9076,63 @@ window.openFieldModal = function (idx) {
 // cultivate, sow, fertilize, weeds). The button next to the state shows the
 // next step. Without a list of your own it suggests one from the sowing month:
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
+// Lime only while the pH needs it (the game's pH with Precision Farming) and
+// the crop uses lime up; no weeds step on a ploughed field.
 const WORK_STEPS = ['fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
 
-function suggestedWork(field, currentMonth) {
+// idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
+function suggestedWork(field, idx, farm) {
     const steps = [];
     if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
     const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
-    const cur = ALL_MONTHS.indexOf((currentMonth || '').toUpperCase());
+    const cur = ALL_MONTHS.indexOf(((farm && farm.month) || '').toUpperCase());
     // Months until the sowing month (0 = this month), wrapping round the year.
     const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
     const sown = field.state === 'Planted';
+    const plowed = field.tillage === 'plowed';
     if (!sown) {
-        steps.push(field.tillage === 'plowed' ? 'plow' : 'cultivate');
-        if (until > 0 && !(field.limeAppliedSeason != null && field.limePh != null && field.limePh > 0.75)) steps.push('lime');
+        steps.push(plowed ? 'plow' : 'cultivate');
+        if (until > 0 && !cropKeepsLime(field.crop)
+            && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
         if (field.rolling) steps.push('roll');
     }
-    steps.push('fertilize', 'weeds');
+    steps.push('fertilize');
+    if (!plowed) steps.push('weeds');
     return steps.map(step => ({ step, done: false }));
 }
 
+// The field's own list, or null when it never had one (then the month-based
+// suggestion shows). A list you emptied stays empty (field.workCleared) — an
+// empty field.work without the flag is how older versions cleared it.
 function fieldWork(field) {
-    return Array.isArray(field.work) && field.work.length ? field.work : null;
+    if (!Array.isArray(field.work)) return null;
+    return field.work.length || field.workCleared ? field.work : null;
 }
 
 // Next step for the table button: your list, else the month-based suggestion.
-function nextWorkStep(field, currentMonth) {
-    const list = fieldWork(field) || suggestedWork(field, currentMonth).map(w => {
-        if (w.step === 'sow' && field.state === 'Planted') return { ...w, done: true };
-        return w;
-    });
+// The field's state is the one truth for sowing: a Sow step is done exactly
+// when the field is sown (the state badge and the checklist can't disagree).
+function withSowFromState(field, list) {
+    return list.map(w => w.step === 'sow' ? { ...w, done: field.state === 'Planted' } : w);
+}
+
+// Writes the state into the field's own list (after the state changed elsewhere).
+function syncSowStep(field) {
+    const own = fieldWork(field);
+    if (own) field.work = withSowFromState(field, own);
+}
+
+function nextWorkStep(field, idx, farm) {
+    const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     const next = list.find(w => !w.done);
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-function workCellHtml(field, idx, isPastSeason, currentMonth) {
+function workCellHtml(field, idx, isPastSeason, farm) {
     if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
-    const { next, done, total, own } = nextWorkStep(field, currentMonth);
-    const label = next ? t('work_' + next.step) : t('workAllDone');
+    const { next, done, total, own } = nextWorkStep(field, idx, farm);
+    const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
     const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
     return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
 }
@@ -9033,9 +9147,10 @@ function renderWorkModal() {
     document.getElementById('work-title').textContent = t('workTitle').replace('{field}', label);
     const own = fieldWork(field);
     document.getElementById('work-intro').textContent = t(own ? 'workIntro' : 'workIntroSuggested');
-    const list = own || suggestedWork(field, farm.month);
+    const list = withSowFromState(field, own || suggestedWork(field, workFieldIdx, farm));
     const listEl = document.getElementById('work-list');
-    listEl.innerHTML = list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
+    listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
+    listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
         <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
         <span class="work-item-btns">
             <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
@@ -9051,8 +9166,12 @@ function updateWorkField(fn) {
     const farm = allFarms.find(f => f.id === currentFarmId);
     const field = farm && (farm.fields || [])[workFieldIdx];
     if (!field) return;
-    field.work = (fieldWork(field) || suggestedWork(field, farm.month)).map(w => ({ ...w }));
+    field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, workFieldIdx, farm));
     fn(field.work, field, farm);
+    syncSowStep(field);
+    // Emptied on purpose: keep it empty instead of suggesting again.
+    if (field.work.length) delete field.workCleared;
+    else field.workCleared = true;
     saveFarmData(farm);
     renderWorkModal();
 }
@@ -9097,13 +9216,14 @@ window.openWorkModal = function (idx) {
         if (step) updateWorkField(work => { work.push({ step, done: false }); });
     });
     document.getElementById('work-suggest-btn').addEventListener('click', () => {
-        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, farm.month)); });
+        updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, workFieldIdx, farm)); });
     });
 })();
 
 // Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
-// cancels, Enter confirms.
-function showSmallConfirm({ title, text, ok, icon, danger }) {
+// cancels, Enter confirms. Optional: `extra` = label of a third button on the
+// left (resolves 'extra'); `noCancel` hides Cancel (an info box with one OK).
+function showSmallConfirm({ title, text, ok, icon, danger, extra, noCancel }) {
     const modal = document.getElementById('small-confirm-modal');
     if (!modal) return Promise.resolve(confirm(text));
     document.getElementById('small-confirm-title').textContent = title;
@@ -9111,9 +9231,16 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
     document.getElementById('small-confirm-icon').className = 'fa-solid ' + (icon || 'fa-circle-question');
     const okBtn = document.getElementById('small-confirm-ok');
     const cancelBtn = document.getElementById('small-confirm-cancel');
+    const extraBtn = document.getElementById('small-confirm-extra');
     okBtn.textContent = ok || t('confirm');
     okBtn.classList.toggle('danger-btn', !!danger);
     cancelBtn.textContent = t('cancel');
+    cancelBtn.style.display = noCancel ? 'none' : '';
+    if (extraBtn) {
+        extraBtn.hidden = !extra;
+        extraBtn.style.display = extra ? '' : 'none';
+        extraBtn.textContent = extra || '';
+    }
     modal.style.display = 'flex';
     okBtn.focus();
     return new Promise(resolve => {
@@ -9121,12 +9248,14 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
             modal.style.display = 'none';
             okBtn.removeEventListener('click', onOk);
             cancelBtn.removeEventListener('click', onCancel);
+            if (extraBtn) extraBtn.removeEventListener('click', onExtra);
             modal.removeEventListener('click', onBackdrop);
             document.removeEventListener('keydown', onKey, true);
             resolve(value);
         };
         const onOk = () => done(true);
         const onCancel = () => done(false);
+        const onExtra = () => done('extra');
         const onBackdrop = (e) => { if (e.target === modal) done(false); };
         const onKey = (e) => {
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
@@ -9134,6 +9263,7 @@ function showSmallConfirm({ title, text, ok, icon, danger }) {
         };
         okBtn.addEventListener('click', onOk);
         cancelBtn.addEventListener('click', onCancel);
+        if (extraBtn) extraBtn.addEventListener('click', onExtra);
         modal.addEventListener('click', onBackdrop);
         document.addEventListener('keydown', onKey, true);
     });
@@ -9161,6 +9291,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
 
     if (btn.classList.contains('state-toggle')) {
         field.state = field.state !== 'Planted' ? 'Planted' : 'To Plant';
+        syncSowStep(field);
     } else if (btn.classList.contains('rolling-toggle')) {
         // none -> to roll -> rolled -> none
         if (!field.rolling) { field.rolling = true; field.rollingDone = false; }
@@ -9174,16 +9305,38 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
+        const pct = ph != null ? Math.round(ph * 100) : 0;
         const remove = status === 'active';
-        const key = status === 'off' ? 'limeConfirmOn' : (status === 'warning' ? 'limeConfirmAgain' : 'limeConfirmOff');
-        const ok = await showSmallConfirm({
-            title: t('limeConfirmTitle').replace('{field}', label),
-            text: t(key).replace('{pct}', ph != null ? Math.round(ph * 100) : 0),
-            ok: t(remove ? 'limeConfirmOffBtn' : 'limeConfirmOnBtn'),
-            icon: remove ? 'fa-rotate-left' : 'fa-flask',
-            danger: remove
-        });
-        if (!ok) return;
+        if (remove) {
+            // pH is fine: the chip is a gauge — show what it means and when
+            // lime is due again. Taking a liming back is a separate, deliberate step.
+            const canRemove = field.limeAppliedSeason != null || field.limePh != null;
+            const choice = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: limeInfoText(field, idx, farm),
+                ok: t('limeInfoOk'),
+                icon: 'fa-flask',
+                noCancel: true,
+                extra: canRemove ? t('limeInfoRemove') : ''
+            });
+            if (choice !== 'extra') return;
+            const sure = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: t('limeConfirmOff').replace('{pct}', pct),
+                ok: t('limeConfirmOffBtn'),
+                icon: 'fa-rotate-left',
+                danger: true
+            });
+            if (sure !== true) return;
+        } else {
+            const ok = await showSmallConfirm({
+                title: t('limeConfirmTitle').replace('{field}', label),
+                text: t(status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain').replace('{pct}', pct),
+                ok: t('limeConfirmOnBtn'),
+                icon: 'fa-flask'
+            });
+            if (ok !== true) return;
+        }
         if (remove) {
             field.limeAppliedSeason = null;
             field.limePh = null;
@@ -9221,6 +9374,12 @@ const GRASSLAND_SEASONS_DEFAULT = 4;
 function grasslandSeasonLimit(farm) {
     const v = parseInt(farm && farm.grasslandMaxSeasons, 10);
     return v > 0 ? v : GRASSLAND_SEASONS_DEFAULT;
+}
+
+// "⟳ season 3" on its own line under the crop name (the repeat badge moves
+// down with it, so a monoculture never widens the row).
+function grassAgeCaption(age, rotationBadge) {
+    return `<span class="ha-caption grass-age-caption" title="${escapeHtml(age.title)}">${rotationBadge.trim()} <span class="grass-age${age.over ? ' is-over' : ''}">${t('grassAge').replace('{n}', age.n)}</span></span>`;
 }
 
 function grasslandAge(field, history, seasonNum, limit) {
@@ -9333,6 +9492,7 @@ function renderFieldsTable(fields) {
             const rotationBadge = isRotationRepeat
                 ? ` <span class="badge badge--rotation-warn" title="${t('rotationWarning')}"><i class="fa-solid fa-rotate" aria-hidden="true"></i></span>`
                 : '';
+            const grassAge = grasslandAge(field, seasonHistory, viewedSeason, grassLimit);
 
             let areaCell = `${area.toFixed(2)} ha`;
             if (isSplit) {
@@ -9379,6 +9539,12 @@ function renderFieldsTable(fields) {
                 ? t('limeTitlePf').replace('{ph}', limePf.avg.toFixed(2)).replace('{opt}', limePf.optimal.toFixed(2))
                     + (limePf.limeL >= 1 ? ' · ' + t('limeTitlePfNeed').replace('{l}', Math.round(limePf.limeL).toLocaleString(FIN_LOCALE())) : '')
                 : buildLimeTitle(limePh, limeStatus, field.limeAppliedSeason);
+            const limedNow = !isPastSeason && field.limeAppliedSeason != null && field.limeAppliedSeason === ((farm && farm.currentSeason) || 1);
+            let limeHint = limeTitle + (limedNow ? ` · ${t('limedThisSeason')}` : '');
+            if (!isPastSeason && limeStatus === 'active') {
+                const due = limeDueText(field, origIdx, farm, limePh);
+                if (due) limeHint += `\n${due}`;
+            }
 
             const numberParts = String(field.number || '').split('-').map(n => n.trim()).filter(Boolean);
             const numberChipsHtml = numberParts.length
@@ -9407,16 +9573,16 @@ function renderFieldsTable(fields) {
                         ? `<span class="field-number-chips">${numberChipsHtml}</span>`
                         : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
-                    <td>${field.crop ? translateCropName(field.crop) : '-'}${rotationBadge}${catchCropCaption(field)}</td>
+                    <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay, grasslandAge(field, seasonHistory, viewedSeason, grassLimit))}${workCellHtml(field, origIdx, isPastSeason, currentFarmMonth)}</td>
+                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
                             const tag = isPastSeason ? 'span' : 'button';
                             const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
-                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limePh != null && limePh >= 0.5 ? ' lime-strong' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${limeTitle}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
+                            const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limedNow ? ' is-limed-now' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${escapeHtml(limeHint)}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
                                 <span class="lime-fill"></span>
                                 <span class="lime-letter">${t('limeLetter')}</span>
                             </${tag}>`;
@@ -9482,7 +9648,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'lease', 'areaSource', 'rolling', 'rollingDone'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size, fertilization plan, feed use and straw are stored under
@@ -9935,6 +10101,7 @@ async function loadFieldsFromGame() {
         // Sown: the planned crop is what's growing there in the game.
         if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
             field.state = 'Planted';
+            syncSowStep(field);
             sown++;
         }
     });
@@ -10525,7 +10692,8 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.manure = false;
                 field.fertilizer = false;
                 field.weeds = null;
-                field.work = [];
+                delete field.work;
+                delete field.workCleared;
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.

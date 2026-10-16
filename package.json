@@ -1,6 +1,6 @@
 {
   "name": "farmer-planner",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
@@ -19,7 +19,16 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "files": [
+      "**/*",
+      "!FS25_CropDependentRolling${/*}",
+      "!.claude${/*}",
+      "!dev-farm${/*}",
+      "!docs${/*}",
+      "!tools${/*}",
+      "!CLAUDE.md"
+    ]
   },
   "devDependencies": {
     "electron": "^40.4.1",

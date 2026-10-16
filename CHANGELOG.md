@@ -2,6 +2,21 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.10 — 2026-10-16
+
+**Fixed**
+- **Soil bars after loading soils from the game**: going back to the plan from a panel (e.g. *Field soil type*) redraws the fields table, so the soil mix bars show the imported soils straight away instead of after reopening the farm.
+- **Work list stays empty**: removing every step from a field's work list keeps it empty (*No work* in the table) instead of bringing the month-based suggestion back. A suggestion now shows only for a field that never had a list of its own, or when you click *Suggest by month*; a new season starts with the suggestion again.
+- **No lime in the suggested work when the pH is fine**: *Suggest by month* adds *Lime* only when the field's pH needs it (below 75 %, or never limed) — using the game's own pH when Precision Farming is in the save — and never for crops that don't use lime up (grassland, oilseed radish, rice).
+
+**Changed**
+- **Lime chip “L”/“W”**: the letter is black (with a light outline), so it's readable at any fill and in the dark theme. A field limed this season gets a clear ring around the chip and says so on hover.
+- **Clicking a well-limed field's lime chip** no longer asks to remove the liming. It shows what the chip means: the pH, the game's pH and optimum with Precision Farming, and an estimate of when lime will be needed again (*in about 2 seasons*), worked out from the usual pH drop for the field's soil and labelled as an estimate. Grass, meadows and other crops that don't use lime up say so instead of a number. Removing a liming made by mistake is a separate *Remove liming…* button with its own confirmation.
+- **No weeds step on a ploughed field**: the suggested work list leaves out *Weeds* when the field is ploughed.
+- **Grassland age under the crop name**: *⟳ season 3* now sits on its own line under the crop, next to the rotation icon, instead of inside the cuts badge — the State column stays narrow and the fields table no longer scrolls sideways because of it.
+- **Feed planner totals**: in your own feed, shares that are off 100 % only by rounding (e.g. 33 + 33 + 33) are evened out to 100 % on save — once, on the largest ingredient — instead of being rejected; the total line says so. The mixer wagon's shares add up to exactly 100 % with a *Total* row, and mineral feed (and straw) are marked *optional* — a TMR mix without them is valid.
+- **Sowing and the work list always agree**: the *Sow* step is ticked exactly when the field is sown. Switching the state badge (*To plant* ↔ *Planted*), ticking or unticking *Sow* in the work list, or *Fields from game* finding the crop growing all change both — click again to take a mistake back.
+
 ## 0.9.9 — 2026-10-12
 
 **New**
