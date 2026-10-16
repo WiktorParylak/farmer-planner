@@ -6001,26 +6001,29 @@ function wireSoilInputs(bodyEl) {
     });
 }
 
-// Re-renders a panel without losing the player's place: a change event fires
-// when Tab or a click has already moved focus to the next input, so that
-// input (found again by its tag, first class and data-* attributes) gets the
-// focus and caret back, and the panel keeps its scroll position.
+// Re-renders a panel without losing the player's place. A change event fires
+// while the edited input still has focus — Tab or a click moves it on only
+// afterwards — so the redraw waits for that, then gives the focus and caret
+// back to the input the player moved to (found again by its tag, first class
+// and data-* attributes) and keeps the panel's scroll position.
 function rerenderKeepingFocus(render, scroller = hubView) {
-    const el = document.activeElement;
-    let sel = null, start = null, end = null;
-    if (el && el !== document.body && el.matches('input, select, textarea, button')) {
-        const data = Array.from(el.attributes).filter(a => a.name.startsWith('data-'))
-            .map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('');
-        sel = el.tagName.toLowerCase() + (el.classList[0] ? '.' + CSS.escape(el.classList[0]) : '') + data;
-        try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* not a text input */ }
-    }
-    const scroll = scroller ? scroller.scrollTop : 0;
-    render();
-    if (scroller) scroller.scrollTop = scroll;
-    const again = sel && document.querySelector(sel);
-    if (!again) return;
-    again.focus({ preventScroll: true });
-    try { if (start != null) again.setSelectionRange(start, end); } catch (e) { /* not a text input */ }
+    setTimeout(() => {
+        const el = document.activeElement;
+        let sel = null, start = null, end = null;
+        if (el && el !== document.body && el.matches('input, select, textarea, button')) {
+            const data = Array.from(el.attributes).filter(a => a.name.startsWith('data-'))
+                .map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('');
+            sel = el.tagName.toLowerCase() + (el.classList[0] ? '.' + CSS.escape(el.classList[0]) : '') + data;
+            try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* not a text input */ }
+        }
+        const scroll = scroller ? scroller.scrollTop : 0;
+        render();
+        if (scroller) scroller.scrollTop = scroll;
+        const again = sel && document.querySelector(sel);
+        if (!again) return;
+        again.focus({ preventScroll: true });
+        try { if (start != null) again.setSelectionRange(start, end); } catch (e) { /* not a text input */ }
+    }, 0);
 }
 
 // Per-field fertilization plan — opened from the "Plan" button in each row of
