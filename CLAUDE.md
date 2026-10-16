@@ -56,8 +56,6 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-agronomy.js "<FS25>\data\foliage"` | regeneruje `data/default-agronomy.json` (dawka wysiewu, plon, słoma z gry podstawowej) |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
-| `node tools/dev-farm.js install` | wgrywa farmę testową z `dev-farm/` do `Documents\Farmer Planner` |
-| `node tools/dev-farm.js save` | zapisuje farmę testową z aplikacji z powrotem do `dev-farm/` (potem commit) |
 | `gh release list` | lista wydań |
 
 Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienionej funkcji.
@@ -120,9 +118,6 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - `mods/FS25_sowingMachineRollerReady.zip` został spatchowany 2026-09-27 (wał nie potraja zużycia nasion); oryginał w `Documents\Farming - misc\mod_backups`.
 
 Farma testowa `DEV – farma testowa` (id `1000000000001`) jest generowana od zera przez `src/renderer/dev-farm.js` — bez savegame'u, nie jest kopią żadnej farmy. Włącza się w ustawieniach aplikacji (zębatka na ekranie startowym → *Deweloper*, widoczne tylko przy `npm start`); *Odtwórz farmę testową* stawia ją od nowa, wyłączenie usuwa. Nowy stan do przetestowania → dopisz go w `dev-farm.js`. Testuj na niej, nie na prawdziwych farmach.
-
-Stara farma testowa (kopia Solka, id `1791058275537`, `dev-farm/` + `tools/dev-farm.js`) jest do usunięcia — czeka na decyzję użytkownika.
-
 Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farmer Planner` (lub zrób eksport kopii zapasowej farmy w aplikacji) i, jeśli potrzebny jest sync, sam folder savegame'u.
 
 ## Konwencje

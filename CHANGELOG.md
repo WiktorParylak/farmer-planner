@@ -5,7 +5,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 ## 0.9.11 — unreleased
 
 **New**
-- **Test farm for development**: when the app runs from the source code (`npm start`), *Settings* has a *Developer* switch that adds a test farm built by the app itself — fields, animals, feed, history and notes covering every state the planner can show — and *Rebuild test farm* to start it over. Turning the switch off deletes it. The installed app doesn't show the switch.
+- **Test farm for development**: when the app runs from the source code (`npm start`), *Settings* has a *Developer* switch that adds a test farm built by the app itself — fields, animals, feed, history and notes covering every state the planner can show — and *Rebuild test farm* to start it over. Turning the switch off deletes it. The installed app doesn't show the switch. It replaces the old test farm kept in the repo (a copy of a real savegame) and its `tools/dev-farm.js` script.
 
 **Fixed**
 - **Undo a liming**: a field limed this season whose pH still reads low (with Precision Farming, the game's pH only changes after the next sync) asked only *Lime again?*. The dialog now also has *Undo liming*, which puts back the liming from before this season (or none). *Remove liming…* on a well-limed field does the same, so older liming history isn't lost.

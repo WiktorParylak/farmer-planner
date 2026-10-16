@@ -24,7 +24,6 @@
       "**/*",
       "!FS25_CropDependentRolling${/*}",
       "!.claude${/*}",
-      "!dev-farm${/*}",
       "!docs${/*}",
       "!tools${/*}",
       "!CLAUDE.md"
