@@ -79,6 +79,9 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
 4. Commit `Version X.Y.Z: ...` na gałęzi `dev/vX.Y.Z`.
 5. Dopiero na polecenie: push, `npm run build`, `gh release create vX.Y.Z --prerelease ...`, PR do `main`.
+6. Po merge'u do `main`: przebuduj stronę (push do `farmer-planner-website` albo ręczne uruchomienie workflow *Deploy*; inaczej dopiero nocny build o 04:30 UTC).
+   Okno aktualizacji w aplikacji otwiera `farmerplanner.pl/versions/#vX-Y-Z`, a strona wersji czyta `CHANGELOG.md` z `main` —
+   bez tego kroku link trafia na stronę bez nowej wersji.
 
 ## Architektura
 

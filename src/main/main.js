@@ -59,12 +59,17 @@ ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
 
-// Update popup -> release page in the browser. Only this repo's releases.
-ipcMain.handle('open-release-page', (event, url) => {
-  if (typeof url === 'string' && url.startsWith('https://github.com/WiktorParylak/farmer-planner/releases/')) {
-    return shell.openExternal(url);
-  }
-  return null;
+// Update popup -> the version's entry on the website's Versions page, in the
+// app's language. The address is built here from the version alone, so the
+// renderer can't open anything else.
+const VERSIONS_PAGES = {
+  en: 'https://farmerplanner.pl/versions/',
+  pl: 'https://farmerplanner.pl/pl/wersje/'
+};
+ipcMain.handle('open-release-page', (event, version, lang) => {
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) return null;
+  const page = VERSIONS_PAGES[lang] || VERSIONS_PAGES.en;
+  return shell.openExternal(page + '#v' + version.replace(/\./g, '-'));
 });
 
 // Where we remember the window's last size/position/maximized state.

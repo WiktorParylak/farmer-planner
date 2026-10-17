@@ -9967,7 +9967,7 @@ async function checkForUpdates({ manual = false } = {}) {
         cancelText: t('updateLater'),
         icon: 'fa-circle-arrow-up'
     });
-    if (download) ipcRenderer.invoke('open-release-page', newest.html_url);
+    if (download) ipcRenderer.invoke('open-release-page', latest, currentLang);
 }
 
 const updateCheckToggle = document.getElementById('update-check-toggle');
