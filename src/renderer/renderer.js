@@ -11,6 +11,7 @@ const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
 const { TRANSLATIONS, MONTH_TRANSLATIONS, CROP_NAME_TRANSLATIONS, ANIMAL_SPECIES_TRANSLATIONS, PRODUCTION_FILLTYPE_TRANSLATIONS } = require('./translations');
+const diagnostics = require('./diagnostics');
 
 // Running from the repo (npm start) rather than from the installed app.
 const IS_DEV_BUILD = !__dirname.includes('app.asar');
@@ -9922,6 +9923,74 @@ window.exportFarmBackup = async function (farmId) {
         alert(t('exportError'));
     }
 };
+
+// Settings -> Help: diagnostic file for a bug report (see diagnostics.js) and
+// links to GitHub issues / the website's contact form.
+function appSettingsForDiagnostics() {
+    const out = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (/^farmer_planner_|^(fieldsSort|cropsSort)$/.test(key)) out[key] = localStorage.getItem(key);
+        }
+    } catch (err) { /* settings are a nice-to-have in the report */ }
+    return out;
+}
+
+function openDiagnosticsModal() {
+    const modal = document.getElementById('diagnostics-modal');
+    const select = document.getElementById('diagnostics-farm');
+    if (!modal || !select) return;
+    const farms = getAllFarms().slice().sort((a, b) => String(b.lastEdited || '').localeCompare(String(a.lastEdited || '')));
+    const preferred = currentFarmId || (farms[0] && farms[0].id) || '';
+    select.innerHTML = `<option value="">${escapeHtml(t('diagNoFarm'))}</option>` +
+        farms.map(f => `<option value="${escapeHtml(f.id)}"${f.id === preferred ? ' selected' : ''}>${escapeHtml(f.name || f.id)}</option>`).join('');
+    modal.style.display = 'flex';
+}
+
+async function saveDiagnosticsFile() {
+    const modal = document.getElementById('diagnostics-modal');
+    const select = document.getElementById('diagnostics-farm');
+    const farm = select && select.value ? getAllFarms().find(f => f.id === select.value) : null;
+    const report = diagnostics.buildDiagnostics({
+        appVersion: APP_VERSION,
+        lang: currentLang,
+        isDevBuild: IS_DEV_BUILD,
+        settings: appSettingsForDiagnostics(),
+        farm: farm,
+        farmFiles: farm && farm.folderName ? collectFarmFolderFiles(path.join(appDataDir, farm.folderName)) : null,
+        log: await ipcRenderer.invoke('get-console-log').catch(() => [])
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    const safeName = farm ? '-' + (farm.name || 'farm').replace(/[/\\?%*:|"<>\s]+/g, '-') : '';
+    const result = await ipcRenderer.invoke('show-save-dialog', {
+        title: t('diagTitle'),
+        defaultPath: `farmer-planner-diagnostics${safeName}-${date}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePath) return;
+    if (modal) modal.style.display = 'none';
+    try {
+        fs.writeFileSync(result.filePath, JSON.stringify(report, null, 2), 'utf-8');
+        showSeasonNotice(t('diagTitle'), t('diagSaved'));
+    } catch (err) {
+        console.error('Could not save the diagnostic file', err);
+        showSeasonNotice(t('diagTitle'), t('diagError'), true);
+    }
+}
+
+(function wireHelpSettings() {
+    const diagBtn = document.getElementById('diagnostics-btn');
+    if (diagBtn) diagBtn.addEventListener('click', openDiagnosticsModal);
+    const cancelBtn = document.getElementById('diagnostics-cancel-btn');
+    if (cancelBtn) cancelBtn.addEventListener('click', () => { document.getElementById('diagnostics-modal').style.display = 'none'; });
+    const saveBtn = document.getElementById('diagnostics-save-btn');
+    if (saveBtn) saveBtn.addEventListener('click', saveDiagnosticsFile);
+    const githubBtn = document.getElementById('report-github-btn');
+    if (githubBtn) githubBtn.addEventListener('click', () => ipcRenderer.invoke('open-help-page', 'issues', currentLang));
+    const contactBtn = document.getElementById('report-contact-btn');
+    if (contactBtn) contactBtn.addEventListener('click', () => ipcRenderer.invoke('open-help-page', 'contact', currentLang));
+})();
 
 window.importFarmBackup = async function () {
     const result = await ipcRenderer.invoke('show-open-dialog', {

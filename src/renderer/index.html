@@ -318,6 +318,13 @@
                 </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
+                <p data-i18n="helpSettingLabel" style="margin-bottom:4px;">Help</p>
+                <span class="animal-mods-note" data-i18n="helpSettingHint">Something's wrong? Report it with a diagnostic file, so it can be reproduced.</span>
+                <div class="help-settings-actions">
+                    <button type="button" id="diagnostics-btn" class="replay-tutorial-btn" data-i18n="diagSave">Save diagnostic file</button>
+                    <button type="button" id="report-github-btn" class="replay-tutorial-btn" data-i18n="helpReportGithub">Report on GitHub</button>
+                    <button type="button" id="report-contact-btn" class="replay-tutorial-btn" data-i18n="helpReportContact">Contact form</button>
+                </div>
                 <div id="dev-farm-setting" hidden>
                     <p data-i18n="devFarmSettingLabel" style="margin-bottom:4px;">Developer</p>
                     <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
@@ -328,6 +335,25 @@
                 </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="diagnostics-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="diagnostics-title">
+            <div class="modal-content">
+                <h3 id="diagnostics-title" data-i18n="diagTitle">Diagnostic file</h3>
+                <p data-i18n="diagIntro">One .json file for a bug report. It contains:</p>
+                <ul class="diagnostics-list">
+                    <li data-i18n="diagItemApp">the app, Electron and Windows versions and the app's settings,</li>
+                    <li data-i18n="diagItemFarm">the chosen farm's data (as in a farm backup),</li>
+                    <li data-i18n="diagItemSave">the savegame's small XML files (career, farms, fields, farmlands, Precision Farming, buildings, leases),</li>
+                    <li data-i18n="diagItemLog">the app's recent warnings and errors.</li>
+                </ul>
+                <p class="animal-mods-note" data-i18n="diagPrivacy">Your Windows user folder is replaced with %USERPROFILE%. The file does contain your farm's name and the farm and player names from the save. Nothing is sent — attach the file yourself to a GitHub issue or an e-mail.</p>
+                <label for="diagnostics-farm" class="modal-field-label" data-i18n="diagFarmLabel">Farm:</label>
+                <select id="diagnostics-farm"></select>
+                <div class="modal-buttons">
+                    <button type="button" id="diagnostics-cancel-btn" data-i18n="cancel">Cancel</button>
+                    <button type="button" id="diagnostics-save-btn" data-i18n="diagSaveBtn">Save file…</button>
                 </div>
             </div>
         </div>

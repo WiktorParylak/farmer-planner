@@ -6996,3 +6996,18 @@ button.field-open:hover .field-number-chip {
 .settings-danger-zone p {
   margin: 0;
 }
+
+/* Settings -> Help */
+.help-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.diagnostics-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
