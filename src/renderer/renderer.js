@@ -8216,12 +8216,74 @@ window.updateSplitHints = updateSplitHints;
 if (fieldsBody) {
     fieldsBody.addEventListener('input', (e) => {
         if (!isEditMode) return;
+        // Typing an area by hand: no longer ours to fill in.
+        if (e.target.classList.contains('field-area')) delete e.target.dataset.auto;
         if (e.target.classList.contains('field-area') ||
             e.target.classList.contains('field-number') ||
             e.target.classList.contains('field-size-input')) {
             updateSplitHints();
         }
     });
+    fieldsBody.addEventListener('change', (e) => {
+        if (!isEditMode || !e.target.classList.contains('field-number')) return;
+        autoFillFieldArea(e.target.closest('tr'));
+        updateSplitHints();
+    });
+}
+
+// Hectares of one game field number from what the farm already knows: its
+// saved field size, the saved rows with that number (split rows summed), then
+// the save's real field area (Precision Farming). null = unknown.
+function knownFieldHa(farm, id, saveAreas) {
+    const size = parseFloat((farm.fieldSizes || {})[id]);
+    if (!isNaN(size) && size > 0) return size;
+    const rowsHa = (farm.fields || []).filter(f => (f.number || '').toString().trim() === id)
+        .reduce((s, f) => s + (parseFloat(f.area) || 0), 0);
+    if (rowsHa > 0) return rowsHa;
+    return saveAreas[id] != null ? saveAreas[id] : null;
+}
+
+// After a field number is typed in Edit: fills the row's area with the sum of
+// the fields it names ("10-11-12" -> 10 + 11 + 12). Leaves an area typed by
+// hand alone, and rows sharing a number (split between crops) too.
+function autoFillFieldArea(row) {
+    const farm = getCurrentFarm();
+    const numInput = row && row.querySelector('.field-number');
+    const areaInput = row && row.querySelector('.field-area');
+    if (!farm || !numInput || !areaInput) return;
+    const cell = areaInput.closest('.fc-cell') || areaInput.parentElement;
+    let hint = cell.querySelector('.area-auto-hint');
+    if (!hint) {
+        hint = document.createElement('span');
+        hint.className = 'area-auto-hint';
+        cell.appendChild(hint);
+    }
+    hint.textContent = '';
+
+    const number = numInput.value.trim();
+    const ids = number.split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+    if (!ids.length) return;
+    const shared = Array.from(fieldsBody.querySelectorAll('.field-number'))
+        .some(other => other !== numInput && other.value.trim() === number);
+    if (shared) return;
+    const current = parseDecimal(areaInput.value || '0') || 0;
+    const untouched = areaInput.value === (areaInput.dataset.orig || '');
+    if (current > 0 && !areaInput.dataset.auto && !untouched) return;
+    // A single number on a row that already has its area: nothing to add up.
+    if (ids.length === 1 && current > 0 && !areaInput.dataset.auto) return;
+
+    const save = readSaveFields(farm);
+    const saveAreas = {};
+    if (save.ok) save.fields.forEach(f => { if (f.areaHa != null) saveAreas[f.id] = f.areaHa; });
+    const parts = ids.map(id => ({ id, ha: knownFieldHa(farm, id, saveAreas) }));
+    const missing = parts.filter(p => p.ha == null).map(p => p.id);
+    if (missing.length) {
+        hint.textContent = t('areaAutoMissing').replace('{fields}', missing.join(', '));
+        return;
+    }
+    areaInput.value = parts.reduce((s, p) => s + p.ha, 0).toFixed(2);
+    areaInput.dataset.auto = '1';
+    if (ids.length > 1) hint.textContent = t('areaAutoSum').replace('{fields}', ids.join(' + '));
 }
 
 window.addNewFieldRow = function () {

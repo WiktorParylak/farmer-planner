@@ -3183,6 +3183,18 @@ th.is-sortable[aria-sort="descending"]::after {
   color: var(--color-ink-soft);
 }
 
+/* "Sum of fields 10 + 11" under an area filled in from the field numbers. */
+.area-auto-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.area-auto-hint:empty {
+  display: none;
+}
+
 .fields-search-empty td {
   padding: 28px 12px;
   text-align: center;
