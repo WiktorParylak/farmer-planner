@@ -82,6 +82,8 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 
 **Plan sezonu**
 - Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, stan (do posadzenia / sadzić teraz / posadzone), orka lub bezorka, typ gleby i plan nawożenia dla każdego pola. Kliknięcie nagłówka kolumny sortuje tabelę.
+- Własne nazwy pól (*Za stodołą*), zachowane między sezonami, i wyszukiwarka (**Ctrl+F**), która filtruje pola po numerze, nazwie albo uprawie — przydatna na dużych farmach.
+- Połączone pola same sumują hektary: wpisanie `10-11-12` uzupełnia areał ze znanych wielkości pól albo z zapisu gry.
 - Międzyplony (zielone żyto, poplon…) na tym samym polu, przed lub po uprawie głównej.
 - Sezony z historią — możesz wrócić do poprzednich sezonów i je porównać.
 - Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
@@ -100,14 +102,15 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 - **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja i reprodukcja (postęp ciąży, miesiące do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można zmieniać nazwy.
 - **Zaopatrzenie** — ile nasion i nawozów kupić na sezon.
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
-- **Notatki** — przypięte do miesięcy, z tagami i listą zadań.
+- **Notatki** — przypięte do miesięcy i pól, z tagami i listą zadań, która co rok w grze zaczyna się od nowa.
 - **Przewidywane plony**.
 - **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry. Wykrywa też mieszalniki pasz (pasza dla świń, TMR, pasza mineralna) z zapasami, recepturami i wydajnością miesięczną.
 
 **Inne**
-- Język polski i angielski.
+- Język polski, angielski i niemiecki.
 - Interaktywny samouczek (ustawienia aplikacji → „Otwórz samouczek”).
 - Kopie zapasowe farm (eksport / import).
+- Plik diagnostyczny do zgłoszeń błędów (ustawienia aplikacji → Pomoc) — farma i małe pliki zapisu gry w jednym `.json`, bez nazwy Twojego folderu użytkownika Windows.
 - Discord Rich Presence — pokazuje aktualną farmę na Twoim profilu (wyłączone, dopóki nie pozwolisz).
 
 </details>
@@ -132,7 +135,8 @@ npm run build
 ```
 src/
   main/        Główny proces Electrona (okno, dialogi, Discord Rich Presence)
-  renderer/    Interfejs: index.html, renderer.js, style.css, odczyt zapisu gry i modów
+  renderer/    Interfejs: index.html, renderer.js (szkielet aplikacji), fields-table.js, feed.js, supplies.js,
+               tutorial.js, translations*.js, style.css, odczyt zapisu gry i modów
 data/          Dołączone dane z podstawowej gry (domyślne uprawy, zwierzęta, azot wg gleby)
 Assets/        Logo i ikona aplikacji
 tools/         Skrypty deweloperskie generujące pliki w data/ z plików gry
