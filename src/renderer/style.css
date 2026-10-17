@@ -713,6 +713,21 @@ body {
   text-align: center;
 }
 
+/* App settings grew (three languages, updates, help): tighter spacing, a bit
+   wider so the button rows fit, and scrolling on short windows. */
+#app-settings-modal .modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+  max-width: 520px;
+  justify-content: flex-start;   /* see #settings-modal: centred would spill over the top */
+  gap: 12px;
+  padding: 28px 34px;
+}
+
+#app-settings-modal .modal-content > p {
+  margin-top: 6px;
+}
+
 /* Farm settings: one card per topic, labels above their inputs. */
 .settings-group {
   display: flex;
