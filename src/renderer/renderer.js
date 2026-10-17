@@ -4255,10 +4255,11 @@ function generateNoteId() {
     return 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-// The in-game month currently shown for this farm, taken from its own
-// monthly history log (Section 4A) — reused here instead of re-parsing the
-// savegame, just to know which notes count as "this month".
+// The in-game month currently shown for this farm — the same one as in the
+// header (farm.month, set by hand or by the save), so notes know it even
+// without a savegame. The monthly history log (Section 4A) is only a fallback.
 function getFarmCurrentMonth(farm) {
+    if (farm && farm.month) return String(farm.month).toUpperCase();
     const rows = loadMonthlyHistory(farm);
     const last = rows[rows.length - 1];
     return last ? last.month : null;

@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Fixed**
 - **Weeds marked as done came back as *to spray***: weeds set by hand (the chip or the work planner) were overwritten with the save's state every time the farm was opened or synced, so a field still showing live weeds in the save — the game hadn't saved since spraying, or its per-field value lagged behind — went back to *to spray*. Your choice now stays until the game saves a different weed state for that field (sprayed, or regrown), and is cleared with the season.
+- **Notes didn't know the current month without a savegame**: *This month* and the highlighted notes now follow the month in the header, also on farms that aren't synced with the game.
 
 **Changed**
 - **Update window opens farmerplanner.pl**: *Open the download page* now goes to the new version on the website's Versions page (in the app's language), with what changed and the installer, instead of the GitHub release.
