@@ -673,7 +673,7 @@ const TUTORIAL_CHAPTERS = [
 // ---------- chapter progress ----------
 function tutDoneChapters() {
     try {
-        const arr = JSON.parse(localStorage.getItem(CONFIG_KEY_TUTORIAL_CHAPTERS) || '[]');
+        const arr = JSON.parse(getSetting(CONFIG_KEY_TUTORIAL_CHAPTERS) || '[]');
         return Array.isArray(arr) ? arr : [];
     } catch { return []; }
 }
@@ -682,7 +682,7 @@ function tutMarkChapterDone(id) {
     const done = tutDoneChapters();
     if (done.includes(id)) return;
     done.push(id);
-    try { localStorage.setItem(CONFIG_KEY_TUTORIAL_CHAPTERS, JSON.stringify(done)); } catch { /* per-viewer nicety only */ }
+    try { setSetting(CONFIG_KEY_TUTORIAL_CHAPTERS, JSON.stringify(done)); } catch { /* per-viewer nicety only */ }
 }
 
 // ---------- targets & layout ----------
@@ -1011,7 +1011,7 @@ function endTutorial() {
     tut.mode = null;
     clearInterval(tut.timer);
     if (tutorialOverlay) tutorialOverlay.style.display = 'none';
-    localStorage.setItem(CONFIG_KEY_TUTORIAL_DONE, '1');
+    setSetting(CONFIG_KEY_TUTORIAL_DONE, '1');
     tutCloseModals();
     tutGoToDashboard();
     removeDemoFarm();

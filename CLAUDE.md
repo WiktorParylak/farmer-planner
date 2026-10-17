@@ -97,15 +97,19 @@ src/renderer/mod-locator.js    szukanie folderów modów (gameSettings.xml, FSG 
 src/renderer/mod-files.js      czytanie plików z modów (folder/zip)
 src/renderer/animal-mods.js    AnimalFoodCalculator, EnhancedAnimalSystem
 src/renderer/animal-images.js  obrazki ras z modów
+src/renderer/translations.js   wszystkie teksty (TRANSLATIONS + słowniki nazw)
+src/renderer/tutorial.js       samouczek (drugi <script> po renderer.js)
+src/renderer/settings.js       ustawienia aplikacji (settings.json w folderze danych)
+src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → Pomoc)
 data/                          dane bazowej gry dołączone do aplikacji
 tools/                         skrypty deweloperskie (nie są używane w runtime)
 docs/                          screenshoty, propozycje-funkcji.txt
 ```
 
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.
-- Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Stan okna: `userData/window-state.json`.
+- Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
 - Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje.
-- Tłumaczenia: `TRANSLATIONS` (`en` / `pl`) na początku `renderer.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz w **obu** językach. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
+- Tłumaczenia: `TRANSLATIONS` (`en` / `pl`) w `translations.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz w **obu** językach. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
 - Skrypty w `tools/` powielają parsery z `renderer.js` (regex zamiast DOMParser) — zmiana schematu parsowania w jednym miejscu wymaga zmiany w drugim.
 
 ## Dane gry (komputer główny)

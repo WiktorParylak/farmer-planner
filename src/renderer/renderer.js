@@ -34,6 +34,11 @@ if (!fs.existsSync(appDataDir)) {
     catch (err) { console.error("Could not create the data folder", err); }
 }
 
+// App settings (settings.json in the data folder, see settings.js).
+const appSettings = require('./settings').createSettings(appDataDir, localStorage);
+function getSetting(key) { return appSettings.get(key); }
+function setSetting(key, value) { appSettings.set(key, value); }
+
 // =============================================================
 // SECTION 1A: LANGUAGE / TRANSLATIONS
 // =============================================================
@@ -42,7 +47,7 @@ const CONFIG_KEY_AUTO_SYNC = 'farmer_planner_auto_sync';
 const CONFIG_KEY_DISCORD_RPC = 'farmer_planner_discord_rpc';
 const CONFIG_KEY_TUTORIAL_DONE = 'farmer_planner_tutorial_done';
 
-let currentLang = localStorage.getItem(CONFIG_KEY_LANG) || 'en';
+let currentLang = getSetting(CONFIG_KEY_LANG) || 'en';
 
 function translateMonth(monthEn) {
     if (!monthEn) return monthEn;
@@ -129,7 +134,7 @@ function t(key) {
 
 function applyLanguage(lang) {
     currentLang = (lang === 'pl') ? 'pl' : 'en';
-    localStorage.setItem(CONFIG_KEY_LANG, currentLang);
+    setSetting(CONFIG_KEY_LANG, currentLang);
     document.documentElement.setAttribute('lang', currentLang);
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -170,20 +175,20 @@ let _lastDiscordPayload = null;
 
 function isDiscordRpcEnabled() {
     // Opt-in: off until the user says yes (asked once at start, see askDiscordOnce).
-    return localStorage.getItem(CONFIG_KEY_DISCORD_RPC) === '1';
+    return getSetting(CONFIG_KEY_DISCORD_RPC) === '1';
 }
 
 // Asks once whether to show the farm on Discord — the profile status is
 // public, so it is never switched on without a yes.
 async function askDiscordOnce() {
-    if (localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== null) return;
+    if (getSetting(CONFIG_KEY_DISCORD_RPC) !== null) return;
     const yes = await showConfirm({
         title: t('discordAskTitle'),
         body: t('discordAskText'),
         confirmText: t('discordAskYes'),
         icon: 'fa-display'
     });
-    localStorage.setItem(CONFIG_KEY_DISCORD_RPC, yes === true ? '1' : '0');
+    setSetting(CONFIG_KEY_DISCORD_RPC, yes === true ? '1' : '0');
     const toggle = document.getElementById('discord-rpc-toggle');
     if (toggle) toggle.checked = yes === true;
     updateDiscordPresence();
@@ -331,7 +336,7 @@ if (replayTutorialBtn) {
 }
 if (discordRpcToggle) {
     discordRpcToggle.addEventListener('change', () => {
-        localStorage.setItem(CONFIG_KEY_DISCORD_RPC, discordRpcToggle.checked ? '1' : '0');
+        setSetting(CONFIG_KEY_DISCORD_RPC, discordRpcToggle.checked ? '1' : '0');
         updateDiscordPresence();
     });
 }
@@ -4813,7 +4818,7 @@ try {
 // meters inputs on the field: seed and lime in litres per hectare, fertilizer
 // as kilograms of nitrogen (N) per hectare for a full season at high yield.
 // The person overrides any value in the Supplies hub panel; overrides live in
-// localStorage and are merged over these tables.
+// the farm (farm.supplyRates) and are merged over these tables.
 const CONFIG_KEY_SUPPLY_RATES = 'farmer_planner_supply_rates';
 
 // Litres of seed per hectare: the farm's map crop files (seeding
@@ -6587,7 +6592,7 @@ let autoSyncToastTimer = null;
 // farm follow the old app-wide switch only if it was explicitly turned off.
 function autoSyncSetting(farm) {
     if (farm && typeof farm.autoSync === 'boolean') return farm.autoSync;
-    return localStorage.getItem(CONFIG_KEY_AUTO_SYNC) !== '0';
+    return getSetting(CONFIG_KEY_AUTO_SYNC) !== '0';
 }
 
 // A cheap fingerprint of the save folder: mtime + size of each relevant file.
@@ -6904,7 +6909,7 @@ function getPreviousSeasonCropMap(farm, seasonNum) {
 // the column headers switch it (again = reverse, third click = back to default).
 let fieldsSort = { key: 'number', dir: 1 };
 try {
-    const saved = JSON.parse(localStorage.getItem('fieldsSort') || 'null');
+    const saved = JSON.parse(getSetting('fieldsSort') || 'null');
     if (saved && ['number', 'ha', 'crop', 'sow', 'state'].includes(saved.key)) fieldsSort = saved;
 } catch (e) { /* storage unavailable — keep the default */ }
 
@@ -6955,7 +6960,7 @@ document.querySelectorAll('#fields-table thead [data-sort]').forEach(th => {
         if (fieldsSort.key !== key) fieldsSort = { key, dir: firstDir };
         else if (fieldsSort.dir === firstDir) fieldsSort = { key, dir: -firstDir };
         else fieldsSort = { key: 'number', dir: 1 };
-        try { localStorage.setItem('fieldsSort', JSON.stringify(fieldsSort)); } catch (e) { /* ignore */ }
+        try { setSetting('fieldsSort', JSON.stringify(fieldsSort)); } catch (e) { /* ignore */ }
         renderSeasonView();
     });
 });
@@ -8767,12 +8772,12 @@ if (fieldsBody) fieldsBody.addEventListener('input', e => {
 // to go back to game order).
 let cropsSort = { key: 'game', dir: 1 };
 try {
-    const saved = JSON.parse(localStorage.getItem('cropsSort') || 'null');
+    const saved = JSON.parse(getSetting('cropsSort') || 'null');
     if (saved && ['game', 'name', 'ha'].includes(saved.key)) cropsSort = saved;
 } catch (e) { /* storage unavailable — keep the default */ }
 
 function saveCropsSort() {
-    try { localStorage.setItem('cropsSort', JSON.stringify(cropsSort)); } catch (e) { /* ignore */ }
+    try { setSetting('cropsSort', JSON.stringify(cropsSort)); } catch (e) { /* ignore */ }
 }
 
 function sumCropArea(fields, cropKey) {
@@ -9868,14 +9873,7 @@ window.exportFarmBackup = async function (farmId, quiet = false) {
 // Settings -> Help: diagnostic file for a bug report (see diagnostics.js) and
 // links to GitHub issues / the website's contact form.
 function appSettingsForDiagnostics() {
-    const out = {};
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (/^farmer_planner_|^(fieldsSort|cropsSort)$/.test(key)) out[key] = localStorage.getItem(key);
-        }
-    } catch (err) { /* settings are a nice-to-have in the report */ }
-    return out;
+    return appSettings.all();
 }
 
 function openDiagnosticsModal() {
@@ -10160,7 +10158,7 @@ const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/
 const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
 
 function isUpdateCheckEnabled() {
-    return localStorage.getItem(CONFIG_KEY_UPDATE_CHECK) !== '0';
+    return getSetting(CONFIG_KEY_UPDATE_CHECK) !== '0';
 }
 
 // "v0.9.10" vs "0.9.9" -> 1 / 0 / -1, number by number.
@@ -10212,7 +10210,7 @@ async function checkForUpdates({ manual = false } = {}) {
 const updateCheckToggle = document.getElementById('update-check-toggle');
 if (updateCheckToggle) {
     updateCheckToggle.addEventListener('change', () => {
-        localStorage.setItem(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
+        setSetting(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
     });
 }
 const checkUpdatesBtn = document.getElementById('check-updates-btn');
@@ -10250,7 +10248,7 @@ function askFirstLanguage() {
 document.addEventListener('DOMContentLoaded', async () => {
     // Crop calendar / animal-needs are per-farm now — loaded by loadFarmConfigs()
     // when a farm is opened, not here (no farm is active on the dashboard).
-    const languageChosen = !!localStorage.getItem(CONFIG_KEY_LANG);
+    const languageChosen = !!getSetting(CONFIG_KEY_LANG);
     applyLanguage(currentLang);
 
     // Leftover from a tutorial that was interrupted by closing the app.
@@ -10267,6 +10265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFarmList(getAllFarms());
     }
     await askDiscordOnce();
-    if (localStorage.getItem(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
+    if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });
