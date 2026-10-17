@@ -47,7 +47,9 @@ const CONFIG_KEY_AUTO_SYNC = 'farmer_planner_auto_sync';
 const CONFIG_KEY_DISCORD_RPC = 'farmer_planner_discord_rpc';
 const CONFIG_KEY_TUTORIAL_DONE = 'farmer_planner_tutorial_done';
 
-let currentLang = getSetting(CONFIG_KEY_LANG) || 'en';
+// Languages the app is translated into (TRANSLATIONS keys); anything else -> en.
+const APP_LANGUAGES = ['en', 'pl', 'de'];
+let currentLang = APP_LANGUAGES.includes(getSetting(CONFIG_KEY_LANG)) ? getSetting(CONFIG_KEY_LANG) : 'en';
 
 function translateMonth(monthEn) {
     if (!monthEn) return monthEn;
@@ -133,7 +135,7 @@ function t(key) {
 }
 
 function applyLanguage(lang) {
-    currentLang = (lang === 'pl') ? 'pl' : 'en';
+    currentLang = APP_LANGUAGES.includes(lang) ? lang : 'en';
     setSetting(CONFIG_KEY_LANG, currentLang);
     document.documentElement.setAttribute('lang', currentLang);
 
@@ -194,7 +196,7 @@ async function askDiscordOnce() {
     updateDiscordPresence();
 }
 
-// Polish needs three plural forms (1 / 2-4 / 5+); English just two.
+// Polish needs three plural forms (1 / 2-4 / 5+); English and German just two.
 function discordPlural(n, oneKey, fewKey, manyKey) {
     const abs = Math.abs(n) % 100;
     const last = abs % 10;
@@ -961,7 +963,7 @@ function wireBarnPanel(bodyEl) {
 // (the brand #3F6B44 is too gray for a chart mark). Loan is also dashed, so
 // the two series never rely on color alone.
 // =============================================================
-const FIN_LOCALE = () => (currentLang === 'pl' ? 'pl-PL' : 'en-US');
+const FIN_LOCALE = () => ({ pl: 'pl-PL', de: 'de-DE' }[currentLang] || 'en-US');
 function finMoney(v) {
     const n = Math.round(v).toLocaleString(FIN_LOCALE());
     return CURRENCY === '€' ? `${n} €` : `${CURRENCY}${n}`;
@@ -2732,10 +2734,10 @@ try {
 // net if the JSON file is unreadable.
 const NITROGEN_BY_SOIL_FALLBACK = {
     soilTypes: [
-        { id: 'loamySand', pl: 'Piasek ilasty', en: 'Loamy Sand', yieldPct: 80 },
-        { id: 'sandyLoam', pl: 'Piaszczysty ił', en: 'Sandy Loam', yieldPct: 100 },
-        { id: 'loam', pl: 'Ił', en: 'Loam', yieldPct: 125 },
-        { id: 'siltyClay', pl: 'Ił pylasty', en: 'Silty Clay', yieldPct: 90 }
+        { id: 'loamySand', pl: 'Piasek ilasty', en: 'Loamy Sand', de: 'Lehmiger Sand', yieldPct: 80 },
+        { id: 'sandyLoam', pl: 'Piaszczysty ił', en: 'Sandy Loam', de: 'Sandiger Lehm', yieldPct: 100 },
+        { id: 'loam', pl: 'Ił', en: 'Loam', de: 'Lehm', yieldPct: 125 },
+        { id: 'siltyClay', pl: 'Ił pylasty', en: 'Silty Clay', de: 'Schluffiger Ton', yieldPct: 90 }
     ],
     fallback: { loamySand: 100, sandyLoam: 120, loam: 150, siltyClay: 130 },
     crops: {}
@@ -5701,7 +5703,7 @@ if (checkUpdatesBtn) {
 // SECTION 11: INITIALIZATION
 // =============================================================
 // First start (no language saved yet): a modal that can only be closed by
-// picking Polski or English — before the tutorial, so it runs in that language.
+// picking a language — before the tutorial, so it runs in that language.
 function askFirstLanguage() {
     const modal = document.getElementById('first-lang-modal');
     if (!modal) return Promise.resolve();

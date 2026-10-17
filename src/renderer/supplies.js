@@ -490,7 +490,7 @@ function soilTypeList() { return NITROGEN_BY_SOIL.soilTypes || []; }
 function soilLabel(s) {
     if (!s) return '';
     if (typeof s === 'string') s = soilTypeList().find(x => x.id === s) || { id: s, pl: s, en: s };
-    return (currentLang === 'pl' ? s.pl : s.en) || s.en || s.pl || s.id;
+    return s[currentLang] || s.en || s.pl || s.id;
 }
 
 // The soil a field is assumed to be on when the user hasn't set a mix — the

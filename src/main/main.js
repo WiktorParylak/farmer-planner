@@ -64,7 +64,8 @@ ipcMain.on('get-app-version', (event) => {
 // renderer can't open anything else.
 const VERSIONS_PAGES = {
   en: 'https://farmerplanner.pl/versions/',
-  pl: 'https://farmerplanner.pl/pl/wersje/'
+  pl: 'https://farmerplanner.pl/pl/wersje/',
+  de: 'https://farmerplanner.pl/de/versionen/'
 };
 ipcMain.handle('open-release-page', (event, version, lang) => {
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) return null;
@@ -75,7 +76,7 @@ ipcMain.handle('open-release-page', (event, version, lang) => {
 // Settings -> Help: fixed addresses only, picked by name.
 const HELP_PAGES = {
   issues: { en: 'https://github.com/WiktorParylak/farmer-planner/issues/new' },
-  contact: { en: 'https://farmerplanner.pl/contact/', pl: 'https://farmerplanner.pl/pl/kontakt/' }
+  contact: { en: 'https://farmerplanner.pl/contact/', pl: 'https://farmerplanner.pl/pl/kontakt/', de: 'https://farmerplanner.pl/de/kontakt/' }
 };
 ipcMain.handle('open-help-page', (event, target, lang) => {
   const pages = HELP_PAGES[target];

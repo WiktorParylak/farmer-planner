@@ -610,7 +610,7 @@ function readMixerModL10n(modsDirs, modName) {
     try {
         const read = rel => { const b = modFiles.readModFile(modsDirs, `$moddir$${modName}/${rel}`); return b ? b.toString('utf-8') : null; };
         const modDesc = read('modDesc.xml');
-        return modDesc ? readModL10n(read, modDesc, ['en', 'pl']) : {};
+        return modDesc ? readModL10n(read, modDesc, ['en', 'pl', 'de']) : {};
     } catch (e) {
         console.warn('Could not read translations of', modName, e);
         return {};
@@ -924,6 +924,11 @@ const FEED_FILLTYPE_NAMES = {
         DRYGRASS_WINDROW: 'Siano', DRYALFALFA_WINDROW: 'Siano z lucerny', DRYCLOVER_WINDROW: 'Siano z koniczyny',
         GRASS_WINDROW: 'Trawa', ALFALFA_WINDROW: 'Lucerna', CLOVER_WINDROW: 'Koniczyna',
         SILAGE: 'Kiszonka', STRAW: 'Słoma', WATER: 'Woda', CHAFF: 'Sieczka'
+    },
+    de: {
+        DRYGRASS_WINDROW: 'Heu', DRYALFALFA_WINDROW: 'Luzerneheu', DRYCLOVER_WINDROW: 'Kleeheu',
+        GRASS_WINDROW: 'Gras', ALFALFA_WINDROW: 'Luzerne', CLOVER_WINDROW: 'Klee',
+        SILAGE: 'Silage', STRAW: 'Stroh', WATER: 'Wasser', CHAFF: 'Häckselgut'
     }
 };
 

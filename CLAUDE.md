@@ -100,7 +100,8 @@ src/renderer/mod-locator.js    szukanie folderów modów (gameSettings.xml, FSG 
 src/renderer/mod-files.js      czytanie plików z modów (folder/zip)
 src/renderer/animal-mods.js    AnimalFoodCalculator, EnhancedAnimalSystem
 src/renderer/animal-images.js  obrazki ras z modów
-src/renderer/translations.js   wszystkie teksty (TRANSLATIONS + słowniki nazw)
+src/renderer/translations.js   wszystkie teksty (TRANSLATIONS + słowniki nazw), en i pl
+src/renderer/translations-de.js teksty niemieckie (te same klucze), dołączane w translations.js
 src/renderer/tutorial.js       samouczek (drugi <script> po renderer.js)
 src/renderer/settings.js       ustawienia aplikacji (settings.json w folderze danych)
 src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → Pomoc)
@@ -113,7 +114,7 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `renderer.js`, `fields-table.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
 - Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
 - Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje.
-- Tłumaczenia: `TRANSLATIONS` (`en` / `pl`) w `translations.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz w **obu** językach. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
+- Tłumaczenia: `TRANSLATIONS` (`en` / `pl` / `de`) w `translations.js` + `translations-de.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz we **wszystkich trzech** językach (`APP_LANGUAGES` w `renderer.js`); brakujący klucz DE spada na EN. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
 - Skrypty w `tools/` powielają parsery z `renderer.js` (regex zamiast DOMParser) — zmiana schematu parsowania w jednym miejscu wymaga zmiany w drugim.
 
 ## Dane gry (komputer główny)

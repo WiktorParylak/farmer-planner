@@ -154,7 +154,8 @@ function tutNumValue(el) {
 
 // ---------- demo farm ----------
 function seedDemoFarm(farm) {
-    const pl = currentLang === 'pl';
+    // Demo texts in the app language: tr(english, polish, german).
+    const tr = (en, pl, de) => ({ pl, de }[currentLang] || en);
     const lime = (ph, season) => ({ limePh: ph, limeAppliedSeason: season });
     const field = (number, area, crop, sowingMonth, state, tillage, extra) => ({
         number, area, crop, sowingMonth, state, tillage,
@@ -293,13 +294,13 @@ function seedDemoFarm(farm) {
     const now = new Date().toISOString();
     saveNotes(farm, [{
         id: generateNoteId(),
-        title: pl ? "Wapnowanie przed siewem pszenicy" : "Lime before sowing wheat",
-        body: pl ? "Pole 5-6 ma niskie pH — wapnować po zbiorze rzepaku." : "Field 5-6 has low pH — lime it after the canola harvest.",
+        title: tr("Lime before sowing wheat", "Wapnowanie przed siewem pszenicy", "Kalken vor der Weizensaat"),
+        body: tr("Field 5-6 has low pH — lime it after the canola harvest.", "Pole 5-6 ma niskie pH — wapnować po zbiorze rzepaku.", "Feld 5-6 hat einen niedrigen pH-Wert — nach der Rapsernte kalken."),
         months: ["SEPTEMBER", "OCTOBER"],
-        tags: [pl ? "wapno" : "lime"],
+        tags: [tr("lime", "wapno", "Kalk")],
         checklist: [
-            { text: pl ? "Kupić 20 000 l wapna" : "Buy 20,000 l of lime", done: true },
-            { text: pl ? "Rozsiać na polu 5-6" : "Spread it on field 5-6", done: false }
+            { text: tr("Buy 20,000 l of lime", "Kupić 20 000 l wapna", "20.000 l Kalk kaufen"), done: true },
+            { text: tr("Spread it on field 5-6", "Rozsiać na polu 5-6", "Auf Feld 5-6 ausbringen"), done: false }
         ],
         createdAt: now,
         updatedAt: now
@@ -561,7 +562,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('h14', '#hub-panel-body .note-card'),
             tutClick('h15', '#hub-panel-body .notes-add-btn', () => tutModalOpen('note-edit-modal')),
             tutInput('h16', '#note-edit-title', () => { const el = tq('#note-edit-title'); return !!el && el.value.trim() !== ''; },
-                () => (currentLang === 'pl' ? 'Kupić wapno' : 'Buy lime')),
+                () => ({ pl: 'Kupić wapno', de: 'Kalk kaufen' }[currentLang] || 'Buy lime')),
             tutInfo('h17', '#note-edit-months'),
             tutClick('h18', '#note-edit-save-btn', () => !tutModalOpen('note-edit-modal') && tutViewActive('notes')),
             hubOpen('h20', 'yieldforecast'),

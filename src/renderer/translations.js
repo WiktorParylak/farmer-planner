@@ -1851,7 +1851,7 @@ Object.assign(TRANSLATIONS.en, {
     tut_j2_t: "App settings",
     tut_j2_x: "Click the gear icon.",
     tut_j3_t: "Language",
-    tut_j3_x: "Switch between Polish and English at any time.",
+    tut_j3_x: "Switch between English, Polish and German at any time.",
     tut_j4_t: "Discord",
     tut_j4_x: "Show the farm you're working on in your Discord status.",
     tut_j5_t: "Tutorial",
@@ -2152,7 +2152,7 @@ Object.assign(TRANSLATIONS.pl, {
     tut_j2_t: "Ustawienia aplikacji",
     tut_j2_x: "Kliknij ikonę koła zębatego.",
     tut_j3_t: "Język",
-    tut_j3_x: "W każdej chwili przełączysz polski i angielski.",
+    tut_j3_x: "W każdej chwili przełączysz polski, angielski i niemiecki.",
     tut_j4_t: "Discord",
     tut_j4_x: "Pokazuj w statusie Discorda farmę, nad którą pracujesz.",
     tut_j5_t: "Samouczek",
@@ -2224,6 +2224,14 @@ const PRODUCTION_FILLTYPE_TRANSLATIONS = {
         FOOD: "Pasza", WATER: "Woda"
     }
 };
+
+// German lives in its own file (translations-de.js) so it can be reviewed on its own.
+const DE = require('./translations-de');
+TRANSLATIONS.de = DE.UI;
+MONTH_TRANSLATIONS.de = DE.MONTHS;
+CROP_NAME_TRANSLATIONS.de = DE.CROP_NAMES;
+ANIMAL_SPECIES_TRANSLATIONS.de = DE.ANIMAL_SPECIES;
+PRODUCTION_FILLTYPE_TRANSLATIONS.de = DE.PRODUCTION_FILLTYPES;
 
 module.exports = {
     TRANSLATIONS,
