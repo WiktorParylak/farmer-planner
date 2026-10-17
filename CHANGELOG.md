@@ -6,7 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Changed**
 - **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl).
-- **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`.
+- **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`, and the tutorial into `src/renderer/tutorial.js`.
 
 ## 0.9.11 — 2026-10-16
 
