@@ -9408,6 +9408,9 @@ if (settingsBtn) {
         if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
+        // Manual import is rarely needed: folded unless this farm already uses it.
+        const advanced = document.getElementById('settings-advanced');
+        if (advanced) advanced.open = !!(farm && (farm.cropsSourceLabel || farm.animalDefsSourceLabel));
         if (cropsLoadedInfo) {
             let info = AVAILABLE_CROPS.length > 0
                 ? `${t('currentlyLoaded')}: ${AVAILABLE_CROPS.length} ${t('cropsLoaded')}`
