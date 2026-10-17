@@ -2,6 +2,12 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.12 — unreleased
+
+**Changed**
+- **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl).
+- **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`.
+
 ## 0.9.11 — 2026-10-16
 
 **New**
