@@ -6969,3 +6969,54 @@ button.field-open:hover .field-number-chip {
 .modal-buttons .app-dialog-extra[hidden] {
   display: none;
 }
+
+/* ---- What's new (after an update) ---- */
+.whats-new-content {
+  max-width: 640px;
+  width: min(640px, 92vw);
+}
+
+.whats-new-body {
+  align-self: stretch;
+  max-height: 46vh;
+  overflow-y: auto;
+  text-align: left;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  padding: 4px 14px 4px 4px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.whats-new-body h4 {
+  margin: 14px 0 6px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.whats-new-body h5 {
+  margin: 16px 0 0;
+  font-size: var(--fs-base);
+  color: var(--color-ink-soft);
+}
+
+.whats-new-body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.whats-new-body li {
+  margin: 4px 0;
+}
+
+.whats-new-body code {
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.92em;
+  background: var(--color-surface-alt);
+  padding: 0 4px;
+  border-radius: 4px;
+}

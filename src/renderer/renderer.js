@@ -5699,6 +5699,123 @@ if (checkUpdatesBtn) {
     });
 }
 
+// ---------- what's new after an update ----------
+// The version the app last ran is kept in settings; after an update the
+// CHANGELOG.md sections in between are shown once (in English, as on the
+// website's Versions page).
+const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
+const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
+
+// [{ version, lines }] for every "## X.Y.Z — date" (or "— unreleased") section.
+function readChangelogSections() {
+    let text = '';
+    try { text = fs.readFileSync(CHANGELOG_PATH, 'utf8'); } catch (e) { return []; }
+    return text.split(/^## /m).slice(1).map(section => {
+        const [heading, ...lines] = section.split(/\r?\n/);
+        const m = heading.trim().match(/^(\d+\.\d+\.\d+)\b/);
+        return m ? { version: m[1], lines } : null;
+    }).filter(Boolean);
+}
+
+// The small Markdown subset CHANGELOG.md uses: "**New**" labels, "- " lists
+// (one level of nesting), **bold**, *italic*, `code` and [links] (text only —
+// a link inside the app window would replace the app).
+function changelogInline(src) {
+    const codes = [];
+    let html = escapeHtml(src).replace(/`([^`]+)`/g, (m, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
+    html = html
+        .replace(/\[([^\]]+)\]\([^)\s]+\)/g, '$1')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[^\w*])\*(?=\S)(.+?)(?<=\S)\*(?!\w)/g, '$1<em>$2</em>');
+    return html.replace(/\u0000(\d+)\u0000/g, (m, i) => `<code>${codes[i]}</code>`);
+}
+
+function changelogHtml(lines) {
+    const out = [];
+    let list = null;
+    const flushList = () => {
+        if (!list) return;
+        out.push('<ul>' + list.map(item => `<li>${item.text}${item.children.length ? '<ul>' + item.children.map(c => `<li>${c}</li>`).join('') + '</ul>' : ''}</li>`).join('') + '</ul>');
+        list = null;
+    };
+    lines.forEach(line => {
+        if (!line.trim()) { flushList(); return; }
+        const item = line.match(/^(\s*)[-*] (.*)$/);
+        if (item) {
+            if (!list) list = [];
+            if (item[1].length >= 2 && list.length) list[list.length - 1].children.push(changelogInline(item[2]));
+            else list.push({ text: changelogInline(item[2]), children: [] });
+        } else if (list && /^\s+\S/.test(line)) {
+            const last = list[list.length - 1];
+            if (last.children.length) last.children[last.children.length - 1] += ' ' + changelogInline(line.trim());
+            else last.text += ' ' + changelogInline(line.trim());
+        } else {
+            flushList();
+            const label = line.trim().match(/^\*\*([^*]+)\*\*$/);
+            out.push(label ? `<h5>${changelogInline(label[1])}</h5>` : `<p>${changelogInline(line.trim())}</p>`);
+        }
+    });
+    flushList();
+    return out.join('');
+}
+
+// Sections newer than `since` (exclusive) up to the running version; since
+// = null -> just the running version.
+function showWhatsNew(since) {
+    const modal = document.getElementById('whats-new-modal');
+    const sections = readChangelogSections().filter(s => compareVersions(s.version, APP_VERSION) <= 0
+        && (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, APP_VERSION) === 0));
+    if (!modal || !sections.length) return Promise.resolve(false);
+
+    document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
+    const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
+    document.getElementById('whats-new-lead').textContent = [lead, currentLang === 'en' ? '' : t('whatsNewEnglish')].filter(Boolean).join(' ');
+    document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
+    const body = document.getElementById('whats-new-body');
+    body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');
+    body.scrollTop = 0;
+
+    const okBtn = document.getElementById('whats-new-ok');
+    const webBtn = document.getElementById('whats-new-web');
+    return new Promise(resolve => {
+        const finish = () => {
+            modal.style.display = 'none';
+            okBtn.removeEventListener('click', finish);
+            webBtn.removeEventListener('click', onWeb);
+            modal.removeEventListener('mousedown', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve(true);
+        };
+        const onWeb = () => ipcRenderer.invoke('open-release-page', APP_VERSION, currentLang);
+        const onBackdrop = e => { if (e.target === modal) finish(); };
+        const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(); } };
+        okBtn.addEventListener('click', finish);
+        webBtn.addEventListener('click', onWeb);
+        modal.addEventListener('mousedown', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+        modal.style.display = 'flex';
+        okBtn.focus();
+    });
+}
+
+// On start: show what changed if the app was updated since it last ran.
+// A first install (no language chosen yet) only records the version.
+async function showWhatsNewAfterUpdate(isFirstStart) {
+    const last = getSetting(CONFIG_KEY_LAST_VERSION);
+    setSetting(CONFIG_KEY_LAST_VERSION, APP_VERSION);
+    if (isFirstStart) return;
+    // Settings from before this feature have no version: show this one's changes.
+    if (!last) { await showWhatsNew(null); return; }
+    if (compareVersions(APP_VERSION, last) > 0) await showWhatsNew(last);
+}
+
+const whatsNewBtn = document.getElementById('whats-new-btn');
+if (whatsNewBtn) {
+    whatsNewBtn.addEventListener('click', async () => {
+        if (!(await showWhatsNew(null))) await showNotice(t('whatsNewButton'), t('whatsNewNone').replace('{v}', APP_VERSION));
+    });
+}
+
 // =============================================================
 // SECTION 11: INITIALIZATION
 // =============================================================
@@ -5742,6 +5859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFarmList(getAllFarms());
     }
     await askDiscordOnce();
+    await showWhatsNewAfterUpdate(!languageChosen);
     if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

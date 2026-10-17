@@ -314,6 +314,7 @@
                 </label>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
                     <button type="button" id="check-updates-btn" class="replay-tutorial-btn" data-i18n="updateCheckNow">Check now</button>
+                    <button type="button" id="whats-new-btn" class="replay-tutorial-btn" data-i18n="whatsNewButton">What's new</button>
                     <span id="app-version-label" class="animal-mods-note"></span>
                 </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
@@ -457,6 +458,19 @@
                     <button type="button" id="app-dialog-cancel" class="modal-cancel-btn"></button>
                     <button type="button" id="app-dialog-confirm"></button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- After an update: what changed since the version the app last ran (from CHANGELOG.md). -->
+    <div id="whats-new-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+        <div class="modal-content app-dialog-content whats-new-content">
+            <div class="app-dialog-icon" aria-hidden="true"><i class="fa-solid fa-gift"></i></div>
+            <h3 id="whats-new-title"></h3>
+            <p id="whats-new-lead"></p>
+            <div id="whats-new-body" class="whats-new-body" lang="en"></div>
+            <div class="modal-buttons">
+                <button type="button" id="whats-new-web" class="modal-cancel-btn" data-i18n="whatsNewWebsite">See it on the website</button>
+                <button type="button" id="whats-new-ok" data-i18n="whatsNewOk">Got it</button>
             </div>
         </div>
     </div>
