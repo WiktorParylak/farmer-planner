@@ -4237,12 +4237,43 @@ function notesPath(farm) {
 function loadNotes(farm) {
     const p = notesPath(farm);
     if (!p || !fs.existsSync(p)) return [];
+    let arr;
     try {
-        const arr = JSON.parse(fs.readFileSync(p, 'utf-8'));
-        return Array.isArray(arr) ? arr : [];
+        arr = JSON.parse(fs.readFileSync(p, 'utf-8'));
     } catch (err) {
         return []; // corrupt file — start fresh rather than break the panel
     }
+    if (!Array.isArray(arr)) return [];
+    // Ticks saved before checklists reset yearly count as made this year.
+    const year = farmGameYear(farm);
+    let migrated = false;
+    arr.forEach(n => (n.checklist || []).forEach(c => {
+        if (c.done && c.doneYear == null) { c.doneYear = year; migrated = true; }
+    }));
+    if (migrated) saveNotes(farm, arr);
+    return arr;
+}
+
+// Notes repeat every year (they're pinned to months), so a checklist tick only
+// counts in the in-game year it was made; next year the list starts over.
+function farmGameYear(farm) {
+    return parseInt(farm && farm.yearNumber, 10) || 1;
+}
+
+function checklistItemDone(item, year) {
+    return !!item.done && item.doneYear === year;
+}
+
+// A note pinned to "12" also belongs to field "12-13" and the other way round.
+function noteHasField(note, number) {
+    const ids = s => String(s || '').split(/[^0-9]+/).filter(Boolean).map(x => String(parseInt(x, 10)));
+    const wanted = ids(number);
+    return (note.fields || []).some(f => f === number || ids(f).some(id => wanted.includes(id)));
+}
+
+function noteFieldLabel(farm, number) {
+    const name = fieldNameOf(farm, number);
+    return t('fieldViewTitle').replace('{field}', number) + (name ? ' · ' + name : '');
 }
 
 function saveNotes(farm, notes) {
@@ -4292,15 +4323,21 @@ function renderNoteCard(note, currentMonth) {
         `<button type="button" class="note-tag-chip note-tag-filter" data-tag="${escapeHtml(tg)}" title="${t('notesFilterByTag')}" style="--tag-color:${noteTagColor(tg)}">${escapeHtml(tg)}</button>`
     ).join('');
 
+    const farm = getCurrentFarm();
+    const fieldsHtml = (note.fields || []).map(num =>
+        `<button type="button" class="note-month-chip note-field-chip note-field-filter" data-field="${escapeHtml(num)}" title="${t('notesFilterByField')}">${escapeHtml(noteFieldLabel(farm, num))}</button>`
+    ).join('');
+
+    const year = farmGameYear(farm);
     const checklist = note.checklist || [];
-    const doneCount = checklist.filter(c => c.done).length;
+    const doneCount = checklist.filter(c => checklistItemDone(c, year)).length;
     const checklistHtml = checklist.length ? `
         <div class="note-checklist">
             <div class="note-checklist-progress">${doneCount}/${checklist.length}</div>
             ${checklist.map((item, idx) => `
                 <label class="note-checklist-item">
-                    <input type="checkbox" ${item.done ? 'checked' : ''} onchange="window.toggleNoteChecklistItem('${note.id}', ${idx}, this)">
-                    <span class="${item.done ? 'is-done' : ''}">${escapeHtml(item.text)}</span>
+                    <input type="checkbox" ${checklistItemDone(item, year) ? 'checked' : ''} onchange="window.toggleNoteChecklistItem('${note.id}', ${idx}, this)">
+                    <span class="${checklistItemDone(item, year) ? 'is-done' : ''}">${escapeHtml(item.text)}</span>
                 </label>`).join('')}
         </div>` : '';
 
@@ -4320,6 +4357,7 @@ function renderNoteCard(note, currentMonth) {
             </div>
             ${isCurrent ? `<span class="note-current-badge">${t('notesCurrentMonthBadge')}</span>` : ''}
             ${monthsHtml ? `<div class="note-chip-row">${monthsHtml}</div>` : ''}
+            ${fieldsHtml ? `<div class="note-chip-row">${fieldsHtml}</div>` : ''}
             ${tagsHtml ? `<div class="note-chip-row">${tagsHtml}</div>` : ''}
             <div class="note-card-details">
                 ${note.body ? `<p class="note-card-body">${escapeHtml(note.body)}</p>` : ''}
@@ -4333,10 +4371,11 @@ function renderNoteCard(note, currentMonth) {
 const noteOpenIds = new Set();
 const noteClosedIds = new Set();
 
-function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag) {
+function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag, filterField) {
     const filtered = notes.filter(n => {
         if (filterMonth && !(n.months || []).includes(filterMonth)) return false;
         if (filterTag && !(n.tags || []).includes(filterTag)) return false;
+        if (filterField && !noteHasField(n, filterField)) return false;
         return true;
     }).sort((a, b) => {
         const aCur = (currentMonth && (a.months || []).includes(currentMonth)) ? 0 : 1;
@@ -4350,6 +4389,7 @@ function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag) {
 function wireNotesPanel(bodyEl, notes, currentMonth) {
     const monthSel = bodyEl.querySelector('#notes-filter-month');
     const tagSel = bodyEl.querySelector('#notes-filter-tag');
+    const fieldSel = bodyEl.querySelector('#notes-filter-field');
     const thisMonthBtn = bodyEl.querySelector('#notes-filter-thismonth');
     const listEl = bodyEl.querySelector('#notes-list');
     if (!listEl) return;
@@ -4358,15 +4398,22 @@ function wireNotesPanel(bodyEl, notes, currentMonth) {
         listEl.innerHTML = renderNotesListHtml(
             notes, currentMonth,
             monthSel ? monthSel.value : '',
-            tagSel ? tagSel.value : ''
+            tagSel ? tagSel.value : '',
+            fieldSel ? fieldSel.value : ''
         );
     };
     if (monthSel) monthSel.addEventListener('change', refresh);
     if (tagSel) tagSel.addEventListener('change', refresh);
+    if (fieldSel) fieldSel.addEventListener('change', refresh);
     listEl.addEventListener('click', e => {
         const tagBtn = e.target.closest('.note-tag-filter');
         if (tagBtn) {
             if (tagSel) { tagSel.value = tagSel.value === tagBtn.dataset.tag ? '' : tagBtn.dataset.tag; refresh(); }
+            return;
+        }
+        const fieldBtn = e.target.closest('.note-field-filter');
+        if (fieldBtn) {
+            if (fieldSel) { fieldSel.value = fieldSel.value === fieldBtn.dataset.field ? '' : fieldBtn.dataset.field; refresh(); }
             return;
         }
         const actionBtn = e.target.closest('[data-note-action]');
@@ -4408,12 +4455,17 @@ function renderNotesPanel(titleEl, bodyEl, modalEl) {
         ALL_MONTHS.map(m => `<option value="${m}">${translateMonth(m)}</option>`).join('');
     const tagOptionsHtml = `<option value="">${t('notesAllTags')}</option>` +
         allTags.map(tg => `<option value="${escapeHtml(tg)}">${escapeHtml(tg)}</option>`).join('');
+    const noteFields = Array.from(new Set(notes.flatMap(n => n.fields || [])))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const fieldOptionsHtml = `<option value="">${t('notesAllFields')}</option>` +
+        noteFields.map(num => `<option value="${escapeHtml(num)}">${escapeHtml(noteFieldLabel(farm, num))}</option>`).join('');
 
     bodyEl.innerHTML = `
         <div class="notes-toolbar">
             <button type="button" class="notes-add-btn" onclick="window.openNoteEditModal(null)">${t('notesAdd')}</button>
             <select id="notes-filter-month" class="notes-filter-select">${monthOptionsHtml}</select>
             ${allTags.length ? `<select id="notes-filter-tag" class="notes-filter-select">${tagOptionsHtml}</select>` : ''}
+            ${noteFields.length ? `<select id="notes-filter-field" class="notes-filter-select">${fieldOptionsHtml}</select>` : ''}
             ${currentMonth ? `<button type="button" id="notes-filter-thismonth" class="notes-filter-thismonth-btn" data-month="${currentMonth}">${t('notesThisMonthFilter')}</button>` : ''}
         </div>
         <div id="notes-list" class="notes-list" data-empty-text="${escapeHtml(t('notesEmpty'))}">${renderNotesListHtml(notes, currentMonth, '', '')}</div>`;
@@ -4439,17 +4491,21 @@ window.toggleNoteChecklistItem = function (noteId, itemIndex, checkboxEl) {
     const note = notes.find(n => n.id === noteId);
     if (!note || !note.checklist || !note.checklist[itemIndex]) return;
 
-    note.checklist[itemIndex].done = !!(checkboxEl && checkboxEl.checked);
+    const year = farmGameYear(farm);
+    const item = note.checklist[itemIndex];
+    item.done = !!(checkboxEl && checkboxEl.checked);
+    if (item.done) item.doneYear = year;
+    else delete item.doneYear;
     note.updatedAt = new Date().toISOString();
     saveNotes(farm, notes);
 
     if (checkboxEl) {
         const row = checkboxEl.closest('.note-checklist-item');
         const label = row ? row.querySelector('span') : null;
-        if (label) label.classList.toggle('is-done', note.checklist[itemIndex].done);
+        if (label) label.classList.toggle('is-done', item.done);
         const card = checkboxEl.closest('.note-card');
         const progress = card ? card.querySelector('.note-checklist-progress') : null;
-        if (progress) progress.textContent = `${note.checklist.filter(c => c.done).length}/${note.checklist.length}`;
+        if (progress) progress.textContent = `${note.checklist.filter(c => checklistItemDone(c, year)).length}/${note.checklist.length}`;
     }
 };
 
@@ -4507,12 +4563,29 @@ window.openNoteEditModal = function (noteId) {
     const farm = getCurrentFarm();
     if (!farm) return;
     const existing = noteId ? loadNotes(farm).find(n => n.id === noteId) : null;
+    const year = farmGameYear(farm);
 
     noteEditState = {
         id: existing ? existing.id : null,
         tags: existing ? (existing.tags || []).slice() : [],
-        checklist: existing ? (existing.checklist || []).map(c => ({ text: c.text || '', done: !!c.done })) : []
+        checklist: existing ? (existing.checklist || []).map(c => ({ text: c.text || '', done: checklistItemDone(c, year) })) : []
     };
+
+    // Fields to pin the note to: every number in the current season, plus any
+    // the note already has (a field since renumbered or removed stays listed).
+    const existingFields = existing ? (existing.fields || []) : [];
+    const numbers = Array.from(new Set((farm.fields || []).map(f => (f.number || '').toString().trim()).filter(Boolean).concat(existingFields)))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const fieldsEl = document.getElementById('note-edit-fields');
+    if (fieldsEl) {
+        fieldsEl.innerHTML = numbers.length
+            ? numbers.map(num => `
+                <label class="note-edit-month-option">
+                    <input type="checkbox" value="${escapeHtml(num)}" ${existingFields.includes(num) ? 'checked' : ''}>
+                    <span>${escapeHtml(noteFieldLabel(farm, num))}</span>
+                </label>`).join('')
+            : `<p class="settings-hint">${t('notesFieldsNone')}</p>`;
+    }
 
     const titleEl = document.getElementById('note-edit-modal-title');
     if (titleEl) titleEl.textContent = existing ? t('notesEditTitle') : t('notesNewTitle');
@@ -4599,13 +4672,15 @@ if (noteEditSaveBtn) {
         const body = (bodyInput ? bodyInput.value : '').trim();
 
         const months = Array.from(document.querySelectorAll('#note-edit-months input[type="checkbox"]:checked')).map(cb => cb.value);
+        const fields = Array.from(document.querySelectorAll('#note-edit-fields input[type="checkbox"]:checked')).map(cb => cb.value);
 
         // A tag typed but not confirmed with Enter is still meant to be saved.
         commitNoteTagInput();
 
         syncChecklistStateFromDom();
+        const year = farmGameYear(farm);
         const checklist = noteEditState.checklist
-            .map(c => ({ text: (c.text || '').trim(), done: !!c.done }))
+            .map(c => ({ text: (c.text || '').trim(), done: !!c.done, ...(c.done ? { doneYear: year } : {}) }))
             .filter(c => c.text);
 
         const notes = loadNotes(farm);
@@ -4617,6 +4692,7 @@ if (noteEditSaveBtn) {
                 note.title = title;
                 note.body = body;
                 note.months = months;
+                note.fields = fields;
                 note.tags = noteEditState.tags.slice();
                 note.checklist = checklist;
                 note.updatedAt = now;
@@ -4624,7 +4700,7 @@ if (noteEditSaveBtn) {
         } else {
             notes.push({
                 id: generateNoteId(),
-                title, body, months,
+                title, body, months, fields,
                 tags: noteEditState.tags.slice(),
                 checklist,
                 createdAt: now,
@@ -7104,6 +7180,14 @@ function renderFieldModal() {
         limeText = t('fieldViewNoLime');
     }
     html += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
+
+    // Notes pinned to this field (added and edited in Notes).
+    if (num) {
+        const fieldNotes = loadNotes(farm).filter(n => noteHasField(n, num));
+        html += section(t('fieldViewNotes'), fieldNotes.length
+            ? `<ul class="field-view-notes">${fieldNotes.map(n => `<li><strong>${escapeHtml(n.title)}</strong>${(n.months || []).length ? ` <span class="settings-hint">${n.months.map(translateMonth).join(', ')}</span>` : ''}</li>`).join('')}</ul>`
+            : `<p class="settings-hint">${t('fieldViewNotesNone')}</p>`);
+    }
 
     // Nitrogen and the fertilization plan.
     if (field.crop && area > 0) {

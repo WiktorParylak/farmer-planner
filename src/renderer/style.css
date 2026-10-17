@@ -4675,6 +4675,28 @@ select:focus-visible,
   width: 100%;
 }
 
+/* Field choices can be many on a big farm: two columns, scroll after a few rows. */
+.note-edit-fields-grid {
+  grid-template-columns: repeat(2, 1fr);
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.note-field-chip {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+}
+
+.field-view-notes {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.field-view-notes li {
+  margin-bottom: 4px;
+}
+
 .note-edit-month-option {
   display: flex;
   align-items: center;
