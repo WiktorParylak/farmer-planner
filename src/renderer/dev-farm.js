@@ -249,6 +249,10 @@ function buildDevFarm({ pl }) {
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,
         fieldSizes: { "5": 5 },
+        // Field names (shown under the number, found by the search); most fields stay unnamed.
+        fieldNames: pl
+            ? { "1": "Za stodołą", "3-4": "Duże przy lesie", "6": "Łąka nad rzeką", "10-11-12": "Kukurydza północ" }
+            : { "1": "Behind the barn", "3-4": "Big by the woods", "6": "River meadow", "10-11-12": "North maize" },
         fields: devFields(),
         animals: totals.animals,
         animalBreakdown: totals.breakdown,

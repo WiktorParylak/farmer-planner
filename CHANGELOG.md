@@ -4,6 +4,10 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.9.12 — unreleased
 
+**New**
+- **Field names**: give a field your own name (*Behind the barn*) in the field window. It belongs to the field number, so it stays in every season and on every crop row of that field, follows the number when you change it in Edit, and is shown under the number in the plan and in *Field soil type*.
+- **Search in the season plan**: a search box next to the season title filters the fields by number, name or crop (main or catch crop, in the app's language), ignoring case and Polish/German letters (*laka* finds *Łąka*). It shows *2 of 13*, the planted-area total still counts every field, and **Ctrl+F** jumps to it; Esc clears it. Hidden while editing the season.
+
 **Fixed**
 - **Weeds marked as done came back as *to spray***: weeds set by hand (the chip or the work planner) were overwritten with the save's state every time the farm was opened or synced, so a field still showing live weeds in the save — the game hadn't saved since spraying, or its per-field value lagged behind — went back to *to spray*. Your choice now stays until the game saves a different weed state for that field (sprayed, or regrown), and is cleared with the season.
 - **Notes didn't know the current month without a savegame**: *This month* and the highlighted notes now follow the month in the header, also on farms that aren't synced with the game.

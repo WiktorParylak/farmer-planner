@@ -2049,7 +2049,8 @@ function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
             const v = (mix[s.id] !== undefined && mix[s.id] !== '' && !isNaN(mix[s.id])) ? mix[s.id] : '';
             return `<td><input type="number" min="0" max="100" step="5" class="supply-soil-input" data-soil-field="${r.key}" data-soil-type="${s.id}" value="${v}" placeholder="0"><span class="supply-unit">%</span></td>`;
         }).join('');
-        body += `<tr><td>${r.number}</td>${cells}</tr>`;
+        const name = fieldNameOf(farm, r.number);
+        body += `<tr><td>${escapeHtml(r.number)}${name ? `<span class="field-name">${escapeHtml(name)}</span>` : ''}</td>${cells}</tr>`;
     });
 
     html += `<table class="supply-table supply-soil-table"><thead><tr>
@@ -6345,6 +6346,7 @@ window.openPlanner = function (id) {
     let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
         currentFarmId = farm.id;
+        clearFieldSearch();
 
         loadFarmConfigs(farm);
         // Work on a fresh read, so the sync below never writes an older copy
@@ -7055,7 +7057,9 @@ function renderFieldModal() {
     const season = farm.currentSeason || 1;
     const fmt = (v, d = 0) => Number(v).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: d });
 
+    const name = fieldNameOf(farm, num);
     document.getElementById('field-modal-title').textContent = t('fieldViewTitle').replace('{field}', num || '–')
+        + (name ? ' · ' + name : '')
         + (field.crop ? ' · ' + translateCropName(field.crop) : '');
     const summary = [
         `${area.toFixed(2)} ha${field.areaSource === 'game' ? ' (' + t('fieldViewFromGame') + ')' : ''}`,
@@ -7074,6 +7078,7 @@ function renderFieldModal() {
     // doesn't need the whole table in Edit mode.
     const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
     html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
+        ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}" title="${escapeHtml(t('fieldNameHint'))}"></label>` : ''}
         ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
@@ -7175,7 +7180,11 @@ window.openFieldModal = function (idx) {
         const farm = getCurrentFarm();
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
-        if (el.matches('.field-view-crop, .field-view-sow, .field-view-catch, .field-view-catch-sow')) {
+        if (el.classList.contains('field-view-name')) {
+            setFieldName(farm, field.number, el.value);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.matches('.field-view-crop, .field-view-sow, .field-view-catch, .field-view-catch-sow')) {
             const before = JSON.parse(JSON.stringify(farm.fields));
             if (el.classList.contains('field-view-crop')) {
                 field.crop = el.value;
@@ -7624,6 +7633,76 @@ function weedsChipHtml(field, idx, isPastSeason) {
     return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
 }
 
+// ---------- field names and search ----------
+// A name belongs to the physical field (keyed by its number, like
+// farm.fieldSizes), so it carries over to every season and to every crop row
+// sharing that number.
+function fieldNameOf(farm, number) {
+    const key = (number || '').toString().trim();
+    return (key && farm && farm.fieldNames && farm.fieldNames[key]) || '';
+}
+
+function setFieldName(farm, number, name) {
+    const key = (number || '').toString().trim();
+    if (!key || !farm) return;
+    const value = (name || '').trim().slice(0, 40);
+    if (!farm.fieldNames) farm.fieldNames = {};
+    if (value) farm.fieldNames[key] = value;
+    else delete farm.fieldNames[key];
+}
+
+// Lower case without diacritics ("Łąka" -> "laka", "Weizen" stays), so a
+// search doesn't depend on typing Polish or German letters.
+function searchFold(text) {
+    return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/ß/g, 'ss');
+}
+
+function fieldSearchQuery() {
+    const input = document.getElementById('fields-search');
+    return input && !isEditMode ? searchFold(input.value.trim()) : '';
+}
+
+// Every word of the query has to appear in the field's number, name or crop
+// (main or catch, in the app's language or as stored).
+function fieldMatchesSearch(field, farm) {
+    const query = fieldSearchQuery();
+    if (!query) return true;
+    const haystack = searchFold([
+        field.number, fieldNameOf(farm, field.number),
+        field.crop, field.crop && translateCropName(field.crop),
+        field.catchCrop, field.catchCrop && translateCropName(field.catchCrop)
+    ].filter(Boolean).join(' '));
+    return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+(function wireFieldSearch() {
+    const input = document.getElementById('fields-search');
+    if (!input) return;
+    input.addEventListener('input', () => renderSeasonView());
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && input.value) {
+            e.stopPropagation();
+            input.value = '';
+            renderSeasonView();
+        }
+    });
+    // Ctrl+F in the season plan jumps to the search (not with a dialog open or in Edit).
+    document.addEventListener('keydown', e => {
+        if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'f') return;
+        const planOpen = plannerView && plannerView.style.display !== 'none';
+        const dialogOpen = Array.from(document.querySelectorAll('.modal')).some(m => m.style.display === 'flex');
+        if (!planOpen || dialogOpen || isEditMode) return;
+        e.preventDefault();
+        input.focus();
+        input.select();
+    });
+})();
+
+function clearFieldSearch() {
+    const input = document.getElementById('fields-search');
+    if (input) input.value = '';
+}
+
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
     if (!fieldsBody) return;
@@ -7636,6 +7715,7 @@ function renderFieldsTable(fields) {
     const isPastSeason = viewedSeason < ((farm && farm.currentSeason) || 1);
 
     let htmlString = "";
+    let shownCount = 0;    // rows left by the search
     let totalArea = 0;     // rows with a crop planned
     let sownArea = 0;      // ...of which already sown
     const seasonHistory = loadSeasonHistory(farm, viewedSeason);
@@ -7649,8 +7729,12 @@ function renderFieldsTable(fields) {
             const area = parseFloat(field.area || 0);
             if (field.crop) totalArea += area;
             if (field.crop && field.state === 'Planted') sownArea += area;
+            // The search only hides rows; the totals below still cover every field.
+            if (!fieldMatchesSearch(field, farm)) return;
+            shownCount++;
 
             const key = (field.number || '').toString().trim();
+            const fieldName = fieldNameOf(farm, key);
             const group = numberTotals[key];
             const isSplit = group && group.count > 1;
 
@@ -7736,7 +7820,7 @@ function renderFieldsTable(fields) {
                 <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
                     <td class="field-number-cell"${numberCellTitle}>${isPastSeason
                         ? `<span class="field-number-chips">${numberChipsHtml}</span>`
-                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${leaseBadgeHtml(field, viewedSeason)}</td>
+                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
@@ -7760,7 +7844,16 @@ function renderFieldsTable(fields) {
             `;
         });
     }
+    const searching = !!fieldSearchQuery() && fields && fields.length > 0;
+    if (searching && !shownCount) {
+        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+    }
     fieldsBody.innerHTML = htmlString;
+    const countEl = document.getElementById('fields-search-count');
+    if (countEl) {
+        countEl.hidden = !searching;
+        if (searching) countEl.textContent = t('fieldsSearchCount').replace('{n}', shownCount).replace('{total}', fields.length);
+    }
 
     if (totalSumEl) totalSumEl.innerText = totalArea.toFixed(2) + " ha";
     const sownSumEl = document.getElementById('sown-ha-sum');
@@ -7816,7 +7909,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev'];
 
 // --- Stable field ids --------------------------------------------------------
-// Soil, field size, fertilization plan, feed use and straw are stored under
+// Soil, field size and name, fertilization plan, feed use and straw are stored under
 // the field's number ("12") or number + crop ("12::Wheat"). Every field row
 // also has a stable id, so when Edit season changes a number or a crop that
 // data is moved to the new key instead of being left behind.
@@ -7853,6 +7946,7 @@ function migrateFieldKeys(farm, oldFields, newFields) {
         if (num(old) && num(old) !== num(f)) {
             if (rates) move(rates.fieldSoil, num(old), num(f), 'num');
             move(farm.fieldSizes, num(old), num(f), 'num');
+            move(farm.fieldNames, num(old), num(f), 'num');
         }
         if (num(old) && planKey(old) !== planKey(f)) {
             if (rates) move(rates.fertPlan, planKey(old), planKey(f), 'plan');
@@ -8501,6 +8595,9 @@ function setEditModeUi(on) {
     if (loadBtn && on) loadBtn.hidden = true;
     // Starting a new season mid-edit would throw the edits away.
     if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
+    // Edit lists every field, so the search steps aside until it's done.
+    const searchWrap = document.getElementById('fields-search-wrap');
+    if (searchWrap) searchWrap.hidden = on;
     if (!on) editSnapshot = null;
     document.querySelectorAll('.season-nav-btn').forEach(b => {
         const reachable = b.id === 'prev-season-btn' ? viewedSeason > 1 : viewedSeason < ((getCurrentFarm() || {}).currentSeason || 1);

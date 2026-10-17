@@ -3127,6 +3127,68 @@ th.is-sortable[aria-sort="descending"]::after {
   cursor: help;
 }
 
+/* Field name under the number chips (plan table, Field soil type). */
+.field-name {
+  display: block;
+  max-width: 160px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+/* Search box between the season title and its buttons. */
+.fields-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 300px;
+  min-width: 180px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-soft);
+  color: var(--color-ink-faint);
+}
+
+.fields-search[hidden] {
+  display: none;
+}
+
+.fields-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.fields-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  color: var(--color-ink);
+}
+
+.fields-search-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+.fields-search-empty td {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--color-ink-soft);
+}
+
 /* --- Treatment chips (Lime / Manure / Synthetic fertilizer) --- */
 .treatments-cell {
   white-space: nowrap;

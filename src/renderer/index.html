@@ -118,6 +118,11 @@
                     <div class="planner-main-table">
                         <div class="main-table-header">
                             <h1 class="season-number">Season 1</h1>
+                            <label class="fields-search" id="fields-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <input type="search" id="fields-search" data-i18n-placeholder="fieldsSearchPlaceholder" placeholder="Search fields…" data-i18n-title="fieldsSearchHint" title="Number, name or crop · Ctrl+F" autocomplete="off" spellcheck="false">
+                                <span id="fields-search-count" class="fields-search-count" hidden></span>
+                            </label>
                             <div class="main-table-header-btns">
                                 <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
                                 <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
