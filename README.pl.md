@@ -1,21 +1,84 @@
 <p align="center">
-  <img src="Assets/Logo.png" alt="Farmer Planner" width="360">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="Assets/Logo.svg">
+    <img src="docs/logo-light.svg" alt="Farmer Planner" width="360">
+  </picture>
+</p>
+
+<h3 align="center">Wiesz, czego każde pole potrzebuje w tym miesiącu.</h3>
+
+<p align="center">
+  Darmowy planer sezonów do <b>Farming Simulator 25 (FS25)</b>. Czyta Twój zapis gry i trzyma pola, uprawy,<br>
+  nawozy, zwierzęta i paszę w jednym planie, odświeżanym przy każdym zapisie gry.
 </p>
 
 <p align="center">
-  Planer sezonu dla <b>Farming Simulator 25</b> — pola, uprawy, nawożenie, zwierzęta i pasze w jednym miejscu,<br>
-  zsynchronizowane z Twoim zapisem gry.
+  <a href="https://github.com/WiktorParylak/farmer-planner/releases"><img alt="Pobierz na Windows" src="https://img.shields.io/badge/Pobierz-Windows-C97A2B?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://farmerplanner.pl/pl/"><img alt="Strona: farmerplanner.pl" src="https://img.shields.io/badge/Strona-farmerplanner.pl-3F6B44?style=for-the-badge"></a>
+  <a href="https://github.com/WiktorParylak/farmer-planner/releases"><img alt="Najnowsza wersja" src="https://img.shields.io/github/v/release/WiktorParylak/farmer-planner?include_prereleases&style=for-the-badge&label=wersja&color=16261D"></a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> | <b>Polski</b>
 </p>
 
----
+![Plan sezonu: tabela pól z uprawą, miesiącem siewu, stanem i planem nawożenia](docs/screenshot-plan.png)
 
-![Widok planu](docs/screenshot-plan.png)
+## Jeden plan na całe gospodarstwo
 
-## Funkcje
+**Plan sezonu**
+- Każde pole z powierzchnią, uprawą, miesiącem siewu, stanem, orką lub bezorką, typem gleby i planem nawożenia.
+- Międzyplony na tym samym polu, przed albo po głównej uprawie.
+- Historia sezonów: wrócisz do poprzednich i porównasz.
+- Ostrzeżenia o płodozmianie i podsumowanie hektarów każdej uprawy.
+
+**Zsynchronizowany z grą**
+- Saldo, kredyty, czas gry, maszyny i zwierzęta prosto z zapisu gry.
+- Odświeża się sam przy każdym zapisie gry, także automatycznym.
+- Uprawy i kalendarz siewu czytane z moda mapy.
+- Gleby pól z Precision Farming, prosto z zapisu.
+
+**Narzędzia**
+- Finanse miesiąc po miesiącu i sezon po sezonie.
+- Zaopatrzenie: ile nasion i nawozu kupić na sezon.
+- Przewidywane plony.
+- Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
+
+## Zwierzęta i pasza policzone
+
+Kafelek dla każdego budynku: stado według rasy i wieku, na ile dni starczy paszy, dzienne zapotrzebowanie, produkcja i ciąże. Planer pasz powie, czego brakuje i ile hektarów obsiać, a kalkulator wozu paszowego sprawdzi mieszankę z przepisem TMR z gry.
+
+Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z Twoich modów.
+
+![Panel zwierząt: kafelek dla każdego budynku ze stadem, poziomem paszy i produkcją](docs/screenshot-animals.png)
+
+## Pierwsze kroki
+
+1. Pobierz instalator z zakładki [Releases](https://github.com/WiktorParylak/farmer-planner/releases) i uruchom go. Nic więcej nie trzeba instalować.
+2. Kliknij **Dodaj farmę** i wpisz nazwę farmy i mapy.
+3. Otwórz farmę, wejdź w **Ustawienia** i wskaż plik `careerSavegame.xml` swojego zapisu, np.
+   `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.
+4. Włącz automatyczną synchronizację i kliknij **Zapisz i importuj**.
+5. Planuj pola. Planer nadąża za Tobą, kiedy grasz.
+
+Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też obrazki ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
+
+## Pytania
+
+**Czy zmienia mój zapis gry?**
+Nie. Farmer Planner tylko czyta pliki gry i nigdy do nich nie zapisuje.
+
+**Jakie mapy i mody obsługuje?**
+Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit i Enhanced Loan System.
+
+**Gdzie są zapisane moje farmy?**
+W `Dokumenty\Farmer Planner`, więc łatwo je znaleźć, skopiować albo zarchiwizować. Aplikacja umie też wyeksportować i zaimportować kopię zapasową farmy.
+
+**Czy działa w trybie wieloosobowym?**
+Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta tylko jej pieniądze, ziemię, zwierzęta i paszę.
+
+<details>
+<summary><b>Pełna lista funkcji</b></summary>
 
 **Plan sezonu**
 - Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, stan (do posadzenia / sadzić teraz / posadzone), orka lub bezorka, typ gleby i plan nawożenia dla każdego pola. Kliknięcie nagłówka kolumny sortuje tabelę.
@@ -45,17 +108,13 @@
 - Język polski i angielski.
 - Interaktywny samouczek (ustawienia aplikacji → „Otwórz samouczek”).
 - Kopie zapasowe farm (eksport / import).
-- Discord Rich Presence — pokazuje aktualną farmę na Twoim profilu (można wyłączyć).
+- Discord Rich Presence — pokazuje aktualną farmę na Twoim profilu (wyłączone, dopóki nie pozwolisz).
 
-![Zwierzęta](docs/screenshot-animals.png)
+</details>
 
-## Instalacja
+## Dla programistów
 
-Pobierz instalator dla Windows z zakładki [Releases](https://github.com/WiktorParylak/farmer-planner/releases) i uruchom go — nic więcej nie trzeba instalować.
-
-### Uruchomienie ze źródeł (tylko dla programistów)
-
-Potrzebne tylko, jeśli chcesz zmieniać kod albo samodzielnie zbudować instalator. Wymaga [Node.js](https://nodejs.org/) w wersji 20 lub nowszej.
+Uruchomienie ze źródeł jest potrzebne tylko, jeśli chcesz zmieniać kod albo samodzielnie zbudować instalator. Wymaga [Node.js](https://nodejs.org/) w wersji 20 lub nowszej.
 
 ```bash
 git clone https://github.com/WiktorParylak/farmer-planner.git
@@ -70,24 +129,6 @@ Zbudowanie instalatora (do folderu `dist/`):
 npm run build
 ```
 
-## Pierwsze kroki
-
-1. Kliknij **DODAJ FARMĘ +** i wpisz nazwę farmy i mapy.
-2. Otwórz farmę i kliknij **Ustawienia** na pasku po lewej.
-3. Wskaż swój zapis gry, np.
-   `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
-   i włącz automatyczną synchronizację.
-4. (Opcjonalnie) wybierz folder definicji zwierząt, jeśli Twoja mapa lub mody dodają własne rasy. Uprawy mapy wczytują się automatycznie z zapisu gry; folder mapy wskaż tylko, gdy się nie wczytały (mapa podstawowa, brak moda).
-5. Kliknij **ZAPISZ I IMPORTUJ**.
-
-Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też zdjęcia ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
-
-## Gdzie są Twoje dane
-
-Farmy są zapisywane w `Dokumenty\Farmer Planner`, więc łatwo je znaleźć, skopiować lub zsynchronizować. Aplikacja tylko **czyta** pliki gry i nigdy ich nie zmienia.
-
-## Struktura projektu
-
 ```
 src/
   main/        Główny proces Electrona (okno, dialogi, Discord Rich Presence)
@@ -98,14 +139,15 @@ tools/         Skrypty deweloperskie generujące pliki w data/ z plików gry
 docs/          Zrzuty ekranu i notatki
 ```
 
-## Zbudowane z
-
-[Electron](https://www.electronjs.org/), czysty HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).
+Zbudowane z [Electrona](https://www.electronjs.org/), czystego HTML/CSS/JavaScriptu i [Font Awesome](https://fontawesome.com/).
 
 ## Lista zmian
 
 Zobacz [CHANGELOG.md](CHANGELOG.md) (po angielsku) lub zakładkę [Releases](https://github.com/WiktorParylak/farmer-planner/releases).
 
-## Autor
+---
 
-Wiktor Parylak
+<p align="center">
+  Autor: Wiktor Parylak · <a href="https://farmerplanner.pl/pl/">farmerplanner.pl</a><br>
+  <sub>Projekt niezwiązany z GIANTS Software. Farming Simulator jest znakiem towarowym GIANTS Software GmbH.</sub>
+</p>

@@ -1,21 +1,84 @@
 <p align="center">
-  <img src="Assets/Logo.png" alt="Farmer Planner" width="360">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="Assets/Logo.svg">
+    <img src="docs/logo-light.svg" alt="Farmer Planner" width="360">
+  </picture>
+</p>
+
+<h3 align="center">Know what every field needs this month.</h3>
+
+<p align="center">
+  A free season planner for <b>Farming Simulator 25 (FS25)</b>. It reads your savegame and keeps fields, crops,<br>
+  fertilizer, animals and feed in one plan, updated every time the game saves.
 </p>
 
 <p align="center">
-  A season planner for <b>Farming Simulator 25</b> — fields, crops, fertilization, animals and feed in one place,<br>
-  kept in sync with your savegame.
+  <a href="https://github.com/WiktorParylak/farmer-planner/releases"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-C97A2B?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://farmerplanner.pl"><img alt="Website: farmerplanner.pl" src="https://img.shields.io/badge/Website-farmerplanner.pl-3F6B44?style=for-the-badge"></a>
+  <a href="https://github.com/WiktorParylak/farmer-planner/releases"><img alt="Latest version" src="https://img.shields.io/github/v/release/WiktorParylak/farmer-planner?include_prereleases&style=for-the-badge&label=version&color=16261D"></a>
 </p>
 
 <p align="center">
   <b>English</b> | <a href="README.pl.md">Polski</a>
 </p>
 
----
+![The season plan: a table of fields with crop, sowing month, state and fertilization plan](docs/screenshot-plan.png)
 
-![Plan view](docs/screenshot-plan.png)
+## One plan for the whole farm
 
-## Features
+**Season plan**
+- Every field with its area, crop, sowing month, state, ploughing or no-till, soil type and fertilization plan.
+- Catch crops on the same field, before or after the main crop.
+- Past seasons kept, so you can step back and compare.
+- Crop rotation warnings and a summary of hectares per crop.
+
+**Synced with your game**
+- Balance, loans, playtime, equipment and animals read from your savegame.
+- Refreshes on its own every time the game saves, autosave included.
+- The map's crops and sowing calendar read from the map mod.
+- Field soils from Precision Farming, straight from the save.
+
+**Tools**
+- Finance month by month and season by season.
+- Supplies: how much seed and fertilizer to buy this season.
+- Predicted yields.
+- Notes pinned to months, with tags and a checklist.
+
+## Animals and feed, worked out
+
+One tile per barn: the herd by breed and age, how many days the feed lasts, daily needs, output and pregnancies. The feed planner tells you what's missing and how many hectares to sow, and the mixer wagon calculator checks your mix against the game's TMR recipe.
+
+Works with AnimalFoodCalculator and EnhancedAnimalSystem, and shows breed pictures from your mods.
+
+![The animals panel: one tile per barn with herd, feed level and output](docs/screenshot-animals.png)
+
+## Getting started
+
+1. Download the installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases) and run it. Nothing else needs to be installed.
+2. Click **Add farm** and enter the farm and map name.
+3. Open the farm, go to **Settings** and point it to your savegame's `careerSavegame.xml`, e.g.
+   `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.
+4. Turn on auto-sync and click **Save & import**.
+5. Plan your fields. The planner keeps up while you play.
+
+Mods are looked up in the `mods` folder next to your savegame, in the folder set in the game's `gameSettings.xml`, and in your FSG Mod Assistant collections. Breed pictures are loaded automatically from there. Base-game animals (packed inside the game's archives) are shown as icons.
+
+## Questions
+
+**Does it change my savegame?**
+No. Farmer Planner only reads game files and never writes to them.
+
+**Which maps and mods does it support?**
+Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit and Enhanced Loan System.
+
+**Where are my farms stored?**
+In `Documents\Farmer Planner`, so they're easy to find, copy or back up. The app can also export and import a farm backup.
+
+**Does it work in multiplayer?**
+Yes. In a save with several farms you choose your own farm in Settings, and the planner reads only its money, land, animals and feed.
+
+<details>
+<summary><b>Full feature list</b></summary>
 
 **Season plan**
 - Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan. Click a column header to sort.
@@ -45,17 +108,13 @@
 - English and Polish.
 - Interactive tutorial (app settings → "Open tutorial").
 - Farm backups (export / import).
-- Discord Rich Presence — shows your current farm on your profile (can be turned off).
+- Discord Rich Presence — shows your current farm on your profile (off until you allow it).
 
-![Animals](docs/screenshot-animals.png)
+</details>
 
-## Installation
+## For developers
 
-Download the Windows installer from the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page and run it — nothing else needs to be installed.
-
-### Running from source (developers only)
-
-Only needed if you want to change the code or build the installer yourself. Requires [Node.js](https://nodejs.org/) 20 or newer.
+Running from source is only needed if you want to change the code or build the installer yourself. Requires [Node.js](https://nodejs.org/) 20 or newer.
 
 ```bash
 git clone https://github.com/WiktorParylak/farmer-planner.git
@@ -70,24 +129,6 @@ Build the installer (into `dist/`):
 npm run build
 ```
 
-## Getting started
-
-1. Click **ADD FARM +** and enter the farm and map name.
-2. Open the farm and click **Settings** in the left sidebar.
-3. Point it to your savegame, e.g.
-   `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`
-   and turn on auto-sync.
-4. (Optional) pick the animal definitions folder if your map or mods add their own breeds. The map's crops are read automatically from the savegame; pick a map folder only if they aren't (base-game map, mod not found).
-5. Click **SAVE & IMPORT**.
-
-Mods are looked up in the `mods` folder next to your savegame, in the folder set in the game's `gameSettings.xml`, and in your FSG Mod Assistant collections. Breed pictures are loaded automatically from there. Base-game animals (packed inside the game's archives) are shown as icons.
-
-## Where your data lives
-
-Farms are stored in `Documents\Farmer Planner`, so they're easy to find, copy or sync. The app only **reads** game files and never modifies them.
-
-## Project structure
-
 ```
 src/
   main/        Electron main process (window, dialogs, Discord Rich Presence)
@@ -98,14 +139,15 @@ tools/         Dev scripts that regenerate the files in data/ from game files
 docs/          Screenshots and notes
 ```
 
-## Built with
-
-[Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript, [Font Awesome](https://fontawesome.com/).
+Built with [Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript and [Font Awesome](https://fontawesome.com/).
 
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) or the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## Author
+---
 
-Wiktor Parylak
+<p align="center">
+  Made by Wiktor Parylak · <a href="https://farmerplanner.pl">farmerplanner.pl</a><br>
+  <sub>Not affiliated with GIANTS Software. Farming Simulator is a trademark of GIANTS Software GmbH.</sub>
+</p>

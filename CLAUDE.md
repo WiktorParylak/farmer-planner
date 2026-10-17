@@ -120,6 +120,13 @@ docs/                          screenshoty, propozycje-funkcji.txt
 Farma testowa `DEV – farma testowa` (id `1000000000001`) jest generowana od zera przez `src/renderer/dev-farm.js` — bez savegame'u, nie jest kopią żadnej farmy. Włącza się w ustawieniach aplikacji (zębatka na ekranie startowym → *Deweloper*, widoczne tylko przy `npm start`); *Odtwórz farmę testową* stawia ją od nowa, wyłączenie usuwa. Nowy stan do przetestowania → dopisz go w `dev-farm.js`. Testuj na niej, nie na prawdziwych farmach.
 Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farmer Planner` (lub zrób eksport kopii zapasowej farmy w aplikacji) i, jeśli potrzebny jest sync, sam folder savegame'u.
 
+## Strona www
+
+- **https://farmerplanner.pl** — strona produktu w osobnym, **prywatnym** repo `WiktorParylak/farmer-planner-website`, sklonowanym obok tego (`PROJEKTY\farmer-planner-website`). Hosting SEOHOST, deploy przez GitHub Actions (FTPS) przy pushu na `main` tamtego repo. Szczegóły w jego CLAUDE.md.
+- Screenshoty na stronie i w README są **angielskie**, robione z farmy testowej (`dev-farm.js`, przemianowanej na „Green Valley Farm”) skryptem `npm run screenshots` w repo strony. Po zmianach w UI odśwież je tam i skopiuj PNG do `docs/` tutaj.
+- README (EN i PL) ma ten sam układ i teksty co strona; zmiany funkcji opisuj w obu miejscach. Logo w README: `docs/logo-light.svg` (ciemne, jasny motyw GitHuba) i `Assets/Logo.svg` (białe, ciemny motyw).
+- Repo na GitHubie ma ustawione Website = farmerplanner.pl, opis i tematy (fs25, farming-simulator-25…).
+
 ## Konwencje
 
 - Styl kodu: dopasuj się do otoczenia w `renderer.js` (4 spacje, `function`, bez klas/modułów ES, DOM przez `document.getElementById`).
