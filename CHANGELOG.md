@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.12 — unreleased
+## 0.9.12 — 2026-10-17
 
 **New**
 - **German (Deutsch)**: the whole app — interface, tutorial, month, crop, animal and product names, soil types — is now also in German; pick *Deutsch* in Settings or when the app starts for the first time. Crop and mixer names from mods are shown in German when the mod has German texts, and the update window and *Contact form* open the website's German pages.
