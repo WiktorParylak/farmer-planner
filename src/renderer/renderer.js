@@ -427,73 +427,50 @@ if (closeHubPanelBtn && hubPanelModal) {
     });
 }
 
-// Reads balance/loan from every archived season (older archives made before
-// this feature won't have them and are skipped) plus the live current
-// season, giving a season-by-season trend rather than one static number.
-function getSeasonBalanceHistory(farm) {
-    const history = [];
-    if (!farm || !farm.folderName) return history;
-
+// Every archived season of the farm (seasons/season_N.json) as
+// { season, data }, oldest first. An unreadable archive is skipped rather than
+// failing the whole panel.
+function readSeasonArchives(farm) {
+    const out = [];
+    if (!farm || !farm.folderName) return out;
     const seasonsDir = path.join(appDataDir, farm.folderName, 'seasons');
-    if (fs.existsSync(seasonsDir)) {
-        fs.readdirSync(seasonsDir).forEach(fileName => {
-            const match = fileName.match(/^season_(\d+)\.json$/);
-            if (!match) return;
-            try {
-                const data = JSON.parse(fs.readFileSync(path.join(seasonsDir, fileName), 'utf-8'));
-                if (data.balance !== undefined) {
-                    history.push({ season: parseInt(match[1]), balance: parseMoney(data.balance), loan: parseMoney(data.loan) });
-                }
-            } catch (err) { /* skip an unreadable archive rather than fail the whole panel */ }
-        });
-    }
+    if (!fs.existsSync(seasonsDir)) return out;
+    fs.readdirSync(seasonsDir).forEach(fileName => {
+        const match = fileName.match(/^season_(\d+)\.json$/);
+        if (!match) return;
+        try {
+            out.push({ season: parseInt(match[1]), data: JSON.parse(fs.readFileSync(path.join(seasonsDir, fileName), 'utf-8')) });
+        } catch (err) { /* skip */ }
+    });
+    return out.sort((x, y) => x.season - y.season);
+}
 
+// Balance/loan per archived season (archives made before this feature don't
+// have them and are skipped) plus the live current season, giving a
+// season-by-season trend rather than one static number.
+function getSeasonBalanceHistory(farm) {
+    if (!farm || !farm.folderName) return [];
+    const history = readSeasonArchives(farm)
+        .filter(a => a.data.balance !== undefined)
+        .map(a => ({ season: a.season, balance: parseMoney(a.data.balance), loan: parseMoney(a.data.loan) }));
     history.push({ season: farm.currentSeason || 1, balance: parseMoney(farm.balance), loan: parseMoney(farm.loan) });
-    history.sort((a, b) => a.season - b.season);
+    history.sort((x, y) => x.season - y.season);
     return history;
 }
 
-// Same idea as getSeasonBalanceHistory, but for the animal herd: total head
-// count and the (numAnimals-weighted) average health, read from every
-// archived season that has them (older archives made before this feature
-// won't, and are skipped) plus the live current season.
+// Same for the herd: head count and average health per archived season
+// (when the archive has them) plus the live current season.
 function getAnimalHistoryTrend(farm) {
-    const history = [];
-    if (!farm || !farm.folderName) return history;
-
-    const computeAvgHealth = (buildings) => {
-        let weightedSum = 0, count = 0;
-        (buildings || []).forEach(b => (b.clusters || []).forEach(c => {
-            weightedSum += c.health * c.numAnimals;
-            count += c.numAnimals;
-        }));
-        return count > 0 ? weightedSum / count : null;
-    };
-
-    const seasonsDir = path.join(appDataDir, farm.folderName, 'seasons');
-    if (fs.existsSync(seasonsDir)) {
-        fs.readdirSync(seasonsDir).forEach(fileName => {
-            const match = fileName.match(/^season_(\d+)\.json$/);
-            if (!match) return;
-            try {
-                const data = JSON.parse(fs.readFileSync(path.join(seasonsDir, fileName), 'utf-8'));
-                if (data.animals !== undefined) {
-                    history.push({
-                        season: parseInt(match[1]),
-                        animals: data.animals || 0,
-                        avgHealth: (data.avgHealth !== undefined && data.avgHealth !== null) ? data.avgHealth : null
-                    });
-                }
-            } catch (err) { /* skip an unreadable archive rather than fail the whole panel */ }
-        });
-    }
-
+    if (!farm || !farm.folderName) return [];
+    const history = readSeasonArchives(farm)
+        .filter(a => a.data.animals !== undefined)
+        .map(a => ({ season: a.season, animals: a.data.animals || 0, avgHealth: a.data.avgHealth ?? null }));
     history.push({
         season: farm.currentSeason || 1,
         animals: farm.animals || 0,
-        avgHealth: computeAvgHealth(farm.animalBuildings)
+        avgHealth: avgHealthFromBuildings(farm.animalBuildings)
     });
-    history.sort((a, b) => a.season - b.season);
+    history.sort((x, y) => x.season - y.season);
     return history;
 }
 
@@ -528,10 +505,12 @@ function saveMonthlyHistory(farm, rows) {
     catch (err) { console.error('Could not write monthly history:', err); }
 }
 
+// Average health of the animals in these barns, weighted by head count
+// (null without animals). The one place this is computed.
 function avgHealthFromBuildings(buildings) {
     let weightedSum = 0, count = 0;
     (buildings || []).forEach(b => (b.clusters || []).forEach(c => {
-        weightedSum += c.health * c.numAnimals;
+        weightedSum += (c.health || 0) * c.numAnimals;
         count += c.numAnimals;
     }));
     return count > 0 ? weightedSum / count : null;
@@ -1338,8 +1317,7 @@ function renderFinancePanel(bodyEl, farm) {
 // --- Animals overview: KPI tiles + trend charts ---------------------------
 function animalsKpisHtml(farm, buildings, monthly, summaries) {
     const heads = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + c.numAnimals, 0), 0);
-    const healthSum = buildings.reduce((s, b) => s + b.clusters.reduce((a, c) => a + (c.health || 0) * c.numAnimals, 0), 0);
-    const health = heads ? healthSum / heads : null;
+    const health = avgHealthFromBuildings(buildings);
     const prev = monthly.length > 1 ? monthly[monthly.length - 2] : null;
     let pregnant = 0, nextBirth = null;
     buildings.forEach(b => {
@@ -1495,7 +1473,7 @@ window.openHubPanel = function (type) {
                 if (!type || !ANIMAL_NEEDS_DATA[c.subType]) return;
                 const ration = resolveRation(type, feedPlan, b.id);
                 if (ration) splitByRecipe(clusterDailyFood(farm, type, c), ration, farmDailyByCat);
-                farmDailyByCat.STRAW = (farmDailyByCat.STRAW || 0) + getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
+                farmDailyByCat.STRAW = (farmDailyByCat.STRAW || 0) + clusterDailyNeed(c, 'straw');
             }));
             let anyProductionFound = false;
 
@@ -1527,8 +1505,8 @@ window.openHubPanel = function (type) {
                     const clusterFood = clusterDailyFood(farm, animalType, c);
                     if (animalType) foodByType[animalType] = (foodByType[animalType] || 0) + clusterFood;
                     dailyNeed.food += clusterFood;
-                    dailyNeed.water += getDailyAnimalNeed(c.subType, c.age, 'water') * c.numAnimals;
-                    dailyNeed.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals;
+                    dailyNeed.water += clusterDailyNeed(c, 'water');
+                    dailyNeed.straw += clusterDailyNeed(c, 'straw');
 
                     addClusterOutput(farm, building, c, feedPlan, dailyOutput);
                 });
@@ -1542,7 +1520,7 @@ window.openHubPanel = function (type) {
 
                 const warn = lowFeed || noFeedAtAll;
                 const heads = building.clusters.reduce((s, c) => s + c.numAnimals, 0);
-                const avgHealth = heads ? building.clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : 0;
+                const avgHealth = avgHealthFromBuildings([building]) ?? 0;
                 const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
                 const statRow = (fillType, label, value) => `
                     <div class="barn-stat">
@@ -1757,13 +1735,11 @@ window.openHubPanel = function (type) {
 
                     // Head count per species, with the same icons as the Feed planner.
                     const heads = {};
-                    let healthSum = 0, headTotal = 0;
                     building.clusters.forEach(c => {
                         const type = animalTypeOf(c.subType) || '';
                         heads[type] = (heads[type] || 0) + c.numAnimals;
-                        healthSum += (c.health || 0) * c.numAnimals;
-                        headTotal += c.numAnimals;
                     });
+                    const health = avgHealthFromBuildings([building]);
                     const speciesHtml = Object.keys(heads).map(type =>
                         `<span class="barn-tile-species"><i class="fa-solid ${FEED_ANIMAL_ICONS[type] || 'fa-paw'}" aria-hidden="true"></i> ${type ? t('feedAnimal_' + type) : t('hubAnimals')} × ${heads[type].toLocaleString(FIN_LOCALE())}</span>`).join('');
 
@@ -1790,7 +1766,7 @@ window.openHubPanel = function (type) {
                         </div>
                         <div class="barn-tile-body">
                             ${speciesHtml}
-                            ${headTotal ? `<span class="barn-tile-health">${t('hubHealth')}: ${Math.round(healthSum / headTotal)}%</span>` : ''}
+                            ${health != null ? `<span class="barn-tile-health">${t('hubHealth')}: ${Math.round(health)}%</span>` : ''}
                             ${(() => {
                                 const r = barnReproSummary(building);
                                 if (!r || !r.pregnant) return '';
@@ -2521,7 +2497,12 @@ function forgetRation(plan, rationId, type) {
 // A cluster's daily food in litres — the one formula behind the Animals view
 // and the feed planner (EAS lactation factor included).
 function clusterDailyFood(farm, type, c) {
-    return getDailyAnimalNeed(c.subType, c.age, 'food') * c.numAnimals * clusterFoodFactor(farm, type, c);
+    return clusterDailyNeed(c, 'food') * clusterFoodFactor(farm, type, c);
+}
+
+// A cluster's daily water / straw (or base food) in litres: per head × heads.
+function clusterDailyNeed(c, needType) {
+    return getDailyAnimalNeed(c.subType, c.age, needType) * c.numAnimals;
 }
 
 // Output fillTypes that don't depend on how well the animals are fed.
@@ -2547,7 +2528,7 @@ function buildFeedDemand(farm, plan) {
         const food = clusterDailyFood(farm, type, c) * yearFactor;
         s.head += c.numAnimals;
         s.food += food;
-        s.straw += getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
+        s.straw += clusterDailyNeed(c, 'straw') * yearFactor;
         // Each barn's own ration splits its food into ingredients.
         const ration = resolveRation(type, plan, b.id);
         if (ration) splitByRecipe(food, ration, byCategory);
@@ -3025,7 +3006,7 @@ function buildBarnFeedNeed(building, plan, farm) {
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
         const ration = resolveRation(type, plan, building.id);
         const f = clusterDailyFood(farm, type, c) * yearFactor;
-        const b = getDailyAnimalNeed(c.subType, c.age, 'straw') * c.numAnimals * yearFactor;
+        const b = clusterDailyNeed(c, 'straw') * yearFactor;
         food += f;
         bedding += b;
         if (ration) splitByRecipe(f, ration, byCategory);
@@ -9010,15 +8991,7 @@ async function runNewSeason({ intro = '' } = {}) {
                 seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
                 createdAt: new Date().toISOString()
             };
-            let archivedAvgHealth = null;
-            {
-                let weightedSum = 0, headCount = 0;
-                (farm.animalBuildings || []).forEach(b => (b.clusters || []).forEach(c => {
-                    weightedSum += c.health * c.numAnimals;
-                    headCount += c.numAnimals;
-                }));
-                if (headCount > 0) archivedAvgHealth = weightedSum / headCount;
-            }
+            const archivedAvgHealth = avgHealthFromBuildings(farm.animalBuildings);
 
             const archiveData = {
                 season: currentSeasonNum,
