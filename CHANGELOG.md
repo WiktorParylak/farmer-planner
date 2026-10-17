@@ -4,6 +4,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.9.12 — unreleased
 
+**Fixed**
+- **Weeds marked as done came back as *to spray***: weeds set by hand (the chip or the work planner) were overwritten with the save's state every time the farm was opened or synced, so a field still showing live weeds in the save — the game hadn't saved since spraying, or its per-field value lagged behind — went back to *to spray*. Your choice now stays until the game saves a different weed state for that field (sprayed, or regrown), and is cleared with the season.
+
 **Changed**
 - **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl).
 - **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`, and the tutorial into `src/renderer/tutorial.js`.

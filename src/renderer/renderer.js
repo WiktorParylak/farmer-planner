@@ -6377,21 +6377,53 @@ window.openPlanner = function (id) {
 // data/foliage/weed/weed.xml). A planner field (its number may join several
 // game fields, "12-13") gets "to spray" while any of them has live weeds and
 // "done" once they're all dead. Fields without weeds keep what you set.
-// Returns true if any field changed.
+// A state you set by hand (chip or work planner) wins until the game saves a
+// different weedState for that field: the save may still show live weeds
+// because the game hasn't saved since spraying, or because its per-field
+// value lags behind. Returns true if any field changed.
 function syncWeedsFromSave(farm) {
     const save = readSaveFields(farm);
     if (!save.ok) return false;
-    const byId = {};
-    save.fields.forEach(f => { byId[f.id] = f.weedState; });
+    const byId = weedStatesById(save);
     let changed = false;
     (farm.fields || []).forEach(field => {
-        const ids = String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+        const ids = gameFieldIds(field);
+        if (field.weedsManual !== undefined) {
+            if (field.weedsManual === weedStatesKey(ids, byId)) return;
+            delete field.weedsManual;
+            changed = true;
+        }
         const states = ids.map(id => byId[id]).filter(s => s > 0);
         if (!states.length) return;
         const next = states.some(s => s <= 6) ? 'needed' : 'done';
         if (field.weeds !== next) { field.weeds = next; changed = true; }
     });
     return changed;
+}
+
+// "12-13" -> ["12", "13"]
+function gameFieldIds(field) {
+    return String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
+}
+
+function weedStatesById(save) {
+    const byId = {};
+    save.fields.forEach(f => { byId[f.id] = f.weedState; });
+    return byId;
+}
+
+// The save's weedState of each game field behind a planner field, e.g. "3,0".
+function weedStatesKey(ids, byId) {
+    return ids.map(id => byId[id] || 0).join(',');
+}
+
+// Called after the weeds state is changed by hand: remembers what the save
+// said at that moment, so syncWeedsFromSave leaves the choice alone until the
+// game saves something new for this field.
+function markWeedsManual(farm, field) {
+    const save = readSaveFields(farm);
+    if (!save.ok) return;
+    field.weedsManual = weedStatesKey(gameFieldIds(field), weedStatesById(save));
 }
 
 // Reads the live savegame and merges any changed values into `farm`, persisting
@@ -7319,11 +7351,14 @@ window.openWorkModal = function (idx) {
     listEl.addEventListener('change', e => {
         if (!e.target.classList.contains('work-check')) return;
         const i = +e.target.dataset.i;
-        updateWorkField((work, field) => {
+        updateWorkField((work, field, farm) => {
             work[i].done = e.target.checked;
             // Sowing done = the field is sown.
             if (work[i].step === 'sow') field.state = e.target.checked ? 'Planted' : 'To Plant';
-            if (work[i].step === 'weeds') field.weeds = e.target.checked ? 'done' : field.weeds;
+            if (work[i].step === 'weeds' && e.target.checked) {
+                field.weeds = 'done';
+                markWeedsManual(farm, field);
+            }
             if (work[i].step === 'roll') { if (e.target.checked) field.rolling = true; field.rollingDone = e.target.checked; }
         });
     });
@@ -7426,6 +7461,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     } else if (btn.classList.contains('weeds-toggle')) {
         // none -> to do -> done -> none
         field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
+        markWeedsManual(farm, field);
     } else if (btn.classList.contains('tillage-toggle')) {
         field.tillage = field.tillage === 'plowed' ? 'noTill' : (field.tillage === 'noTill' ? null : 'plowed');
     } else {
@@ -7776,7 +7812,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size, fertilization plan, feed use and straw are stored under
@@ -8821,6 +8857,7 @@ async function runNewSeason({ intro = '' } = {}) {
                 field.manure = false;
                 field.fertilizer = false;
                 field.weeds = null;
+                delete field.weedsManual;
                 delete field.work;
                 delete field.workCleared;
                 // Undo only covers the season the liming was made in.
