@@ -17,6 +17,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Changed**
 - **Note checklists start over every year**: notes repeat every in-game year, so a ticked checklist item now counts as done only in the year it was ticked — next year the list is clear again. Items ticked before this version count as done in the current year.
+- **Deleting a farm without a delete mode**: the *Delete farm* button and its mode are gone — every farm on the list has its own bin next to *Export*. The dialog names the farm, says what goes with it and has *Export a backup first*, which saves the backup and asks again (*Backup saved: …*). The tutorial step follows.
 - **One dialog for questions and messages**: deleting a note, a custom feed or a farm, backup export/import results, import summaries and errors now use the app's own dialog (title, icon, red button for deleting) instead of the plain Windows boxes. The farm delete dialog names the farm. Two older dialog windows were merged into it.
 - **Update window opens farmerplanner.pl**: *Open the download page* now goes to the new version on the website's Versions page (in the app's language), with what changed and the installer, instead of the GitHub release.
 - **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl).

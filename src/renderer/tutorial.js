@@ -364,7 +364,6 @@ function tutGoToDashboard() {
     }
     if (plannerView) plannerView.style.display = 'none';
     if (dashboardView) dashboardView.style.display = 'flex';
-    if (deleteMode && deleteToggle) deleteToggle.click();
     renderFarmList(getAllFarms());
     updateDiscordPresence();
 }
@@ -430,9 +429,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('a6', tutDemoItem),
             tutInfo('a7', () => { const item = tutDemoItem(); return item ? item.querySelector('.export-btn-circle') : null; }),
             tutInfo('a8', '#import-backup-btn'),
-            tutClick('a9', '#delete-mode-toggle', () => deleteMode === true),
-            tutInfo('a10', () => { const item = tutDemoItem(); return item ? item.querySelector('.delete-btn-circle') : null; }),
-            tutClick('a11', '#delete-mode-toggle', () => deleteMode === false),
+            tutInfo('a9', () => { const item = tutDemoItem(); return item ? item.querySelector('.delete-btn-circle') : null; }),
             tutClick('a12', () => { const item = tutDemoItem(); return item ? item.querySelector('.select-btn') : null; },
                 () => tutPlannerShown() && currentFarmId === tut.demoId)
         ]

@@ -289,8 +289,6 @@ const cancelAddBtn = document.getElementById('cancel-btn');
 const newFarmInput = document.getElementById('new-farm-name');
 const newFarmMapInput = document.getElementById('new-farm-map');
 
-const deleteToggle = document.getElementById('delete-mode-toggle');
-
 const resetSeasonsBtn = document.getElementById('reset-seasons-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
@@ -4717,7 +4715,6 @@ if (noteEditSaveBtn) {
 // SECTION 3: GLOBAL VARIABLES
 // =============================================================
 let currentFarmId = null;
-let deleteMode = false;
 let isEditMode = false;
 let viewedSeason = 1;
 
@@ -9795,18 +9792,15 @@ function renderFarmList(farms) {
         const item = document.createElement('div');
         item.className = 'farm-item';
         item.dataset.farmId = farm.id;
-        const actionButton = deleteMode
-            ? `<button type="button" class="delete-btn-circle" data-farm-action="delete" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>`
-            : `<button type="button" class="select-btn" data-farm-action="open" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>`;
-
         item.innerHTML = `
             <div class="farm-details">
                 <span class="farm-name">${escapeHtml(farm.name)}${farm.mapName ? ` <span class="farm-map">${escapeHtml(farm.mapName)}</span>` : ''}</span>
                 <span class="farm-dates">${t('lastEdited')}: ${escapeHtml(formatLastEdited(farm.lastEdited))}</span>
             </div>
             <div class="farm-item-actions">
+                <button type="button" class="delete-btn-circle" data-farm-action="delete" title="${t('deleteFarmTitle')}" aria-label="${t('deleteFarmTitle')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
                 <button type="button" class="export-btn-circle" data-farm-action="export" title="${t('exportBackup')}" aria-label="${t('exportBackup')}"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
-                ${actionButton}
+                <button type="button" class="select-btn" data-farm-action="open" title="${t('openFarmTitle')}" aria-label="${t('openFarmTitle')}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
             </div>
         `;
         container.appendChild(item);
@@ -9858,9 +9852,11 @@ function writeFarmFolderFiles(rootDir, files) {
     });
 }
 
-window.exportFarmBackup = async function (farmId) {
+// Returns the saved file's path, or null. quiet: no "exported" notice (the
+// delete dialog says it itself).
+window.exportFarmBackup = async function (farmId, quiet = false) {
     const farm = getAllFarms().find(f => f.id === farmId);
-    if (!farm || !farm.folderName) return;
+    if (!farm || !farm.folderName) return null;
 
     const files = collectFarmFolderFiles(path.join(appDataDir, farm.folderName));
     // Make sure the bundle reflects any unsaved in-memory edits to the farm.
@@ -9881,13 +9877,15 @@ window.exportFarmBackup = async function (farmId) {
         filters: [{ name: 'Farmer Planner Backup', extensions: ['json'] }]
     });
 
-    if (result.canceled || !result.filePath) return;
+    if (result.canceled || !result.filePath) return null;
 
     try {
         fs.writeFileSync(result.filePath, JSON.stringify(bundle, null, 2), 'utf-8');
-        showNotice(t('noticeBackupTitle'), t('exportSuccess'));
+        if (!quiet) showNotice(t('noticeBackupTitle'), t('exportSuccess'));
+        return result.filePath;
     } catch (err) {
-        showNotice(t('noticeBackupTitle'), t('exportError'), true);
+        await showNotice(t('noticeBackupTitle'), t('exportError'), true);
+        return null;
     }
 };
 
@@ -10130,27 +10128,25 @@ if (confirmAddBtn) {
     });
 }
 
-if (deleteToggle) {
-    deleteToggle.addEventListener('click', () => {
-        deleteMode = !deleteMode;
-        deleteToggle.innerText = deleteMode ? t('cancelDelete') : t('deleteFarm');
-        deleteToggle.style.color = deleteMode ? "var(--color-rust)" : "";
-        renderFarmList(getAllFarms());
-    });
-}
-
 window.prepareDelete = async function (id) {
     // String() guards against an old/edited data.json where "id" ended up
     // as a number instead of a string — strict === would silently never
     // match and the farm would just stay in the list with no error.
     const farmToKill = getAllFarms().find(f => String(f.id) === String(id));
-    const sure = await showConfirm({
-        title: t('deleteFarmAsk').replace('{name}', farmToKill ? (farmToKill.name || '') : ''),
-        body: t('deleteFarmConfirm'),
-        confirmText: t('delete'),
-        danger: true
-    });
-    if (sure !== true) return;
+    // "Export a backup first" saves the backup and asks again, saying where it went.
+    let savedTo = null;
+    for (;;) {
+        const sure = await showConfirm({
+            title: t('deleteFarmAsk').replace('{name}', farmToKill ? (farmToKill.name || '') : ''),
+            body: t('deleteFarmConfirm') + (savedTo ? '\n\n' + t('deleteFarmBackupSaved').replace('{file}', path.basename(savedTo)) : ''),
+            confirmText: t('delete'),
+            extraText: farmToKill && !savedTo ? t('deleteFarmExportFirst') : null,
+            danger: true
+        });
+        if (sure === 'extra') { savedTo = await window.exportFarmBackup(farmToKill.id, true) || savedTo; continue; }
+        if (sure !== true) return;
+        break;
+    }
 
     let error = null;
     if (!farmToKill) {

@@ -520,9 +520,8 @@ body {
   justify-content: center;
 }
 
-/* Action Buttons (Arrow & Delete) */
-.farm-item .select-btn,
-.delete-btn-circle {
+/* Action Buttons (Open arrow) */
+.farm-item .select-btn {
   width: 34px;
   height: 34px;
   line-height: 34px;
@@ -539,18 +538,8 @@ body {
   flex-shrink: 0;
 }
 
-.delete-btn-circle {
-  background-color: var(--color-rust);
-}
-
 .farm-item .select-btn:hover {
   background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-hover);
-  transform: scale(1.1);
-}
-
-.delete-btn-circle:hover {
-  background-color: #8a3a24;
   box-shadow: var(--shadow-hover);
   transform: scale(1.1);
 }
@@ -562,7 +551,8 @@ body {
   flex-shrink: 0;
 }
 
-.export-btn-circle {
+.export-btn-circle,
+.delete-btn-circle {
   width: 34px;
   height: 34px;
   line-height: 34px;
@@ -587,6 +577,15 @@ body {
   transform: scale(1.1);
 }
 
+/* Delete: quiet outline like export, rust on hover (always asks first). */
+.delete-btn-circle:hover {
+  background-color: var(--color-rust);
+  border-color: var(--color-rust);
+  color: var(--color-surface);
+  box-shadow: var(--shadow-hover);
+  transform: scale(1.1);
+}
+
 /* Dashboard Bottom Buttons */
 .buttons-container {
   display: flex;
@@ -598,8 +597,7 @@ body {
   padding-top: 24px;
 }
 
-.add-farm-btn,
-.delete-farm-btn {
+.add-farm-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2011,7 +2009,6 @@ th.is-sortable[aria-sort="descending"]::after {
    only add layout. New buttons should use .btn classes. */
 .btn,
 .add-farm-btn,
-.delete-farm-btn,
 .new-season-btn,
 .edit-season-btn,
 .add-crop,
@@ -2046,7 +2043,6 @@ th.is-sortable[aria-sort="descending"]::after {
 /* Sizes: large = page actions next to a title, small = inside tables and lists */
 .btn--lg,
 .add-farm-btn,
-.delete-farm-btn,
 .new-season-btn,
 .edit-season-btn {
   font-size: var(--fs-md);
@@ -2143,7 +2139,6 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .btn--danger:hover:not(:disabled),
 .reset-btn:hover,
-.delete-farm-btn:hover,
 .supply-reset-btn:hover {
   background-color: var(--color-rust);
   border-color: var(--color-rust);
@@ -3832,7 +3827,6 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 .add-farm-btn:focus-visible,
-.delete-farm-btn:focus-visible,
 .select-btn:focus-visible,
 .delete-btn-circle:focus-visible {
   outline: 2px solid var(--color-accent);
