@@ -89,7 +89,10 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 src/main/main.js               proces główny: okno, dialogi (IPC show-save/open-dialog), migracja danych
 src/main/discord-presence.js   Discord Rich Presence
 src/renderer/index.html        cały UI (jedna strona)
-src/renderer/renderer.js       ~11k linii — prawie cała logika aplikacji
+src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
+src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
+src/renderer/supplies.js       zaopatrzenie, plan nawożenia pola, model stawek (PRZED renderer.js)
+src/renderer/fields-table.js   tabela planu, okno pola, planer prac, tryb edycji (PO renderer.js)
 src/renderer/style.css         style
 src/renderer/savegame-soil.js  gleby pól z Precision Farming (parsowanie GRLE)
 src/renderer/map-crops.js      uprawy i kalendarz z moda mapy
@@ -107,6 +110,7 @@ docs/                          screenshoty, propozycje-funkcji.txt
 ```
 
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.
+- Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `renderer.js`, `fields-table.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
 - Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
 - Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje.
 - Tłumaczenia: `TRANSLATIONS` (`en` / `pl`) w `translations.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz w **obu** językach. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
