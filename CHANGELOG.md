@@ -25,7 +25,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl).
 - **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`, and the tutorial into `src/renderer/tutorial.js`.
 - **Code**: one function each for the animals' average health (it was computed in five places), for reading the archived seasons (balance and herd trends) and for an animal group's daily water/straw — no change in what the panels show.
-- **Code**: the feed planner (rations, feed mixers, mixer wagon, stock and demand) moved from `renderer.js` into `src/renderer/feed.js`.
+- **Code**: the feed planner (rations, feed mixers, mixer wagon, stock and demand) moved from `renderer.js` into `src/renderer/feed.js`, and Supplies (the panel, the per-field fertilization plan and the seed / nitrogen / lime rate model) into `src/renderer/supplies.js`.
 
 ## 0.9.11 — 2026-10-16
 
