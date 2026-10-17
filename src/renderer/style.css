@@ -520,9 +520,8 @@ body {
   justify-content: center;
 }
 
-/* Action Buttons (Arrow & Delete) */
-.farm-item .select-btn,
-.delete-btn-circle {
+/* Action Buttons (Open arrow) */
+.farm-item .select-btn {
   width: 34px;
   height: 34px;
   line-height: 34px;
@@ -539,18 +538,8 @@ body {
   flex-shrink: 0;
 }
 
-.delete-btn-circle {
-  background-color: var(--color-rust);
-}
-
 .farm-item .select-btn:hover {
   background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-hover);
-  transform: scale(1.1);
-}
-
-.delete-btn-circle:hover {
-  background-color: #8a3a24;
   box-shadow: var(--shadow-hover);
   transform: scale(1.1);
 }
@@ -562,7 +551,8 @@ body {
   flex-shrink: 0;
 }
 
-.export-btn-circle {
+.export-btn-circle,
+.delete-btn-circle {
   width: 34px;
   height: 34px;
   line-height: 34px;
@@ -587,6 +577,15 @@ body {
   transform: scale(1.1);
 }
 
+/* Delete: quiet outline like export, rust on hover (always asks first). */
+.delete-btn-circle:hover {
+  background-color: var(--color-rust);
+  border-color: var(--color-rust);
+  color: var(--color-surface);
+  box-shadow: var(--shadow-hover);
+  transform: scale(1.1);
+}
+
 /* Dashboard Bottom Buttons */
 .buttons-container {
   display: flex;
@@ -598,8 +597,7 @@ body {
   padding-top: 24px;
 }
 
-.add-farm-btn,
-.delete-farm-btn {
+.add-farm-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -713,6 +711,21 @@ body {
 
 #settings-modal .modal-content > h3 {
   text-align: center;
+}
+
+/* App settings grew (three languages, updates, help): tighter spacing, a bit
+   wider so the button rows fit, and scrolling on short windows. */
+#app-settings-modal .modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+  max-width: 520px;
+  justify-content: flex-start;   /* see #settings-modal: centred would spill over the top */
+  gap: 12px;
+  padding: 28px 34px;
+}
+
+#app-settings-modal .modal-content > p {
+  margin-top: 6px;
 }
 
 /* Farm settings: one card per topic, labels above their inputs. */
@@ -967,16 +980,16 @@ body {
   color: var(--color-ink);
 }
 
-/* New season / reset seasons modal */
-#season-modal-body {
+/* App dialog (showDialog): confirms and messages */
+#app-dialog-body {
   white-space: pre-line;
 }
 
-.season-modal-content {
+.app-dialog-content {
   max-width: 420px;
 }
 
-.season-modal-icon {
+.app-dialog-icon {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -989,18 +1002,39 @@ body {
   margin-bottom: -6px;
 }
 
-.season-modal-icon.is-danger {
+.app-dialog-icon.is-danger {
   background: rgba(166, 69, 43, 0.12);
   color: var(--color-rust);
 }
 
-.season-modal-content.is-danger h3 {
+.app-dialog-content.is-danger h3 {
   color: var(--color-rust);
 }
 
-.season-modal-content p {
+.app-dialog-content p {
   white-space: pre-line;
   margin: 0;
+}
+
+/* Room for a third button (e.g. "Undo liming") on the same row. */
+.app-dialog-content.has-extra {
+  max-width: 480px;
+}
+
+.app-dialog-content .modal-buttons {
+  flex-wrap: wrap;
+}
+
+/* Optional third action, kept apart on the left. */
+.modal-buttons .app-dialog-extra {
+  margin-right: auto;
+  background-color: transparent;
+  color: var(--color-rust);
+  border: 1px solid var(--color-rust);
+}
+
+.modal-buttons .app-dialog-extra:hover {
+  background-color: rgba(166, 69, 43, 0.08);
 }
 
 /* Danger Button (Delete Confirmation) */
@@ -1990,7 +2024,6 @@ th.is-sortable[aria-sort="descending"]::after {
    only add layout. New buttons should use .btn classes. */
 .btn,
 .add-farm-btn,
-.delete-farm-btn,
 .new-season-btn,
 .edit-season-btn,
 .add-crop,
@@ -2025,7 +2058,6 @@ th.is-sortable[aria-sort="descending"]::after {
 /* Sizes: large = page actions next to a title, small = inside tables and lists */
 .btn--lg,
 .add-farm-btn,
-.delete-farm-btn,
 .new-season-btn,
 .edit-season-btn {
   font-size: var(--fs-md);
@@ -2122,7 +2154,6 @@ th.is-sortable[aria-sort="descending"]::after {
 
 .btn--danger:hover:not(:disabled),
 .reset-btn:hover,
-.delete-farm-btn:hover,
 .supply-reset-btn:hover {
   background-color: var(--color-rust);
   border-color: var(--color-rust);
@@ -3127,6 +3158,80 @@ th.is-sortable[aria-sort="descending"]::after {
   cursor: help;
 }
 
+/* Field name under the number chips (plan table, Field soil type). */
+.field-name {
+  display: block;
+  max-width: 160px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+/* Search box between the season title and its buttons. */
+.fields-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 300px;
+  min-width: 180px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-soft);
+  color: var(--color-ink-faint);
+}
+
+.fields-search[hidden] {
+  display: none;
+}
+
+.fields-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.fields-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  color: var(--color-ink);
+}
+
+.fields-search-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+/* "Sum of fields 10 + 11" under an area filled in from the field numbers. */
+.area-auto-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.area-auto-hint:empty {
+  display: none;
+}
+
+.fields-search-empty td {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--color-ink-soft);
+}
+
 /* --- Treatment chips (Lime / Manure / Synthetic fertilizer) --- */
 .treatments-cell {
   white-space: nowrap;
@@ -3737,7 +3842,6 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 .add-farm-btn:focus-visible,
-.delete-farm-btn:focus-visible,
 .select-btn:focus-visible,
 .delete-btn-circle:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -4599,6 +4703,28 @@ select:focus-visible,
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   width: 100%;
+}
+
+/* Field choices can be many on a big farm: two columns, scroll after a few rows. */
+.note-edit-fields-grid {
+  grid-template-columns: repeat(2, 1fr);
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.note-field-chip {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+}
+
+.field-view-notes {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.field-view-notes li {
+  margin-bottom: 4px;
 }
 
 .note-edit-month-option {
@@ -5921,67 +6047,6 @@ button.treatment-chip--lime.is-warning {
   accent-color: var(--color-primary);
 }
 
-/* Small confirm dialog (e.g. liming a field from the table). */
-.small-confirm-modal .modal-content.small-confirm {
-  max-width: 340px;
-  padding: 24px 26px 22px;
-  gap: 10px;
-}
-
-/* Room for a third button (e.g. "Undo liming") on the same row. */
-.small-confirm-modal .modal-content.small-confirm:has(.small-confirm-extra:not([hidden])) {
-  max-width: 460px;
-}
-
-.small-confirm-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  font-size: var(--fs-2xl);
-}
-
-.small-confirm h3 {
-  font-size: var(--fs-3xl);
-}
-
-.small-confirm p {
-  margin: 0 0 6px;
-  font-size: var(--fs-md);
-}
-
-.small-confirm .modal-buttons {
-  flex-wrap: wrap;
-}
-
-.small-confirm .modal-buttons button {
-  min-width: 96px;
-  padding: 9px 18px;
-}
-
-.small-confirm .modal-buttons .small-confirm-cancel {
-  background-color: transparent;
-  color: var(--color-ink-soft);
-  border-color: var(--color-border-strong);
-}
-
-/* Optional third action (e.g. "Remove liming…"), kept apart on the left. */
-.small-confirm .modal-buttons .small-confirm-extra {
-  margin-right: auto;
-  background-color: transparent;
-  color: var(--color-rust);
-  border-color: var(--color-rust);
-}
-
-.small-confirm .modal-buttons .small-confirm-cancel:hover {
-  background-color: var(--color-surface-alt);
-  color: var(--color-ink);
-}
-
 /* Table chips you can click (lime, rolling). */
 button.table-chip-toggle {
   cursor: pointer;
@@ -6899,4 +6964,74 @@ button.field-open:hover .field-number-chip {
 
 .settings-danger-zone p {
   margin: 0;
+}
+
+/* Settings -> Help */
+.help-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.diagnostics-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+.modal-buttons .app-dialog-extra[hidden] {
+  display: none;
+}
+
+/* ---- What's new (after an update) ---- */
+.whats-new-content {
+  max-width: 640px;
+  width: min(640px, 92vw);
+}
+
+.whats-new-body {
+  align-self: stretch;
+  max-height: 46vh;
+  overflow-y: auto;
+  text-align: left;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  padding: 4px 14px 4px 4px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.whats-new-body h4 {
+  margin: 14px 0 6px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.whats-new-body h5 {
+  margin: 16px 0 0;
+  font-size: var(--fs-base);
+  color: var(--color-ink-soft);
+}
+
+.whats-new-body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.whats-new-body li {
+  margin: 4px 0;
+}
+
+.whats-new-body code {
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.92em;
+  background: var(--color-surface-alt);
+  padding: 0 4px;
+  border-radius: 4px;
 }

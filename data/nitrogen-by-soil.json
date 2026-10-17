@@ -1,11 +1,11 @@
 {
-  "_comment": "Nitrogen target (kg N/ha) per crop and Precision Farming soil type. Base crops = PF 'targetLevel' from FS25_precisionFarming/PrecisionFarming.xml <fruitRequirements>. The 9 crops Solek adds itself (Rye, Triticale, Alfalfa, Clover, Buckwheat, Greenrye, Silagemaize, Beans, Millet) are overridden by that map's own <precisionFarming><fruitRequirements> in FS25_Solek/map/mapUS.xml and use those values here. Note: on Solek the modder templated wheat's numbers (140/180/200/160) onto Rye/Triticale/Alfalfa/Clover/Buckwheat/Millet, so Alfalfa/Clover are NOT treated as N-fixing on this map and Beans needs 40-70. soilTypeIndex 1..4 = Piasek ilasty / Piaszczysty il / Il / Il pylasty. yieldPct = the base PF soil yieldPotential x100. Edit freely. Crop keys must match crops.json / field 'crop'; soil 'id' values are stable, 'pl'/'en' are the labels shown in the app.",
+  "_comment": "Nitrogen target (kg N/ha) per crop and Precision Farming soil type. Base crops = PF 'targetLevel' from FS25_precisionFarming/PrecisionFarming.xml <fruitRequirements>. The 9 crops Solek adds itself (Rye, Triticale, Alfalfa, Clover, Buckwheat, Greenrye, Silagemaize, Beans, Millet) are overridden by that map's own <precisionFarming><fruitRequirements> in FS25_Solek/map/mapUS.xml and use those values here. Note: on Solek the modder templated wheat's numbers (140/180/200/160) onto Rye/Triticale/Alfalfa/Clover/Buckwheat/Millet, so Alfalfa/Clover are NOT treated as N-fixing on this map and Beans needs 40-70. soilTypeIndex 1..4 = Piasek ilasty / Piaszczysty il / Il / Il pylasty. yieldPct = the base PF soil yieldPotential x100. Edit freely. Crop keys must match crops.json / field 'crop'; soil 'id' values are stable, 'pl'/'en'/'de' are the labels shown in the app.",
   "source": "FS25 PrecisionFarming.xml + FS25_Solek/map/mapUS.xml <fruitRequirements> targetLevel",
   "soilTypes": [
-    { "id": "loamySand", "pl": "Piasek ilasty",  "en": "Loamy Sand", "yieldPct": 80 },
-    { "id": "sandyLoam", "pl": "Piaszczysty ił", "en": "Sandy Loam", "yieldPct": 100 },
-    { "id": "loam",      "pl": "Ił",             "en": "Loam",       "yieldPct": 125 },
-    { "id": "siltyClay", "pl": "Ił pylasty",     "en": "Silty Clay", "yieldPct": 90 }
+    { "id": "loamySand", "pl": "Piasek ilasty",  "en": "Loamy Sand", "de": "Lehmiger Sand",   "yieldPct": 80 },
+    { "id": "sandyLoam", "pl": "Piaszczysty ił", "en": "Sandy Loam", "de": "Sandiger Lehm",   "yieldPct": 100 },
+    { "id": "loam",      "pl": "Ił",             "en": "Loam",       "de": "Lehm",            "yieldPct": 125 },
+    { "id": "siltyClay", "pl": "Ił pylasty",     "en": "Silty Clay", "de": "Schluffiger Ton", "yieldPct": 90 }
   ],
   "fallback": { "loamySand": 100, "sandyLoam": 120, "loam": 150, "siltyClay": 130 },
   "crops": {

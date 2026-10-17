@@ -76,7 +76,7 @@ function readMapCrops(careerSavegamePath, parseGrowthXml, formatName) {
 
         // Crop names as the map shows them ("centeno" -> "Rye"), from its
         // translations: fillType_<crop> in l10n files or inline in modDesc.
-        const l10n = readModL10n(read, modDesc, ['en', 'pl']);
+        const l10n = readModL10n(read, modDesc, ['en', 'pl', 'de']);
         crops.forEach(c => {
             const k = ('filltype_' + c.rawName).toLowerCase();
             if (l10n[k]) c.titles = l10n[k];

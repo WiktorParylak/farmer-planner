@@ -79,6 +79,9 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
 4. Commit `Version X.Y.Z: ...` na gałęzi `dev/vX.Y.Z`.
 5. Dopiero na polecenie: push, `npm run build`, `gh release create vX.Y.Z --prerelease ...`, PR do `main`.
+6. Po merge'u do `main`: przebuduj stronę (push do `farmer-planner-website` albo ręczne uruchomienie workflow *Deploy*; inaczej dopiero nocny build o 04:30 UTC).
+   Okno aktualizacji w aplikacji otwiera `farmerplanner.pl/versions/#vX-Y-Z`, a strona wersji czyta `CHANGELOG.md` z `main` —
+   bez tego kroku link trafia na stronę bez nowej wersji.
 
 ## Architektura
 
@@ -86,7 +89,10 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 src/main/main.js               proces główny: okno, dialogi (IPC show-save/open-dialog), migracja danych
 src/main/discord-presence.js   Discord Rich Presence
 src/renderer/index.html        cały UI (jedna strona)
-src/renderer/renderer.js       ~11k linii — prawie cała logika aplikacji
+src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
+src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
+src/renderer/supplies.js       zaopatrzenie, plan nawożenia pola, model stawek (PRZED renderer.js)
+src/renderer/fields-table.js   tabela planu, okno pola, planer prac, tryb edycji (PO renderer.js)
 src/renderer/style.css         style
 src/renderer/savegame-soil.js  gleby pól z Precision Farming (parsowanie GRLE)
 src/renderer/map-crops.js      uprawy i kalendarz z moda mapy
@@ -94,15 +100,21 @@ src/renderer/mod-locator.js    szukanie folderów modów (gameSettings.xml, FSG 
 src/renderer/mod-files.js      czytanie plików z modów (folder/zip)
 src/renderer/animal-mods.js    AnimalFoodCalculator, EnhancedAnimalSystem
 src/renderer/animal-images.js  obrazki ras z modów
+src/renderer/translations.js   wszystkie teksty (TRANSLATIONS + słowniki nazw), en i pl
+src/renderer/translations-de.js teksty niemieckie (te same klucze), dołączane w translations.js
+src/renderer/tutorial.js       samouczek (drugi <script> po renderer.js)
+src/renderer/settings.js       ustawienia aplikacji (settings.json w folderze danych)
+src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → Pomoc)
 data/                          dane bazowej gry dołączone do aplikacji
 tools/                         skrypty deweloperskie (nie są używane w runtime)
 docs/                          screenshoty, propozycje-funkcji.txt
 ```
 
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.
-- Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Stan okna: `userData/window-state.json`.
+- Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `renderer.js`, `fields-table.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
+- Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
 - Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje.
-- Tłumaczenia: `TRANSLATIONS` (`en` / `pl`) na początku `renderer.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz w **obu** językach. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
+- Tłumaczenia: `TRANSLATIONS` (`en` / `pl` / `de`) w `translations.js` + `translations-de.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz we **wszystkich trzech** językach (`APP_LANGUAGES` w `renderer.js`); brakujący klucz DE spada na EN. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
 - Skrypty w `tools/` powielają parsery z `renderer.js` (regex zamiast DOMParser) — zmiana schematu parsowania w jednym miejscu wymaga zmiany w drugim.
 
 ## Dane gry (komputer główny)

@@ -209,21 +209,25 @@ function devMonthlyHistory() {
 
 function devNotes(pl) {
     const now = new Date().toISOString();
-    const note = (id, title, body, months, tags, checklist) => ({
-        id: 'note_dev_' + id, title, body, months, tags, checklist, createdAt: now, updatedAt: now
+    const note = (id, title, body, months, tags, checklist, fields) => ({
+        id: 'note_dev_' + id, title, body, months, tags, checklist, fields: fields || [], createdAt: now, updatedAt: now
     });
     return [
+        // Pinned to field 1; one tick from this year, one from last year (shows as not done).
         note('sow', pl ? "Siew pszenicy na polu 1" : "Sow wheat on field 1",
             pl ? "Wapno już jest. Najpierw siew, potem nawóz." : "Lime is done. Sow first, then fertilize.",
             ["OCTOBER"], [pl ? "pola" : "fields"],
-            [{ text: pl ? "Kupić nasiona" : "Buy seed", done: true }, { text: pl ? "Zasiać" : "Sow", done: false }]),
+            [{ text: pl ? "Kupić nasiona" : "Buy seed", done: true, doneYear: DEV_YEAR },
+                { text: pl ? "Zasiać" : "Sow", done: true, doneYear: DEV_YEAR - 1 }],
+            ["1"]),
         note('pigs', pl ? "Zboże dla świń" : "Grain for the pigs",
             pl ? "W chlewni zostało na kilka dni." : "The pig barn has a few days left.",
             ["SEPTEMBER", "OCTOBER", "NOVEMBER"], [pl ? "zwierzęta" : "animals"], []),
         note('lease', pl ? "Dzierżawa pola 7 się kończy" : "Field 7 lease ends",
             pl ? "Zdecydować: zdać czy przedłużyć." : "Decide: hand it back or extend.",
             ["FEBRUARY"], [pl ? "dzierżawa" : "lease"],
-            [{ text: pl ? "Sprawdzić plony" : "Check the yields", done: false }])
+            [{ text: pl ? "Sprawdzić plony" : "Check the yields", done: false }],
+            ["7"])
     ];
 }
 
@@ -249,6 +253,10 @@ function buildDevFarm({ pl }) {
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,
         fieldSizes: { "5": 5 },
+        // Field names (shown under the number, found by the search); most fields stay unnamed.
+        fieldNames: pl
+            ? { "1": "Za stodołą", "3-4": "Duże przy lesie", "6": "Łąka nad rzeką", "10-11-12": "Kukurydza północ" }
+            : { "1": "Behind the barn", "3-4": "Big by the woods", "6": "River meadow", "10-11-12": "North maize" },
         fields: devFields(),
         animals: totals.animals,
         animalBreakdown: totals.breakdown,

@@ -40,7 +40,6 @@
                     <div class="dashboard-actions">
                         <div class="buttons-container">
                             <button type="button" class="add-farm-btn" data-i18n="addFarm">ADD FARM +</button>
-                            <button type="button" id="delete-mode-toggle" class="delete-farm-btn" data-i18n="deleteFarm">DELETE FARM</button>
                         </div>
                         <button type="button" id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</button>
                     </div>
@@ -118,6 +117,11 @@
                     <div class="planner-main-table">
                         <div class="main-table-header">
                             <h1 class="season-number">Season 1</h1>
+                            <label class="fields-search" id="fields-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <input type="search" id="fields-search" data-i18n-placeholder="fieldsSearchPlaceholder" placeholder="Search fields…" data-i18n-title="fieldsSearchHint" title="Number, name or crop · Ctrl+F" autocomplete="off" spellcheck="false">
+                                <span id="fields-search-count" class="fields-search-count" hidden></span>
+                            </label>
                             <div class="main-table-header-btns">
                                 <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
                                 <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
@@ -243,8 +247,8 @@
                     <div id="animal-mods-info" class="animal-mods-info"></div>
                 </section>
 
-                <details id="settings-advanced" class="settings-group settings-advanced" data-settings-tab="advanced" open>
-                    <summary data-i18n="settingsAdvanced">Advanced: map and animal folders</summary>
+                <details id="settings-advanced" class="settings-group settings-advanced" data-settings-tab="advanced">
+                    <summary data-i18n="settingsAdvanced">Advanced: manual import</summary>
                     <div class="settings-field">
                         <span data-i18n="cropsFolderLabel">Crops folder (map's uprawaX.xml / fruitType files):</span>
                         <div class="settings-path-row">
@@ -263,7 +267,7 @@
                             <input type="file" id="animal-defs-folder-picker" webkitdirectory directory multiple style="display: none;">
                         </div>
                         <p id="animal-defs-loaded-info" class="settings-hint"></p>
-                        <p class="settings-hint" data-i18n="animalDefsFolderHint">Usually in the base game's install folder, not your map folder.</p>
+                        <p class="settings-hint" data-i18n="animalDefsFolderHint">Only for a map or mod with its own unpacked animals.xml.</p>
                     </div>
                 </details>
 
@@ -296,6 +300,7 @@
                 <div class="language-options">
                     <button type="button" id="lang-btn-pl" class="lang-btn" data-lang="pl">Polski</button>
                     <button type="button" id="lang-btn-en" class="lang-btn" data-lang="en">English</button>
+                    <button type="button" id="lang-btn-de" class="lang-btn" data-lang="de">Deutsch</button>
                 </div>
                 <p data-i18n="discordSettingLabel" style="margin-bottom:4px;">Discord Rich Presence</p>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
@@ -309,10 +314,18 @@
                 </label>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
                     <button type="button" id="check-updates-btn" class="replay-tutorial-btn" data-i18n="updateCheckNow">Check now</button>
+                    <button type="button" id="whats-new-btn" class="replay-tutorial-btn" data-i18n="whatsNewButton">What's new</button>
                     <span id="app-version-label" class="animal-mods-note"></span>
                 </div>
                 <p data-i18n="tutorialSettingLabel" style="margin-bottom:4px;">Tutorial</p>
                 <button type="button" id="replay-tutorial-btn" class="replay-tutorial-btn" data-i18n="tutorialReplay">Show tutorial again</button>
+                <p data-i18n="helpSettingLabel" style="margin-bottom:4px;">Help</p>
+                <span class="animal-mods-note" data-i18n="helpSettingHint">Something's wrong? Report it with a diagnostic file, so it can be reproduced.</span>
+                <div class="help-settings-actions">
+                    <button type="button" id="diagnostics-btn" class="replay-tutorial-btn" data-i18n="diagSave">Save diagnostic file</button>
+                    <button type="button" id="report-github-btn" class="replay-tutorial-btn" data-i18n="helpReportGithub">Report on GitHub</button>
+                    <button type="button" id="report-contact-btn" class="replay-tutorial-btn" data-i18n="helpReportContact">Contact form</button>
+                </div>
                 <div id="dev-farm-setting" hidden>
                     <p data-i18n="devFarmSettingLabel" style="margin-bottom:4px;">Developer</p>
                     <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
@@ -323,6 +336,25 @@
                 </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="diagnostics-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="diagnostics-title">
+            <div class="modal-content">
+                <h3 id="diagnostics-title" data-i18n="diagTitle">Diagnostic file</h3>
+                <p data-i18n="diagIntro">One .json file for a bug report. It contains:</p>
+                <ul class="diagnostics-list">
+                    <li data-i18n="diagItemApp">the app, Electron and Windows versions and the app's settings,</li>
+                    <li data-i18n="diagItemFarm">the chosen farm's data (as in a farm backup),</li>
+                    <li data-i18n="diagItemSave">the savegame's small XML files (career, farms, fields, farmlands, Precision Farming, buildings, leases),</li>
+                    <li data-i18n="diagItemLog">the app's recent warnings and errors.</li>
+                </ul>
+                <p class="animal-mods-note" data-i18n="diagPrivacy">Your Windows user folder is replaced with %USERPROFILE%. The file does contain your farm's name and the farm and player names from the save. Nothing is sent — attach the file yourself to a GitHub issue or an e-mail.</p>
+                <label for="diagnostics-farm" class="modal-field-label" data-i18n="diagFarmLabel">Farm:</label>
+                <select id="diagnostics-farm"></select>
+                <div class="modal-buttons">
+                    <button type="button" id="diagnostics-cancel-btn" data-i18n="cancel">Cancel</button>
+                    <button type="button" id="diagnostics-save-btn" data-i18n="diagSaveBtn">Save file…</button>
                 </div>
             </div>
         </div>
@@ -385,18 +417,6 @@
                 </div>
             </div>
         </div>
-        <div id="small-confirm-modal" class="modal small-confirm-modal">
-            <div class="modal-content small-confirm" role="alertdialog" aria-labelledby="small-confirm-title" aria-describedby="small-confirm-text">
-                <span class="small-confirm-icon" aria-hidden="true"><i id="small-confirm-icon" class="fa-solid fa-circle-question"></i></span>
-                <h3 id="small-confirm-title"></h3>
-                <p id="small-confirm-text"></p>
-                <div class="modal-buttons">
-                    <button type="button" id="small-confirm-extra" class="small-confirm-extra" hidden></button>
-                    <button type="button" id="small-confirm-cancel" class="small-confirm-cancel" data-i18n="cancel">Cancel</button>
-                    <button type="button" id="small-confirm-ok"></button>
-                </div>
-            </div>
-        </div>
         <div id="note-edit-modal" class="modal">
             <div class="modal-content">
                 <h3 id="note-edit-modal-title" data-i18n="notesNewTitle">New note</h3>
@@ -409,6 +429,9 @@
 
                 <p data-i18n="notesMonthsLabel">Months</p>
                 <div id="note-edit-months" class="note-edit-months-grid"></div>
+
+                <p data-i18n="notesFieldsLabel">Fields (optional)</p>
+                <div id="note-edit-fields" class="note-edit-months-grid note-edit-fields-grid"></div>
 
                 <p data-i18n="notesTagsLabel">Tags</p>
                 <input type="text" id="note-edit-tag-input" data-i18n-placeholder="notesTagsPlaceholder" placeholder="Type a tag and press Enter">
@@ -424,37 +447,42 @@
                 </div>
             </div>
         </div>
-        <div id="confirm-delete-modal" class="confirm-delete-modal modal">
-            <div class="modal-content">
-                <h3 data-i18n="areYouSure">Are you sure?</h3>
-                <p data-i18n="deleteFarmConfirm">Do you really want to delete this farm? This action cannot be undone.</p>
+        <!-- Every confirm / message in the app: filled by showDialog() (showConfirm / showNotice). -->
+        <div id="app-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-body">
+            <div class="modal-content app-dialog-content">
+                <div id="app-dialog-icon" class="app-dialog-icon" aria-hidden="true"></div>
+                <h3 id="app-dialog-title"></h3>
+                <p id="app-dialog-body"></p>
                 <div class="modal-buttons">
-                    <button type="button" id="cancel-delete-btn" data-i18n="cancel">Cancel</button>
-                    <button type="button" id="confirm-delete-btn" class="danger-btn" data-i18n="delete">Delete</button>
+                    <button type="button" id="app-dialog-extra" class="app-dialog-extra" hidden></button>
+                    <button type="button" id="app-dialog-cancel" class="modal-cancel-btn"></button>
+                    <button type="button" id="app-dialog-confirm"></button>
                 </div>
             </div>
         </div>
-        <!-- New season / reset seasons: confirm + result. Filled by showSeasonModal(). -->
-        <div id="season-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="season-modal-title">
-            <div class="modal-content season-modal-content">
-                <div id="season-modal-icon" class="season-modal-icon" aria-hidden="true"></div>
-                <h3 id="season-modal-title"></h3>
-                <p id="season-modal-body"></p>
-                <div class="modal-buttons">
-                    <button type="button" id="season-modal-cancel" class="modal-cancel-btn"></button>
-                    <button type="button" id="season-modal-confirm"></button>
-                </div>
+    </div>
+    <!-- After an update: what changed since the version the app last ran (from CHANGELOG.md). -->
+    <div id="whats-new-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+        <div class="modal-content app-dialog-content whats-new-content">
+            <div class="app-dialog-icon" aria-hidden="true"><i class="fa-solid fa-gift"></i></div>
+            <h3 id="whats-new-title"></h3>
+            <p id="whats-new-lead"></p>
+            <div id="whats-new-body" class="whats-new-body" lang="en"></div>
+            <div class="modal-buttons">
+                <button type="button" id="whats-new-web" class="modal-cancel-btn" data-i18n="whatsNewWebsite">See it on the website</button>
+                <button type="button" id="whats-new-ok" data-i18n="whatsNewOk">Got it</button>
             </div>
         </div>
     </div>
     <!-- First start only: pick the language before anything else (no way to dismiss it). -->
     <div id="first-lang-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="first-lang-title">
-        <div class="modal-content season-modal-content first-lang-content">
-            <div class="season-modal-icon" aria-hidden="true"><i class="fa-solid fa-language"></i></div>
-            <h3 id="first-lang-title">Wybierz język · Choose your language</h3>
+        <div class="modal-content app-dialog-content first-lang-content">
+            <div class="app-dialog-icon" aria-hidden="true"><i class="fa-solid fa-language"></i></div>
+            <h3 id="first-lang-title">Wybierz język · Choose your language · Sprache wählen</h3>
             <div class="first-lang-buttons">
                 <button type="button" class="lang-btn" data-lang="pl">Polski</button>
                 <button type="button" class="lang-btn" data-lang="en">English</button>
+                <button type="button" class="lang-btn" data-lang="de">Deutsch</button>
             </div>
         </div>
     </div>
@@ -491,7 +519,11 @@
             </div>
         </div>
     </div>
+    <script src="feed.js"></script>
+    <script src="supplies.js"></script>
     <script src="renderer.js"></script>
+    <script src="fields-table.js"></script>
+    <script src="tutorial.js"></script>
 </body>
 
 </html>

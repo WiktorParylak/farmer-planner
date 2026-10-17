@@ -59,12 +59,29 @@ ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
 
-// Update popup -> release page in the browser. Only this repo's releases.
-ipcMain.handle('open-release-page', (event, url) => {
-  if (typeof url === 'string' && url.startsWith('https://github.com/WiktorParylak/farmer-planner/releases/')) {
-    return shell.openExternal(url);
-  }
-  return null;
+// Update popup -> the version's entry on the website's Versions page, in the
+// app's language. The address is built here from the version alone, so the
+// renderer can't open anything else.
+const VERSIONS_PAGES = {
+  en: 'https://farmerplanner.pl/versions/',
+  pl: 'https://farmerplanner.pl/pl/wersje/',
+  de: 'https://farmerplanner.pl/de/versionen/'
+};
+ipcMain.handle('open-release-page', (event, version, lang) => {
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) return null;
+  const page = VERSIONS_PAGES[lang] || VERSIONS_PAGES.en;
+  return shell.openExternal(page + '#v' + version.replace(/\./g, '-'));
+});
+
+// Settings -> Help: fixed addresses only, picked by name.
+const HELP_PAGES = {
+  issues: { en: 'https://github.com/WiktorParylak/farmer-planner/issues/new' },
+  contact: { en: 'https://farmerplanner.pl/contact/', pl: 'https://farmerplanner.pl/pl/kontakt/', de: 'https://farmerplanner.pl/de/kontakt/' }
+};
+ipcMain.handle('open-help-page', (event, target, lang) => {
+  const pages = HELP_PAGES[target];
+  if (!pages) return null;
+  return shell.openExternal(pages[lang] || pages.en);
 });
 
 // Where we remember the window's last size/position/maximized state.
@@ -151,7 +168,24 @@ function createWindow() {
   // Native save/open dialogs — used for exporting/importing farm backups.
   ipcMain.handle('show-save-dialog', (event, options) => dialog.showSaveDialog(win, options));
   ipcMain.handle('show-open-dialog', (event, options) => dialog.showOpenDialog(win, options));
+
+  // The renderer's recent warnings/errors (uncaught ones included) for the
+  // diagnostic file. Kept here so DevTools still shows where each came from.
+  win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    if (level < 2) return;
+    consoleLog.push({
+      time: new Date().toISOString(),
+      level: level === 2 ? 'warn' : 'error',
+      text: String(message).slice(0, 4000),
+      source: sourceId ? path.basename(sourceId) + ':' + line : ''
+    });
+    if (consoleLog.length > CONSOLE_LOG_LIMIT) consoleLog.splice(0, consoleLog.length - CONSOLE_LOG_LIMIT);
+  });
 }
+
+const CONSOLE_LOG_LIMIT = 200;
+const consoleLog = [];
+ipcMain.handle('get-console-log', () => consoleLog.slice());
 
 // --- Discord Rich Presence bridge ---
 // The renderer knows what the user is doing (which farm, how many fields); it

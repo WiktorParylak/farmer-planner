@@ -82,6 +82,8 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 
 **Season plan**
 - Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan. Click a column header to sort.
+- Your own field names (*Behind the barn*), kept across seasons, and a search box (**Ctrl+F**) that filters the fields by number, name or crop — handy on big farms.
+- Combined fields add up their hectares: typing `10-11-12` fills in the area from the fields' known sizes or the save.
 - Catch crops (green rye, oilseed radish…) on the same field, before or after the main crop.
 - Seasons with history — step back to previous seasons and compare.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
@@ -100,14 +102,15 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed.
 - **Supplies** — how much seed and fertilizer to buy for the season.
 - **Field soil type** — field soils used by the fertilization plans.
-- **Notes** — pinned to months, with tags and a checklist.
+- **Notes** — pinned to months and fields, with tags and a checklist that starts over every in-game year.
 - **Predicted yields**.
 - **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd, plus a **mixer wagon** calculator: load it from the bales on your farm and check the mix against the game's TMR recipe. Feed mixer productions (pig food, TMR, mineral feed) are detected with their stock, recipes and monthly output.
 
 **Other**
-- English and Polish.
+- English, Polish and German.
 - Interactive tutorial (app settings → "Open tutorial").
 - Farm backups (export / import).
+- A diagnostic file for bug reports (app settings → Help) — the farm and the savegame's small files in one `.json`, with your Windows user folder hidden.
 - Discord Rich Presence — shows your current farm on your profile (off until you allow it).
 
 </details>
@@ -132,7 +135,8 @@ npm run build
 ```
 src/
   main/        Electron main process (window, dialogs, Discord Rich Presence)
-  renderer/    UI: index.html, renderer.js, style.css, savegame & mod readers
+  renderer/    UI: index.html, renderer.js (app shell), fields-table.js, feed.js, supplies.js,
+               tutorial.js, translations*.js, style.css, savegame & mod readers
 data/          Bundled base-game data (default crops, animals, nitrogen by soil)
 Assets/        Logo and app icon
 tools/         Dev scripts that regenerate the files in data/ from game files

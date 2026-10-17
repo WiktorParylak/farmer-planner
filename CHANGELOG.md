@@ -2,6 +2,33 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.9.12 — 2026-10-17
+
+**New**
+- **German (Deutsch)**: the whole app — interface, tutorial, month, crop, animal and product names, soil types — is now also in German; pick *Deutsch* in Settings or when the app starts for the first time. Crop and mixer names from mods are shown in German when the mod has German texts, and the update window and *Contact form* open the website's German pages.
+- **Field names**: give a field your own name (*Behind the barn*) in the field window. It belongs to the field number, so it stays in every season and on every crop row of that field, follows the number when you change it in Edit, and is shown under the number in the plan and in *Field soil type*.
+- **Search in the season plan**: a search box next to the season title filters the fields by number, name or crop (main or catch crop, in the app's language), ignoring case and Polish/German letters (*laka* finds *Łąka*). It shows *2 of 13*, the planted-area total still counts every field, and **Ctrl+F** jumps to it; Esc clears it. Hidden while editing the season.
+- **Combined fields add up their hectares**: in Edit, typing or extending a field number (`10-11-12`, or a new row's number) fills in its area as the sum of those fields — from the farm's saved field sizes and rows, otherwise from the save's real field areas (Precision Farming) — with *Sum of fields 10 + 11 + 12* under it. An area you typed yourself and rows shared by several crops are left alone; a field with no known area shows *Area of field 11 unknown — type it in* instead of a guess.
+- **Notes pinned to fields**: a note can be tied to one or more fields (*Fields (optional)* in the note editor). The list shows them as chips (*Field 1 · Behind the barn*) — click one, or use the new *All fields* filter, to see only that field's notes — and the field window has a *Notes* section with the notes for that field.
+- **What's new after an update**: the first time a new version starts, a window lists what changed since the version you had before (from the changelog, in English, as on the website), with *See it on the website*. *Settings → Updates → What's new* opens it again.
+- **Diagnostic file for bug reports**: *Settings → Help → Save diagnostic file* writes one `.json` with the app, Electron and Windows versions, the app's settings, the chosen farm's data (as in a backup), the savegame's small XML files (career, farms, fields, farmlands, Precision Farming, buildings, leases) and the app's recent warnings and errors — enough to reproduce a problem without asking for the whole save. Your Windows user folder is written as `%USERPROFILE%`; nothing is sent, you attach the file yourself. *Report on GitHub* and *Contact form* open the issue page and the website's contact form.
+
+**Fixed**
+- **Weeds marked as done came back as *to spray***: weeds set by hand (the chip or the work planner) were overwritten with the save's state every time the farm was opened or synced, so a field still showing live weeds in the save — the game hadn't saved since spraying, or its per-field value lagged behind — went back to *to spray*. Your choice now stays until the game saves a different weed state for that field (sprayed, or regrown), and is cleared with the season.
+- **Notes didn't know the current month without a savegame**: *This month* and the highlighted notes now follow the month in the header, also on farms that aren't synced with the game.
+
+**Changed**
+- **Note checklists start over every year**: notes repeat every in-game year, so a ticked checklist item now counts as done only in the year it was ticked — next year the list is clear again. Items ticked before this version count as done in the current year.
+- **Deleting a farm without a delete mode**: the *Delete farm* button and its mode are gone — every farm on the list has its own bin next to *Export*. The dialog names the farm, says what goes with it and has *Export a backup first*, which saves the backup and asks again (*Backup saved: …*). The tutorial step follows.
+- **Manual import folded away**: in farm *Settings → Advanced*, the crops and animal-definition folders are now under a folded *Advanced: manual import* (open only when the farm already uses one) — the map's crops and the animals are read from the save without them. The animals hint no longer sends you to the game's install folder: the base game's `animals.xml` is packed in the game's archives and isn't needed.
+- **App settings in a file**: language, Discord, update check, tutorial progress and the table sorting are now kept in `Documents\Farmer Planner\settings.json`, next to the farms, instead of the app's browser storage — so they're in your backups and come along when you copy the folder to another computer. They're moved over automatically on the first start.
+- **One dialog for questions and messages**: deleting a note, a custom feed or a farm, backup export/import results, import summaries and errors now use the app's own dialog (title, icon, red button for deleting) instead of the plain Windows boxes. The farm delete dialog names the farm. Two older dialog windows were merged into it.
+- **Update window opens farmerplanner.pl**: *Open the download page* now goes to the new version on the website's Versions page (in the app's language), with what changed and the installer, instead of the GitHub release.
+- **README** follows the layout and texts of the new website, [farmerplanner.pl](https://farmerplanner.pl), and lists this version's features (German, field names and search, notes on fields, the diagnostic file).
+- **Code**: all texts (interface, tutorial, month / crop / animal / product names) moved from `renderer.js` into `src/renderer/translations.js`, and the tutorial into `src/renderer/tutorial.js`.
+- **Code**: one function each for the animals' average health (it was computed in five places), for reading the archived seasons (balance and herd trends) and for an animal group's daily water/straw — no change in what the panels show.
+- **Code**: the feed planner (rations, feed mixers, mixer wagon, stock and demand) moved from `renderer.js` into `src/renderer/feed.js`, and Supplies (the panel, the per-field fertilization plan and the seed / nitrogen / lime rate model) into `src/renderer/supplies.js`, and the season plan table (field window, work planner, Edit mode) into `src/renderer/fields-table.js`. `renderer.js` is down from 13 200 to about 5 700 lines.
+
 ## 0.9.11 — 2026-10-16
 
 **New**
