@@ -177,10 +177,10 @@ function isDiscordRpcEnabled() {
 // public, so it is never switched on without a yes.
 async function askDiscordOnce() {
     if (localStorage.getItem(CONFIG_KEY_DISCORD_RPC) !== null) return;
-    const yes = await showSmallConfirm({
+    const yes = await showConfirm({
         title: t('discordAskTitle'),
-        text: t('discordAskText'),
-        ok: t('discordAskYes'),
+        body: t('discordAskText'),
+        confirmText: t('discordAskYes'),
         icon: 'fa-display'
     });
     localStorage.setItem(CONFIG_KEY_DISCORD_RPC, yes === true ? '1' : '0');
@@ -289,9 +289,6 @@ const cancelAddBtn = document.getElementById('cancel-btn');
 const newFarmInput = document.getElementById('new-farm-name');
 const newFarmMapInput = document.getElementById('new-farm-map');
 
-const deleteModal = document.getElementById('confirm-delete-modal');
-const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 const deleteToggle = document.getElementById('delete-mode-toggle');
 
 const resetSeasonsBtn = document.getElementById('reset-seasons-btn');
@@ -629,7 +626,7 @@ async function askAboutMonthlyHistory(farm, gameData, last) {
     if (monthlyHistoryPrompting) return;
     monthlyHistoryPrompting = true;
     try {
-        const startNew = await showSeasonModal({
+        const startNew = await showDialog({
             title: t('historyNewCareerTitle'),
             body: t('historyNewCareerBody'),
             confirmText: t('historyStartNew'),
@@ -3830,8 +3827,9 @@ function wireFeedPlanPanel(bodyEl) {
         feedEditorDraft = JSON.parse(JSON.stringify(f));
         rerenderFeedPlan();
     }));
-    bodyEl.querySelectorAll('.feed-custom-delete').forEach(el => el.addEventListener('click', () => {
-        if (!confirm(t('feedCustomDeleteConfirm'))) return;
+    bodyEl.querySelectorAll('.feed-custom-delete').forEach(el => el.addEventListener('click', async () => {
+        const sure = await showConfirm({ title: t('feedCustomDeleteTitle'), body: t('feedCustomDeleteConfirm'), confirmText: t('delete'), danger: true });
+        if (sure !== true) return;
         update(p => {
             p.customFeeds = p.customFeeds.filter(f => f.id !== el.dataset.id);
             forgetRation(p, 'custom:' + el.dataset.id);
@@ -4474,8 +4472,9 @@ function renderNotesPanel(titleEl, bodyEl, modalEl) {
     wireNotesPanel(bodyEl, notes, currentMonth);
 }
 
-window.deleteNote = function (noteId) {
-    if (!confirm(t('notesDeleteConfirm'))) return;
+window.deleteNote = async function (noteId) {
+    const sure = await showConfirm({ title: t('notesDeleteTitle'), body: t('notesDeleteConfirm'), confirmText: t('delete'), danger: true });
+    if (sure !== true) return;
     const farm = getCurrentFarm();
     if (!farm) return;
     saveNotes(farm, loadNotes(farm).filter(n => n.id !== noteId));
@@ -4667,7 +4666,7 @@ if (noteEditSaveBtn) {
 
         const titleInput = document.getElementById('note-edit-title');
         const title = (titleInput ? titleInput.value : '').trim();
-        if (!title) { alert(t('notesNoTitle')); return; }
+        if (!title) { showNotice(t('notesTitleLabel'), t('notesNoTitle'), true); return; }
 
         const bodyInput = document.getElementById('note-edit-body');
         const body = (bodyInput ? bodyInput.value : '').trim();
@@ -4718,7 +4717,6 @@ if (noteEditSaveBtn) {
 // SECTION 3: GLOBAL VARIABLES
 // =============================================================
 let currentFarmId = null;
-let farmIdToDelete = null;
 let deleteMode = false;
 let isEditMode = false;
 let viewedSeason = 1;
@@ -5491,7 +5489,7 @@ function saveFarmData(farmData, { touch = true } = {}) {
         const st = fs.statSync(filePath);
         FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
     }
-    catch (err) { console.error('saveFarmData failed', err); alert(t('saveDataError')); }
+    catch (err) { console.error('saveFarmData failed', err); showNotice(t('noticeErrorTitle'), t('saveDataError'), true); }
 }
 
 // Absolute path to a farm's own data folder (named after its id).
@@ -7476,55 +7474,6 @@ window.openWorkModal = function (idx) {
     });
 })();
 
-// Small in-app confirm dialog -> Promise<boolean>. Esc / click outside
-// cancels, Enter confirms. Optional: `extra` = label of a third button on the
-// left (resolves 'extra'); `noCancel` hides Cancel (an info box with one OK).
-function showSmallConfirm({ title, text, ok, icon, danger, extra, noCancel }) {
-    const modal = document.getElementById('small-confirm-modal');
-    if (!modal) return Promise.resolve(confirm(text));
-    document.getElementById('small-confirm-title').textContent = title;
-    document.getElementById('small-confirm-text').textContent = text;
-    document.getElementById('small-confirm-icon').className = 'fa-solid ' + (icon || 'fa-circle-question');
-    const okBtn = document.getElementById('small-confirm-ok');
-    const cancelBtn = document.getElementById('small-confirm-cancel');
-    const extraBtn = document.getElementById('small-confirm-extra');
-    okBtn.textContent = ok || t('confirm');
-    okBtn.classList.toggle('danger-btn', !!danger);
-    cancelBtn.textContent = t('cancel');
-    cancelBtn.style.display = noCancel ? 'none' : '';
-    if (extraBtn) {
-        extraBtn.hidden = !extra;
-        extraBtn.style.display = extra ? '' : 'none';
-        extraBtn.textContent = extra || '';
-    }
-    modal.style.display = 'flex';
-    okBtn.focus();
-    return new Promise(resolve => {
-        const done = (value) => {
-            modal.style.display = 'none';
-            okBtn.removeEventListener('click', onOk);
-            cancelBtn.removeEventListener('click', onCancel);
-            if (extraBtn) extraBtn.removeEventListener('click', onExtra);
-            modal.removeEventListener('click', onBackdrop);
-            document.removeEventListener('keydown', onKey, true);
-            resolve(value);
-        };
-        const onOk = () => done(true);
-        const onCancel = () => done(false);
-        const onExtra = () => done('extra');
-        const onBackdrop = (e) => { if (e.target === modal) done(false); };
-        const onKey = (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
-            else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(true); }
-        };
-        okBtn.addEventListener('click', onOk);
-        cancelBtn.addEventListener('click', onCancel);
-        if (extraBtn) extraBtn.addEventListener('click', onExtra);
-        modal.addEventListener('click', onBackdrop);
-        document.addEventListener('keydown', onKey, true);
-    });
-}
-
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
 // cycles rolling (none / to roll / rolled) straight away; the lime chip asks first in a small
@@ -7568,19 +7517,18 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
             // pH is fine: the chip is a gauge — show what it means and when
             // lime is due again. Taking a liming back is a separate, deliberate step.
             const canRemove = field.limeAppliedSeason != null || field.limePh != null;
-            const choice = await showSmallConfirm({
+            const choice = await showDialog({
                 title: t('limeConfirmTitle').replace('{field}', label),
-                text: limeInfoText(field, idx, farm),
-                ok: t('limeInfoOk'),
+                body: limeInfoText(field, idx, farm),
+                confirmText: t('limeInfoOk'),
                 icon: 'fa-flask',
-                noCancel: true,
-                extra: canRemove ? t('limeInfoRemove') : ''
+                extraText: canRemove ? t('limeInfoRemove') : ''
             });
             if (choice !== 'extra') return;
-            const sure = await showSmallConfirm({
+            const sure = await showConfirm({
                 title: t('limeConfirmTitle').replace('{field}', label),
-                text: t('limeConfirmOff').replace('{pct}', pct),
-                ok: t('limeConfirmOffBtn'),
+                body: t('limeConfirmOff').replace('{pct}', pct),
+                confirmText: t('limeConfirmOffBtn'),
                 icon: 'fa-rotate-left',
                 danger: true
             });
@@ -7589,12 +7537,12 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
             // Limed in the app this season but the pH still reads low (e.g. the
             // game's pH before the next sync): offer to take it back.
             const limedNow = field.limeAppliedSeason === (farm.currentSeason || 1);
-            const ok = await showSmallConfirm({
+            const ok = await showConfirm({
                 title: t('limeConfirmTitle').replace('{field}', label),
-                text: t(limedNow ? 'limeConfirmAgainLimedNow' : (status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain')).replace('{pct}', pct),
-                ok: t('limeConfirmOnBtn'),
+                body: t(limedNow ? 'limeConfirmAgainLimedNow' : (status === 'off' ? 'limeConfirmOn' : 'limeConfirmAgain')).replace('{pct}', pct),
+                confirmText: t('limeConfirmOnBtn'),
                 icon: 'fa-flask',
-                extra: limedNow ? t('limeUndo') : ''
+                extraText: limedNow ? t('limeUndo') : ''
             });
             if (ok === 'extra') {
                 undoLiming(field, farm.currentSeason || 1);
@@ -8445,7 +8393,7 @@ async function restoreFieldsBackup() {
     try { data = JSON.parse(fs.readFileSync(select.value, 'utf-8')); } catch (e) { return; }
     const settingsModalEl = document.getElementById('settings-modal');
     if (settingsModalEl) settingsModalEl.style.display = 'none';
-    const ok = await showSeasonModal({
+    const ok = await showDialog({
         title: t('restoreFieldsTitle'),
         body: t('restoreFieldsBody').replace('{when}', select.options[select.selectedIndex].text),
         confirmText: t('restoreFieldsConfirm'),
@@ -8476,7 +8424,7 @@ async function loadFieldsFromGame() {
     if (!farm || isEditMode) return;
     useSaveFarm(farm);
     const save = readSaveFields(farm);
-    if (!save.ok) { await showSeasonNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
+    if (!save.ok) { await showNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
 
     const byId = {};
     save.fields.forEach(f => { byId[f.id] = f; });
@@ -8529,7 +8477,7 @@ async function loadFieldsFromGame() {
     renderSeasonView();
     const msg = t('loadFieldsDone').replace('{a}', added).replace('{h}', areas).replace('{s}', sown)
         + (keptManual ? ' ' + t('loadFieldsKeptManual').replace('{n}', keptManual) : '');
-    await showSeasonNotice(t('loadFieldsTitle'), msg);
+    await showNotice(t('loadFieldsTitle'), msg);
 }
 
 const loadFieldsBtn = document.getElementById('load-fields-btn');
@@ -8760,7 +8708,7 @@ async function discardEditsIfConfirmed() {
     const farm = getCurrentFarm();
     const dirty = farm && editSnapshot !== null && editTableSnapshot(farm) !== editSnapshot;
     if (dirty) {
-        const ok = await showSeasonModal({
+        const ok = await showDialog({
             title: t('discardEditsTitle'),
             body: t('discardEditsBody'),
             confirmText: t('discardEditsConfirm'),
@@ -8794,7 +8742,7 @@ if (editSeasonBtn) {
             if (missingNumber.length) {
                 missingNumber.forEach(el => el.classList.add('is-invalid'));
                 missingNumber[0].focus();
-                showSeasonNotice(t('missingFieldNumberTitle'), t('missingFieldNumberBody'), true);
+                showNotice(t('missingFieldNumberTitle'), t('missingFieldNumberBody'), true);
                 return;
             }
 
@@ -8927,44 +8875,52 @@ document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
 // =============================================================
 // SECTION 8: NEW SEASON LOGIC
 // =============================================================
-// Season confirm / result dialog (#season-modal). Resolves true on the main
-// button, false on Cancel, a click on the backdrop or Escape. Without
-// cancelText it's a one-button notice.
-function showSeasonModal({ title, body, confirmText, cancelText = null, danger = false, icon = 'fa-seedling' }) {
-    const modal = document.getElementById('season-modal');
+// The app's one dialog (#app-dialog) for every confirm and message.
+// Resolves true on the main button, 'extra' on the optional third button
+// (left, e.g. "Undo liming"), false on Cancel, a click on the backdrop or
+// Escape. Without cancelText it's a one-button notice.
+function showDialog({ title, body, confirmText, cancelText = null, extraText = null, danger = false, icon = 'fa-seedling' }) {
+    const modal = document.getElementById('app-dialog');
     if (!modal) return Promise.resolve(window.confirm(body));
-    const content = modal.querySelector('.season-modal-content');
-    const iconEl = document.getElementById('season-modal-icon');
-    const confirmBtn = document.getElementById('season-modal-confirm');
-    const cancelBtn = document.getElementById('season-modal-cancel');
+    const content = modal.querySelector('.app-dialog-content');
+    const iconEl = document.getElementById('app-dialog-icon');
+    const confirmBtn = document.getElementById('app-dialog-confirm');
+    const cancelBtn = document.getElementById('app-dialog-cancel');
+    const extraBtn = document.getElementById('app-dialog-extra');
 
-    document.getElementById('season-modal-title').textContent = title;
-    document.getElementById('season-modal-body').textContent = body;
+    document.getElementById('app-dialog-title').textContent = title;
+    document.getElementById('app-dialog-body').textContent = body || '';
     iconEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
     iconEl.classList.toggle('is-danger', danger);
     content.classList.toggle('is-danger', danger);
-    confirmBtn.textContent = confirmText;
+    content.classList.toggle('has-extra', !!extraText);
+    confirmBtn.textContent = confirmText || t('seasonModalOk');
     confirmBtn.classList.toggle('danger-btn', danger);
     cancelBtn.textContent = cancelText || '';
     cancelBtn.style.display = cancelText ? '' : 'none';
+    extraBtn.textContent = extraText || '';
+    extraBtn.hidden = !extraText;
 
     return new Promise(resolve => {
         const finish = result => {
             modal.style.display = 'none';
             confirmBtn.removeEventListener('click', onConfirm);
             cancelBtn.removeEventListener('click', onCancel);
+            extraBtn.removeEventListener('click', onExtra);
             modal.removeEventListener('mousedown', onBackdrop);
             document.removeEventListener('keydown', onKey, true);
             resolve(result);
         };
         const onConfirm = () => finish(true);
         const onCancel = () => finish(false);
+        const onExtra = () => finish('extra');
         const onBackdrop = e => { if (e.target === modal) finish(false); };
         const onKey = e => {
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
         };
         confirmBtn.addEventListener('click', onConfirm);
         cancelBtn.addEventListener('click', onCancel);
+        extraBtn.addEventListener('click', onExtra);
         modal.addEventListener('mousedown', onBackdrop);
         document.addEventListener('keydown', onKey, true);
         modal.style.display = 'flex';
@@ -8972,8 +8928,19 @@ function showSeasonModal({ title, body, confirmText, cancelText = null, danger =
     });
 }
 
-function showSeasonNotice(title, body, isError = false) {
-    return showSeasonModal({
+// Yes/no question -> Promise<boolean | 'extra'>. danger = red button (deleting).
+function showConfirm({ title, body, confirmText, cancelText, extraText = null, danger = false, icon }) {
+    return showDialog({
+        title, body, extraText, danger,
+        confirmText: confirmText || t('confirm'),
+        cancelText: cancelText || t('cancel'),
+        icon: icon || (danger ? 'fa-trash-can' : 'fa-circle-question')
+    });
+}
+
+// One-button message; isError = red, with a warning icon.
+function showNotice(title, body, isError = false) {
+    return showDialog({
         title, body,
         confirmText: t('seasonModalOk'),
         danger: isError,
@@ -9011,7 +8978,7 @@ async function runNewSeason({ intro = '' } = {}) {
         if (!startFarm) return;
         const seasonNow = parseInt(startFarm.currentSeason) || 1;
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
-        const confirmNew = await showSeasonModal({
+        const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
             body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')),
             confirmText: fill(t('newSeasonConfirm')),
@@ -9123,10 +9090,10 @@ async function runNewSeason({ intro = '' } = {}) {
             renderSeasonView();
 
             const done = s => s.replace(/\{c\}/g, currentSeasonNum).replace(/\{n\}/g, farm.currentSeason);
-            await showSeasonNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
+            await showNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
         } catch (err) {
             console.error(err);
-            await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
+            await showNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
         }
     }
 }
@@ -9165,7 +9132,7 @@ async function undoLastNewSeason() {
     const settingsModalEl = document.getElementById('settings-modal');
     if (settingsModalEl) settingsModalEl.style.display = 'none';
     const fill = s => s.replace(/{n}/g, undo.season + 1).replace(/{c}/g, undo.season);
-    const ok = await showSeasonModal({
+    const ok = await showDialog({
         title: fill(t('undoNewSeasonTitle')),
         body: fill(t('undoNewSeasonBody')),
         confirmText: fill(t('undoNewSeasonConfirm')),
@@ -9189,10 +9156,10 @@ async function undoLastNewSeason() {
         viewedSeason = farm.currentSeason;
         if (seasonNumberEl) seasonNumberEl.innerText = `${t('season')} ${farm.currentSeason}`;
         renderSeasonView();
-        await showSeasonNotice(fill(t('undoNewSeasonDoneTitle')), fill(t('undoNewSeasonDone')));
+        await showNotice(fill(t('undoNewSeasonDoneTitle')), fill(t('undoNewSeasonDone')));
     } catch (err) {
         console.error('Undo new season failed', err);
-        await showSeasonNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
+        await showNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
     }
 }
 
@@ -9225,7 +9192,7 @@ if (resetSeasonsBtn) {
         if (settingsModalEl) settingsModalEl.style.display = 'none';
         if (!(await discardEditsIfConfirmed())) return;
 
-        const confirmReset = await showSeasonModal({
+        const confirmReset = await showDialog({
             title: t('resetSeasonsTitle'),
             body: t('resetSeasonsBody'),
             confirmText: t('resetSeasonsConfirm'),
@@ -9247,7 +9214,7 @@ if (resetSeasonsBtn) {
                 fs.rmSync(seasonsDirPath, { recursive: true, force: true });
             } catch (err) {
                 console.error("Could not delete the season archive:", err);
-                await showSeasonNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
+                await showNotice(t('seasonModalErrorTitle'), t('resetSeasonsError'), true);
                 return;
             }
         }
@@ -9259,7 +9226,7 @@ if (resetSeasonsBtn) {
         setEditModeUi(false);
         renderSeasonView();
 
-        await showSeasonNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));
+        await showNotice(t('resetSeasonsDoneTitle'), t('resetSeasonsDone'));
     });
 }
 
@@ -9655,9 +9622,9 @@ if (saveSettingsBtn) {
             }
 
             if (summaryParts.length > 0) {
-                alert(t('importSummary').replace('{parts}', summaryParts.join('; ')).replace('{n}', xmlCount));
+                showNotice(t('noticeImportTitle'), t('importSummary').replace('{parts}', summaryParts.join('; ')).replace('{n}', xmlCount));
             } else {
-                alert(t('importNothingFound').replace('{n}', xmlCount));
+                showNotice(t('noticeImportTitle'), t('importNothingFound').replace('{n}', xmlCount), true);
             }
             pendingCropFiles = null;
             pendingAnimalDefFiles = null;
@@ -9918,9 +9885,9 @@ window.exportFarmBackup = async function (farmId) {
 
     try {
         fs.writeFileSync(result.filePath, JSON.stringify(bundle, null, 2), 'utf-8');
-        alert(t('exportSuccess'));
+        showNotice(t('noticeBackupTitle'), t('exportSuccess'));
     } catch (err) {
-        alert(t('exportError'));
+        showNotice(t('noticeBackupTitle'), t('exportError'), true);
     }
 };
 
@@ -9972,10 +9939,10 @@ async function saveDiagnosticsFile() {
     if (modal) modal.style.display = 'none';
     try {
         fs.writeFileSync(result.filePath, JSON.stringify(report, null, 2), 'utf-8');
-        showSeasonNotice(t('diagTitle'), t('diagSaved'));
+        showNotice(t('diagTitle'), t('diagSaved'));
     } catch (err) {
         console.error('Could not save the diagnostic file', err);
-        showSeasonNotice(t('diagTitle'), t('diagError'), true);
+        showNotice(t('diagTitle'), t('diagError'), true);
     }
 }
 
@@ -10004,12 +9971,12 @@ window.importFarmBackup = async function () {
     try {
         bundle = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf-8'));
     } catch (err) {
-        alert(t('importErrorRead'));
+        showNotice(t('noticeBackupTitle'), t('importErrorRead'), true);
         return;
     }
 
     if (!bundle || bundle.exportFormat !== 'farmer-planner-backup' || !bundle.farm) {
-        alert(t('importErrorFormat'));
+        showNotice(t('noticeBackupTitle'), t('importErrorFormat'), true);
         return;
     }
 
@@ -10058,7 +10025,7 @@ window.importFarmBackup = async function () {
     fs.writeFileSync(path.join(newFolderPath, 'data.json'), JSON.stringify(restoredFarm, null, 2), 'utf-8');
 
     renderFarmList(getAllFarms());
-    alert(t('importSuccess'));
+    showNotice(t('noticeBackupTitle'), t('importSuccess'));
 };
 
 if (importBackupBtn) importBackupBtn.addEventListener('click', () => { window.importFarmBackup(); });
@@ -10172,56 +10139,43 @@ if (deleteToggle) {
     });
 }
 
-window.prepareDelete = function (id) {
-    farmIdToDelete = id;
+window.prepareDelete = async function (id) {
+    // String() guards against an old/edited data.json where "id" ended up
+    // as a number instead of a string — strict === would silently never
+    // match and the farm would just stay in the list with no error.
+    const farmToKill = getAllFarms().find(f => String(f.id) === String(id));
+    const sure = await showConfirm({
+        title: t('deleteFarmAsk').replace('{name}', farmToKill ? (farmToKill.name || '') : ''),
+        body: t('deleteFarmConfirm'),
+        confirmText: t('delete'),
+        danger: true
+    });
+    if (sure !== true) return;
 
-    const modal = document.getElementById('confirm-delete-modal') || document.querySelector('.confirm-delete-modal') || document.getElementById('farm-delete-modal');
-
-    if (modal) {
-        modal.style.display = 'flex';
+    let error = null;
+    if (!farmToKill) {
+        console.error('Delete failed: no farm found with id', id);
+        error = 'deleteErrorNotFound';
+    } else if (!farmToKill.folderName) {
+        console.error('Delete failed: farm has no folderName', farmToKill);
+        error = 'deleteErrorNoFolder';
     } else {
-        console.error('prepareDelete: #confirm-delete-modal is missing from index.html');
-    }
-};
-
-if (confirmDeleteBtn) {
-    confirmDeleteBtn.addEventListener('click', () => {
-        if (!farmIdToDelete) return;
-
-        const farms = getAllFarms();
-        // String() guards against an old/edited data.json where "id" ended up
-        // as a number instead of a string — strict === would silently never
-        // match and the farm would just stay in the list with no error.
-        const farmToKill = farms.find(f => String(f.id) === String(farmIdToDelete));
-
-        if (!farmToKill) {
-            console.error('Delete failed: no farm found with id', farmIdToDelete);
-            alert(t('deleteErrorNotFound'));
-        } else if (!farmToKill.folderName) {
-            console.error('Delete failed: farm has no folderName', farmToKill);
-            alert(t('deleteErrorNoFolder'));
+        const folderPath = path.join(appDataDir, farmToKill.folderName);
+        if (!fs.existsSync(folderPath)) {
+            console.error('Delete failed: folder does not exist on disk', folderPath);
+            error = 'deleteErrorMissingOnDisk';
         } else {
-            const folderPath = path.join(appDataDir, farmToKill.folderName);
-            if (!fs.existsSync(folderPath)) {
-                console.error('Delete failed: folder does not exist on disk', folderPath);
-                alert(t('deleteErrorMissingOnDisk'));
-            } else {
-                try {
-                    fs.rmSync(folderPath, { recursive: true, force: true });
-                } catch (err) {
-                    console.error('Delete failed:', err);
-                    alert(t('deleteErrorLocked'));
-                }
+            try {
+                fs.rmSync(folderPath, { recursive: true, force: true });
+            } catch (err) {
+                console.error('Delete failed:', err);
+                error = 'deleteErrorLocked';
             }
         }
-
-        if (deleteModal) deleteModal.style.display = 'none';
-        renderFarmList(getAllFarms());
-        farmIdToDelete = null;
-    });
-}
-
-if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => { if (deleteModal) deleteModal.style.display = 'none'; farmIdToDelete = null; });
+    }
+    renderFarmList(getAllFarms());
+    if (error) showNotice(t('noticeErrorTitle'), t(error), true);
+};
 
 // =============================================================
 // UPDATE CHECK
@@ -10262,18 +10216,18 @@ async function checkForUpdates({ manual = false } = {}) {
         });
     } catch (err) {
         console.warn('Update check failed', err);
-        if (manual) await showSeasonNotice(t('updateErrorTitle'), t('updateError'), true);
+        if (manual) await showNotice(t('updateErrorTitle'), t('updateError'), true);
         return;
     }
 
     const latest = newest ? newest.tag_name.replace(/^v/i, '') : null;
     if (!latest || compareVersions(latest, APP_VERSION) <= 0) {
-        if (manual) await showSeasonNotice(t('updateNoneTitle'), t('updateNone').replace('{v}', APP_VERSION));
+        if (manual) await showNotice(t('updateNoneTitle'), t('updateNone').replace('{v}', APP_VERSION));
         return;
     }
 
     const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
-    const download = await showSeasonModal({
+    const download = await showDialog({
         title: fill(t('updateAvailableTitle')),
         body: fill(t('updateAvailableBody')),
         confirmText: t('updateDownload'),

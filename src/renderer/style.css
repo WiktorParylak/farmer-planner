@@ -967,16 +967,16 @@ body {
   color: var(--color-ink);
 }
 
-/* New season / reset seasons modal */
-#season-modal-body {
+/* App dialog (showDialog): confirms and messages */
+#app-dialog-body {
   white-space: pre-line;
 }
 
-.season-modal-content {
+.app-dialog-content {
   max-width: 420px;
 }
 
-.season-modal-icon {
+.app-dialog-icon {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -989,18 +989,39 @@ body {
   margin-bottom: -6px;
 }
 
-.season-modal-icon.is-danger {
+.app-dialog-icon.is-danger {
   background: rgba(166, 69, 43, 0.12);
   color: var(--color-rust);
 }
 
-.season-modal-content.is-danger h3 {
+.app-dialog-content.is-danger h3 {
   color: var(--color-rust);
 }
 
-.season-modal-content p {
+.app-dialog-content p {
   white-space: pre-line;
   margin: 0;
+}
+
+/* Room for a third button (e.g. "Undo liming") on the same row. */
+.app-dialog-content.has-extra {
+  max-width: 480px;
+}
+
+.app-dialog-content .modal-buttons {
+  flex-wrap: wrap;
+}
+
+/* Optional third action, kept apart on the left. */
+.modal-buttons .app-dialog-extra {
+  margin-right: auto;
+  background-color: transparent;
+  color: var(--color-rust);
+  border: 1px solid var(--color-rust);
+}
+
+.modal-buttons .app-dialog-extra:hover {
+  background-color: rgba(166, 69, 43, 0.08);
 }
 
 /* Danger Button (Delete Confirmation) */
@@ -6017,67 +6038,6 @@ button.treatment-chip--lime.is-warning {
   accent-color: var(--color-primary);
 }
 
-/* Small confirm dialog (e.g. liming a field from the table). */
-.small-confirm-modal .modal-content.small-confirm {
-  max-width: 340px;
-  padding: 24px 26px 22px;
-  gap: 10px;
-}
-
-/* Room for a third button (e.g. "Undo liming") on the same row. */
-.small-confirm-modal .modal-content.small-confirm:has(.small-confirm-extra:not([hidden])) {
-  max-width: 460px;
-}
-
-.small-confirm-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  font-size: var(--fs-2xl);
-}
-
-.small-confirm h3 {
-  font-size: var(--fs-3xl);
-}
-
-.small-confirm p {
-  margin: 0 0 6px;
-  font-size: var(--fs-md);
-}
-
-.small-confirm .modal-buttons {
-  flex-wrap: wrap;
-}
-
-.small-confirm .modal-buttons button {
-  min-width: 96px;
-  padding: 9px 18px;
-}
-
-.small-confirm .modal-buttons .small-confirm-cancel {
-  background-color: transparent;
-  color: var(--color-ink-soft);
-  border-color: var(--color-border-strong);
-}
-
-/* Optional third action (e.g. "Remove liming…"), kept apart on the left. */
-.small-confirm .modal-buttons .small-confirm-extra {
-  margin-right: auto;
-  background-color: transparent;
-  color: var(--color-rust);
-  border-color: var(--color-rust);
-}
-
-.small-confirm .modal-buttons .small-confirm-cancel:hover {
-  background-color: var(--color-surface-alt);
-  color: var(--color-ink);
-}
-
 /* Table chips you can click (lime, rolling). */
 button.table-chip-toggle {
   cursor: pointer;
@@ -7010,4 +6970,8 @@ button.field-open:hover .field-number-chip {
   padding-left: 20px;
   font-size: var(--fs-base);
   line-height: 1.5;
+}
+
+.modal-buttons .app-dialog-extra[hidden] {
+  display: none;
 }
