@@ -99,7 +99,25 @@ namespace FarmerPlannerSetup
                 "Version {0} ist bereits installiert — ihre Dateien werden neu installiert. Deine Höfe und Einstellungen bleiben erhalten." } },
             { "reinstall", new[] { "Reinstall", "Zainstaluj ponownie", "Neu installieren" } },
             { "folder", new[] { "INSTALL FOLDER", "FOLDER INSTALACJI", "INSTALLATIONSORDNER" } },
-            { "change", new[] { "Change", "Zmień", "Ändern" } },
+            { "browse", new[] { "Browse…", "Przeglądaj…", "Durchsuchen…" } },
+            { "folderTarget", new[] {
+                "Farmer Planner goes into a folder of its own: {0}",
+                "Farmer Planner trafi do własnego folderu: {0}",
+                "Farmer Planner kommt in einen eigenen Ordner: {0}" } },
+            { "folderUpdate", new[] {
+                "An update goes into the folder of the installed version.",
+                "Aktualizacja trafia do folderu zainstalowanej wersji.",
+                "Ein Update kommt in den Ordner der installierten Version." } },
+            { "errDirEmpty", new[] { "Type a folder, e.g. D:\\Games.", "Wpisz folder, np. D:\\Gry.", "Gib einen Ordner ein, z. B. D:\\Spiele." } },
+            { "errDirRelative", new[] {
+                "Type the full path with the drive, e.g. D:\\Games.",
+                "Wpisz pełną ścieżkę z dyskiem, np. D:\\Gry.",
+                "Gib den vollständigen Pfad mit Laufwerk ein, z. B. D:\\Spiele." } },
+            { "errDirChars", new[] {
+                "A folder name can't contain * ? \" < > | or a colon.",
+                "Nazwa folderu nie może zawierać * ? \" < > | ani dwukropka.",
+                "Ein Ordnername darf * ? \" < > | und keinen Doppelpunkt enthalten." } },
+            { "errDirDrive", new[] { "There is no drive {0} on this computer.", "Na tym komputerze nie ma dysku {0}", "Auf diesem Computer gibt es kein Laufwerk {0}" } },
             { "pickFolder", new[] { "Where should Farmer Planner be installed?", "Gdzie zainstalować Farmer Planner?", "Wohin soll Farmer Planner installiert werden?" } },
             { "shortcut", new[] { "Desktop shortcut", "Skrót na pulpicie", "Verknüpfung auf dem Desktop" } },
             { "runAfter", new[] { "Start Farmer Planner when it's done", "Uruchom Farmer Planner po instalacji", "Farmer Planner danach starten" } },
@@ -271,6 +289,25 @@ namespace FarmerPlannerSetup
             if (dir.Length == 2 && dir[1] == ':') dir += "\\";
             return string.Equals(Path.GetFileName(dir), "Farmer Planner", StringComparison.OrdinalIgnoreCase)
                 ? dir : Path.Combine(dir, "Farmer Planner");
+        }
+
+        // A typed install folder: null and the normalized folder when it can be
+        // used, otherwise the message for the user.
+        public static string CheckDir(string text, out string dir)
+        {
+            dir = null;
+            string s = (text ?? "").Trim().Trim('"').Replace('/', '\\');
+            if (s.Length == 0) return Texts.T("errDirEmpty");
+            if (s.Length == 2 && s[1] == ':') s += "\\";
+            bool drive = Regex.IsMatch(s, @"^[A-Za-z]:\\");
+            if (!drive && !s.StartsWith(@"\\")) return Texts.T("errDirRelative");
+            if (s.IndexOfAny("*?\"<>|".ToCharArray()) >= 0 || s.IndexOfAny(Path.GetInvalidPathChars()) >= 0
+                || s.IndexOf(':', 2) >= 0) return Texts.T("errDirChars");
+            try { s = Path.GetFullPath(s); }
+            catch { return Texts.T("errDirChars"); }
+            if (drive && !Directory.Exists(s.Substring(0, 3))) return Texts.T("errDirDrive", s.Substring(0, 2).ToUpperInvariant());
+            dir = Normalize(s);
+            return null;
         }
 
         public static bool CanWrite(string dir)
@@ -684,9 +721,17 @@ namespace FarmerPlannerSetup
             Text("WelcomeTitle", Texts.T(!update ? "welcomeTitle" : same ? "reinstallTitle" : "updateTitle"));
             Text("WelcomeText", !update ? Texts.T("welcomeText") : same ? Texts.T("reinstallText", version) : Texts.T("updateText", existing.Version, version));
             Text("FolderLabel", Texts.T("folder"));
-            Text("FolderPath", installDir);
-            Content("ChangeFolderBtn", Texts.T("change"));
+            Text("ChangeFolderText", Texts.T("browse"));
+            TextBox folderBox = El<TextBox>("FolderPath");
+            folderBox.Text = installDir;
+            folderBox.IsReadOnly = update;
             El<Button>("ChangeFolderBtn").Visibility = update ? Visibility.Collapsed : Visibility.Visible;
+            if (update) Text("FolderHint", Texts.T("folderUpdate"));
+            else
+            {
+                folderBox.TextChanged += (s, e) => CheckFolder();
+                CheckFolder();
+            }
             Content("ShortcutBox", Texts.T("shortcut"));
             Content("RunBox", Texts.T("runAfter"));
             El<CheckBox>("ShortcutBox").IsChecked = !update || File.Exists(Sys.DesktopShortcut);
@@ -696,12 +741,18 @@ namespace FarmerPlannerSetup
 
             Click("ChangeFolderBtn", (s, e) =>
             {
-                string picked = FolderPicker.Pick(win, Texts.T("pickFolder"), installDir);
+                string start = CheckFolder() ? installDir : Sys.DefaultDir;
+                string picked = FolderPicker.Pick(win, Texts.T("pickFolder"), Directory.Exists(start) ? start : Path.GetDirectoryName(start));
                 if (picked == null) return;
-                installDir = Sys.Normalize(picked);
-                Text("FolderPath", installDir);
+                folderBox.Text = Sys.Normalize(picked);
+                folderBox.CaretIndex = folderBox.Text.Length;
             });
-            Click("InstallBtn", (s, e) => StartInstall());
+            Click("InstallBtn", (s, e) =>
+            {
+                if (update || CheckFolder()) { StartInstall(); return; }
+                folderBox.Focus();
+                folderBox.SelectAll();
+            });
             Click("RetryBtn", (s, e) => Show("PanelWelcome"));
             Click("LaunchBtn", (s, e) =>
             {
@@ -719,6 +770,24 @@ namespace FarmerPlannerSetup
                 El<CheckBox>("RunBox").IsChecked = Sys.Arg(args, "--run") != "0";
                 win.Loaded += (s, e) => StartInstall();
             }
+        }
+
+        // Reads the typed folder into installDir; under the box shows where the
+        // app will really go (its own "Farmer Planner" subfolder) or what's wrong.
+        bool CheckFolder()
+        {
+            TextBox box = El<TextBox>("FolderPath");
+            string dir;
+            string error = Sys.CheckDir(box.Text, out dir);
+            TextBlock hint = El<TextBlock>("FolderHint");
+            box.Tag = error != null ? "error" : null;
+            hint.Foreground = (Brush)win.FindResource(error != null ? "Rust" : "InkFaint");
+            box.ToolTip = string.IsNullOrWhiteSpace(box.Text) ? null : box.Text;
+            if (error != null) { hint.Text = error; return false; }
+            installDir = dir;
+            string typed = box.Text.Trim().Trim('"').TrimEnd('\\', '/');
+            hint.Text = string.Equals(typed, dir.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) ? "" : Texts.T("folderTarget", dir);
+            return true;
         }
 
         void StartInstall()

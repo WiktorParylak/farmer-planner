@@ -5,7 +5,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 ## 0.9.13 — unreleased
 
 **New**
-- **Farmer Planner's own installer**: the Windows setup wizard is replaced by a window in the app's style (logo, fonts and colours of the start screen) in English, Polish or German — the app's language, otherwise Windows'. One screen with the install folder (*Change* to pick another), *Desktop shortcut* and *Start Farmer Planner when it's done*, then a progress bar and *Done*. Over an installed version it says *Update from 0.9.11 to 0.9.13* (or *Reinstall*) and keeps the folder; if the app is open it offers to close it first. Errors show what went wrong with *Save log*.
+- **Farmer Planner's own installer**: the Windows setup wizard is replaced by a window in the app's style (logo, fonts and colours of the start screen) in English, Polish or German — the app's language, otherwise Windows'. One screen with the install folder — type a path or *Browse…*; under the box it shows where the app will go (*D:\Games\Farmer Planner*) or what's wrong with the path (no such drive, a character a folder name can't have) — *Desktop shortcut* and *Start Farmer Planner when it's done*, then a progress bar and *Done*. Over an installed version it says *Update from 0.9.11 to 0.9.13* (or *Reinstall*) and keeps the folder; if the app is open it offers to close it first. Errors show what went wrong with *Save log*.
 - **Own uninstaller**: *Uninstall* in Windows' *Apps* opens the same kind of window, with *Also delete my farms and settings* — off by default, so `Documents\Farmer Planner` stays for a later install. It removes the app folder and the desktop shortcut.
 
 **Fixed**

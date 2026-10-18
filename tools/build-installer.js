@@ -42,13 +42,19 @@ function get(url, asText) {
     });
 }
 
-// Our window is a .NET assembly (imports _CorExeMain); NSIS installers aren't.
+// Our window is a .NET assembly, NSIS installers aren't: a .NET exe has a CLR
+// header (PE data directory 14). Not a text search — the window embeds the
+// whole payload, so its import table lies ~100 MB into the file.
 function isDotNetExe(file) {
     const fd = fs.openSync(file, 'r');
-    const head = Buffer.alloc(64 * 1024);
+    const head = Buffer.alloc(4096);
     fs.readSync(fd, head, 0, head.length, 0);
     fs.closeSync(fd);
-    return head.includes('_CorExeMain');
+    const pe = head.readUInt32LE(0x3C);
+    if (head.toString('latin1', pe, pe + 4) !== 'PE\0\0') return false;
+    const opt = pe + 24;
+    const dirs = opt + (head.readUInt16LE(opt) === 0x20B ? 112 : 96);
+    return head.readUInt32LE(dirs + 14 * 8) !== 0;
 }
 
 function dirSize(dir) {
@@ -141,6 +147,7 @@ function csc(out, extraArgs) {
         const unpacked = path.join(DIST, 'win-unpacked');
         if (fs.existsSync(unpacked)) appSize = dirSize(unpacked);
     }
+    if (isDotNetExe(payload)) throw new Error(`${payload} is already a Farmer Planner window, not an NSIS installer — run npm run build again.`);
     console.log(`Wrapping ${path.relative(ROOT, payload)} (${version})`);
 
     fs.mkdirSync(CACHE, { recursive: true });
