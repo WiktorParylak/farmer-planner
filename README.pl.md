@@ -54,7 +54,7 @@ Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z T
 
 ## Pierwsze kroki
 
-1. Pobierz instalator z zakładki [Releases](https://github.com/WiktorParylak/farmer-planner/releases) i uruchom go. Nic więcej nie trzeba instalować.
+1. Pobierz instalator z zakładki [Releases](https://github.com/WiktorParylak/farmer-planner/releases), uruchom go i kliknij Zainstaluj. Możesz wybrać folder i skrót na pulpicie; nic więcej nie trzeba instalować.
 2. Kliknij **Dodaj farmę** i wpisz nazwę farmy i mapy.
 3. Otwórz farmę, wejdź w **Ustawienia** i wskaż plik `careerSavegame.xml` swojego zapisu, np.
    `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.

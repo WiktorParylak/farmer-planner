@@ -54,7 +54,7 @@ Works with AnimalFoodCalculator and EnhancedAnimalSystem, and shows breed pictur
 
 ## Getting started
 
-1. Download the installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases) and run it. Nothing else needs to be installed.
+1. Download the installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases) , run it and click Install. You can pick the folder and a desktop shortcut; nothing else needs to be installed.
 2. Click **Add farm** and enter the farm and map name.
 3. Open the farm, go to **Settings** and point it to your savegame's `careerSavegame.xml`, e.g.
    `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.
