@@ -4195,6 +4195,61 @@ select:focus-visible,
   }
 }
 
+/* 1280 px and narrower (Full HD at 150 %, 1366×768 laptops at 125 %): the
+   sidebar keeps only its icons — the name is the button's tooltip — so the
+   season table gets the width back. */
+@media (max-width: 1280px) {
+  .planner-sidebar {
+    width: auto;
+    padding: 10px 6px;
+  }
+
+  .sidebar-item {
+    justify-content: center;
+    padding: 6px;
+  }
+
+  .sidebar-item-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .sidebar-item-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* …and in a low window (800×600) the icon column fits without scrolling. */
+@media (max-width: 1280px) and (max-height: 760px) {
+  .planner-sidebar {
+    gap: 8px;
+    padding: 8px 5px;
+  }
+
+  .sidebar-nav,
+  .sidebar-footer {
+    gap: 2px;
+  }
+
+  .sidebar-footer {
+    padding-top: 6px;
+  }
+
+  .sidebar-item {
+    padding: 4px;
+  }
+
+  .sidebar-item-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* Narrow window: table and crop list stacked and scrolled together — from the
    top (centred, the overflow used to spill up under the header). */
 @media (max-width: 1180px) {
