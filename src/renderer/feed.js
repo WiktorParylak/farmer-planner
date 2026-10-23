@@ -96,10 +96,6 @@ function feedDaysPerPeriod(farm) {
     const d = parseInt(farm && farm.daysPerPeriod);
     return d > 0 ? d : 1;
 }
-// Calendar days in an in-game year — for "how many days does this last".
-function feedDaysPerYear(farm) {
-    return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
-}
 function afcActive(farm) {
     return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !disabledModsOf(farm).has('afc'));
 }
@@ -112,10 +108,6 @@ function feedConsumptionScale(farm) {
     const afc = ANIMAL_MODS.afc;
     if (!afc.enabled) return 1;
     return (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier;
-}
-// Multiplier from a monthly curve value to a year's worth.
-function feedYearFactor(farm) {
-    return FEED_PERIODS_PER_YEAR * feedConsumptionScale(farm);
 }
 function clusterFoodFactor(farm, type, cluster) {
     return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
@@ -358,6 +350,58 @@ function clusterDailyNeed(c, needType) {
     return getDailyAnimalNeed(c.subType, c.age, needType) * c.numAnimals;
 }
 
+// The cluster month by month over the coming in-game year (m = 0 is today),
+// the way AnimalFoodCalculator projects it (afcGetProjectedClusterState):
+// one month older each month; an inseminated animal old enough to breed
+// gains 100 / durationMonth and calves at 100 % (months since birth back to
+// 0), otherwise months since birth + 1. Deaths, sales and the calves
+// themselves aren't projected.
+function projectedClusterMonths(c) {
+    const def = getReproductionDef(c.subType);
+    const minAge = def && def.supported !== false ? (parseFloat(def.minAgeMonth) || 0) : null;
+    const delta = def && parseFloat(def.durationMonth) > 0 ? 100 / parseFloat(def.durationMonth) : 0;
+    const canBreed = age => minAge !== null && age >= minAge;
+    const s = {
+        age: parseFloat(c.age) || 0,
+        monthsSinceLastBirth: parseInt(c.monthsSinceLastBirth, 10) || 0,
+        reproduction: parseFloat(c.reproduction) || 0,
+        hadABirth: !!c.hadABirth,
+        isInseminated: !!c.isInseminated
+    };
+    const months = [];
+    for (let m = 0; m < FEED_PERIODS_PER_YEAR; m++) {
+        if (m > 0) {
+            s.age++;
+            let calved = false;
+            if (canBreed(s.age) && s.isInseminated && delta > 0) {
+                s.reproduction += delta;
+                if (s.reproduction >= 100) {
+                    s.reproduction = 0;
+                    s.monthsSinceLastBirth = 0;
+                    s.hadABirth = true;
+                    s.isInseminated = false;
+                    calved = true;
+                }
+            }
+            if (!calved) s.monthsSinceLastBirth++;
+        }
+        // EAS's food factor only counts once the animal may breed (AFC: canReproduce).
+        months.push({ ...s, hadABirth: s.hadABirth && (minAge === null || canBreed(s.age)) });
+    }
+    return months;
+}
+
+// A cluster's litres over the coming in-game year (before AFC's scale),
+// summed over its projected months — so calves growing up and cows calving
+// count, as in AnimalFoodCalculator's yearly figure. Food includes the EAS
+// lactation factor of each month.
+function clusterYearNeed(farm, type, c, needType) {
+    return projectedClusterMonths(c).reduce((sum, s) => {
+        const perHead = getDailyAnimalNeed(c.subType, s.age, needType);
+        return sum + perHead * (needType === 'food' ? clusterFoodFactor(farm, type, s) : 1);
+    }, 0) * c.numAnimals;
+}
+
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
@@ -373,15 +417,15 @@ function buildFeedDemand(farm, plan) {
     const byCategory = {};
     const bySpecies = {};
     let unknownSubTypes = 0;
-    const yearFactor = feedYearFactor(farm);
+    const scale = feedConsumptionScale(farm);
     ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
-        const food = clusterDailyFood(farm, type, c) * yearFactor;
+        const food = clusterYearNeed(farm, type, c, 'food') * scale;
         s.head += c.numAnimals;
         s.food += food;
-        s.straw += clusterDailyNeed(c, 'straw') * yearFactor;
+        s.straw += clusterYearNeed(farm, type, c, 'straw') * scale;
         // Each barn's own ration splits its food into ingredients.
         const ration = resolveRation(type, plan, b.id);
         if (ration) splitByRecipe(food, ration, byCategory);
@@ -846,26 +890,28 @@ function feedBalanceFor(category, balanceRows) {
 }
 
 // Yearly litres per feed category eaten in one building (ration split + straw
-// bedding), plus head count per species.
+// bedding), plus head count per species. foodNow: this month's food, with
+// today's ages (the yearly figures age the herd month by month).
 function buildBarnFeedNeed(building, plan, farm) {
-    const yearFactor = feedYearFactor(farm);
+    const scale = feedConsumptionScale(farm);
     const byCategory = {};
     const heads = {};
-    let food = 0, bedding = 0;
+    let food = 0, bedding = 0, foodNow = 0;
     (building.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type) return;
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
         const ration = resolveRation(type, plan, building.id);
-        const f = clusterDailyFood(farm, type, c) * yearFactor;
-        const b = clusterDailyNeed(c, 'straw') * yearFactor;
+        const f = clusterYearNeed(farm, type, c, 'food') * scale;
+        const b = clusterYearNeed(farm, type, c, 'straw') * scale;
         food += f;
+        foodNow += clusterDailyFood(farm, type, c) * scale;
         bedding += b;
         if (ration) splitByRecipe(f, ration, byCategory);
         byCategory.STRAW = (byCategory.STRAW || 0) + b;
     });
-    return { byCategory, heads, food, bedding };
+    return { byCategory, heads, food, bedding, foodNow };
 }
 
 function feedIsShort(row) {
@@ -1083,7 +1129,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             html += `<div class="feed-need-summary">
                 <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedFood')}</span><span class="feed-need-value">${num(barnNeed.food)} l</span></div>
                 ${barnNeed.bedding > 0 ? `<div class="feed-need-item"><span class="feed-need-label">${t('feedStrawBedding')}</span><span class="feed-need-value">${num(barnNeed.bedding)} l</span></div>` : ''}
-                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span><span class="feed-need-label">${feedScaleNote(farm)}</span></div>
+                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.foodNow)} l</span><span class="feed-need-label">${feedScaleNote(farm)}</span></div>
             </div>`;
         }
         if (!cats.length) {
@@ -1432,7 +1478,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 ? `<div class="mixer-status mixer-status--bad"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('mixerInvalid').replace('{list}', problems.join(', '))}</div>`
                 : `<div class="mixer-status mixer-status--ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${t('mixerValid')}</div>`;
 
-            const daily = barnNeed.food / feedDaysPerYear(farm);
+            const daily = barnNeed.foodNow / feedDaysPerPeriod(farm);
             if (daily > 0) html += `<p class="mixer-days">${t('mixerLasts').replace('{d}', (totals.total / daily).toFixed(1)).replace('{l}', num(daily))}</p>`;
         }
         html += `</div></div>`;   // .mixer-summary, .mixer-body

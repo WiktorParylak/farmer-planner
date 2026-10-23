@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - The 0.9.12 download on GitHub and farmerplanner.pl already uses the new installer window (the same 0.9.12 app inside); the README's *Getting started* describes it.
 
 **Fixed**
+- **Yearly feed need ages the herd like AnimalFoodCalculator**: the feed planner counted a whole year at today's ages, so calves and heifers that grow into full rations during the year were left out (a herd of 20 Holsteins with young stock needed 69,449 l in AnimalFoodCalculator but 57,921 l in the planner). The yearly food and straw now go month by month: every animal a month older each month, inseminated cows calving when their pregnancy is due, and the EAS lactation factor of that month — the same projection as AnimalFoodCalculator, so both show the same figure. *Per in-game month* and *lasts N days* stay at today's herd.
 - **Installing outside the default folder**: the app now always goes into its own *Farmer Planner* subfolder of the folder you pick (the old wizard installed straight into it, and uninstalling then cleared the whole folder), and a folder that needs administrator rights (like *Program Files*) asks for them instead of failing. The desktop shortcut also works for folders with Polish or German letters in the name.
 
 ## 0.9.12 — 2026-10-17
