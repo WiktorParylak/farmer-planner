@@ -5800,11 +5800,18 @@ window.prepareDelete = async function (id) {
 // UPDATE CHECK
 // =============================================================
 // Asks GitHub Releases (pre-releases included — every version is published as
-// one) whether a newer version exists. Only informs: "Download" opens the
-// release page; the installer is run by the user.
+// one) whether a newer version exists. The installed app can update itself:
+// the main process downloads the release's installer (src/main/updater.js) and
+// starts it with --update; from source, or without that file in the release,
+// the dialog opens the website's download page instead.
 const APP_VERSION = ipcRenderer.sendSync('get-app-version') || '0.0.0';
 const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/releases?per_page=20';
 const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
+// The version an update was started to (cleared on the next start), and one
+// whose update failed — not offered again until checked by hand.
+const CONFIG_KEY_UPDATE_ATTEMPT = 'farmer_planner_update_attempt';
+const CONFIG_KEY_UPDATE_SKIP = 'farmer_planner_update_skip';
+const UPDATE_LOG_PATH = path.join(require('os').tmpdir(), 'Farmer Planner update', 'setup.log');
 
 function isUpdateCheckEnabled() {
     return getSetting(CONFIG_KEY_UPDATE_CHECK) !== '0';
@@ -5845,6 +5852,13 @@ async function checkForUpdates({ manual = false } = {}) {
         return;
     }
 
+    if (!manual && getSetting(CONFIG_KEY_UPDATE_SKIP) === latest) return;
+
+    const asset = releaseInstallerAsset(newest, latest);
+    let canInstall = false;
+    try { canInstall = !!asset && await ipcRenderer.invoke('update-can-install'); } catch (e) { canInstall = false; }
+    if (canInstall) { await runUpdateDialog(latest, asset); return; }
+
     const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
     const download = await showDialog({
         title: fill(t('updateAvailableTitle')),
@@ -5854,6 +5868,148 @@ async function checkForUpdates({ manual = false } = {}) {
         icon: 'fa-circle-arrow-up'
     });
     if (download) ipcRenderer.invoke('open-release-page', latest, currentLang);
+}
+
+// The release's own installer, "Farmer Planner Setup X.Y.Z.exe" (GitHub shows
+// the spaces in asset names as dots).
+function releaseInstallerAsset(release, version) {
+    const norm = s => String(s || '').toLowerCase().replace(/[.\s]+/g, ' ');
+    const want = norm(`Farmer Planner Setup ${version}.exe`);
+    return ((release && release.assets) || []).find(a => norm(a.name) === want && a.browser_download_url) || null;
+}
+
+// Update now · What's new · Later -> download with progress (Cancel) -> the
+// installer starts and the app quits. A failed download leaves everything as
+// it was and points to the website.
+function runUpdateDialog(latest, asset) {
+    const modal = document.getElementById('update-modal');
+    if (!modal) return Promise.resolve();
+    const content = modal.querySelector('.app-dialog-content');
+    const icon = document.getElementById('update-icon');
+    const titleEl = document.getElementById('update-title');
+    const bodyEl = document.getElementById('update-body');
+    const progressEl = document.getElementById('update-progress');
+    const bar = document.getElementById('update-progress-bar');
+    const progressText = document.getElementById('update-progress-text');
+    const webBtn = document.getElementById('update-web');
+    const laterBtn = document.getElementById('update-later');
+    const nowBtn = document.getElementById('update-now');
+    const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
+    const mb = n => (n / 1048576).toFixed(1);
+    let state = 'offer';
+
+    const setState = (next, reason) => {
+        state = next;
+        const failed = next === 'failed';
+        content.classList.toggle('is-danger', failed);
+        icon.classList.toggle('is-danger', failed);
+        icon.innerHTML = `<i class="fa-solid ${failed ? 'fa-triangle-exclamation' : 'fa-circle-arrow-up'}"></i>`;
+        progressEl.hidden = next !== 'downloading' && next !== 'installing';
+        webBtn.hidden = next === 'downloading' || next === 'installing';
+        laterBtn.hidden = next === 'installing';
+        nowBtn.hidden = next !== 'offer';
+        titleEl.textContent = fill(t(failed ? 'updateFailedTitle' : 'updateAvailableTitle'));
+        webBtn.textContent = t(failed ? 'updateFromWebsite' : 'updateWhatsNew');
+        laterBtn.textContent = t(next === 'downloading' ? 'cancel' : failed ? 'close' : 'updateLater');
+        nowBtn.textContent = t('updateNow');
+        if (next === 'offer') bodyEl.textContent = fill(t('updateAvailableBodyInstall'));
+        if (next === 'downloading') {
+            bodyEl.textContent = fill(t('updateDownloading'));
+            bar.style.width = '0%';
+            progressText.textContent = '';
+        }
+        if (next === 'installing') {
+            bodyEl.textContent = fill(t('updateInstalling'));
+            bar.style.width = '100%';
+        }
+        if (failed) {
+            const reasons = t('updateFailReasons') || {};
+            bodyEl.textContent = fill(t('updateFailed')).replace('{reason}', reasons[reason] || reasons.download || reason);
+        }
+    };
+
+    const onProgress = (event, p) => {
+        if (state !== 'downloading' || !p) return;
+        const total = p.total || asset.size || 0;
+        bar.style.width = total ? Math.min(100, 100 * p.received / total).toFixed(1) + '%' : '50%';
+        progressText.textContent = total
+            ? t('updateProgress').replace('{r}', mb(p.received)).replace('{t}', mb(total))
+            : mb(p.received) + ' MB';
+    };
+
+    return new Promise(resolve => {
+        const finish = () => {
+            closeModal(modal);
+            ipcRenderer.removeListener('update-progress', onProgress);
+            webBtn.removeEventListener('click', onWeb);
+            laterBtn.removeEventListener('click', onLater);
+            nowBtn.removeEventListener('click', onNow);
+            modal.removeEventListener('mousedown', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve();
+        };
+        const closable = () => state === 'offer' || state === 'failed';
+        const onWeb = () => ipcRenderer.invoke('open-release-page', latest, currentLang);
+        const onLater = () => {
+            if (state === 'downloading') ipcRenderer.invoke('update-cancel');
+            else if (closable()) finish();
+        };
+        const onNow = async () => {
+            if (state !== 'offer') return;
+            // Unsaved edits would be lost when the app closes for the installer.
+            if (isEditMode) { bodyEl.textContent = t('updateFinishEdit'); return; }
+            setState('downloading');
+            let res;
+            try {
+                res = await ipcRenderer.invoke('update-download', {
+                    version: latest, url: asset.browser_download_url, size: asset.size, digest: asset.digest
+                });
+            } catch (err) {
+                res = { ok: false, reason: 'download', detail: err.message };
+            }
+            if (!res.ok) {
+                if (res.reason === 'cancelled') setState('offer');
+                else { console.warn('Update download failed', res); setState('failed', res.reason); }
+                return;
+            }
+            setState('installing');
+            setSetting(CONFIG_KEY_UPDATE_ATTEMPT, latest);
+            let started;
+            try { started = await ipcRenderer.invoke('update-install', latest, currentLang); }
+            catch (err) { started = { ok: false, reason: 'start' }; }
+            if (!started.ok) {
+                setSetting(CONFIG_KEY_UPDATE_ATTEMPT, '');
+                console.warn('Update installer did not start', started);
+                setState('failed', started.reason);
+            }
+        };
+        const onBackdrop = e => { if (e.target === modal && closable()) finish(); };
+        const onKey = e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (closable()) finish(); }
+        };
+        ipcRenderer.on('update-progress', onProgress);
+        webBtn.addEventListener('click', onWeb);
+        laterBtn.addEventListener('click', onLater);
+        nowBtn.addEventListener('click', onNow);
+        modal.addEventListener('mousedown', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+        setState('offer');
+        openModal(modal);
+        nowBtn.focus();
+    });
+}
+
+// On start after "Update now": still the old version -> the installer didn't
+// finish (it puts the previous version back). Say so once, with the log, and
+// don't offer that version again by itself.
+async function reportUnfinishedUpdate() {
+    const attempted = getSetting(CONFIG_KEY_UPDATE_ATTEMPT);
+    if (!attempted) return;
+    setSetting(CONFIG_KEY_UPDATE_ATTEMPT, '');
+    if (compareVersions(APP_VERSION, attempted) >= 0) { setSetting(CONFIG_KEY_UPDATE_SKIP, ''); return; }
+    setSetting(CONFIG_KEY_UPDATE_SKIP, attempted);
+    await showNotice(t('updateRestoredTitle'), t('updateRestored')
+        .replace('{v}', attempted).replace('{c}', APP_VERSION).replace('{log}', UPDATE_LOG_PATH), true);
 }
 
 const updateCheckToggle = document.getElementById('update-check-toggle');
@@ -6031,6 +6187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFarmList(getAllFarms());
     }
     await askDiscordOnce();
+    await reportUnfinishedUpdate();
     await showWhatsNewAfterUpdate(!languageChosen);
     if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);

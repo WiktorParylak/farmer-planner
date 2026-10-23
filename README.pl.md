@@ -61,6 +61,8 @@ Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z T
 4. Włącz automatyczną synchronizację i kliknij **Zapisz i importuj**.
 5. Planuj pola. Planer nadąża za Tobą, kiedy grasz.
 
+Gdy wyjdzie nowa wersja, aplikacja powie o tym przy starcie i może zaktualizować się sama: **Aktualizuj teraz** pobiera instalator i podmienia wersję, a jeśli coś pójdzie nie tak, przywraca poprzednią. Twoje farmy zostają nietknięte.
+
 Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też obrazki ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
 
 ## Pytania

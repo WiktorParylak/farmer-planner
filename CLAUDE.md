@@ -89,6 +89,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 ```
 src/main/main.js               proces główny: okno, dialogi (IPC show-save/open-dialog), migracja danych
 src/main/discord-presence.js   Discord Rich Presence
+src/main/updater.js            aktualizacja z aplikacji: pobranie instalatora z GitHuba (.part, rozmiar, sha256), start z --update
 src/renderer/index.html        cały UI (jedna strona)
 src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
 src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
@@ -131,6 +132,7 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Folder zawsze `<wybrany>\Farmer Planner`; brak prawa zapisu → restart z UAC (`--elevated`). Argumenty do testów:
   `--lang=en|pl|de`, `--dir=<folder>`. Fonty (Google Fonts, TTF) pobierane raz do `build-cache/` (w `.gitignore`).
 - Teksty okna (EN/PL/DE) są w słowniku `Texts` w `Setup.cs`, nie w `translations.js`.
+- `--update` (start z „Aktualizuj teraz” w aplikacji): bez ekranu folderu, czeka na zamknięcie aplikacji, kopiuje folder do `<folder>.backup` i zapamiętuje wpisy rejestru, po NSIS sprawdza wersję exe (ProductVersion); błąd → przywraca kopię i uruchamia starą wersję. Log zawsze w `%TEMP%\Farmer Planner update\setup.log`. Aplikacja zapisuje `farmer_planner_update_attempt` przed wyjściem; jeśli po starcie wersja jest stara, pokazuje komunikat i ustawia `farmer_planner_update_skip`. Pełny test wymaga dwóch zbudowanych instalatorów i zainstalowanej aplikacji (`npm start` nie instaluje).
 
 ## Dane gry (komputer główny)
 

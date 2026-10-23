@@ -7449,6 +7449,50 @@ button.field-open:hover .field-number-chip {
   display: none;
 }
 
+/* ---- Update dialog (download progress) ---- */
+.update-content {
+  max-width: 520px;
+}
+
+.update-progress {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.update-progress[hidden],
+#update-modal .modal-buttons button[hidden] {
+  display: none;
+}
+
+.update-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+}
+
+.update-progress-bar {
+  width: 0;
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width var(--motion) var(--ease-out);
+}
+
+.update-progress-text {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-soft);
+}
+
+.modal-buttons .update-web-btn {
+  margin-right: auto;
+}
+
 /* ---- What's new (after an update) ---- */
 .whats-new-content {
   max-width: 640px;

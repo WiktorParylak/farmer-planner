@@ -476,6 +476,23 @@
             </div>
         </div>
     </div>
+    <!-- Update available: download the installer inside the app, then it takes over. -->
+    <div id="update-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-body">
+        <div class="modal-content app-dialog-content update-content">
+            <div id="update-icon" class="app-dialog-icon" aria-hidden="true"><i class="fa-solid fa-circle-arrow-up"></i></div>
+            <h3 id="update-title"></h3>
+            <p id="update-body"></p>
+            <div id="update-progress" class="update-progress" hidden>
+                <div class="update-progress-track"><div id="update-progress-bar" class="update-progress-bar"></div></div>
+                <div id="update-progress-text" class="update-progress-text"></div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" id="update-web" class="modal-cancel-btn update-web-btn"></button>
+                <button type="button" id="update-later" class="modal-cancel-btn"></button>
+                <button type="button" id="update-now"></button>
+            </div>
+        </div>
+    </div>
     <!-- First start only: pick the language before anything else (no way to dismiss it). -->
     <div id="first-lang-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="first-lang-title">
         <div class="modal-content app-dialog-content first-lang-content">
