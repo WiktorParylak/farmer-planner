@@ -27,6 +27,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Side tables look the same everywhere**: Supplies, Predicted yields, Field soil type, the feed planner, breed norms and Finance share one table style — labels on the left, numbers right-aligned in even-width digits, one total row style.
 
 - **More room on smaller screens**: at 1280 px wide and below (e.g. Full HD at 150 %, 1366×768 laptops) the sidebar shows only its icons — hover one for its name — so the whole season table fits; in an 800×600 window the icon column fits without scrolling.
+- The tutorial shows the breed norms (Animals) and selecting several fields at once (Edit).
 
 **Fixed**
 - **Yearly feed need ages the herd like AnimalFoodCalculator**: the feed planner counted a whole year at today's ages, so calves and heifers that grow into full rations during the year were left out (a herd of 20 Holsteins with young stock needed 69,449 l in AnimalFoodCalculator but 57,921 l in the planner). The yearly food and straw now go month by month: every animal a month older each month, inseminated cows calving when their pregnancy is due, and the EAS lactation factor of that month — the same projection as AnimalFoodCalculator, so both show the same figure. *Per in-game month* and *lasts N days* stay at today's herd.
