@@ -263,7 +263,8 @@ function renderCutsModal() {
         : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
-    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
+    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']]
+        .filter(([key]) => key !== 'rolled' || cropNeedsRolling(field.crop));
     let html = '';
     cuts.forEach((c, i) => {
         html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
@@ -472,7 +473,8 @@ function renderFieldModal() {
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
-    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
+    const rollingLine = cropNeedsRolling(field.crop) ? ' · ' + t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff') : '';
+    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })}${rollingLine}</p>`);
     html += section(t('fieldViewWork'), work.join(''));
 
     // History of this field number.
@@ -593,7 +595,7 @@ function suggestedWork(field, idx, farm) {
         if (until > 0 && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
-        if (field.rolling) steps.push('roll');
+        if (field.rolling && cropNeedsRolling(field.crop)) steps.push('roll');
     }
     steps.push('fertilize');
     if (!plowed) steps.push('weeds');
@@ -655,7 +657,7 @@ function renderWorkModal() {
             <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
             <button type="button" class="work-remove" data-i="${i}" aria-label="${t('workRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </span></li>`).join('');
-    document.getElementById('work-add-select').innerHTML = WORK_STEPS.map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
+    document.getElementById('work-add-select').innerHTML = WORK_STEPS.filter(s => s !== 'roll' || cropNeedsRolling(field.crop)).map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
 }
 
 // Any change turns the shown list (suggested or own) into the field's own list.
@@ -893,7 +895,9 @@ function tillageCellHtml(field, idx, isPastSeason) {
 
 // Rolling: nothing / to roll (field.rolling) / rolled (field.rollingDone) —
 // same three states and colours as weeds. Cycles on click in the current season.
+// No chip for a crop that isn't rolled (FS25_CropDependentRolling, see cropNeedsRolling).
 function rollingChipHtml(field, idx, isPastSeason) {
+    if (!cropNeedsRolling(field.crop)) return '';
     const state = field.rolling ? (field.rollingDone ? 'done' : 'needed') : '';
     const title = t(state === 'needed' ? 'rollingPlanned' : (state === 'done' ? 'rollingDone' : 'rollingOff'));
     const cls = `treatment-chip treatment-chip--rolling${state ? ' is-' + state : ''}`;

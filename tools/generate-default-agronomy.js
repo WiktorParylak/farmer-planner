@@ -11,6 +11,8 @@
 //   <seeding litersPerSqm>              -> seed
 //   <harvest litersPerSqm>              -> yield
 //   <windrow fillType="straw" litersPerSqm> -> straw
+//   <seeding needsRolling>              -> needsRolling (only when the file sets it;
+//                                          FS25_CropDependentRolling rolls by it)
 
 const fs = require('fs');
 const path = require('path');
@@ -45,6 +47,8 @@ function agronomy(xml) {
     if (perHa(seeding)) out.seed = perHa(seeding);
     if (perHa(harvest)) out.yield = perHa(harvest);
     if (windrow && /straw/i.test(attr(windrow, 'fillType') || '') && perHa(windrow)) out.straw = perHa(windrow);
+    const rolling = attr(seeding, 'needsRolling');
+    if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
     return Object.keys(out).length ? { name: formatCropName(name).replace(/\s+/g, ''), data: out } : null;
 }
 

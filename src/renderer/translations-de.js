@@ -768,6 +768,8 @@ const UI = {
     modDesc_bankCredit: "Bankkredite und Monatsrate",
     modDesc_hirePurchasing: "auf Raten gekaufte Fahrzeuge — die Restschuld zählt als Kredit",
     modDesc_fieldLeasing: "gepachtete Grundstücke auf ihren Feldern markiert, mit Monaten, Mindestlaufzeit und Monatsgebühr",
+    modDesc_cropRolling: "Walzen (Symbol, Arbeitsschritt) nur für Früchte, die es brauchen, mit deinen Änderungen aus dem Menü des Mods",
+    cropRollingLine: "kein Walzen: {list}",
     leaseGameBadge: "Pacht · {n} Mon.",
     leaseGameHint: "Gepachtet mit Field Leasing, {fee} pro Monat.",
     leaseGameMinLeft: "Mindestlaufzeit: noch {n} Monat(e).",

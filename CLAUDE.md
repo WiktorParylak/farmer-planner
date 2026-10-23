@@ -135,6 +135,8 @@ docs/                          screenshoty, propozycje-funkcji.txt
 ## Dane gry (komputer główny)
 
 Ścieżki dotyczą głównego komputera; na drugim mogą być inne albo gry może nie być wcale.
+Na komputerze z OneDrive (Dokumenty przekierowane) katalog gry to `C:\Users\paryl\OneDrive\Dokumenty\My Games\FarmingSimulator2025`,
+a instalacja Steam `C:\Program Files (x86)\Steam\steamapps\common\Farming Simulator 25` (`data\foliage`, `sdk\xmlDoku`; reszta danych gry jest w `dataS.gar`).
 
 - Katalog gry: `C:\Users\paryl\Documents\My Games\FarmingSimulator2025`. Farma Solek = `savegame2`, mod mapy rozpakowany w `mods/FS25_Solek` (config `map/mapUS.xml`).
 - Dawki wysiewu PF: `mapUS.xml <precisionFarming><seedRateMap>` nadpisuje część upraw, reszta w `mods/FS25_precisionFarming.zip/PrecisionFarming.xml`.
@@ -160,6 +162,3 @@ Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farme
 - Commity: krótki tytuł po angielsku w trybie rozkazującym („Show the in-game day next to the month in the header").
 - Nie commituj binariów (instalatorów, zipów, PDF-ów z materiałami do KingMods) — należą do GitHub Releases albo poza repo.
 
-## Odłożone — przypomnij użytkownikowi
-
-- **Wałowanie zależne od uprawy** (punkt 9 z listy do 0.9.10, odłożony 2026-10-16). Przyciski/krok wałowania tylko dla upraw, które go wymagają, jak w modzie `FS25_CropDependentRolling`. Mod nie ma własnej listy: domyślnie czyta z gry atrybut `needsRolling` definicji owocu (fruitType), a zmiany gracza zapisuje w `<savegame>/cropDependentRolling.xml` (`<cropDependentRolling><fruit name="WHEAT" needsRolling="false"/>`, tylko odstępstwa). Plan: czytać `needsRolling` w `tools/generate-default-agronomy.js` i `cropAgronomyFromXml` (wymaga `<FS25>\data\foliage`), nałożyć odstępstwa z zapisu, ręczne wyjątki jak `NO_LIME_CROPS`; nieznana uprawa → wałowanie pokazywane jak dziś.

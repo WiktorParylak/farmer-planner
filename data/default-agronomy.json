@@ -1,20 +1,30 @@
 {
+  "Banana": {
+    "yield": 77000
+  },
   "Barley": {
     "seed": 265,
     "yield": 9600,
-    "straw": 36800
+    "straw": 36800,
+    "needsRolling": true
   },
   "Beetroot": {
     "seed": 40,
-    "yield": 57800
+    "yield": 57800,
+    "needsRolling": false
   },
   "Canola": {
     "seed": 49,
-    "yield": 5800
+    "yield": 5800,
+    "needsRolling": true
   },
   "Carrot": {
     "seed": 10,
-    "yield": 77000
+    "yield": 77000,
+    "needsRolling": false
+  },
+  "Coffeecherries": {
+    "yield": 18400
   },
   "Cotton": {
     "seed": 50,
@@ -29,7 +39,8 @@
   },
   "Greenbean": {
     "seed": 280,
-    "yield": 6975
+    "yield": 6975,
+    "needsRolling": false
   },
   "Maize": {
     "seed": 53,
@@ -42,26 +53,31 @@
   "Oat": {
     "seed": 340,
     "yield": 5700,
-    "straw": 36800
+    "straw": 36800,
+    "needsRolling": true
   },
   "Oilseedradish": {
     "seed": 40,
-    "yield": 9900
+    "yield": 9900,
+    "needsRolling": false
   },
   "Olive": {
     "yield": 18400
   },
   "Onion": {
     "seed": 9,
-    "yield": 35000
+    "yield": 35000,
+    "needsRolling": true
   },
   "Parsnip": {
     "seed": 10,
-    "yield": 69500
+    "yield": 69500,
+    "needsRolling": false
   },
   "Pea": {
     "seed": 250,
-    "yield": 9600
+    "yield": 9600,
+    "needsRolling": false
   },
   "Poplar": {
     "seed": 1500,
@@ -69,15 +85,18 @@
   },
   "Potato": {
     "seed": 3733,
-    "yield": 41300
+    "yield": 41300,
+    "needsRolling": false
   },
   "Rice": {
     "seed": 156,
-    "yield": 6600
+    "yield": 6600,
+    "needsRolling": false
   },
   "Ricelonggrain": {
     "seed": 500,
-    "yield": 9000
+    "yield": 9000,
+    "needsRolling": false
   },
   "Sorghum": {
     "seed": 35,
@@ -85,19 +104,23 @@
   },
   "Soybean": {
     "seed": 214,
-    "yield": 4500
+    "yield": 4500,
+    "needsRolling": true
   },
   "Spinach": {
     "seed": 10,
-    "yield": 23100
+    "yield": 23100,
+    "needsRolling": false
   },
   "Sugarbeet": {
     "seed": 34,
-    "yield": 57800
+    "yield": 57800,
+    "needsRolling": true
   },
   "Sugarcane": {
     "seed": 12000,
-    "yield": 113400
+    "yield": 113400,
+    "needsRolling": false
   },
   "Sunflower": {
     "seed": 143,
@@ -106,6 +129,7 @@
   "Wheat": {
     "seed": 308,
     "yield": 8900,
-    "straw": 36800
+    "straw": 36800,
+    "needsRolling": true
   }
 }

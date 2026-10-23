@@ -2669,6 +2669,9 @@ function cropAgronomyFromDoc(doc) {
     if (seed) out.seed = seed;
     if (yld) out.yield = yld;
     if (straw) out.straw = straw;
+    const seeding = doc.querySelector('seeding');
+    const rolling = seeding ? seeding.getAttribute('needsRolling') : null;
+    if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
     return Object.keys(out).length ? out : null;
 }
 
@@ -2694,6 +2697,45 @@ function buildCropAgronomy(mapCrops) {
 function cropAgronomy(crop, key) {
     const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
     return a && a[key] > 0 ? a[key] : null;
+}
+
+// FS25_CropDependentRolling: only crops whose fruit type has
+// <seeding needsRolling="true"> get rolled (the map's crop files, else the
+// base game's), with the player's changes from <savegame>/cropDependentRolling.xml
+// on top (only crops that differ from that default). A crop the files don't
+// mention, or the mod not in the save, keeps rolling as in the base game.
+let ROLLING_OVERRIDES = {};   // cropOrderKey -> needsRolling
+
+function readRollingOverrides(saveGamePath) {
+    const out = {};
+    try {
+        const file = path.join(path.dirname(saveGamePath), 'cropDependentRolling.xml');
+        if (!fs.existsSync(file)) return out;
+        const xml = fs.readFileSync(file, 'utf-8');
+        const version = parseInt((xml.match(/<cropDependentRolling\b[^>]*\bformatVersion="(\d+)"/) || [])[1], 10) || 0;
+        if (version > 1) return out;   // a newer format than the mod's 1 — the mod ignores it too
+        for (const m of xml.matchAll(/<fruit\b[^>]*>/g)) {
+            const name = (m[0].match(/\sname="([^"]+)"/) || [])[1];
+            const value = (m[0].match(/\sneedsRolling="(true|false)"/) || [])[1];
+            if (name && value) out[cropOrderKey(name)] = value === 'true';
+        }
+    } catch (e) {
+        console.error('Could not read cropDependentRolling.xml', e);
+    }
+    return out;
+}
+
+// Whether the crop needs rolling by the mod's rules (whether the mod is on or not).
+function cropRollingRule(crop) {
+    const k = cropOrderKey(crop || '');
+    if (k in ROLLING_OVERRIDES) return ROLLING_OVERRIDES[k];
+    const a = CROP_AGRONOMY[k];
+    return !(a && a.needsRolling === false);
+}
+
+// Whether the planner offers rolling for the crop (chip, work step, field window).
+function cropNeedsRolling(crop) {
+    return !crop || !modEnabled('cropRolling') || cropRollingRule(crop);
 }
 
 let DEFAULT_CROPS = {};
@@ -3009,6 +3051,7 @@ function loadFarmConfigs(farm) {
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
+    ROLLING_OVERRIDES = farm && farm.saveGamePath ? readRollingOverrides(farm.saveGamePath) : {};
     // Food groups and the TMR recipe: the map's animalFood.xml, else the base game's.
     applyMapAnimalFood(farm && farm.saveGamePath ? readMapAnimalFood(farm.saveGamePath) : null);
     // Same pattern as crops: base FS25 animal needs/production are always
@@ -3123,6 +3166,7 @@ function clearFarmConfigs() {
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
+    ROLLING_OVERRIDES = {};
     applyMapAnimalFood(null);
 }
 
@@ -3536,6 +3580,7 @@ const SUPPORTED_MODS = [
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
+    { id: 'cropRolling', name: 'Crop Dependent Rolling', modNames: ['FS25_CropDependentRolling'] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -4715,6 +4760,10 @@ function renderAnimalModsInfo(farm) {
         if (def.id === 'eas' && mods.eas) {
             const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
             detail += ' · ' + t('easLine').replace('{list}', species);
+        }
+        if (def.id === 'cropRolling' && inSave) {
+            const noRolling = AVAILABLE_CROPS.filter(c => !cropRollingRule(c)).map(translateCropName).join(', ') || '–';
+            detail += ' · ' + t('cropRollingLine').replace('{list}', noRolling);
         }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
             <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>

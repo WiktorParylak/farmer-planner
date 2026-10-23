@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - The 0.9.12 download on GitHub and farmerplanner.pl already uses the new installer window (the same 0.9.12 app inside); the README's *Getting started* describes it.
 - **Edit a mixer wagon**: a pencil on the wagon tile opens the same form filled in — name and capacity of your own wagons, capacity of wagons from the save (their name is the game's).
 - **Your own TMR recipe**: under the TMR ration the shares of hay, silage, straw and mineral feed can be set within the map's recipe limits (*Reset* brings back the default), e.g. a TMR without mineral feed. The yearly need and the mixer's auto load follow them.
+- **Rolling only where the crop needs it (FS25_CropDependentRolling)**: with the mod in the save, crops that aren't rolled (in the base game e.g. maize, potato, beetroot, peas — the crop's own *needsRolling* in its game or map file) get no rolling chip, no *Roll* step in the work list and no rolling line in the field window; your changes in the mod's menu (`cropDependentRolling.xml` in the save) are followed. The mod shows in farm *Settings → Mods* with the crops it leaves unrolled and can be switched off there. Without the mod rolling works as before.
 - **The map's feed rules**: food groups (which feeds an animal eats and how well — e.g. hay 60 % for cows on FS25_KrajowLazniki), the TMR recipe and its limits are now read from the map's own `animalFood.xml`, falling back to the base game's.
 
 **Changed**
