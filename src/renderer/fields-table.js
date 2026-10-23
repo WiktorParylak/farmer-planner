@@ -297,14 +297,14 @@ function updateCutsField(fn) {
 window.openCutsModal = function (idx) {
     cutsFieldIdx = idx;
     renderCutsModal();
-    document.getElementById('cuts-modal').style.display = 'flex';
+    openModal(document.getElementById('cuts-modal'));
 };
 
 (function wireCutsModal() {
     const modal = document.getElementById('cuts-modal');
     const body = document.getElementById('cuts-body');
     if (!modal || !body) return;
-    const close = () => { modal.style.display = 'none'; cutsFieldIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); cutsFieldIdx = null; renderSeasonView(); };
     document.getElementById('cuts-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -502,7 +502,7 @@ window.openFieldModal = function (idx) {
     renderFieldModal();
     const modal = document.getElementById('field-modal');
     if (modal) {
-        modal.style.display = 'flex';
+        openModal(modal);
         const content = modal.querySelector('.modal-content');
         if (content) content.scrollTop = 0;
     }
@@ -512,7 +512,7 @@ window.openFieldModal = function (idx) {
     const modal = document.getElementById('field-modal');
     const body = document.getElementById('field-modal-body');
     if (!modal || !body) return;
-    const close = () => { modal.style.display = 'none'; fieldModalIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); };
     document.getElementById('field-modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -705,14 +705,14 @@ function updateWorkField(fn) {
 window.openWorkModal = function (idx) {
     workFieldIdx = idx;
     renderWorkModal();
-    document.getElementById('work-modal').style.display = 'flex';
+    openModal(document.getElementById('work-modal'));
 };
 
 (function wireWorkModal() {
     const modal = document.getElementById('work-modal');
     const listEl = document.getElementById('work-list');
     if (!modal || !listEl) return;
-    const close = () => { modal.style.display = 'none'; workFieldIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); workFieldIdx = null; renderSeasonView(); };
     document.getElementById('work-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });

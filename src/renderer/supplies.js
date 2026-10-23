@@ -48,7 +48,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     // --- Seeds --- one row per field still to sow.
     html += `<div class="hub-panel-subtitle">${t('suppliesSeeds')}</div>`;
     if (seed.rows.length) {
-        html += `<table class="supply-table"><thead><tr>
+        html += `<table class="data-table supply-table"><thead><tr>
             <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
             <th>${t('suppliesColRate')}</th><th>${t('suppliesColNeed')}</th></tr></thead><tbody>`;
         seed.rows.forEach(r => {
@@ -76,7 +76,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                <span class="supply-sub">${t('suppliesOrgSlurry')} ${fmtL(r.orgVolAbs.slurry)}</span>
                <span class="supply-sub">${t('suppliesOrgDigestate')} ${fmtL(r.orgVolAbs.digestate)}</span>`
             : '–';
-        html += `<table class="supply-table"><thead><tr>
+        html += `<table class="data-table supply-table"><thead><tr>
             <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColSoil')}</th><th>${t('suppliesColArea')}</th>
             <th>${t('suppliesColTargetN')}</th><th>${t('suppliesColExistingN')}</th><th>${t('suppliesColOrgN')}</th><th>${t('suppliesColMineralN')}</th>
             </tr></thead><tbody>`;
@@ -123,7 +123,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     const lime = buildSuppliesLimeRows(farm, rates);
     html += `<div class="hub-panel-subtitle">${t('suppliesLime')}</div>`;
     if (lime.rows.length) {
-        html += `<table class="supply-table"><thead><tr>
+        html += `<table class="data-table supply-table"><thead><tr>
             <th>${t('suppliesColField')}</th><th>${t('suppliesColArea')}</th><th>${t('suppliesLimePh')}</th><th>${t('suppliesLimeBuy')}</th>
             </tr></thead><tbody>`;
         lime.rows.forEach(r => {
@@ -238,7 +238,7 @@ window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, a
 
     renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, parseFloat(area) || 0);
 
-    hubPanelModal.style.display = 'flex';
+    openModal(hubPanelModal);
 };
 
 function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area) {
@@ -375,7 +375,7 @@ function renderSettingsSupplyAdjust(rates, cropList) {
                 <label>${t('suppliesDigestateN')}<input type="number" min="0.0001" step="0.0005" id="supply-digestate-n" value="${rates.digestateN}"></label>
             </div>
             ${cropRows ? `<div class="hub-panel-subtitle">${t('suppliesPerCropRates')}</div>
-            <table class="supply-table supply-rate-table"><thead><tr>
+            <table class="data-table supply-table supply-rate-table"><thead><tr>
                 <th></th><th>${t('suppliesSeeds')}</th><th>${t('suppliesFertilizer')}</th>
             </tr></thead><tbody>${cropRows}</tbody></table>` : ''}
             <button type="button" id="supply-reset-rates" class="supply-reset-btn">${t('suppliesResetRates')}</button>

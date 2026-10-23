@@ -1324,7 +1324,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     if (!supply.rows.length) {
         html += `<p class="hub-panel-note">${t('feedNoFields')}</p>`;
     } else {
-        html += `<table class="supply-table feed-table"><thead><tr>
+        html += `<table class="data-table supply-table feed-table"><thead><tr>
             <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
             <th>${t('feedColUse')}</th><th>${t('feedColStraw')}</th><th>${t('feedColYield')}</th></tr></thead><tbody>`;
         supply.rows.forEach(r => {
@@ -2118,7 +2118,7 @@ function breedNormsResultHtml(farm) {
             ${pic ? `<span class="animal-pic breed-norms-pic"><img src="${escapeHtml(pic)}" alt="" draggable="false"></span>` : ''}
             ${breedNormsCurveHtml(st.subType, st.age)}
         </div>
-        <table class="supply-table breed-norms-table"><thead><tr>
+        <table class="data-table supply-table breed-norms-table"><thead><tr>
             <th></th><th>${t('breedNormsPerHead')}</th><th>${t('breedNormsHerd').replace('{n}', st.count.toLocaleString(FIN_LOCALE()))}</th>
         </tr></thead><tbody>
             ${head(t('breedNormsNeeds'), false)}

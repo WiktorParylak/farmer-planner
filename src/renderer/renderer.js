@@ -319,13 +319,11 @@ if (appSettingsBtn && appSettingsModal) {
         if (devSetting) devSetting.hidden = !IS_DEV_BUILD;
         const devToggle = document.getElementById('dev-farm-toggle');
         if (devToggle) devToggle.checked = devFarmExists();
-        appSettingsModal.style.display = 'flex';
+        openModal(appSettingsModal);
     });
 }
 if (closeAppSettingsBtn && appSettingsModal) {
-    closeAppSettingsBtn.addEventListener('click', () => {
-        appSettingsModal.style.display = 'none';
-    });
+    closeAppSettingsBtn.addEventListener('click', () => closeModal(appSettingsModal));
 }
 langButtons.forEach(btn => {
     btn.addEventListener('click', () => applyLanguage(btn.getAttribute('data-lang')));
@@ -408,8 +406,55 @@ function setActiveSidebarItem(view) {
     });
 }
 
+// Dialogs: style.display stays the open / closed state the rest of the app
+// checks. openModal shows one (its fade-in is CSS: .modal's animation);
+// closeModal plays the fade-out and hides it when that ends (at once with
+// reduced motion), then runs `after`.
+function openModal(el) {
+    if (!el) return;
+    if (el._closeTimer) { clearTimeout(el._closeTimer); el._closeTimer = null; }
+    el.classList.remove('is-closing');
+    el.style.display = 'flex';
+}
+
+function closeModal(el, after) {
+    if (!el) return;
+    if (el.style.display === 'none' || el.classList.contains('is-closing')) {
+        if (after && el.style.display === 'none') after();
+        return;
+    }
+    const finish = () => {
+        if (el._closeTimer) { clearTimeout(el._closeTimer); el._closeTimer = null; }
+        if (!el.classList.contains('is-closing')) return;   // reopened meanwhile
+        el.classList.remove('is-closing');
+        el.style.display = 'none';
+        if (after) after();
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.style.display = 'none';
+        if (after) after();
+        return;
+    }
+    el.classList.add('is-closing');
+    el.addEventListener('animationend', function onEnd(e) {
+        if (e.target !== el) return;
+        el.removeEventListener('animationend', onEnd);
+        finish();
+    });
+    el._closeTimer = setTimeout(finish, 400);   // in case animationend never comes
+}
+
+// Replays the view-in motion on a view that just came up.
+function playViewEnter(el) {
+    if (!el) return;
+    el.classList.remove('view-enter');
+    void el.offsetWidth;
+    el.classList.add('view-enter');
+}
+
 window.showPlannerView = function (view) {
     if (!view || view === 'plan') {
+        if (currentPlannerView !== 'plan') playViewEnter(plannerContentEl);
         setActiveSidebarItem('plan');
         if (hubView) hubView.hidden = true;
         if (plannerContentEl) plannerContentEl.style.display = '';
@@ -419,8 +464,10 @@ window.showPlannerView = function (view) {
         return;
     }
     if (view === 'animals') animalSelectedBuilding = null;   // sidebar always opens the barn overview
+    const changed = view !== currentPlannerView;
     openHubPanel(view);
     if (hubView) hubView.scrollTop = 0;
+    if (changed) playViewEnter(hubView);
 };
 
 document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(el => {
@@ -429,7 +476,7 @@ document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(e
 
 if (closeHubPanelBtn && hubPanelModal) {
     closeHubPanelBtn.addEventListener('click', () => {
-        hubPanelModal.style.display = 'none';
+        closeModal(hubPanelModal);
         // Supplies lists "fill in the plan" per field — refresh it after editing one.
         if (currentPlannerView === 'supplies') openHubPanel('supplies');
     });
@@ -1312,10 +1359,10 @@ function renderFinancePanel(bodyEl, farm) {
     if (monthly.length) {
         const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
             const prev = arr[idx + 1];
-            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td>${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
         }).join('');
         html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
-            <table class="fin-table"><thead><tr><th>${t('finColMonth')}</th><th>${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
             <tbody>${rowsHtml}</tbody></table></details>`;
     }
     bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
@@ -1883,7 +1930,7 @@ function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
         body += `<tr><td>${escapeHtml(r.number)}${name ? `<span class="field-name">${escapeHtml(name)}</span>` : ''}</td>${cells}</tr>`;
     });
 
-    html += `<table class="supply-table supply-soil-table"><thead><tr>
+    html += `<table class="data-table supply-table supply-soil-table"><thead><tr>
             <th>${t('suppliesColField')}</th>${heads}</tr></thead>
             <tbody>${body}</tbody></table>
         <p class="hub-panel-note">${t('suppliesSoilFileNote')}</p>`;
@@ -1993,7 +2040,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    html += `<table class="supply-table"><thead><tr>
+    html += `<table class="data-table supply-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
         </tr></thead><tbody>`;
     data.rows.forEach(r => {
@@ -2512,13 +2559,11 @@ window.openNoteEditModal = function (noteId) {
     renderNoteEditTags();
     renderNoteEditChecklist();
 
-    const modal = document.getElementById('note-edit-modal');
-    if (modal) modal.style.display = 'flex';
+    openModal(document.getElementById('note-edit-modal'));
 };
 
 function closeNoteEditModal() {
-    const modal = document.getElementById('note-edit-modal');
-    if (modal) modal.style.display = 'none';
+    closeModal(document.getElementById('note-edit-modal'));
     noteEditState = null;
     openHubPanel('notes');
 }
@@ -4483,7 +4528,7 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
 
     return new Promise(resolve => {
         const finish = result => {
-            modal.style.display = 'none';
+            closeModal(modal);
             confirmBtn.removeEventListener('click', onConfirm);
             cancelBtn.removeEventListener('click', onCancel);
             extraBtn.removeEventListener('click', onExtra);
@@ -4503,7 +4548,7 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
         extraBtn.addEventListener('click', onExtra);
         modal.addEventListener('mousedown', onBackdrop);
         document.addEventListener('keydown', onKey, true);
-        modal.style.display = 'flex';
+        openModal(modal);
         confirmBtn.focus();
     });
 }
@@ -5021,7 +5066,7 @@ if (settingsBtn) {
         }
 
         if (settingsModal) {
-            settingsModal.style.display = 'flex';
+            openModal(settingsModal);
             const content = settingsModal.querySelector('.modal-content');
             if (content) content.scrollTop = 0;
         }
@@ -5341,11 +5386,11 @@ if (saveSettingsBtn) {
             saveSupplyRates(rates);
         }
 
-        if (settingsModal) settingsModal.style.display = 'none';
+        closeModal(settingsModal);
     });
 }
 
-if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => { if (settingsModal) settingsModal.style.display = 'none'; });
+if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => closeModal(settingsModal));
 
 // =============================================================
 // SECTION 10: DASHBOARD LOGIC (FARM MANAGEMENT)
@@ -5488,7 +5533,7 @@ function openDiagnosticsModal() {
     const preferred = currentFarmId || (farms[0] && farms[0].id) || '';
     select.innerHTML = `<option value="">${escapeHtml(t('diagNoFarm'))}</option>` +
         farms.map(f => `<option value="${escapeHtml(f.id)}"${f.id === preferred ? ' selected' : ''}>${escapeHtml(f.name || f.id)}</option>`).join('');
-    modal.style.display = 'flex';
+    openModal(modal);
 }
 
 async function saveDiagnosticsFile() {
@@ -5526,7 +5571,7 @@ async function saveDiagnosticsFile() {
     const diagBtn = document.getElementById('diagnostics-btn');
     if (diagBtn) diagBtn.addEventListener('click', openDiagnosticsModal);
     const cancelBtn = document.getElementById('diagnostics-cancel-btn');
-    if (cancelBtn) cancelBtn.addEventListener('click', () => { document.getElementById('diagnostics-modal').style.display = 'none'; });
+    if (cancelBtn) cancelBtn.addEventListener('click', () => closeModal(document.getElementById('diagnostics-modal')));
     const saveBtn = document.getElementById('diagnostics-save-btn');
     if (saveBtn) saveBtn.addEventListener('click', saveDiagnosticsFile);
     const githubBtn = document.getElementById('report-github-btn');
@@ -5663,10 +5708,10 @@ if (newFarmSavesBox) newFarmSavesBox.addEventListener('click', e => {
 if (addFarmBtn) addFarmBtn.addEventListener('click', () => {
     newFarmSavePath = '';
     renderNewFarmSaves();
-    if (addFarmModal) addFarmModal.style.display = 'flex';
+    openModal(addFarmModal);
     if (newFarmInput) newFarmInput.focus();
 });
-if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'none'; if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
+if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { closeModal(addFarmModal); if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
 
 if (confirmAddBtn) {
     confirmAddBtn.addEventListener('click', () => {
@@ -5694,7 +5739,7 @@ if (confirmAddBtn) {
             };
             if (newFarmSavePath && fs.existsSync(newFarmSavePath)) newFarm.saveGamePath = newFarmSavePath;
             saveFarmData(newFarm);
-            if (addFarmModal) addFarmModal.style.display = 'none';
+            closeModal(addFarmModal);
             newFarmInput.value = "";
             if (newFarmMapInput) newFarmMapInput.value = "";
             newFarmSavePath = '';
@@ -5906,7 +5951,7 @@ function showWhatsNew(since) {
     const webBtn = document.getElementById('whats-new-web');
     return new Promise(resolve => {
         const finish = () => {
-            modal.style.display = 'none';
+            closeModal(modal);
             okBtn.removeEventListener('click', finish);
             webBtn.removeEventListener('click', onWeb);
             modal.removeEventListener('mousedown', onBackdrop);
@@ -5920,7 +5965,7 @@ function showWhatsNew(since) {
         webBtn.addEventListener('click', onWeb);
         modal.addEventListener('mousedown', onBackdrop);
         document.addEventListener('keydown', onKey, true);
-        modal.style.display = 'flex';
+        openModal(modal);
         okBtn.focus();
     });
 }
