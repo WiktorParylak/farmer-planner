@@ -6724,6 +6724,96 @@ button.table-chip-toggle:hover {
   margin: 0;
 }
 
+/* Breed norms: read-only preview of one breed's needs and output. */
+.breed-norms > summary {
+  margin: 4px 0 0;
+  cursor: pointer;
+}
+.breed-norms[open] > summary { margin-bottom: 8px; }
+.breed-norms-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 14px;
+  margin: 8px 0 12px;
+  max-width: 640px;
+}
+.breed-norms-controls .breed-norms-breed { min-width: 0; }
+.breed-norms-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.breed-norms-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+.breed-norms-pic { width: 72px; height: 72px; }
+.breed-norms-table { flex: 1 1 320px; width: auto; }
+.breed-norms-group th {
+  text-align: left;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+.breed-norms-day {
+  display: block;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-faint);
+}
+.breed-curve-wrap { margin: 0; }
+.breed-curve {
+  display: block;
+  width: 100%;
+  height: 90px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+}
+.breed-curve polyline {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.breed-curve .breed-curve-food { stroke: var(--color-primary); }
+.breed-curve .breed-curve-out { stroke: var(--color-accent); }
+.breed-curve-marker {
+  stroke: var(--color-rust);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.breed-curve-wrap figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-soft);
+}
+.breed-curve-key::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.breed-curve-key.breed-curve-food::before { background: var(--color-primary); }
+.breed-curve-key.breed-curve-out::before { background: var(--color-accent); }
+.breed-curve-axis { margin-left: auto; color: var(--color-ink-faint); }
+.breed-norms-notes {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
 /* Edit mode: row with data but no field number (save refused). */
 .badge--overdue {
   background-color: var(--color-rust);

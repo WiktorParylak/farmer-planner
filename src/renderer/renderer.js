@@ -1452,9 +1452,11 @@ window.openHubPanel = function (type) {
         if (buildings.length === 0) {
             bodyEl.innerHTML = `<div class="fin-view anim-view">
                 <p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>
+                ${breedNormsHtml(farm)}
                 ${animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth)}
             </div>`;
             activateTrendCharts(bodyEl);
+            wireBreedNorms(bodyEl, farm);
         } else {
             // Fallback reference for buildings without a manually-entered
             // capacity: scaled against the fullest total feed load among
@@ -1787,12 +1789,14 @@ window.openHubPanel = function (type) {
                     </div>`;
                 });
                 html += `</div>`; // .barn-tile-grid
+                html += breedNormsHtml(farm);
                 html += animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth);
                 html = `<div class="fin-view anim-view">${html}</div>`;
             }
 
             bodyEl.innerHTML = html;
             wireBarnPanel(bodyEl, farm);
+            wireBreedNorms(bodyEl, farm);
             activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
