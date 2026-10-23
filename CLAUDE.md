@@ -52,7 +52,8 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | Komenda | Co robi |
 |---|---|
 | `npm start` | uruchamia aplikację (`tools/start.js`): z głównego folderu repo odpala worktree z najnowszą gałęzią `dev/vX.Y.Z` z `.claude/worktrees/`, w innym wypadku `electron .` |
-| `npm run build` | buduje instalator NSIS do `dist/` (`Farmer Planner Setup X.Y.Z.exe`) |
+| `npm run build` | electron-builder (NSIS → `dist/payload/`), potem `tools/build-installer.js` → własny instalator `dist/Farmer Planner Setup X.Y.Z.exe` |
+| `node tools/build-installer.js --payload <setup.exe> --version X.Y.Z --out <dir>` | owija wydany już instalator NSIS w nowe okno (podmiana instalatora w starym release'ie) |
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-agronomy.js "<FS25>\data\foliage"` | regeneruje `data/default-agronomy.json` (dawka wysiewu, plon, słoma z gry podstawowej) |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
@@ -65,7 +66,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 - Każda wersja ma swoją gałąź `dev/vX.Y.Z`, odgałęzioną od **poprzedniej gałęzi wersji** (dev/v0.9.9 z dev/v0.9.8), nie od `main`.
 - `main` dostaje wersję przez merge PR z gałęzi `dev/vX.Y.Z` po wydaniu (starsze PR-y mają w nazwie `vX.Y.Z`). Przed planowaniem sprawdź, czy `main` nie jest w tyle — czytaj kod z najnowszej gałęzi `dev/vX.Y.Z`.
 - Na głównym komputerze praca bywa w worktree `.claude/worktrees/v0.9.6` (ma checkout najnowszej gałęzi wersji, nazwa katalogu jest historyczna). Na drugim komputerze tego worktree nie ma — wystarczy zwykły checkout gałęzi.
-- Wydania: GitHub Releases jako **Pre-release**, tag `vX.Y.Z`, tytuł `Farmer Planner X.Y.Z`, załącznik = instalator z `dist/`. Instalatory i zipy **nie trafiają do repo** (`dist/` jest w `.gitignore`).
+- Wydania: GitHub Releases jako **Pre-release**, tag `vX.Y.Z`, tytuł `Farmer Planner X.Y.Z`, załącznik = **tylko** `dist/Farmer Planner Setup X.Y.Z.exe` (własny instalator; nie `dist/payload/`, nie `.blockmap` — strona bierze pierwszy `.exe` z release'u). Instalatory i zipy **nie trafiają do repo** (`dist/` jest w `.gitignore`).
 
 ### Zasady (od użytkownika)
 
@@ -88,6 +89,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 ```
 src/main/main.js               proces główny: okno, dialogi (IPC show-save/open-dialog), migracja danych
 src/main/discord-presence.js   Discord Rich Presence
+src/main/updater.js            aktualizacja z aplikacji: pobranie instalatora z GitHuba (.part, rozmiar, sha256), start z --update
 src/renderer/index.html        cały UI (jedna strona)
 src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
 src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
@@ -106,6 +108,7 @@ src/renderer/tutorial.js       samouczek (drugi <script> po renderer.js)
 src/renderer/settings.js       ustawienia aplikacji (settings.json w folderze danych)
 src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → Pomoc)
 data/                          dane bazowej gry dołączone do aplikacji
+installer/                     własny instalator/deinstalator (Setup.cs + Window.xaml, poza paczką aplikacji)
 tools/                         skrypty deweloperskie (nie są używane w runtime)
 docs/                          screenshoty, propozycje-funkcji.txt
 ```
@@ -117,9 +120,25 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Tłumaczenia: `TRANSLATIONS` (`en` / `pl` / `de`) w `translations.js` + `translations-de.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz we **wszystkich trzech** językach (`APP_LANGUAGES` w `renderer.js`); brakujący klucz DE spada na EN. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
 - Skrypty w `tools/` powielają parsery z `renderer.js` (regex zamiast DOMParser) — zmiana schematu parsowania w jednym miejscu wymaga zmiany w drugim.
 
+## Instalator
+
+- `installer/Setup.cs` (C# 5, WPF) + `installer/Window.xaml` (wczytywany w runtime przez `XamlReader`), kompilowane przez
+  `csc.exe` z .NET Framework 4.8 w Windows (`C:\Windows\Microsoft.NET\Framework64\v4.0.30319`) — bez SDK i bez nowych zależności.
+- Zewnętrzny exe = okno + osadzony instalator NSIS electron-buildera (`oneClick`, per-user), uruchamiany po cichu
+  `/S /currentuser /D=<folder>`. NSIS dalej robi pliki, menu Start, wpis w „Aplikacje” i aktualizację na miejscu.
+- Ten sam `Setup.cs` z `/define:UNINSTALLER` → `Farmer Planner Uninstall.exe` w folderze aplikacji; instalator po każdej
+  instalacji ustawia na niego `UninstallString` w `HKCU\...\Uninstall\38e229cb-...` (`QuietUninstallString` zostaje NSIS-owy,
+  wywołanie z `/S` deinstalator przekazuje do `Uninstall Farmer Planner.exe`).
+- Folder zawsze `<wybrany>\Farmer Planner`; brak prawa zapisu → restart z UAC (`--elevated`). Argumenty do testów:
+  `--lang=en|pl|de`, `--dir=<folder>`. Fonty (Google Fonts, TTF) pobierane raz do `build-cache/` (w `.gitignore`).
+- Teksty okna (EN/PL/DE) są w słowniku `Texts` w `Setup.cs`, nie w `translations.js`.
+- `--update` (start z „Aktualizuj teraz” w aplikacji): bez ekranu folderu, czeka na zamknięcie aplikacji, kopiuje folder do `<folder>.backup` i zapamiętuje wpisy rejestru, po NSIS sprawdza wersję exe (ProductVersion); błąd → przywraca kopię i uruchamia starą wersję. Log zawsze w `%TEMP%\Farmer Planner update\setup.log`. Aplikacja zapisuje `farmer_planner_update_attempt` przed wyjściem; jeśli po starcie wersja jest stara, pokazuje komunikat; okno aktualizacji wraca przy każdym starcie, dopóki nowa wersja nie zostanie zainstalowana. Pełny test wymaga dwóch zbudowanych instalatorów i zainstalowanej aplikacji (`npm start` nie instaluje).
+
 ## Dane gry (komputer główny)
 
 Ścieżki dotyczą głównego komputera; na drugim mogą być inne albo gry może nie być wcale.
+Na komputerze z OneDrive (Dokumenty przekierowane) katalog gry to `C:\Users\paryl\OneDrive\Dokumenty\My Games\FarmingSimulator2025`,
+a instalacja Steam `C:\Program Files (x86)\Steam\steamapps\common\Farming Simulator 25` (`data\foliage`, `sdk\xmlDoku`; reszta danych gry jest w `dataS.gar`).
 
 - Katalog gry: `C:\Users\paryl\Documents\My Games\FarmingSimulator2025`. Farma Solek = `savegame2`, mod mapy rozpakowany w `mods/FS25_Solek` (config `map/mapUS.xml`).
 - Dawki wysiewu PF: `mapUS.xml <precisionFarming><seedRateMap>` nadpisuje część upraw, reszta w `mods/FS25_precisionFarming.zip/PrecisionFarming.xml`.
@@ -145,6 +164,3 @@ Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farme
 - Commity: krótki tytuł po angielsku w trybie rozkazującym („Show the in-game day next to the month in the header").
 - Nie commituj binariów (instalatorów, zipów, PDF-ów z materiałami do KingMods) — należą do GitHub Releases albo poza repo.
 
-## Odłożone — przypomnij użytkownikowi
-
-- **Wałowanie zależne od uprawy** (punkt 9 z listy do 0.9.10, odłożony 2026-10-16). Przyciski/krok wałowania tylko dla upraw, które go wymagają, jak w modzie `FS25_CropDependentRolling`. Mod nie ma własnej listy: domyślnie czyta z gry atrybut `needsRolling` definicji owocu (fruitType), a zmiany gracza zapisuje w `<savegame>/cropDependentRolling.xml` (`<cropDependentRolling><fruit name="WHEAT" needsRolling="false"/>`, tylko odstępstwa). Plan: czytać `needsRolling` w `tools/generate-default-agronomy.js` i `cropAgronomyFromXml` (wymaga `<FS25>\data\foliage`), nałożyć odstępstwa z zapisu, ręczne wyjątki jak `NO_LIME_CROPS`; nieznana uprawa → wałowanie pokazywane jak dziś.

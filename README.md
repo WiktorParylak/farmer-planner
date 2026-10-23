@@ -54,12 +54,14 @@ Works with AnimalFoodCalculator and EnhancedAnimalSystem, and shows breed pictur
 
 ## Getting started
 
-1. Download the installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases) and run it. Nothing else needs to be installed.
+1. Download the installer from [Releases](https://github.com/WiktorParylak/farmer-planner/releases) , run it and click Install. You can pick the folder and a desktop shortcut; nothing else needs to be installed.
 2. Click **Add farm** and enter the farm and map name.
 3. Open the farm, go to **Settings** and point it to your savegame's `careerSavegame.xml`, e.g.
    `Documents\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.
 4. Turn on auto-sync and click **Save & import**.
 5. Plan your fields. The planner keeps up while you play.
+
+When a new version is out, the app tells you on start and can update itself: **Update now** downloads the installer and puts the new version in place, and if anything goes wrong the previous version is put back. Your farms are never touched.
 
 Mods are looked up in the `mods` folder next to your savegame, in the folder set in the game's `gameSettings.xml`, and in your FSG Mod Assistant collections. Breed pictures are loaded automatically from there. Base-game animals (packed inside the game's archives) are shown as icons.
 

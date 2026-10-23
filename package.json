@@ -1,10 +1,10 @@
 {
   "name": "farmer-planner",
-  "version": "0.9.12",
+  "version": "0.9.13",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
-    "build": "electron-builder"
+    "build": "electron-builder && node tools/build-installer.js"
   },
   "build": {
     "appId": "com.farmerplanner.app",
@@ -17,8 +17,11 @@
       "icon": "Assets/Logo.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": false
     },
     "files": [
       "**/*",
@@ -26,7 +29,12 @@
       "!.claude${/*}",
       "!docs${/*}",
       "!tools${/*}",
-      "!CLAUDE.md"
+      "!CLAUDE.md",
+      "!installer${/*}",
+      "!build-cache${/*}",
+      "!promo-*.png",
+      "!**/*.pdf",
+      "!Assets/ikona.png"
     ]
   },
   "devDependencies": {

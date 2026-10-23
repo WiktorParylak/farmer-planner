@@ -263,7 +263,8 @@ function renderCutsModal() {
         : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
-    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
+    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']]
+        .filter(([key]) => key !== 'rolled' || cropNeedsRolling(field.crop));
     let html = '';
     cuts.forEach((c, i) => {
         html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
@@ -296,14 +297,14 @@ function updateCutsField(fn) {
 window.openCutsModal = function (idx) {
     cutsFieldIdx = idx;
     renderCutsModal();
-    document.getElementById('cuts-modal').style.display = 'flex';
+    openModal(document.getElementById('cuts-modal'));
 };
 
 (function wireCutsModal() {
     const modal = document.getElementById('cuts-modal');
     const body = document.getElementById('cuts-body');
     if (!modal || !body) return;
-    const close = () => { modal.style.display = 'none'; cutsFieldIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); cutsFieldIdx = null; renderSeasonView(); };
     document.getElementById('cuts-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -365,6 +366,15 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
 // there in past seasons. Opened from the field number in the table.
 let fieldModalIdx = null;
 
+// FS25_MoistureSystem: today's moisture for the main and catch crop, and the
+// yield factor when one is harvested this month (see fieldMoistureInfo).
+function fieldMoistureLineHtml(field, farm) {
+    return [[field.crop, field.sowingMonth], [field.catchCrop, field.catchSowingMonth]].map(([crop, sow]) => {
+        const m = crop ? fieldMoistureInfo(field, crop, sow, farm) : null;
+        return m ? `<p class="settings-hint field-view-moisture">${t('yieldForecastColMoisture')} · ${escapeHtml(translateCropName(crop))}: ${moistureCellHtml(m.moisture, m.def, m.factor, m.now)}</p>` : '';
+    }).join('');
+}
+
 function renderFieldModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[fieldModalIdx];
@@ -405,7 +415,7 @@ function renderFieldModal() {
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>`);
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}`);
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
@@ -472,7 +482,8 @@ function renderFieldModal() {
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
-    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
+    const rollingLine = cropNeedsRolling(field.crop) ? ' · ' + t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff') : '';
+    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })}${rollingLine}</p>`);
     html += section(t('fieldViewWork'), work.join(''));
 
     // History of this field number.
@@ -491,7 +502,7 @@ window.openFieldModal = function (idx) {
     renderFieldModal();
     const modal = document.getElementById('field-modal');
     if (modal) {
-        modal.style.display = 'flex';
+        openModal(modal);
         const content = modal.querySelector('.modal-content');
         if (content) content.scrollTop = 0;
     }
@@ -501,7 +512,7 @@ window.openFieldModal = function (idx) {
     const modal = document.getElementById('field-modal');
     const body = document.getElementById('field-modal-body');
     if (!modal || !body) return;
-    const close = () => { modal.style.display = 'none'; fieldModalIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); };
     document.getElementById('field-modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -593,7 +604,7 @@ function suggestedWork(field, idx, farm) {
         if (until > 0 && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
-        if (field.rolling) steps.push('roll');
+        if (field.rolling && cropNeedsRolling(field.crop)) steps.push('roll');
     }
     steps.push('fertilize');
     if (!plowed) steps.push('weeds');
@@ -655,21 +666,38 @@ function renderWorkModal() {
             <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
             <button type="button" class="work-remove" data-i="${i}" aria-label="${t('workRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </span></li>`).join('');
-    document.getElementById('work-add-select').innerHTML = WORK_STEPS.map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
+    document.getElementById('work-add-select').innerHTML = WORK_STEPS.filter(s => s !== 'roll' || cropNeedsRolling(field.crop)).map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
 }
 
 // Any change turns the shown list (suggested or own) into the field's own list.
-function updateWorkField(fn) {
-    const allFarms = getAllFarms();
-    const farm = allFarms.find(f => f.id === currentFarmId);
-    const field = farm && (farm.fields || [])[workFieldIdx];
-    if (!field) return;
-    field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, workFieldIdx, farm));
+// One field's list, without saving (the work modal and the bulk bar save after).
+function changeFieldWork(farm, field, idx, fn) {
+    field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     fn(field.work, field, farm);
     syncSowStep(field);
     // Emptied on purpose: keep it empty instead of suggesting again.
     if (field.work.length) delete field.workCleared;
     else field.workCleared = true;
+}
+
+// Ticks a step on or off, with what that step means for the field itself.
+function setWorkStepDone(work, i, done, field, farm) {
+    work[i].done = done;
+    // Sowing done = the field is sown.
+    if (work[i].step === 'sow') field.state = done ? 'Planted' : 'To Plant';
+    if (work[i].step === 'weeds' && done) {
+        field.weeds = 'done';
+        markWeedsManual(farm, field);
+    }
+    if (work[i].step === 'roll') { if (done) field.rolling = true; field.rollingDone = done; }
+}
+
+function updateWorkField(fn) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[workFieldIdx];
+    if (!field) return;
+    changeFieldWork(farm, field, workFieldIdx, fn);
     saveFarmData(farm);
     renderWorkModal();
 }
@@ -677,30 +705,21 @@ function updateWorkField(fn) {
 window.openWorkModal = function (idx) {
     workFieldIdx = idx;
     renderWorkModal();
-    document.getElementById('work-modal').style.display = 'flex';
+    openModal(document.getElementById('work-modal'));
 };
 
 (function wireWorkModal() {
     const modal = document.getElementById('work-modal');
     const listEl = document.getElementById('work-list');
     if (!modal || !listEl) return;
-    const close = () => { modal.style.display = 'none'; workFieldIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); workFieldIdx = null; renderSeasonView(); };
     document.getElementById('work-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
     listEl.addEventListener('change', e => {
         if (!e.target.classList.contains('work-check')) return;
         const i = +e.target.dataset.i;
-        updateWorkField((work, field, farm) => {
-            work[i].done = e.target.checked;
-            // Sowing done = the field is sown.
-            if (work[i].step === 'sow') field.state = e.target.checked ? 'Planted' : 'To Plant';
-            if (work[i].step === 'weeds' && e.target.checked) {
-                field.weeds = 'done';
-                markWeedsManual(farm, field);
-            }
-            if (work[i].step === 'roll') { if (e.target.checked) field.rolling = true; field.rollingDone = e.target.checked; }
-        });
+        updateWorkField((work, field, farm) => setWorkStepDone(work, i, e.target.checked, field, farm));
     });
     listEl.addEventListener('click', e => {
         const mv = e.target.closest('.work-move');
@@ -720,6 +739,208 @@ window.openWorkModal = function (idx) {
         updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, workFieldIdx, farm)); });
     });
 })();
+
+// --- Several fields at once (Edit mode) ------------------------------------
+// A checkbox on every card and a bar that only fills the selected cards'
+// inputs, so Save / Cancel / backups work as for typing. Shift+click on a card
+// selects it, Ctrl+click deselects it. The selection is UI-only.
+function bulkBarEl() { return document.getElementById('bulk-bar'); }
+
+// The table outside Edit has no selection: just keep the bar hidden.
+function renderBulkBar() {
+    const bar = bulkBarEl();
+    if (!bar) return;
+    bar.hidden = true;
+    bar.innerHTML = '';
+}
+
+function setCardSelected(row, on) {
+    const box = row && row.querySelector('.edit-bulk-check');
+    if (!box || row.classList.contains('is-bulk-selected') === on) { if (box) box.checked = on; return; }
+    box.checked = on;
+    row.classList.toggle('is-bulk-selected', on);
+    // Replays the pop / release animation on every change.
+    row.classList.remove('is-bulk-anim-on', 'is-bulk-anim-off');
+    void row.offsetWidth;
+    row.classList.add(on ? 'is-bulk-anim-on' : 'is-bulk-anim-off');
+}
+
+// What a selected card passes on to the other selected ones. Number, area
+// and name stay per field.
+const MIRRORED_INPUTS = ['field-crop', 'field-sow', 'field-catch-crop', 'field-catch-sow',
+    'field-state', 'field-lease', 'field-lease-seasons', 'field-lease-then'];
+
+function selectedEditRows(except) {
+    return fieldsBody ? [...fieldsBody.querySelectorAll('tr.field-edit-tr.is-bulk-selected')].filter(r => r !== except) : [];
+}
+
+function flashMirrored(row) {
+    row.classList.remove('is-bulk-mirror');
+    void row.offsetWidth;
+    row.classList.add('is-bulk-mirror');
+}
+
+// A select only takes a value it offers (a month another crop can't be sown in stays as it was).
+function setSelectValue(sel, value) {
+    if ([...sel.options].some(o => o.value === value)) sel.value = value;
+}
+
+function mirrorToSelected(el) {
+    const src = el.closest('tr.field-edit-tr');
+    if (!isEditMode || !src || !src.classList.contains('is-bulk-selected')) return;
+    const cls = MIRRORED_INPUTS.find(c => el.classList.contains(c));
+    if (!cls) return;
+    selectedEditRows(src).forEach(row => {
+        const target = row.querySelector('.' + cls);
+        if (!target) return;
+        if (cls === 'field-crop' || cls === 'field-catch-crop') {
+            target.value = el.value;
+            const month = cls === 'field-crop' ? '.field-sow' : '.field-catch-sow';
+            row.querySelector(month).innerHTML = generateMonthOptionsHtml(el.value, src.querySelector(month).value || null);
+        } else if (el.type === 'checkbox') {
+            target.checked = el.checked;
+        } else if (target.tagName === 'SELECT') {
+            setSelectValue(target, el.value);
+        } else {
+            target.value = el.value;
+        }
+        flashMirrored(row);
+    });
+}
+
+if (fieldsBody) fieldsBody.addEventListener('input', e => {
+    if (e.target.matches('input.field-lease-seasons')) mirrorToSelected(e.target);
+});
+
+if (fieldsBody) fieldsBody.addEventListener('change', e => {
+    const box = e.target.closest('.edit-bulk-check');
+    if (!box) { mirrorToSelected(e.target); return; }
+    const row = box.closest('tr');
+    const on = box.checked;
+    row.classList.toggle('is-bulk-selected', !on);   // let setCardSelected see a change
+    setCardSelected(row, on);
+    updateEditBulkCount();
+});
+
+// Shift+click selects, Ctrl+click deselects — on the checkbox or anywhere on
+// the card that isn't a field to type in or a button.
+if (fieldsBody) fieldsBody.addEventListener('click', e => {
+    if (!isEditMode || !(e.shiftKey || e.ctrlKey || e.metaKey)) return;
+    const row = e.target.closest('tr.field-edit-tr');
+    if (!row) return;
+    const onBox = !!e.target.closest('.field-card-select');
+    if (!onBox && e.target.closest('input, select, textarea, button, a, .tillage-switch-option')) return;
+    if (onBox && e.target.tagName !== 'INPUT') e.preventDefault();   // the label would toggle again
+    const want = !!e.shiftKey && !(e.ctrlKey || e.metaKey);
+    row.classList.toggle('is-bulk-selected', !want);
+    setCardSelected(row, want);
+    updateEditBulkCount();
+}, true);
+
+// Shift+click would also select the text between two clicks.
+if (fieldsBody) fieldsBody.addEventListener('mousedown', e => {
+    if (isEditMode && e.shiftKey && e.target.closest('tr.field-edit-tr')
+        && !e.target.closest('input, select, textarea')) e.preventDefault();
+});
+
+(function wireBulkBar() {
+    const bar = bulkBarEl();
+    if (!bar) return;
+    bar.addEventListener('change', e => {
+        if (e.target.id === 'edit-bulk-all') {
+            fieldsBody.querySelectorAll('tr.field-edit-tr').forEach(row => setCardSelected(row, e.target.checked));
+            updateEditBulkCount();
+        } else if (e.target.id === 'eb-crop') {
+            bar.querySelector('#eb-sow').innerHTML = generateMonthOptionsHtml(e.target.value, null);
+        } else if (e.target.id === 'eb-catch') {
+            bar.querySelector('#eb-catch-sow').innerHTML = generateMonthOptionsHtml(e.target.value, null);
+        }
+    });
+    bar.addEventListener('click', e => {
+        const btn = e.target.closest('[data-ebulk]');
+        if (btn) applyEditBulk(btn.dataset.ebulk, bar);
+    });
+})();
+
+// Edit mode: the bar is rebuilt with the cards; ticking cards only updates its count.
+function renderEditBulkBar() {
+    const bar = bulkBarEl();
+    if (!bar) return;
+    bar.hidden = false;
+    bar.innerHTML = `<label class="bulk-select-all"><input type="checkbox" id="edit-bulk-all" class="fp-check"> ${t('bulkSelectAll')}</label>
+        <span class="bulk-count"></span>
+        <span class="bulk-hint">${t('bulkKeysHint')}</span>
+        <span class="bulk-controls">
+            <span class="bulk-group">
+                <select id="eb-crop" aria-label="${t('thCrop')}">${cropOptionsHtml('', t('thCrop'))}</select>
+                <select id="eb-sow" aria-label="${t('thSowingMth')}"><option value="">${t('selectCropFirst')}</option></select>
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="crop">${t('bulkSetCrop')}</button>
+            </span>
+            <span class="bulk-group">
+                <select id="eb-catch" aria-label="${t('thCatchCrop')}">${cropOptionsHtml('', t('catchCropNone'), true)}</select>
+                <select id="eb-catch-sow" aria-label="${t('thCatchSowingMth')}">${generateMonthOptionsHtml('', null)}</select>
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="catch">${t('bulkSetCatch')}</button>
+            </span>
+            <span class="bulk-group">
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="sown">${t('planted')}</button>
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="unsown">${t('toPlant')}</button>
+            </span>
+            <span class="bulk-group">
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="plowed">${t('tillagePlowed')}</button>
+                <button type="button" class="btn btn--sm btn--secondary" data-ebulk="noTill">${t('tillageNoTill')}</button>
+                <button type="button" class="btn btn--sm" data-ebulk="noTillage" title="${t('bulkNoTillageHint')}">–</button>
+            </span>
+            <button type="button" class="btn btn--sm btn--danger" data-ebulk="delete">${t('bulkDelete')}</button>
+        </span>`;
+    updateEditBulkCount();
+}
+
+function editBulkRows() {
+    return fieldsBody ? [...fieldsBody.querySelectorAll('.edit-bulk-check:checked')].map(b => b.closest('tr')) : [];
+}
+
+function updateEditBulkCount() {
+    const bar = bulkBarEl();
+    if (!bar || !fieldsBody) return;
+    const total = fieldsBody.querySelectorAll('.edit-bulk-check').length;
+    const n = editBulkRows().length;
+    const count = bar.querySelector('.bulk-count');
+    if (count) count.textContent = n ? t('bulkSelected').replace('{n}', n) : t('bulkPickCards');
+    const controls = bar.querySelector('.bulk-controls');
+    if (controls) controls.hidden = !n;
+    const all = bar.querySelector('#edit-bulk-all');
+    if (all) { all.checked = total > 0 && n === total; all.indeterminate = n > 0 && n < total; }
+}
+
+// Writes into the selected cards' inputs as if typed there.
+function applyEditBulk(action, bar) {
+    const rows = editBulkRows();
+    if (!rows.length) return;
+    if (action === 'delete') {
+        rows.forEach(r => r.remove());
+        updateSplitHints();
+        updateEditBulkCount();
+        return;
+    }
+    rows.forEach(row => {
+        if (action === 'crop') {
+            const crop = bar.querySelector('#eb-crop').value;
+            if (!crop) return;
+            row.querySelector('.field-crop').value = crop;
+            row.querySelector('.field-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-sow').value || null);
+        } else if (action === 'catch') {
+            const crop = bar.querySelector('#eb-catch').value;
+            row.querySelector('.field-catch-crop').value = crop;
+            row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-catch-sow').value || null);
+        } else if (action === 'sown' || action === 'unsown') {
+            row.querySelector('.field-state').checked = action === 'sown';
+        } else {
+            row.querySelectorAll('.tillage-switch-option').forEach(chip => chip.classList.remove('is-active'));
+            const chip = action === 'plowed' ? '.tillage-switch-option--plowed' : (action === 'noTill' ? '.tillage-switch-option--notill' : null);
+            if (chip) row.querySelector(chip).classList.add('is-active');
+        }
+    });
+}
 
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
@@ -893,7 +1114,9 @@ function tillageCellHtml(field, idx, isPastSeason) {
 
 // Rolling: nothing / to roll (field.rolling) / rolled (field.rollingDone) —
 // same three states and colours as weeds. Cycles on click in the current season.
+// No chip for a crop that isn't rolled (FS25_CropDependentRolling, see cropNeedsRolling).
 function rollingChipHtml(field, idx, isPastSeason) {
+    if (!cropNeedsRolling(field.crop)) return '';
     const state = field.rolling ? (field.rollingDone ? 'done' : 'needed') : '';
     const title = t(state === 'needed' ? 'rollingPlanned' : (state === 'done' ? 'rollingDone' : 'rollingOff'));
     const cls = `treatment-chip treatment-chip--rolling${state ? ' is-' + state : ''}`;
@@ -1129,6 +1352,7 @@ function renderFieldsTable(fields) {
         htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
+    renderBulkBar();
     const countEl = document.getElementById('fields-search-count');
     if (countEl) {
         countEl.hidden = !searching;
@@ -1282,6 +1506,7 @@ function buildFieldEditCard(field, opts) {
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
             <td colspan="8">
                 <div class="field-card">
+                    <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     <div class="field-card-row">
                         <div class="fc-cell fc-cell--num">
@@ -1297,7 +1522,7 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
-                            <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-state fp-check" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -1339,7 +1564,7 @@ function buildFieldEditCard(field, opts) {
                     <div class="field-card-row field-card-row--grid field-card-row--lease">
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseLabel')}</span>
-                            <label class="lease-check"><input type="checkbox" class="field-lease" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
+                            <label class="lease-check"><input type="checkbox" class="field-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
                         </div>
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseSeasons')}</span>
@@ -1391,6 +1616,7 @@ function renderEditTableWithDropdowns(fields) {
 
     fieldsBody.innerHTML = htmlString;
     updateSplitHints();
+    renderEditBulkBar();
 }
 
 window.onCropChange = function (selectEl) {
@@ -1411,6 +1637,16 @@ window.toggleTillageChip = function (btn) {
     const wasActive = btn.classList.contains('is-active');
     row.querySelectorAll('.tillage-switch-option').forEach(chip => chip.classList.remove('is-active'));
     if (!wasActive) btn.classList.add('is-active');
+    // Selected cards follow (several fields at once).
+    if (isEditMode && row.classList.contains('is-bulk-selected')) {
+        const plowed = row.querySelector('.tillage-switch-option--plowed').classList.contains('is-active');
+        const noTill = row.querySelector('.tillage-switch-option--notill').classList.contains('is-active');
+        selectedEditRows(row).forEach(other => {
+            other.querySelector('.tillage-switch-option--plowed').classList.toggle('is-active', plowed);
+            other.querySelector('.tillage-switch-option--notill').classList.toggle('is-active', noTill);
+            flashMirrored(other);
+        });
+    }
 };
 
 window.deleteFieldRow = function (btn) {

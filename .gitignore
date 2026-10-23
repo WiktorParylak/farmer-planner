@@ -23,3 +23,6 @@ KingMods - */
 
 # Reference copy of the FS25_CropDependentRolling mod (kept locally, not in the repo)
 FS25_CropDependentRolling/
+
+# Installer build cache (downloaded fonts, generated XAML, the compiled uninstaller)
+build-cache/

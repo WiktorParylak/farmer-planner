@@ -476,6 +476,7 @@ const TUTORIAL_CHAPTERS = [
         steps: [
             tutClick('d1', '#edit-season-btn', () => isEditMode === true),
             tutInfo('d2', '#fields-body .field-card'),
+            tutInfo('d13', () => [tq('#bulk-bar'), tq('#fields-body .field-card-select')].filter(Boolean)),
             tutClick('d3', '#fields-body .add-row-trigger', () => tqa('#fields-body tr.field-edit-tr').length > tut.rowsBefore, {
                 enter: () => { tut.rowsBefore = tqa('#fields-body tr.field-edit-tr').length; }
             }),
@@ -598,6 +599,19 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
             tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
             tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .trend-card, #hub-panel-body .fin-chart'); return charts.length ? charts.slice(0, 3) : null; }),
+            // Folded by default: opened for the step, folded again after.
+            tutInfo('k22', () => {
+                tutAnimalsOverview();
+                const box = tq('#hub-panel-body .breed-norms');
+                if (box && !box.open) { box.open = true; breedNormsOpen = true; }
+                return box;
+            }, {
+                leave: () => {
+                    const box = tq('#hub-panel-body .breed-norms');
+                    if (box) box.open = false;
+                    breedNormsOpen = false;
+                }
+            }),
             tutInfo('k17', null),
             hubOpen('k18', 'plan')
         ]
@@ -612,7 +626,7 @@ const TUTORIAL_CHAPTERS = [
             if (!farm) return;
             const plan = getFeedPlan(farm);
             plan.rations.COW = 'forage';
-            plan.mixer.load = [];
+            plan.mixer.loads = {};
             plan.mixer.capacity = {};
             plan.mixer.selected = null;
             saveFeedPlan(plan);
