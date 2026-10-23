@@ -4188,6 +4188,23 @@ select:focus-visible,
   cursor: help;
 }
 
+/* FS25_MoistureSystem: today's moisture, the crop's ideal window under it and
+   the yield factor when it's harvested this month. */
+.moisture-cell { white-space: nowrap; }
+.moisture-state { font-weight: 600; }
+.moisture-state.is-ideal { color: var(--color-primary-dark); }
+.moisture-state.is-dry { color: var(--color-accent-dark); }
+.moisture-state.is-wet { color: var(--color-sky); }
+.moisture-ideal,
+.moisture-effect {
+  display: block;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-faint);
+}
+.moisture-effect { color: var(--color-rust); }
+.field-view-moisture .moisture-ideal,
+.field-view-moisture .moisture-effect { display: inline; margin-left: 6px; }
+
 /* Text label instead of a single-glyph circle (e.g. the "plan" flag on
    plan-aware fertilizer rows) — same colours, sized to fit the word. */
 .supply-flag--label {

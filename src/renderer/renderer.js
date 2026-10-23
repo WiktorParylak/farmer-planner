@@ -9,6 +9,7 @@ const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n, readPfSeedRates, readMapAnimalFood } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
+const { readMoistureSystem, moistureYieldFactor } = require('./moisture-mod');
 const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
 const { TRANSLATIONS, MONTH_TRANSLATIONS, CROP_NAME_TRANSLATIONS, ANIMAL_SPECIES_TRANSLATIONS, PRODUCTION_FILLTYPE_TRANSLATIONS } = require('./translations');
 const diagnostics = require('./diagnostics');
@@ -1968,7 +1969,8 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const isPast = season < currentSeason;
 
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
+    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates, isPast ? null : farm);
+    const showMoisture = !isPast && !!MOISTURE_DATA;
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
@@ -1988,21 +1990,25 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     }
 
     html += `<table class="supply-table"><thead><tr>
-        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th><th>${t('yieldForecastColYield')}</th>
+        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
         </tr></thead><tbody>`;
     data.rows.forEach(r => {
         const flag = r.known ? '' : ` <span class="supply-flag" title="${t('yieldForecastUnknownFlag')}">?</span>`;
+        const m = r.moisture;
+        const moistureCell = !showMoisture ? ''
+            : `<td class="moisture-cell">${m ? moistureCellHtml(m.sum / m.area, m.def, m.nowArea ? m.nowFactor / m.nowArea : 1, m.nowArea > 0) : '–'}</td>`;
         html += `<tr><td>${translateCropName(r.crop)}${flag}</td>
-            <td>${r.area.toFixed(2)} ha</td>
+            <td>${r.area.toFixed(2)} ha</td>${moistureCell}
             <td>${num(r.litres)} l</td></tr>`;
     });
     html += `</tbody><tfoot><tr class="supply-total-row">
-        <td colspan="2">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
+        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
     }
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
+    if (showMoisture) html += `<p class="hub-panel-note">${t('yieldMoistureNote')}</p>`;
 
     bodyEl.innerHTML = html;
     wireArrows();
@@ -2807,7 +2813,9 @@ try {
 // fieldYieldFactor above) since those are the only levers this app models;
 // a crop with no known yield rate taints its whole aggregated row rather
 // than silently under-counting one field.
-function buildYieldForecastRows(fields, rates) {
+// farm (current season only): with FS25_MoistureSystem, fields harvested this
+// month get the yield factor of today's field moisture (see fieldMoistureInfo).
+function buildYieldForecastRows(fields, rates, farm = null) {
     fields = fields || [];
     const byCrop = new Map();
     fields.forEach((f, i) => {
@@ -2818,11 +2826,19 @@ function buildYieldForecastRows(fields, rates) {
         [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
             const rate = getCropYieldRate(crop);
             const known = rate !== null;
-            const litres = known ? area * rate * fieldYieldFactor(soilMix) : 0;
+            const moist = farm ? fieldMoistureInfo(f, crop, crop === f.crop ? f.sowingMonth : f.catchSowingMonth, farm) : null;
+            const litres = known ? area * rate * fieldYieldFactor(soilMix) * (moist && moist.now ? moist.factor : 1) : 0;
 
-            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true };
+            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null };
             entry.area += area;
             entry.litres += litres;
+            if (moist) {
+                // Area-weighted: moisture of all its fields, factor of those harvested now.
+                const m = entry.moisture || (entry.moisture = { def: moist.def, area: 0, sum: 0, nowArea: 0, nowFactor: 0 });
+                m.area += area;
+                m.sum += area * moist.moisture;
+                if (moist.now) { m.nowArea += area; m.nowFactor += area * moist.factor; }
+            }
             if (!known) entry.known = false;
             byCrop.set(crop, entry);
         });
@@ -2833,6 +2849,53 @@ function buildYieldForecastRows(fields, rates) {
         total: rows.reduce((s, r) => s + r.litres, 0),
         missingCount: rows.filter(r => !r.known).length
     };
+}
+
+// FS25_MoistureSystem (moisture-mod.js): today's moisture from the save,
+// read with the farm's configs and again on every sync.
+let MOISTURE_DATA = null;
+
+function loadMoistureData(farm) {
+    const known = MOISTURE_DATA && MOISTURE_DATA.crops;
+    MOISTURE_DATA = farm && farm.saveGamePath && modEnabled('moisture') ? readMoistureSystem(farm.saveGamePath, known) : null;
+}
+
+// Moisture of a field (0..1): the farm-wide value plus the irrigation boost of
+// its farmland — a combined row (10-11) averages its fields. The mod's ±2 pp
+// for terrain height is left out (it needs the map's terrain).
+function fieldMoisture(field) {
+    if (!MOISTURE_DATA) return null;
+    const ids = String((field && field.number) || '').match(/\d+/g) || [];
+    const boost = ids.length ? ids.reduce((s, id) => s + (MOISTURE_DATA.boosts[id] || 0), 0) / ids.length : 0;
+    return Math.min(1, MOISTURE_DATA.moisture + boost);
+}
+
+function formatMoisturePct(m) {
+    return (m * 100).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 1 }) + ' %';
+}
+
+// "24 % · too wet" with the crop's ideal window under it (yield forecast, field window).
+function moistureCellHtml(moisture, def, factor, now) {
+    const state = moisture < def.idealMin ? 'dry' : (moisture > def.idealMax ? 'wet' : 'ideal');
+    const ideal = t('moistureIdeal').replace('{min}', Math.round(def.idealMin * 100)).replace('{max}', Math.round(def.idealMax * 100));
+    const effect = now && factor < 0.9995
+        ? `<span class="moisture-effect">${t('moistureThisMonth').replace('{x}', factor.toLocaleString(FIN_LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>` : '';
+    return `<span class="moisture-state is-${state}">${formatMoisturePct(moisture)} · ${t('moisture_' + state)}</span><span class="moisture-ideal">${ideal}</span>${effect}`;
+}
+
+// -> null when the mod isn't in play or doesn't track the crop, else
+//    { moisture, def, factor, state: 'dry' | 'ideal' | 'wet', now }
+// now = harvested in the farm's month (the crop calendar of its sowing month):
+// only then does today's moisture decide the yield.
+function fieldMoistureInfo(field, crop, sowingMonth, farm) {
+    const def = MOISTURE_DATA && crop ? MOISTURE_DATA.crops[cropOrderKey(crop)] : null;
+    if (!def) return null;
+    const moisture = fieldMoisture(field);
+    const cal = CROP_CALENDAR[crop];
+    const month = String((farm && farm.month) || '').toUpperCase();
+    const now = !!(cal && month && cal[String(sowingMonth || '').toUpperCase()] === month);
+    const state = moisture < def.idealMin ? 'dry' : (moisture > def.idealMax ? 'wet' : 'ideal');
+    return { moisture, def, factor: moistureYieldFactor(def, moisture), state, now };
 }
 
 // Maps a savegame fruit token ("WHEAT", "SUGARBEET", "OILSEEDRADISH") to the
@@ -3124,6 +3187,8 @@ function loadFarmConfigs(farm) {
     // AnimalFoodCalculator's reference source decides whose food/water/straw
     // curves the barns actually follow.
     useSaveFarm(farm);
+    MOISTURE_DATA = null;
+    loadMoistureData(farm);
     ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
     if (afcActive(farm)) {
         const INPUTS = ['food', 'water', 'straw'];
@@ -3167,6 +3232,7 @@ function clearFarmConfigs() {
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
     ROLLING_OVERRIDES = {};
+    MOISTURE_DATA = null;
     applyMapAnimalFood(null);
 }
 
@@ -3581,6 +3647,7 @@ const SUPPORTED_MODS = [
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
     { id: 'cropRolling', name: 'Crop Dependent Rolling', modNames: ['FS25_CropDependentRolling'] },
+    { id: 'moisture', name: 'Moisture System', modNames: ['FS25_MoistureSystem'] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -4034,6 +4101,7 @@ function applyGameSaveToFarm(farm) {
     if (!farm || !farm.saveGamePath) return false;
     let changed = resolveGameFarmId(farm);
     useSaveFarm(farm);
+    loadMoistureData(farm);
     const gameData = readGameSave(farm.saveGamePath);
 
     if (gameData.balance !== null && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
@@ -4764,6 +4832,9 @@ function renderAnimalModsInfo(farm) {
         if (def.id === 'cropRolling' && inSave) {
             const noRolling = AVAILABLE_CROPS.filter(c => !cropRollingRule(c)).map(translateCropName).join(', ') || '–';
             detail += ' · ' + t('cropRollingLine').replace('{list}', noRolling);
+        }
+        if (def.id === 'moisture' && inSave && MOISTURE_DATA && farm.id === currentFarmId) {
+            detail += ' · ' + t('moistureModLine').replace('{pct}', formatMoisturePct(MOISTURE_DATA.moisture));
         }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
             <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>

@@ -366,6 +366,15 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
 // there in past seasons. Opened from the field number in the table.
 let fieldModalIdx = null;
 
+// FS25_MoistureSystem: today's moisture for the main and catch crop, and the
+// yield factor when one is harvested this month (see fieldMoistureInfo).
+function fieldMoistureLineHtml(field, farm) {
+    return [[field.crop, field.sowingMonth], [field.catchCrop, field.catchSowingMonth]].map(([crop, sow]) => {
+        const m = crop ? fieldMoistureInfo(field, crop, sow, farm) : null;
+        return m ? `<p class="settings-hint field-view-moisture">${t('yieldForecastColMoisture')} · ${escapeHtml(translateCropName(crop))}: ${moistureCellHtml(m.moisture, m.def, m.factor, m.now)}</p>` : '';
+    }).join('');
+}
+
 function renderFieldModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[fieldModalIdx];
@@ -406,7 +415,7 @@ function renderFieldModal() {
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>`);
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}`);
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
