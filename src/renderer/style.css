@@ -3810,7 +3810,22 @@ button.tillage-chip {
 .bulk-bar[hidden] { display: none; }
 .bulk-count { font-weight: 700; color: var(--color-ink); }
 .bulk-field { display: inline-flex; align-items: center; gap: 6px; color: var(--color-ink-soft); }
-.bulk-bar select { font-size: var(--fs-sm); max-width: 180px; }
+.bulk-bar select {
+  max-width: 190px;
+  padding: 5px 8px;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.bulk-bar select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
 .bulk-note { flex-basis: 100%; color: var(--color-ink-soft); }
 .bulk-select-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .bulk-controls { display: contents; }
@@ -6737,7 +6752,25 @@ button.table-chip-toggle:hover {
   margin: 8px 0 12px;
   max-width: 640px;
 }
-.breed-norms-controls .breed-norms-breed { min-width: 0; }
+.breed-norms-controls select,
+.breed-norms-controls input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+.breed-norms-controls select:focus,
+.breed-norms-controls input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
 .breed-norms-body {
   display: flex;
   flex-wrap: wrap;

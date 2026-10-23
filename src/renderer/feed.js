@@ -2138,7 +2138,7 @@ function breedNormsHtml(farm) {
         + (rest.length ? `<optgroup label="${escapeHtml(t('breedNormsAllBreeds'))}">${rest.map(opt).join('')}</optgroup>` : '');
     return `<details class="breed-norms"${breedNormsOpen ? ' open' : ''}>
         <summary class="anim-section-title">${t('breedNormsTitle')}</summary>
-        <p class="hub-panel-note">${t('breedNormsIntro')}</p>
+        <p class="supply-intro">${t('breedNormsIntro')}</p>
         <div class="breed-norms-controls">
             <label class="settings-field"><span>${t('breedNormsBreed')}</span><select class="breed-norms-breed">${options}</select></label>
             <label class="settings-field"><span>${t('breedNormsCount')}</span><input type="number" class="breed-norms-count" min="1" max="100000" step="1" value="${st.count}"></label>
