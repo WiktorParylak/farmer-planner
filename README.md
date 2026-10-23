@@ -41,12 +41,12 @@
 **Tools**
 - Finance month by month and season by season.
 - Supplies: how much seed and fertilizer to buy this season.
-- Predicted yields.
+- Predicted yields, with today's field moisture from Moisture System.
 - Notes pinned to months, with tags and a checklist.
 
 ## Animals and feed, worked out
 
-One tile per barn: the herd by breed and age, how many days the feed lasts, daily needs, output and pregnancies. The feed planner tells you what's missing and how many hectares to sow, and the mixer wagon calculator checks your mix against the game's TMR recipe.
+One tile per barn: the herd by breed and age, how many days the feed lasts, daily needs, output and pregnancies. The feed planner tells you what's missing and how many hectares to sow, and the mixer wagon calculator checks your mix against your map's TMR recipe. Breed norms show what one animal or a whole herd eats and gives at any age.
 
 Works with AnimalFoodCalculator and EnhancedAnimalSystem, and shows breed pictures from your mods.
 
@@ -71,7 +71,7 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 No. Farmer Planner only reads game files and never writes to them.
 
 **Which maps and mods does it support?**
-Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit and Enhanced Loan System.
+Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit and Enhanced Loan System.
 
 **Where are my farms stored?**
 In `Documents\Farmer Planner`, so they're easy to find, copy or back up. The app can also export and import a farm backup.
@@ -91,6 +91,8 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
 - Crop rotation warnings.
+- Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them.
+- With the Crop Dependent Rolling mod, rolling is planned only for the crops that need it.
 
 **Game sync**
 - Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml` — loans from the Enhanced Loan System and Bank And Credit mods included.
@@ -101,11 +103,11 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 
 **Tools (left sidebar)**
 - **Finance** — balance and loan month by month and season by season.
-- **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed.
+- **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed. **Breed norms** show what one animal or a herd of a breed eats and gives per month at a given age.
 - **Supplies** — how much seed and fertilizer to buy for the season.
 - **Field soil type** — field soils used by the fertilization plans.
 - **Notes** — pinned to months and fields, with tags and a checklist that starts over every in-game year.
-- **Predicted yields**.
+- **Predicted yields** — with the Moisture System mod, also today's field moisture, its ideal range and how it changes the yield of this month's harvest.
 - **Feed planner** — what you have, what's missing and how many hectares to sow to feed your herd, plus a **mixer wagon** calculator: load it from the bales on your farm and check the mix against the game's TMR recipe. Feed mixer productions (pig food, TMR, mineral feed) are detected with their stock, recipes and monthly output.
 
 **Other**
