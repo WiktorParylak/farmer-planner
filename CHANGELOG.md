@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.13 — unreleased
+## 0.9.13 — 2026-10-23
 
 **New**
 - **Farmer Planner's own installer**: the Windows setup wizard is replaced by a window in the app's style (logo, fonts and colours of the start screen) in English, Polish or German — the app's language, otherwise Windows'. One screen with the install folder — type a path or *Browse…*; under the box it shows where the app will go (*D:\Games\Farmer Planner*) or what's wrong with the path (no such drive, a character a folder name can't have) — *Desktop shortcut* and *Start Farmer Planner when it's done*, then a progress bar and *Done*. Over an installed version it says *Update from 0.9.11 to 0.9.13* (or *Reinstall*) and keeps the folder; if the app is open it offers to close it first. Errors show what went wrong with *Save log*.
@@ -22,10 +22,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Bales in quarters**: bale counts in the mixer go in steps of 0.25 (½ or ¾ of a bale), and the auto load rounds to quarters too.
 - The mixer load list has a header row: *Material · Quantity · Litres*.
 - An own feed whose mix fits the TMR recipe counts as TMR, so it keeps the mixer wagon section and the auto load.
-
 - **One set of animations**: dialogs and windows fade in and out instead of popping, views and folded sections ease in, and every hover and press uses the same short timings. With *Reduce motion* turned on in Windows, nothing animates.
 - **Side tables look the same everywhere**: Supplies, Predicted yields, Field soil type, the feed planner, breed norms and Finance share one table style — labels on the left, numbers right-aligned in even-width digits, one total row style.
-
 - **More room on smaller screens**: at 1280 px wide and below (e.g. Full HD at 150 %, 1366×768 laptops) the sidebar shows only its icons — hover one for its name — so the whole season table fits; in an 800×600 window the icon column fits without scrolling.
 - The tutorial shows the breed norms (Animals) and selecting several fields at once (Edit).
 
