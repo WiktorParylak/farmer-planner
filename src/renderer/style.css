@@ -3905,25 +3905,90 @@ details[open] > :not(summary) {
   align-self: flex-start;
 }
 
-/* Several fields at once: checkbox column (current season only), the bar
-   above the table, and the checkbox in the corner of each Edit card. */
-#fields-table .bulk-col { display: none; }
-#fields-table.has-bulk .bulk-col {
-  display: table-cell;
-  width: 28px;
-  padding-left: 10px;
-  padding-right: 0;
-}
-#fields-table .bulk-col input,
-.field-card-select input,
-.bulk-select-all input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-primary);
+/* Several fields at once (Edit mode): the bar above the cards and the
+   checkbox in each card's corner. A selected card pops in with a green ring;
+   deselecting lets it settle back. */
+input[type="checkbox"].fp-check {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 6px;
+  background-color: var(--color-surface);
   cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
-#fields-table tbody tr.is-bulk-selected td { background-color: var(--color-primary-soft); }
-.field-edit-tr.is-bulk-selected .field-card { border-color: var(--color-primary); }
+input[type="checkbox"].fp-check::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 6px;
+  height: 11px;
+  border: solid var(--color-surface);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform var(--motion) var(--ease-out);
+}
+input[type="checkbox"].fp-check:hover { border-color: var(--color-primary); }
+input[type="checkbox"].fp-check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-primary-soft); }
+input[type="checkbox"].fp-check:active { transform: scale(0.9); }
+input[type="checkbox"].fp-check:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+input[type="checkbox"].fp-check:checked::after { transform: rotate(45deg) scale(1); }
+input[type="checkbox"].fp-check:indeterminate {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+input[type="checkbox"].fp-check:indeterminate::after {
+  left: 3px;
+  top: 7px;
+  width: 10px;
+  height: 0;
+  border-width: 0 0 2.5px 0;
+  transform: none;
+}
+
+.field-edit-tr .field-card {
+  transition: border-color var(--motion) var(--ease-out),
+    background-color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out);
+}
+.field-edit-tr.is-bulk-selected .field-card {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+.field-edit-tr.is-bulk-anim-on .field-card { animation: card-select-in var(--motion-slow) var(--ease-out); }
+.field-edit-tr.is-bulk-anim-off .field-card { animation: card-select-out var(--motion) var(--ease-out); }
+.field-edit-tr.is-bulk-anim-on .fp-check { animation: check-pop var(--motion-slow) var(--ease-out); }
+
+@keyframes card-select-in {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.012); }
+  100% { transform: scale(1); }
+}
+@keyframes card-select-out {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.992); }
+  100% { transform: scale(1); }
+}
+@keyframes check-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
 
 .bulk-bar {
   display: flex;
@@ -3956,8 +4021,8 @@ details[open] > :not(summary) {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
-.bulk-note { flex-basis: 100%; color: var(--color-ink-soft); }
-.bulk-select-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.bulk-hint { color: var(--color-ink-faint); font-size: var(--fs-xs); }
+.bulk-select-all { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
 .bulk-controls { display: contents; }
 .bulk-controls[hidden] { display: none; }
 .bulk-group {

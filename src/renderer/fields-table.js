@@ -740,126 +740,68 @@ window.openWorkModal = function (idx) {
     });
 })();
 
-// --- Several fields at once --------------------------------------------------
-// Normal table (current season): a checkbox per row and a bar that runs one
-// work-list step on every selected field, as ticking it in each field's work
-// list would. Edit mode: a checkbox per card and a bar that only fills the
-// selected cards' inputs, so Save / Cancel / backups work as for typing.
-// The selection is UI-only and starts over on a season, farm or mode change.
-let bulkSelected = new Set();   // indices in farm.fields
-let bulkContext = '';
-let bulkStep = 'fertilize';
-let bulkNote = '';
-
-function syncBulkContext() {
-    const key = [currentFarmId, viewedSeason, isEditMode ? 'edit' : 'view'].join('|');
-    if (key === bulkContext) return;
-    bulkContext = key;
-    bulkSelected = new Set();
-    bulkNote = '';
-}
-
+// --- Several fields at once (Edit mode) ------------------------------------
+// A checkbox on every card and a bar that only fills the selected cards'
+// inputs, so Save / Cancel / backups work as for typing. Shift+click on a card
+// selects it, Ctrl+click deselects it. The selection is UI-only.
 function bulkBarEl() { return document.getElementById('bulk-bar'); }
 
-// Header checkbox: every shown row (the search hides the rest) or some of them.
-function syncBulkHeader() {
-    const all = document.getElementById('bulk-all');
-    if (!all || !fieldsBody) return;
-    const boxes = [...fieldsBody.querySelectorAll('.bulk-check')];
-    const on = boxes.filter(b => b.checked).length;
-    all.checked = boxes.length > 0 && on === boxes.length;
-    all.indeterminate = on > 0 && on < boxes.length;
-    all.disabled = !boxes.length;
-}
-
-function renderBulkBar(isPastSeason) {
-    syncBulkContext();
-    if (fieldsTable) fieldsTable.classList.toggle('has-bulk', !isPastSeason);
-    syncBulkHeader();
+// The table outside Edit has no selection: just keep the bar hidden.
+function renderBulkBar() {
     const bar = bulkBarEl();
     if (!bar) return;
-    if (isPastSeason || (!bulkSelected.size && !bulkNote)) { bar.hidden = true; bar.innerHTML = ''; return; }
-    bar.hidden = false;
-    const steps = WORK_STEPS.map(s => `<option value="${s}" ${s === bulkStep ? 'selected' : ''}>${t('work_' + s)}</option>`).join('');
-    const n = bulkSelected.size;
-    bar.innerHTML = n ? `<span class="bulk-count">${t('bulkSelected').replace('{n}', n)}</span>
-        <label class="bulk-field"><span>${t('bulkStep')}</span><select id="bulk-step">${steps}</select></label>
-        <button type="button" class="btn btn--sm btn--primary" data-bulk="done">${t('bulkMarkDone')}</button>
-        <button type="button" class="btn btn--sm btn--secondary" data-bulk="add">${t('bulkAdd')}</button>
-        <button type="button" class="btn btn--sm btn--secondary" data-bulk="remove">${t('bulkRemove')}</button>
-        <button type="button" class="btn btn--sm" data-bulk="clear">${t('bulkClear')}</button>
-        ${bulkNote ? `<span class="bulk-note">${escapeHtml(bulkNote)}</span>` : ''}`
-        : `<span class="bulk-note">${escapeHtml(bulkNote)}</span>`;
+    bar.hidden = true;
+    bar.innerHTML = '';
 }
 
-// action: 'done' (tick the step, adding it if the list lacks it), 'add', 'remove'.
-// Fields the work list doesn't apply to (no crop, meadows and other cut
-// crops — see workCellHtml) are skipped, as is Roll for crops that aren't rolled.
-function runBulkWork(action, step) {
-    const farm = getAllFarms().find(f => f.id === currentFarmId);
-    if (!farm || isEditMode) return;
-    let changed = 0;
-    const skipped = [];
-    [...bulkSelected].sort((a, b) => a - b).forEach(idx => {
-        const field = (farm.fields || [])[idx];
-        if (!field) return;
-        if (!field.crop || isCutCrop(field.crop) || (step === 'roll' && action !== 'remove' && !cropNeedsRolling(field.crop))) {
-            skipped.push((field.number || '').toString().trim() || '–');
-            return;
-        }
-        changeFieldWork(farm, field, idx, work => {
-            if (action === 'remove') {
-                for (let i = work.length - 1; i >= 0; i--) if (work[i].step === step) work.splice(i, 1);
-                return;
-            }
-            let i = work.findIndex(w => w.step === step && !w.done);
-            if (i < 0) i = work.findIndex(w => w.step === step);
-            if (i < 0) { work.push({ step, done: false }); i = work.length - 1; }
-            if (action === 'done') setWorkStepDone(work, i, true, field, farm);
-        });
-        changed++;
-    });
-    if (changed) saveFarmData(farm);
-    bulkNote = t('bulkResult_' + action).replace('{step}', t('work_' + step)).replace('{n}', changed)
-        + (skipped.length ? ' · ' + t('bulkSkipped').replace('{n}', skipped.length).replace('{list}', skipped.join(', ')) : '');
-    renderSeasonView();
+function setCardSelected(row, on) {
+    const box = row && row.querySelector('.edit-bulk-check');
+    if (!box || row.classList.contains('is-bulk-selected') === on) { if (box) box.checked = on; return; }
+    box.checked = on;
+    row.classList.toggle('is-bulk-selected', on);
+    // Replays the pop / release animation on every change.
+    row.classList.remove('is-bulk-anim-on', 'is-bulk-anim-off');
+    void row.offsetWidth;
+    row.classList.add(on ? 'is-bulk-anim-on' : 'is-bulk-anim-off');
 }
 
 if (fieldsBody) fieldsBody.addEventListener('change', e => {
-    const box = e.target.closest('.bulk-check');
-    if (box) {
-        const idx = parseInt(box.dataset.idx, 10);
-        if (box.checked) bulkSelected.add(idx); else bulkSelected.delete(idx);
-        box.closest('tr').classList.toggle('is-bulk-selected', box.checked);
-        bulkNote = '';
-        renderBulkBar(false);
-    } else if (e.target.closest('.edit-bulk-check')) {
-        e.target.closest('tr').classList.toggle('is-bulk-selected', e.target.checked);
-        updateEditBulkCount();
-    }
+    const box = e.target.closest('.edit-bulk-check');
+    if (!box) return;
+    const row = box.closest('tr');
+    const on = box.checked;
+    row.classList.toggle('is-bulk-selected', !on);   // let setCardSelected see a change
+    setCardSelected(row, on);
+    updateEditBulkCount();
+});
+
+// Shift+click selects, Ctrl+click deselects — on the checkbox or anywhere on
+// the card that isn't a field to type in or a button.
+if (fieldsBody) fieldsBody.addEventListener('click', e => {
+    if (!isEditMode || !(e.shiftKey || e.ctrlKey || e.metaKey)) return;
+    const row = e.target.closest('tr.field-edit-tr');
+    if (!row) return;
+    const onBox = !!e.target.closest('.field-card-select');
+    if (!onBox && e.target.closest('input, select, textarea, button, a, .tillage-switch-option')) return;
+    if (onBox && e.target.tagName !== 'INPUT') e.preventDefault();   // the label would toggle again
+    const want = !!e.shiftKey && !(e.ctrlKey || e.metaKey);
+    row.classList.toggle('is-bulk-selected', !want);
+    setCardSelected(row, want);
+    updateEditBulkCount();
+}, true);
+
+// Shift+click would also select the text between two clicks.
+if (fieldsBody) fieldsBody.addEventListener('mousedown', e => {
+    if (isEditMode && e.shiftKey && e.target.closest('tr.field-edit-tr')
+        && !e.target.closest('input, select, textarea')) e.preventDefault();
 });
 
 (function wireBulkBar() {
-    const all = document.getElementById('bulk-all');
-    if (all) all.addEventListener('change', () => {
-        fieldsBody.querySelectorAll('.bulk-check').forEach(b => {
-            const idx = parseInt(b.dataset.idx, 10);
-            b.checked = all.checked;
-            b.closest('tr').classList.toggle('is-bulk-selected', all.checked);
-            if (all.checked) bulkSelected.add(idx); else bulkSelected.delete(idx);
-        });
-        bulkNote = '';
-        renderBulkBar(false);
-    });
     const bar = bulkBarEl();
     if (!bar) return;
     bar.addEventListener('change', e => {
-        if (e.target.id === 'bulk-step') bulkStep = e.target.value;
-        else if (e.target.id === 'edit-bulk-all') {
-            fieldsBody.querySelectorAll('.edit-bulk-check').forEach(b => {
-                b.checked = e.target.checked;
-                b.closest('tr').classList.toggle('is-bulk-selected', b.checked);
-            });
+        if (e.target.id === 'edit-bulk-all') {
+            fieldsBody.querySelectorAll('tr.field-edit-tr').forEach(row => setCardSelected(row, e.target.checked));
             updateEditBulkCount();
         } else if (e.target.id === 'eb-crop') {
             bar.querySelector('#eb-sow').innerHTML = generateMonthOptionsHtml(e.target.value, null);
@@ -868,11 +810,8 @@ if (fieldsBody) fieldsBody.addEventListener('change', e => {
         }
     });
     bar.addEventListener('click', e => {
-        const btn = e.target.closest('[data-bulk], [data-ebulk]');
-        if (!btn) return;
-        if (btn.dataset.bulk === 'clear') { bulkSelected = new Set(); bulkNote = ''; renderSeasonView(); }
-        else if (btn.dataset.bulk) runBulkWork(btn.dataset.bulk, bulkStep);
-        else applyEditBulk(btn.dataset.ebulk, bar);
+        const btn = e.target.closest('[data-ebulk]');
+        if (btn) applyEditBulk(btn.dataset.ebulk, bar);
     });
 })();
 
@@ -880,14 +819,10 @@ if (fieldsBody) fieldsBody.addEventListener('change', e => {
 function renderEditBulkBar() {
     const bar = bulkBarEl();
     if (!bar) return;
-    if (fieldsTable) fieldsTable.classList.remove('has-bulk');
-    // The table's selection doesn't carry into Edit (nor back).
-    bulkSelected = new Set();
-    bulkNote = '';
-    bulkContext = '';
     bar.hidden = false;
-    bar.innerHTML = `<label class="bulk-select-all"><input type="checkbox" id="edit-bulk-all"> ${t('bulkSelectAll')}</label>
+    bar.innerHTML = `<label class="bulk-select-all"><input type="checkbox" id="edit-bulk-all" class="fp-check"> ${t('bulkSelectAll')}</label>
         <span class="bulk-count"></span>
+        <span class="bulk-hint">${t('bulkKeysHint')}</span>
         <span class="bulk-controls">
             <span class="bulk-group">
                 <select id="eb-crop" aria-label="${t('thCrop')}">${cropOptionsHtml('', t('thCrop'))}</select>
@@ -1338,8 +1273,7 @@ function renderFieldsTable(fields) {
             }
 
             htmlString += `
-                <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}${bulkSelected.has(origIdx) ? ' is-bulk-selected' : ''}">
-                    <td class="bulk-col">${isPastSeason ? '' : `<input type="checkbox" class="bulk-check" data-idx="${origIdx}" ${bulkSelected.has(origIdx) ? 'checked' : ''} aria-label="${escapeHtml(t('bulkSelectField').replace('{field}', field.number || '–'))}">`}</td>
+                <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
                     <td class="field-number-cell"${numberCellTitle}>${isPastSeason
                         ? `<span class="field-number-chips">${numberChipsHtml}</span>`
                         : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}${leaseBadgeHtml(field, viewedSeason)}</td>
@@ -1368,10 +1302,10 @@ function renderFieldsTable(fields) {
     }
     const searching = !!fieldSearchQuery() && fields && fields.length > 0;
     if (searching && !shownCount) {
-        htmlString = `<tr class="fields-search-empty"><td colspan="9">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
-    renderBulkBar(isPastSeason);
+    renderBulkBar();
     const countEl = document.getElementById('fields-search-count');
     if (countEl) {
         countEl.hidden = !searching;
@@ -1523,9 +1457,9 @@ function buildFieldEditCard(field, opts) {
 
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
-            <td colspan="9">
+            <td colspan="8">
                 <div class="field-card">
-                    <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check" aria-label="${t('bulkSelectCard')}"></label>
+                    <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     <div class="field-card-row">
                         <div class="fc-cell fc-cell--num">
@@ -1541,7 +1475,7 @@ function buildFieldEditCard(field, opts) {
                         </div>
                         <label class="fc-cell fc-cell--state">
                             <span class="fc-label">${t('thState')}</span>
-                            <span class="fc-check"><input type="checkbox" class="edit-input field-state" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
+                            <span class="fc-check"><input type="checkbox" class="edit-input field-state fp-check" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
                         </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
@@ -1583,7 +1517,7 @@ function buildFieldEditCard(field, opts) {
                     <div class="field-card-row field-card-row--grid field-card-row--lease">
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseLabel')}</span>
-                            <label class="lease-check"><input type="checkbox" class="field-lease" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
+                            <label class="lease-check"><input type="checkbox" class="field-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
                         </div>
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseSeasons')}</span>
@@ -1627,7 +1561,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="9" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
+            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
