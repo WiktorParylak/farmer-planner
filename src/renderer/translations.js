@@ -72,7 +72,7 @@ const TRANSLATIONS = {
         updateFailed: "The update couldn't be done ({reason}). Nothing was changed — you can download the installer from the website instead.",
         updateFromWebsite: "Download from the website",
         updateRestoredTitle: "The update didn't finish",
-        updateRestored: "The update to {v} didn't finish, so Farmer Planner {c} is still installed. The installer's log is in {log}. Version {v} won't be offered by itself again — use Settings → Check now to try once more.",
+        updateRestored: "The update to {v} didn't finish, so Farmer Planner {c} is still installed. The installer's log is in {log}. You can try again from the update window.",
         updateFailReasons: {
             download: "the download broke off or the file was damaged",
             space: "not enough free disk space",
@@ -927,7 +927,7 @@ const TRANSLATIONS = {
         updateFailed: "Nie udało się przeprowadzić aktualizacji ({reason}). Nic nie zostało zmienione — możesz pobrać instalator ze strony.",
         updateFromWebsite: "Pobierz ze strony",
         updateRestoredTitle: "Aktualizacja nie została dokończona",
-        updateRestored: "Aktualizacja do {v} nie została dokończona, więc nadal jest zainstalowany Farmer Planner {c}. Log instalatora: {log}. Wersja {v} nie będzie już proponowana sama — żeby spróbować jeszcze raz, użyj Ustawienia → Sprawdź teraz.",
+        updateRestored: "Aktualizacja do {v} nie została dokończona, więc nadal jest zainstalowany Farmer Planner {c}. Log instalatora: {log}. Możesz spróbować ponownie w oknie aktualizacji.",
         updateFailReasons: {
             download: "pobieranie zostało przerwane albo plik jest uszkodzony",
             space: "za mało wolnego miejsca na dysku",

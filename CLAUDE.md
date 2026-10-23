@@ -132,7 +132,7 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Folder zawsze `<wybrany>\Farmer Planner`; brak prawa zapisu → restart z UAC (`--elevated`). Argumenty do testów:
   `--lang=en|pl|de`, `--dir=<folder>`. Fonty (Google Fonts, TTF) pobierane raz do `build-cache/` (w `.gitignore`).
 - Teksty okna (EN/PL/DE) są w słowniku `Texts` w `Setup.cs`, nie w `translations.js`.
-- `--update` (start z „Aktualizuj teraz” w aplikacji): bez ekranu folderu, czeka na zamknięcie aplikacji, kopiuje folder do `<folder>.backup` i zapamiętuje wpisy rejestru, po NSIS sprawdza wersję exe (ProductVersion); błąd → przywraca kopię i uruchamia starą wersję. Log zawsze w `%TEMP%\Farmer Planner update\setup.log`. Aplikacja zapisuje `farmer_planner_update_attempt` przed wyjściem; jeśli po starcie wersja jest stara, pokazuje komunikat i ustawia `farmer_planner_update_skip`. Pełny test wymaga dwóch zbudowanych instalatorów i zainstalowanej aplikacji (`npm start` nie instaluje).
+- `--update` (start z „Aktualizuj teraz” w aplikacji): bez ekranu folderu, czeka na zamknięcie aplikacji, kopiuje folder do `<folder>.backup` i zapamiętuje wpisy rejestru, po NSIS sprawdza wersję exe (ProductVersion); błąd → przywraca kopię i uruchamia starą wersję. Log zawsze w `%TEMP%\Farmer Planner update\setup.log`. Aplikacja zapisuje `farmer_planner_update_attempt` przed wyjściem; jeśli po starcie wersja jest stara, pokazuje komunikat; okno aktualizacji wraca przy każdym starcie, dopóki nowa wersja nie zostanie zainstalowana. Pełny test wymaga dwóch zbudowanych instalatorów i zainstalowanej aplikacji (`npm start` nie instaluje).
 
 ## Dane gry (komputer główny)
 

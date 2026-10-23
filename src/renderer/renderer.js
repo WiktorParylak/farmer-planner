@@ -5807,10 +5807,9 @@ window.prepareDelete = async function (id) {
 const APP_VERSION = ipcRenderer.sendSync('get-app-version') || '0.0.0';
 const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/releases?per_page=20';
 const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
-// The version an update was started to (cleared on the next start), and one
-// whose update failed — not offered again until checked by hand.
+// The version an update was started to (cleared on the next start). The
+// dialog itself comes back on every start until the update is installed.
 const CONFIG_KEY_UPDATE_ATTEMPT = 'farmer_planner_update_attempt';
-const CONFIG_KEY_UPDATE_SKIP = 'farmer_planner_update_skip';
 const UPDATE_LOG_PATH = path.join(require('os').tmpdir(), 'Farmer Planner update', 'setup.log');
 
 function isUpdateCheckEnabled() {
@@ -5851,8 +5850,6 @@ async function checkForUpdates({ manual = false } = {}) {
         if (manual) await showNotice(t('updateNoneTitle'), t('updateNone').replace('{v}', APP_VERSION));
         return;
     }
-
-    if (!manual && getSetting(CONFIG_KEY_UPDATE_SKIP) === latest) return;
 
     const asset = releaseInstallerAsset(newest, latest);
     let canInstall = false;
@@ -6000,14 +5997,13 @@ function runUpdateDialog(latest, asset) {
 }
 
 // On start after "Update now": still the old version -> the installer didn't
-// finish (it puts the previous version back). Say so once, with the log, and
-// don't offer that version again by itself.
+// finish (it puts the previous version back). Say so once, with the log; the
+// update is then offered again as on any start.
 async function reportUnfinishedUpdate() {
     const attempted = getSetting(CONFIG_KEY_UPDATE_ATTEMPT);
     if (!attempted) return;
     setSetting(CONFIG_KEY_UPDATE_ATTEMPT, '');
-    if (compareVersions(APP_VERSION, attempted) >= 0) { setSetting(CONFIG_KEY_UPDATE_SKIP, ''); return; }
-    setSetting(CONFIG_KEY_UPDATE_SKIP, attempted);
+    if (compareVersions(APP_VERSION, attempted) >= 0) return;
     await showNotice(t('updateRestoredTitle'), t('updateRestored')
         .replace('{v}', attempted).replace('{c}', APP_VERSION).replace('{log}', UPDATE_LOG_PATH), true);
 }

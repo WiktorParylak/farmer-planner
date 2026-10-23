@@ -73,7 +73,7 @@ const UI = {
     updateFailed: "Das Update hat nicht geklappt ({reason}). Es wurde nichts geändert — du kannst den Installer stattdessen von der Website laden.",
     updateFromWebsite: "Von der Website laden",
     updateRestoredTitle: "Das Update wurde nicht abgeschlossen",
-    updateRestored: "Das Update auf {v} wurde nicht abgeschlossen, daher ist weiterhin Farmer Planner {c} installiert. Das Log des Installers liegt in {log}. Version {v} wird nicht mehr von selbst angeboten — über Einstellungen → Jetzt prüfen kannst du es noch einmal versuchen.",
+    updateRestored: "Das Update auf {v} wurde nicht abgeschlossen, daher ist weiterhin Farmer Planner {c} installiert. Das Log des Installers liegt in {log}. Du kannst es im Update-Fenster noch einmal versuchen.",
     updateFailReasons: {
         download: "der Download brach ab oder die Datei ist beschädigt",
         space: "nicht genug freier Speicherplatz",
