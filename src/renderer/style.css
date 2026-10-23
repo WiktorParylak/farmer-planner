@@ -5581,6 +5581,13 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
+.mixer-wagon-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 .mixer-add-btn {
   display: inline-flex;
   align-items: center;
@@ -5649,6 +5656,68 @@ select:focus-visible,
   padding: 6px 0;
   border-bottom: 1px dashed var(--color-border);
 }
+
+/* Column names over the load list: Material | Quantity | Litres. */
+.mixer-row--head {
+  padding: 2px 0 4px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.mixer-row--head span:nth-child(4) { text-align: right; }
+
+/* TMR recipe: one share per ingredient, within the map's limits. */
+.tmr-shares {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+}
+
+.tmr-shares-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tmr-shares-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 16px;
+}
+
+.tmr-share {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.tmr-share .feed-input { width: 76px; }
+
+.tmr-share-range {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--color-ink-soft);
+}
+
+.tmr-shares-sum,
+.tmr-shares-error {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.tmr-shares-error:empty { display: none; }
 
 .mixer-row-icon {
   display: flex;

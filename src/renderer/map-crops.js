@@ -207,4 +207,37 @@ function readPfSeedRates(careerSavegamePath, formatName) {
     }
 }
 
-module.exports = { readMapCrops, readModL10n, readPfSeedRates };
+// The map's own animalFood.xml (map config <animals><food filename>): food
+// groups, mixtures and the TMR recipe the barns and mixer wagons follow on
+// that map. null for base-game maps or when the map uses the game's file
+// ("$data/…", only in the game's archives).
+function readMapAnimalFood(careerSavegamePath) {
+    let mod = null;
+    try {
+        const fs = require('fs');
+        if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return null;
+        const career = fs.readFileSync(careerSavegamePath, 'utf-8');
+        const mapId = (career.match(/<mapId>([^<]+)<\/mapId>/) || [])[1];
+        if (!mapId || mapId.indexOf('.') < 0) return null;
+        const modName = mapId.split('.')[0];
+        const modsDir = locateMod(careerSavegamePath, modName);
+        mod = modsDir ? openMod(modsDir, modName) : null;
+        if (!mod) return null;
+        const read = rel => { const b = mod.read(rel.replace(/^\/+/, '')); return b ? b.toString('utf-8') : null; };
+        const modDesc = read('modDesc.xml') || '';
+        const cfgRel = (modDesc.match(/<map\b[^>]*configFilename="([^"]+)"/) || [])[1];
+        const cfg = cfgRel ? stripComments(read(cfgRel) || '') : '';
+        const animals = (cfg.match(/<animals\b[\s\S]*?<\/animals>/) || [''])[0];
+        const foodRel = attr((animals.match(/<food\b[^>]*>/) || [''])[0], 'filename');
+        if (!foodRel || /^\$data/i.test(foodRel)) return null;
+        const xml = read(foodRel.replace(/^\$moddir\$[^/]+\//i, ''));
+        return xml ? { modName, file: foodRel, xml: stripComments(xml) } : null;
+    } catch (e) {
+        console.error('readMapAnimalFood failed', e);
+        return null;
+    } finally {
+        if (mod) mod.close();
+    }
+}
+
+module.exports = { readMapCrops, readModL10n, readPfSeedRates, readMapAnimalFood };

@@ -612,7 +612,7 @@ const TUTORIAL_CHAPTERS = [
             if (!farm) return;
             const plan = getFeedPlan(farm);
             plan.rations.COW = 'forage';
-            plan.mixer.load = [];
+            plan.mixer.loads = {};
             plan.mixer.capacity = {};
             plan.mixer.selected = null;
             saveFeedPlan(plan);

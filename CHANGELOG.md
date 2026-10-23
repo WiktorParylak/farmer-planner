@@ -8,6 +8,15 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Farmer Planner's own installer**: the Windows setup wizard is replaced by a window in the app's style (logo, fonts and colours of the start screen) in English, Polish or German — the app's language, otherwise Windows'. One screen with the install folder — type a path or *Browse…*; under the box it shows where the app will go (*D:\Games\Farmer Planner*) or what's wrong with the path (no such drive, a character a folder name can't have) — *Desktop shortcut* and *Start Farmer Planner when it's done*, then a progress bar and *Done*. Over an installed version it says *Update from 0.9.11 to 0.9.13* (or *Reinstall*) and keeps the folder; if the app is open it offers to close it first. Errors show what went wrong with *Save log*.
 - **Own uninstaller**: *Uninstall* in Windows' *Apps* opens the same kind of window, with *Also delete my farms and settings* — off by default, so `Documents\Farmer Planner` stays for a later install. It removes the app folder and the desktop shortcut.
 - The 0.9.12 download on GitHub and farmerplanner.pl already uses the new installer window (the same 0.9.12 app inside); the README's *Getting started* describes it.
+- **Edit a mixer wagon**: a pencil on the wagon tile opens the same form filled in — name and capacity of your own wagons, capacity of wagons from the save (their name is the game's).
+- **Your own TMR recipe**: under the TMR ration the shares of hay, silage, straw and mineral feed can be set within the map's recipe limits (*Reset* brings back the default), e.g. a TMR without mineral feed. The yearly need and the mixer's auto load follow them.
+- **The map's feed rules**: food groups (which feeds an animal eats and how well — e.g. hay 60 % for cows on FS25_KrajowLazniki), the TMR recipe and its limits are now read from the map's own `animalFood.xml`, falling back to the base game's.
+
+**Changed**
+- **Each mixer wagon has its own load**: switching wagons no longer carries the load over — every wagon remembers what you put in it (the old shared load stays with the wagon that was shown).
+- **Bales in quarters**: bale counts in the mixer go in steps of 0.25 (½ or ¾ of a bale), and the auto load rounds to quarters too.
+- The mixer load list has a header row: *Material · Quantity · Litres*.
+- An own feed whose mix fits the TMR recipe counts as TMR, so it keeps the mixer wagon section and the auto load.
 
 **Fixed**
 - **Yearly feed need ages the herd like AnimalFoodCalculator**: the feed planner counted a whole year at today's ages, so calves and heifers that grow into full rations during the year were left out (a herd of 20 Holsteins with young stock needed 69,449 l in AnimalFoodCalculator but 57,921 l in the planner). The yearly food and straw now go month by month: every animal a month older each month, inseminated cows calving when their pregnancy is due, and the EAS lactation factor of that month — the same projection as AnimalFoodCalculator, so both show the same figure. *Per in-game month* and *lasts N days* stay at today's herd.

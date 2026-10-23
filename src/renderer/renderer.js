@@ -7,7 +7,7 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
+const { readMapCrops, readModL10n, readPfSeedRates, readMapAnimalFood } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
 const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
 const { TRANSLATIONS, MONTH_TRANSLATIONS, CROP_NAME_TRANSLATIONS, ANIMAL_SPECIES_TRANSLATIONS, PRODUCTION_FILLTYPE_TRANSLATIONS } = require('./translations');
@@ -3009,6 +3009,8 @@ function loadFarmConfigs(farm) {
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
+    // Food groups and the TMR recipe: the map's animalFood.xml, else the base game's.
+    applyMapAnimalFood(farm && farm.saveGamePath ? readMapAnimalFood(farm.saveGamePath) : null);
     // Same pattern as crops: base FS25 animal needs/production are always
     // available; a farm's own imported animal-defs data is merged on top
     // below, per subType.
@@ -3121,6 +3123,7 @@ function clearFarmConfigs() {
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
+    applyMapAnimalFood(null);
 }
 
 // XML files under a folder whose name mentions animals — the fallback for
