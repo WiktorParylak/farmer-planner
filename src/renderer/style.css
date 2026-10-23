@@ -3973,6 +3973,13 @@ input[type="checkbox"].fp-check:indeterminate::after {
 .field-edit-tr.is-bulk-anim-on .field-card { animation: card-select-in var(--motion-slow) var(--ease-out); }
 .field-edit-tr.is-bulk-anim-off .field-card { animation: card-select-out var(--motion) var(--ease-out); }
 .field-edit-tr.is-bulk-anim-on .fp-check { animation: check-pop var(--motion-slow) var(--ease-out); }
+.field-edit-tr.is-bulk-mirror .field-card { animation: card-mirror var(--motion-slow) var(--ease-out); }
+
+/* A card that just took a change from another selected card. */
+@keyframes card-mirror {
+  0% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 7px var(--color-primary-soft); }
+  100% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 0 transparent; }
+}
 
 @keyframes card-select-in {
   0% { transform: scale(1); }

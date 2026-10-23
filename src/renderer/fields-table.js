@@ -765,9 +765,56 @@ function setCardSelected(row, on) {
     row.classList.add(on ? 'is-bulk-anim-on' : 'is-bulk-anim-off');
 }
 
+// What a selected card passes on to the other selected ones. Number, area
+// and name stay per field.
+const MIRRORED_INPUTS = ['field-crop', 'field-sow', 'field-catch-crop', 'field-catch-sow',
+    'field-state', 'field-lease', 'field-lease-seasons', 'field-lease-then'];
+
+function selectedEditRows(except) {
+    return fieldsBody ? [...fieldsBody.querySelectorAll('tr.field-edit-tr.is-bulk-selected')].filter(r => r !== except) : [];
+}
+
+function flashMirrored(row) {
+    row.classList.remove('is-bulk-mirror');
+    void row.offsetWidth;
+    row.classList.add('is-bulk-mirror');
+}
+
+// A select only takes a value it offers (a month another crop can't be sown in stays as it was).
+function setSelectValue(sel, value) {
+    if ([...sel.options].some(o => o.value === value)) sel.value = value;
+}
+
+function mirrorToSelected(el) {
+    const src = el.closest('tr.field-edit-tr');
+    if (!isEditMode || !src || !src.classList.contains('is-bulk-selected')) return;
+    const cls = MIRRORED_INPUTS.find(c => el.classList.contains(c));
+    if (!cls) return;
+    selectedEditRows(src).forEach(row => {
+        const target = row.querySelector('.' + cls);
+        if (!target) return;
+        if (cls === 'field-crop' || cls === 'field-catch-crop') {
+            target.value = el.value;
+            const month = cls === 'field-crop' ? '.field-sow' : '.field-catch-sow';
+            row.querySelector(month).innerHTML = generateMonthOptionsHtml(el.value, src.querySelector(month).value || null);
+        } else if (el.type === 'checkbox') {
+            target.checked = el.checked;
+        } else if (target.tagName === 'SELECT') {
+            setSelectValue(target, el.value);
+        } else {
+            target.value = el.value;
+        }
+        flashMirrored(row);
+    });
+}
+
+if (fieldsBody) fieldsBody.addEventListener('input', e => {
+    if (e.target.matches('input.field-lease-seasons')) mirrorToSelected(e.target);
+});
+
 if (fieldsBody) fieldsBody.addEventListener('change', e => {
     const box = e.target.closest('.edit-bulk-check');
-    if (!box) return;
+    if (!box) { mirrorToSelected(e.target); return; }
     const row = box.closest('tr');
     const on = box.checked;
     row.classList.toggle('is-bulk-selected', !on);   // let setCardSelected see a change
@@ -1590,6 +1637,16 @@ window.toggleTillageChip = function (btn) {
     const wasActive = btn.classList.contains('is-active');
     row.querySelectorAll('.tillage-switch-option').forEach(chip => chip.classList.remove('is-active'));
     if (!wasActive) btn.classList.add('is-active');
+    // Selected cards follow (several fields at once).
+    if (isEditMode && row.classList.contains('is-bulk-selected')) {
+        const plowed = row.querySelector('.tillage-switch-option--plowed').classList.contains('is-active');
+        const noTill = row.querySelector('.tillage-switch-option--notill').classList.contains('is-active');
+        selectedEditRows(row).forEach(other => {
+            other.querySelector('.tillage-switch-option--plowed').classList.toggle('is-active', plowed);
+            other.querySelector('.tillage-switch-option--notill').classList.toggle('is-active', noTill);
+            flashMirrored(other);
+        });
+    }
 };
 
 window.deleteFieldRow = function (btn) {

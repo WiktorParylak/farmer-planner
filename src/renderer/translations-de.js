@@ -213,7 +213,7 @@ const UI = {
     bulkSelectCard: "Dieses Feld für Änderungen an mehreren Feldern auswählen",
     bulkSelected: "{n} ausgewählt",
     bulkPickCards: "Felder ankreuzen, um mehrere auf einmal zu ändern",
-    bulkKeysHint: "Umschalt+Klick wählt eine Karte aus, Strg+Klick hebt die Auswahl auf",
+    bulkKeysHint: "Umschalt+Klick wählt eine Karte aus, Strg+Klick hebt die Auswahl auf · eine Änderung in einer ausgewählten Karte gilt für alle ausgewählten",
     bulkSetCrop: "Frucht setzen",
     bulkSetCatch: "Zwischenfrucht setzen",
     bulkNoTillageHint: "Weder gepflügt noch Direktsaat",
