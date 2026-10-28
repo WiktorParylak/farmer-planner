@@ -762,7 +762,7 @@ const UI = {
     modDesc_bankCredit: "Bankkredite und Monatsrate",
     modDesc_hirePurchasing: "auf Raten gekaufte Fahrzeuge — die Restschuld zählt als Kredit",
     modDesc_fieldLeasing: "gepachtete Grundstücke auf ihren Feldern markiert, mit Monaten, Mindestlaufzeit und Monatsgebühr",
-    leaseGameBadge: "Pacht · {n} Mon.",
+    leaseGameBadge: "Pacht · {n} Mon. ({s}. Saison)",
     leaseGameHint: "Gepachtet mit Field Leasing, {fee} pro Monat.",
     leaseGameMinLeft: "Mindestlaufzeit: noch {n} Monat(e).",
     leaseGameCanEnd: "Mindestlaufzeit vorbei — kann zurückgegeben werden.",

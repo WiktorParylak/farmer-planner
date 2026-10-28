@@ -1816,7 +1816,7 @@ function leaseBadgeHtml(field, seasonNum) {
         const left = Math.max(0, min - months);
         const fee = finMoney(parseFloat(lease.monthlyFee) || 0);
         const title = t('leaseGameHint').replace('{fee}', fee) + ' ' + (left ? t('leaseGameMinLeft').replace('{n}', left) : t('leaseGameCanEnd'));
-        return `<span class="lease-caption${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months)}</span>`;
+        return `<span class="lease-caption${left ? '' : ' is-free'}" title="${escapeHtml(title)}">${t('leaseGameBadge').replace('{n}', months).replace('{s}', Math.floor(months / 12) + 1)}</span>`;
     }
     const n = Math.max(1, seasonNum - (lease.since || seasonNum) + 1);
     const over = lease.seasons && n >= lease.seasons;
