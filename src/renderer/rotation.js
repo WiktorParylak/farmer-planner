@@ -65,6 +65,11 @@ function rotationTemplateSteps(tpl) {
     })).filter(s => s.crop);
 }
 
+// A cycle's colour, only as #rrggbb (it ends up in a style attribute).
+function rotationColor(rot) {
+    return /^#[0-9a-f]{6}$/i.test(rot && rot.color || '') ? rot.color : ROTATION_COLORS[0];
+}
+
 function newRotationId() {
     return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -590,9 +595,9 @@ function rotationCyclesHtml(farm) {
     const templates = ROTATION_TEMPLATES.filter(tpl => rotationTemplateSteps(tpl).length >= 2);
     const others = getAllFarms().filter(f => f.id !== farm.id && Array.isArray(f.rotations) && f.rotations.length);
     const list = rots.map(r => `<button type="button" class="rotation-cycle-item${r.id === rotationSelectedId ? ' is-active' : ''}" data-id="${escapeHtml(r.id)}">
-            <span class="rotation-swatch" style="background:${escapeHtml(r.color || ROTATION_COLORS[0])}"></span>
+            <span class="rotation-swatch" style="background:${rotationColor(r)}"></span>
             <span class="rotation-cycle-name">${escapeHtml(r.name)}</span>
-            <span class="rotation-cycle-meta">${r.steps.map(s => s.crop ? translateCropName(s.crop) : t('rotFallow')).join(' → ')}</span>
+            <span class="rotation-cycle-meta">${escapeHtml(r.steps.map(s => s.crop ? translateCropName(s.crop) : t('rotFallow')).join(' → '))}</span>
             <span class="rotation-cycle-count" title="${escapeHtml(t('rotFieldsUsing'))}">${used(r.id)}</span>
         </button>`).join('');
     const rot = rotationById(farm, rotationSelectedId);
@@ -601,7 +606,7 @@ function rotationCyclesHtml(farm) {
         const warnings = rotationCycleWarnings(rot, grasslandSeasonLimit(farm));
         editor = `<div class="rotation-editor-head">
                 <input type="text" class="rotation-name" maxlength="40" value="${escapeHtml(rot.name)}" placeholder="${escapeHtml(t('rotName'))}">
-                <input type="color" class="rotation-color" value="${escapeHtml(rot.color || ROTATION_COLORS[0])}" title="${escapeHtml(t('rotColor'))}">
+                <input type="color" class="rotation-color" value="${rotationColor(rot)}" title="${escapeHtml(t('rotColor'))}">
                 <button type="button" class="settings-btn rotation-duplicate">${t('rotDuplicate')}</button>
                 <button type="button" class="settings-btn reset-btn rotation-delete">${t('delete')}</button>
             </div>
@@ -702,7 +707,7 @@ function addRotation(farm, rot) {
         const rot = selectedRot(farm);
         if (!rot) return;
         if (el.classList.contains('rotation-name')) rot.name = el.value.trim().slice(0, 40) || rot.name;
-        else if (el.classList.contains('rotation-color')) rot.color = el.value;
+        else if (el.classList.contains('rotation-color')) rot.color = /^#[0-9a-f]{6}$/i.test(el.value) ? el.value : rot.color;
         else {
             const step = rot.steps[stepOf(el)];
             if (!step) return;

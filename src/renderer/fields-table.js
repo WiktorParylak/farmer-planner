@@ -1209,7 +1209,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
     if (selected && !crops.includes(selected)) crops.push(selected);
     let html = `<option value="">${emptyLabel}</option>`;
     crops.forEach(c => {
-        html += `<option value="${escapeHtml(c)}" ${selected === c ? 'selected' : ''}>${translateCropName(c)}</option>`;
+        html += `<option value="${escapeHtml(c)}" ${selected === c ? 'selected' : ''}>${escapeHtml(translateCropName(c))}</option>`;
     });
     return html;
 }
