@@ -1248,13 +1248,18 @@ function mixerLoadTotals(plan, baleTypes) {
 // bales rounded to the nearest half (never more than the farm has); the
 // rest (e.g. mineral feed) goes in loose. If rounding overfills the wagon,
 // half bales come off wherever the load overshoots its target the most.
-function mixerAutoLoad(plan, wagon, baleTypes) {
-    const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
+// Optional ingredients (0 % allowed, e.g. mineral feed) the farm has none of
+// are left out and the rest of the recipe fills their share.
+function mixerAutoLoad(plan, wagon, baleTypes, farm) {
+    const stock = mixerStockByCategory(farm);
+    const used = MIXER_TMR_CATEGORIES.filter(c => TMR_LIMITS[c][0] > 0 || stock[c] > 0 || baleTypes.some(b => b.category === c && b.count !== 0));
+    const share = c => used.includes(c) ? (parseFloat(plan.tmr[c]) || 0) : 0;
+    const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + share(c), 0) || 100;
     const target = {};
     const baleLoads = [];   // { category, item, litres }
     const load = [];
     MIXER_TMR_CATEGORIES.forEach(c => {
-        target[c] = wagon.capacity * (parseFloat(plan.tmr[c]) || 0) / recipeSum;
+        target[c] = wagon.capacity * share(c) / recipeSum;
         if (target[c] <= 0) return;
         let left = target[c];
         const bales = baleTypes.filter(b => b.category === c && b.litres > 0)
@@ -1289,6 +1294,17 @@ function mixerAutoLoad(plan, wagon, baleTypes) {
         candidates[0].item.count -= 0.5;
     }
     return load.filter(i => i.kind === 'bulk' || i.count > 0);
+}
+
+// Litres on the farm per feed category (silos, bales, pallets from the save).
+function mixerStockByCategory(farm) {
+    const out = {};
+    Object.entries((farm && farm.feedStock) || {}).forEach(([fillType, where]) => {
+        const cat = FEED_FILLTYPE_CATEGORY[fillType];
+        if (!cat) return;
+        out[cat] = (out[cat] || 0) + Object.values(where || {}).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    });
+    return out;
 }
 
 function renderMixerSection(farm, plan, barnNeed, num) {
@@ -1529,7 +1545,7 @@ function wireMixerSection(bodyEl) {
     on('.mixer-auto', 'click', () => update(plan => {
         const farm = getCurrentFarm();
         const wagon = selectedMixerWagon(farm, plan);
-        if (wagon && wagon.capacity) plan.mixer.load = mixerAutoLoad(plan, wagon, mixerBaleTypes(farm, plan));
+        if (wagon && wagon.capacity) plan.mixer.load = mixerAutoLoad(plan, wagon, mixerBaleTypes(farm, plan), farm);
     }));
 }
 
