@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.9.13 — unreleased
+## 0.9.13 — 2026-10-23
 
 **New**
 - **Farmer Planner's own installer**: the Windows setup wizard is replaced by a window in the app's style (logo, fonts and colours of the start screen) in English, Polish or German — the app's language, otherwise Windows'. One screen with the install folder — type a path or *Browse…*; under the box it shows where the app will go (*D:\Games\Farmer Planner*) or what's wrong with the path (no such drive, a character a folder name can't have) — *Desktop shortcut* and *Start Farmer Planner when it's done*, then a progress bar and *Done*. Over an installed version it says *Update from 0.9.11 to 0.9.13* (or *Reinstall*) and keeps the folder; if the app is open it offers to close it first. Errors show what went wrong with *Save log*.
