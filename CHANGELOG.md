@@ -22,6 +22,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Lease from the game shows the season too** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): *Lease · 14 mo. (season 2)* — which year of the lease it is, next to the months.
 - **Weeds chip follows the field** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): on a field ploughed this season it's greyed out — *not needed, ploughing buries them* (still clickable); grass, meadows, alfalfa and clover have no weeds chip, since weeds don't grow on grassland in the game.
 - **Edit and delete your own feeds on their tiles** ([#13](https://github.com/WiktorParylak/farmer-planner/issues/13)): a custom feed's tile in the feed picker has a pencil and a bin, like the mixer wagons — no need to scroll to the list at the bottom.
+- The keyboard focus ring uses the darker amber, so it stays visible on parchment cards.
 
 **Fixed**
 - **Deleting a farm when Documents is synced by OneDrive** ([#14](https://github.com/WiktorParylak/farmer-planner/issues/14)): the app retries for a moment while OneDrive or an antivirus holds a file, then moves the folder to the Recycle Bin. If even that fails, the farm still goes off the list and a message says which folder is left, with *Open folder*. The *locked* error now suggests pausing OneDrive.

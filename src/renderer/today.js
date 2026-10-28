@@ -11,6 +11,10 @@ function todayPanelOpen() {
     return String(getSetting('todayPanelOpen')) !== 'false';
 }
 
+// Order in which a field's tasks claim it: each field shows once, in its most
+// urgent group, and names its other tasks after the crop.
+const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'weeds', 'roll', 'work'];
+
 // { key, fields: [{ idx, field, extra }] } groups for the current season.
 function todayFieldGroups(farm) {
     const month = getFarmCurrentMonth(farm);
@@ -19,20 +23,26 @@ function todayFieldGroups(farm) {
     if (!month) return groups;
     fields.forEach((field, idx) => {
         if (!field.crop) return;
+        const tasks = {};
         const planted = field.state === 'Planted';
         const sow = (field.sowingMonth || '').toUpperCase();
         const cal = CROP_CALENDAR[field.crop] || {};
         const cut = isCutCrop(field.crop) || isPerennialCrop(field.crop);
-        if (!planted && sow === month) groups.sow.push({ idx, field });
-        else if (isSowingOverdue(field, month)) groups.late.push({ idx, field });
-        if (planted && !cut && sow && cal[sow] === month) groups.harvest.push({ idx, field });
-        if (field.weeds === 'needed') groups.weeds.push({ idx, field });
-        if (planted && field.rolling && !field.rollingDone) groups.roll.push({ idx, field });
+        if (!planted && sow === month) tasks.sow = t('work_sow');
+        else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
+        if (planted && !cut && sow && cal[sow] === month) tasks.harvest = t('work_harvest');
+        if (field.weeds === 'needed') tasks.weeds = t('work_weeds');
+        if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
         // Your own work list: its next step, unless a group above already covers it.
         if (fieldWork(field) && !cut) {
             const { next } = nextWorkStep(field, idx, farm);
-            if (next && !['sow', 'weeds', 'roll', 'harvest'].includes(next.step)) groups.work.push({ idx, field, extra: t('work_' + next.step) });
+            if (next && !['sow', 'weeds', 'roll', 'harvest'].includes(next.step)) tasks.work = t('work_' + next.step);
         }
+        const keys = TODAY_PRIORITY.filter(k => tasks[k]);
+        if (!keys.length) return;
+        const others = keys.slice(1).map(k => tasks[k]);
+        if (keys[0] === 'work') others.unshift(tasks.work);
+        groups[keys[0]].push({ idx, field, extra: others.join(', ') });
     });
     return groups;
 }
@@ -62,9 +72,10 @@ function todayFieldChipHtml(item, farm) {
     const area = parseFloat(f.area) || 0;
     const parts = [t('todayField').replace('{n}', num) + (name ? ' · ' + name : ''), translateCropName(f.crop)];
     if (item.extra) parts.push(item.extra);
-    return `<button type="button" class="today-chip today-field" data-idx="${item.idx}">
-        <span class="today-chip-main">${escapeHtml(parts.join(' · '))}</span>
-        ${area ? `<span class="today-chip-ha">${area.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 })} ha</span>` : ''}
+    const text = escapeHtml(parts.join(' · '));
+    return `<button type="button" class="today-chip today-field" data-idx="${item.idx}" title="${text}">
+        <span class="today-chip-main">${text}</span>
+        ${area ? `<span class="today-chip-ha">${area.toFixed(2)} ha</span>` : ''}
     </button>`;
 }
 
@@ -99,14 +110,14 @@ function renderTodayPanel() {
         const ha = items.reduce((s, i) => s + (parseFloat(i.field.area) || 0), 0);
         body += `<div class="today-group${g.warn ? ' is-warn' : ''}">
             <h3 class="today-group-title"><i class="fa-solid ${g.icon}" aria-hidden="true"></i> ${t('today_' + g.key)}
-                <span class="today-group-sum">${ha ? ha.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 }) + ' ha' : ''}</span></h3>
+                <span class="today-group-sum">${ha ? ha.toFixed(2) + ' ha' : ''}</span></h3>
             <div class="today-chips">${items.map(i => todayFieldChipHtml(i, farm)).join('')}</div>
         </div>`;
     });
     if (barns.length) {
         body += `<div class="today-group is-warn">
             <h3 class="today-group-title"><i class="fa-solid fa-cow" aria-hidden="true"></i> ${t('today_feed')}</h3>
-            <div class="today-chips">${barns.map(b => `<button type="button" class="today-chip today-view" data-view="animals">
+            <div class="today-chips">${barns.map(b => `<button type="button" class="today-chip today-view" data-view="animals" title="${escapeHtml(buildingDisplayName(farm, b.building))}">
                 <span class="today-chip-main">${escapeHtml(buildingDisplayName(farm, b.building))}</span>
                 <span class="today-chip-ha">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(b.days)))}</span>
             </button>`).join('')}</div>
