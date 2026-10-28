@@ -88,6 +88,10 @@
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFieldSoil">Field soil type</span>
                     </button>
+                    <button type="button" class="sidebar-item sidebar-item--rotation" data-view="rotation">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrows-spin" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="rotTitle">Crop rotation</span>
+                    </button>
                     <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubNotes">Notes</span>
@@ -400,19 +404,6 @@
                 <div id="field-modal-body" class="field-modal-body"></div>
                 <div class="modal-buttons">
                     <button type="button" id="field-modal-close" data-i18n="close">Close</button>
-                </div>
-            </div>
-        </div>
-        <div id="rotation-modal" class="modal rotation-modal">
-            <div class="modal-content rotation-content" role="dialog" aria-labelledby="rotation-title">
-                <h3 id="rotation-title" data-i18n="rotTitle">Crop rotation</h3>
-                <div class="settings-tabs" role="tablist">
-                    <button type="button" class="settings-tab rotation-tab" data-rtab="plan" data-i18n="rotTabPlan">Fields</button>
-                    <button type="button" class="settings-tab rotation-tab" data-rtab="cycles" data-i18n="rotTabCycles">Cycles</button>
-                </div>
-                <div id="rotation-body" class="rotation-body"></div>
-                <div class="modal-buttons">
-                    <button type="button" id="rotation-close" data-i18n="close">Close</button>
                 </div>
             </div>
         </div>

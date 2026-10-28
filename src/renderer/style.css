@@ -2288,6 +2288,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .sidebar-item--supplies .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--fieldsoil .sidebar-item-icon { background-color: var(--color-rust); }
 .sidebar-item--notes .sidebar-item-icon { background-color: var(--color-sky); }
+.sidebar-item--rotation .sidebar-item-icon { background-color: var(--color-accent-dark); }
 
 /* Notes pinned to the current month: count badge on the Notes item. */
 .sidebar-item.has-month-notes {
@@ -7159,19 +7160,14 @@ button.field-open:hover .field-number-chip {
 .rotation-dot.is-yellow { background-color: #d9a520; }
 .rotation-dot.is-red { background-color: var(--color-rust); }
 
-.rotation-modal .modal-content.rotation-content {
-  width: min(1400px, 95vw);
-  max-width: min(1400px, 95vw);
-  max-height: 92vh;
-  overflow-y: auto;
-  align-items: stretch;
-  justify-content: flex-start;
-  text-align: left;
+.rotation-panel {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 
-.rotation-content h3 {
-  text-align: center;
+.rotation-tabs {
+  justify-content: flex-start;
 }
 
 .rotation-body {

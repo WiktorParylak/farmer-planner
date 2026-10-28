@@ -1834,6 +1834,8 @@ window.openHubPanel = function (type) {
         renderNotesPanel(titleEl, bodyEl, modalEl);
     } else if (type === 'yieldforecast') {
         renderYieldForecastPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'rotation') {
+        renderRotationPanel(titleEl, bodyEl);
     } else if (type === 'feedplan') {
         renderFeedPlanPanel(titleEl, bodyEl, modalEl);
     } else {

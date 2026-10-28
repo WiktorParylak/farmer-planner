@@ -525,19 +525,29 @@ function rotationCellHtml(e) {
     return `<span class="${cls}" style="--crop-color:${rotationCropColor(crop)}" title="${escapeHtml(tip)}">${escapeHtml(text)}${e.catchCrop ? '<span class="rotation-catch" aria-hidden="true"></span>' : ''}</span>`;
 }
 
-function openRotationModal(tab) {
+// The Crop rotation view in the planner sidebar (rendered by openHubPanel).
+function openRotationView(tab) {
     if (tab) rotationTab = tab;
-    renderRotationModal();
-    const modal = document.getElementById('rotation-modal');
-    if (modal) modal.style.display = 'flex';
+    showPlannerView('rotation');
 }
 
-function renderRotationModal() {
+function renderRotationPanel(titleEl, bodyEl) {
+    titleEl.textContent = t('rotTitle');
     const farm = getCurrentFarm();
-    const body = document.getElementById('rotation-body');
-    if (!farm || !body) return;
-    document.querySelectorAll('#rotation-modal .rotation-tab').forEach(b => b.classList.toggle('is-active', b.dataset.rtab === rotationTab));
-    body.innerHTML = rotationTab === 'cycles' ? rotationCyclesHtml(farm) : rotationPlanHtml(farm);
+    if (!farm) { bodyEl.innerHTML = ''; return; }
+    const tabs = ['plan', 'cycles'].map(k => `<button type="button" class="settings-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" data-rtab="${k}">${t(k === 'plan' ? 'rotTabPlan' : 'rotTabCycles')}</button>`).join('');
+    bodyEl.innerHTML = `<div class="rotation-panel">
+        <div class="settings-tabs rotation-tabs" role="tablist">${tabs}</div>
+        <div class="rotation-body">${rotationTab === 'cycles' ? rotationCyclesHtml(farm) : rotationPlanHtml(farm)}</div>
+    </div>`;
+}
+
+// Re-renders the view where it is (scroll kept).
+function renderRotationModal() {
+    if (currentPlannerView !== 'rotation') return;
+    const scroll = hubView ? hubView.scrollTop : 0;
+    openHubPanel('rotation');
+    if (hubView) hubView.scrollTop = scroll;
 }
 
 // Grid: rows = fields, columns = past seasons, this one and the next ones.
@@ -650,7 +660,6 @@ function rotationStepMonthOptions(step) {
 function saveRotations(farm) {
     saveFarmData(farm);
     renderRotationModal();
-    if (!isEditMode) renderSeasonView();
 }
 
 function addRotation(farm, rot) {
@@ -663,17 +672,15 @@ function addRotation(farm, rot) {
     saveRotations(farm);
 }
 
-(function wireRotationModal() {
-    const modal = document.getElementById('rotation-modal');
-    const body = document.getElementById('rotation-body');
-    if (!modal || !body) return;
-    const close = () => { modal.style.display = 'none'; if (!isEditMode) renderSeasonView(); };
-    document.getElementById('rotation-close').addEventListener('click', close);
-    modal.addEventListener('click', e => { if (e.target === modal) close(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
-    modal.querySelectorAll('.rotation-tab').forEach(b => b.addEventListener('click', () => { rotationTab = b.dataset.rtab; renderRotationModal(); }));
+(function wireRotationView() {
+    const body = document.getElementById('hub-panel-body');
+    if (!body) return;
     const btn = document.getElementById('rotation-btn');
-    if (btn) btn.addEventListener('click', () => openRotationModal());
+    if (btn) btn.addEventListener('click', () => openRotationView());
+    body.addEventListener('click', e => {
+        const tab = e.target.closest('.rotation-tab');
+        if (tab) { rotationTab = tab.dataset.rtab; renderRotationModal(); }
+    });
 
     const selectedRot = farm => rotationById(farm, rotationSelectedId);
     const stepOf = el => { const tr = el.closest('tr[data-step]'); return tr ? +tr.dataset.step : -1; };
@@ -681,7 +688,7 @@ function addRotation(farm, rot) {
     body.addEventListener('change', async e => {
         const el = e.target;
         const farm = getCurrentFarm();
-        if (!farm) return;
+        if (!farm || !el.closest('.rotation-panel')) return;
         if (el.id === 'rotation-fill-mode') { farm.rotationAutoFill = el.value; saveFarmData(farm); return; }
         if (el.classList.contains('rotation-plan-cycle') || el.classList.contains('rotation-plan-step')) {
             const field = farm.fields[+el.dataset.idx];
@@ -725,7 +732,7 @@ function addRotation(farm, rot) {
 
     body.addEventListener('click', async e => {
         const farm = getCurrentFarm();
-        if (!farm) return;
+        if (!farm || !e.target.closest('.rotation-panel')) return;
         const item = e.target.closest('.rotation-cycle-item');
         if (item) { rotationSelectedId = item.dataset.id; renderRotationModal(); return; }
         if (e.target.closest('.rotation-new')) {
