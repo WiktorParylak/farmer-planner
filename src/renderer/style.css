@@ -5689,6 +5689,34 @@ select:focus-visible,
   width: 96px;
 }
 
+.feed-ration-tile--custom {
+  padding-right: 8px;
+}
+
+.feed-ration-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-ink-faint);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.feed-ration-tool:hover {
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+.feed-ration-tool--danger:hover {
+  color: var(--color-rust);
+}
+
 .mixer-sort {
   display: inline-flex;
   align-items: center;

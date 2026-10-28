@@ -1068,8 +1068,11 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             });
             plan.customFeeds.filter(f => f.animalType === type).forEach(f => {
                 const id = 'custom:' + f.id;
-                html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
-                    <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span></button>`;
+                // Your own feed: edit and delete right on its tile.
+                html += `<div class="feed-ration-tile feed-ration-tile--custom ${current === id ? 'feed-ration-tile--active' : ''}" role="button" tabindex="0" data-type="${type}" data-ration="${id}">
+                    <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span>
+                    <button type="button" class="feed-ration-tool feed-custom-edit" data-id="${f.id}" title="${t('notesEdit')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button type="button" class="feed-ration-tool feed-ration-tool--danger feed-custom-delete" data-id="${f.id}" title="${t('notesDelete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button></div>`;
             });
             html += `<button type="button" class="feed-ration-tile feed-ration-tile--new feed-custom-new" data-type="${type}"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomNew')}</button></div>`;
             // Mixer ration: say which recipe the crop needs below follow.
@@ -1758,8 +1761,13 @@ function wireFeedPlanPanel(bodyEl) {
         feedSelectedBuilding = el.dataset.building;
         rerenderFeedPlan();
     }));
-    bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => el.addEventListener('click', () =>
-        update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); })));
+    bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => {
+        const pick = () => update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); });
+        el.addEventListener('click', e => { if (!e.target.closest('.feed-ration-tool')) pick(); });
+        if (el.tagName !== 'BUTTON') el.addEventListener('keydown', e => {
+            if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(); }
+        });
+    });
     const settings = bodyEl.querySelector('.feed-settings');
     if (settings) settings.addEventListener('toggle', () => { feedSettingsOpen = settings.open; });
     bodyEl.querySelectorAll('.feed-use-select').forEach(el => el.addEventListener('change', () =>
@@ -1774,6 +1782,8 @@ function wireFeedPlanPanel(bodyEl) {
         if (!f) return;
         feedEditorDraft = JSON.parse(JSON.stringify(f));
         rerenderFeedPlan();
+        const editor = document.querySelector('#hub-view .feed-editor');
+        if (editor) editor.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }));
     bodyEl.querySelectorAll('.feed-custom-delete').forEach(el => el.addEventListener('click', async () => {
         const sure = await showConfirm({ title: t('feedCustomDeleteTitle'), body: t('feedCustomDeleteConfirm'), confirmText: t('delete'), danger: true });
