@@ -43,6 +43,7 @@
 - Supplies: how much seed and fertilizer to buy this season.
 - Predicted yields.
 - Notes pinned to months, with tags and a checklist.
+- Tramlines: save the tramlines of your fields from one save and paste them into another save of the same map.
 
 ## Animals and feed, worked out
 
@@ -66,7 +67,7 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 ## Questions
 
 **Does it change my savegame?**
-No. Farmer Planner only reads game files and never writes to them.
+No. Farmer Planner only reads game files, with one exception you start yourself: the tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm`. It only does that with the game closed, copies the file to `farmer_planner_backup` first, checks the new file before it replaces the old one, and can restore the last backup.
 
 **Which maps and mods does it support?**
 Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit and Enhanced Loan System.

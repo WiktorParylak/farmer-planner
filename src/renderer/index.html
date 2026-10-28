@@ -45,6 +45,26 @@
                     </div>
                 </div>
             </section>
+            <button type="button" id="tramlines-btn" class="app-settings-btn tramlines-btn" data-i18n-title="tlTitle" title="Tramlines"><i class="fa-solid fa-road" aria-hidden="true"></i></button>
+        </div>
+        <div id="tramlines-view" class="tramlines-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="tl-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="tlTitle">Tramlines</h1>
+                <div class="settings-tabs tl-tabs" role="tablist">
+                    <button type="button" class="settings-tab tl-tab is-active" data-tltab="paste" data-i18n="tlTabPaste">Paste into a save</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="cut" data-i18n="tlTabCut">Save from a save</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="editor" data-i18n="tlTabEditor">Editor</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="settings" data-i18n="tlTabSettings">Settings</button>
+                </div>
+            </header>
+            <div class="tl-body">
+                <aside id="tl-side" class="tl-side"></aside>
+                <div class="tl-canvas-wrap">
+                    <canvas id="tl-canvas"></canvas>
+                    <div id="tl-busy" class="tl-busy" hidden></div>
+                </div>
+            </div>
         </div>
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
@@ -529,6 +549,7 @@
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
     <script src="rotation.js"></script>
+    <script src="tramlines.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

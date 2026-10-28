@@ -413,4 +413,39 @@ function readFarmlandAreas(careerSavegamePath, farmId = '1') {
     }
 }
 
-module.exports = { readFieldSoilFromSave, readFarmlandAreas, openMod, findModsDir };
+// The map's field outlines for a save (the tramlines tool cuts by them):
+// { ok:true, mapSize, fields:[{ id, pts:[[x,z] world metres] }] } or
+// { ok:false, reason } (nosave | nomapid | nomod | nomap | nofields | parse).
+function readMapFieldPolygons(careerSavegamePath) {
+    let mod = null;
+    try {
+        if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return { ok: false, reason: 'nosave' };
+        const career = fs.readFileSync(careerSavegamePath, 'utf-8');
+        const mapId = (career.match(/<mapId>([^<]+)<\/mapId>/) || [])[1];
+        if (!mapId || mapId.indexOf('.') < 0) return { ok: false, reason: 'nomapid' };
+        const modName = mapId.split('.')[0];
+        const modsDir = locateMod(careerSavegamePath, modName);
+        mod = modsDir ? openMod(modsDir, modName) : null;
+        if (!mod) return { ok: false, reason: 'nomod', modName };
+        const modDesc = (mod.read('modDesc.xml') || '').toString('utf-8');
+        const cfgRel = (modDesc.match(/<map\b[^>]*configFilename="([^"]+)"/) || [])[1];
+        const cfg = cfgRel ? (mod.read(cfgRel) || '').toString('utf-8') : '';
+        const i3dRel = (cfg.match(/<filename>\s*([^<\s]+)\s*<\/filename>/) || [])[1];
+        const i3dBuf = i3dRel ? mod.read(i3dRel) : null;
+        if (!i3dBuf) return { ok: false, reason: 'nomap', modName };
+        const mapSize = parseFloat((cfg.match(/<map\b[^>]*\swidth="([\d.]+)"/) || [])[1]) || 2048;
+        const fields = readFieldPolygons(i3dBuf.toString('utf-8'))
+            .map(fl => {
+                const n = (fl.name.match(/(\d+)\s*$/) || [])[1];
+                return { id: n ? String(parseInt(n, 10)) : fl.name, pts: fl.pts };
+            });
+        if (!fields.length) return { ok: false, reason: 'nofields', modName };
+        return { ok: true, mapSize, fields };
+    } catch (e) {
+        return { ok: false, reason: 'parse', error: e.message };
+    } finally {
+        if (mod) mod.close();
+    }
+}
+
+module.exports = { readFieldSoilFromSave, readFarmlandAreas, readMapFieldPolygons, openMod, findModsDir };

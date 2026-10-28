@@ -430,6 +430,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('a6', tutDemoItem),
             tutInfo('a7', () => { const item = tutDemoItem(); return item ? item.querySelector('.export-btn-circle') : null; }),
             tutInfo('a8', '#import-backup-btn'),
+            tutInfo('a13', '#tramlines-btn'),
             tutInfo('a9', () => { const item = tutDemoItem(); return item ? item.querySelector('.delete-btn-circle') : null; }),
             tutClick('a12', () => { const item = tutDemoItem(); return item ? item.querySelector('.select-btn') : null; },
                 () => tutPlannerShown() && currentFarmId === tut.demoId)

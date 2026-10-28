@@ -43,6 +43,7 @@
 - Zaopatrzenie: ile nasion i nawozu kupić na sezon.
 - Przewidywane plony.
 - Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
+- Ścieżki technologiczne: zapisz ścieżki z pól jednego zapisu i wklej je do innego zapisu tej samej mapy.
 
 ## Zwierzęta i pasza policzone
 
@@ -66,7 +67,7 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 ## Pytania
 
 **Czy zmienia mój zapis gry?**
-Nie. Farmer Planner tylko czyta pliki gry i nigdy do nich nie zapisuje.
+Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu. Robi to tylko przy zamkniętej grze, najpierw kopiuje plik do `farmer_planner_backup`, sprawdza nowy plik, zanim podmieni stary, i potrafi przywrócić ostatnią kopię.
 
 **Jakie mapy i mody obsługuje?**
 Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit i Enhanced Loan System.
