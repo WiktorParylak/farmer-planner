@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.10.0 — unreleased
+
+**Fixed**
+- **Deleting a farm when Documents is synced by OneDrive** ([#14](https://github.com/WiktorParylak/farmer-planner/issues/14)): the app retries for a moment while OneDrive or an antivirus holds a file, then moves the folder to the Recycle Bin. If even that fails, the farm still goes off the list and a message says which folder is left, with *Open folder*. The *locked* error now suggests pausing OneDrive.
+
 ## 0.9.13 — 2026-10-23
 
 **New**

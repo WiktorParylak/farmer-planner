@@ -5599,7 +5599,7 @@ window.prepareDelete = async function (id) {
         break;
     }
 
-    let error = null;
+    let error = null, leftover = null;
     if (!farmToKill) {
         console.error('Delete failed: no farm found with id', id);
         error = 'deleteErrorNotFound';
@@ -5612,16 +5612,40 @@ window.prepareDelete = async function (id) {
             console.error('Delete failed: folder does not exist on disk', folderPath);
             error = 'deleteErrorMissingOnDisk';
         } else {
+            // OneDrive (Documents synced) or an antivirus can hold a file for a
+            // moment — retry, then try the Recycle Bin, then at least take the
+            // farm off the list (data.json) and say what was left behind.
             try {
-                fs.rmSync(folderPath, { recursive: true, force: true });
+                fs.rmSync(folderPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
             } catch (err) {
-                console.error('Delete failed:', err);
-                error = 'deleteErrorLocked';
+                console.error('Delete failed:', err.code, err);
+                if (await ipcRenderer.invoke('trash-farm-folder', farmToKill.folderName)) {
+                    console.warn('Farm folder moved to the Recycle Bin instead:', folderPath);
+                } else {
+                    try {
+                        const jsonPath = path.join(folderPath, 'data.json');
+                        if (fs.existsSync(jsonPath)) fs.rmSync(jsonPath, { maxRetries: 5, retryDelay: 200 });
+                        leftover = farmToKill.folderName;
+                    } catch (err2) {
+                        console.error('Removing data.json failed too:', err2.code, err2);
+                        error = 'deleteErrorLocked';
+                    }
+                }
             }
         }
     }
     renderFarmList(getAllFarms());
     if (error) showNotice(t('noticeErrorTitle'), t(error), true);
+    else if (leftover) {
+        const open = await showDialog({
+            title: t('deleteFarmLeftoverTitle'),
+            body: t('deleteFarmLeftover').replace('{path}', path.join(appDataDir, leftover)),
+            confirmText: t('seasonModalOk'),
+            extraText: t('deleteFarmOpenFolder'),
+            icon: 'fa-triangle-exclamation'
+        });
+        if (open === 'extra') ipcRenderer.invoke('open-farm-folder', leftover);
+    }
 };
 
 // =============================================================

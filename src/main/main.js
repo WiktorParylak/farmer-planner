@@ -55,6 +55,32 @@ ipcMain.on('get-data-dir', (event) => {
   event.returnValue = dataDir;
 });
 
+// Farm folders only (a direct child of the data folder), so the renderer can't
+// trash or open anything else.
+function farmFolderPath(folderName) {
+  if (!dataDir || typeof folderName !== 'string' || !folderName || folderName !== path.basename(folderName)) return null;
+  return path.join(dataDir, folderName);
+}
+
+// Deleting a farm when the folder can't be removed in place (OneDrive keeps
+// files open): move it to the Recycle Bin instead.
+ipcMain.handle('trash-farm-folder', async (event, folderName) => {
+  const p = farmFolderPath(folderName);
+  if (!p || !fs.existsSync(p)) return false;
+  try {
+    await shell.trashItem(p);
+    return true;
+  } catch (err) {
+    console.error('Moving the farm folder to the Recycle Bin failed:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('open-farm-folder', (event, folderName) => {
+  const p = farmFolderPath(folderName);
+  return p && fs.existsSync(p) ? shell.openPath(p) : null;
+});
+
 ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
