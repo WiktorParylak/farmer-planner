@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **New**
 - **Weeding mechanically** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): the weeds chip has a fourth state, *weeded mechanically* (hoe / weeder, a broom icon), after *sprayed*. The game's dead weeds don't turn it back into *sprayed*.
+- **Merge the fields** in the work list ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): a row that joins several game fields (*69-70-71*) gets *Merge the fields* as its first suggested step, and it can be added to any list. Once ticked off it's remembered for that field number and not suggested again.
 
 **Changed**
 - **Fill to recipe without mineral feed** ([#10](https://github.com/WiktorParylak/farmer-planner/issues/10)): mineral feed and straw are optional in the game's TMR recipe (0–7 % and 0–30 %), so when the farm has none of one, *Fill to recipe* leaves it out and hay and silage take its share instead of adding loose mineral feed you don't have.

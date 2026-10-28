@@ -207,6 +207,7 @@ const UI = {
     work_sow: "Säen",
     work_roll: "Walzen",
     work_weeds: "Unkraut",
+    work_merge: "Felder zusammenlegen",
     loadFieldsFromGame: "FELDER AUS DEM SPIEL",
     loadFieldsFromGameHint: "Felder aus dem Spielstand hinzufügen, ihre Fläche ausfüllen und Gesätes markieren",
     loadFieldsTitle: "Felder aus dem Spiel",

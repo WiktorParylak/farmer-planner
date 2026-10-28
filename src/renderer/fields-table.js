@@ -576,7 +576,16 @@ window.openFieldModal = function (idx) {
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
 // Lime only while the pH needs it (the game's pH with Precision Farming) and
 // the crop uses lime up; no weeds step on a ploughed field.
-const WORK_STEPS = ['fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+
+// A row joining several game fields ("10-11") has to be worked as one first:
+// the strip between them cultivated or ploughed over. Once ticked off it's
+// remembered per field number (farm.mergedFields), so it isn't suggested again.
+function needsMerging(field, farm) {
+    const parts = String(field.number || '').split(/[^0-9]+/).filter(Boolean);
+    const key = String(field.number || '').trim();
+    return parts.length > 1 && !(farm && farm.mergedFields && farm.mergedFields[key]);
+}
 
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
@@ -589,6 +598,7 @@ function suggestedWork(field, idx, farm) {
     const sown = field.state === 'Planted';
     const plowed = field.tillage === 'plowed';
     if (!sown) {
+        if (needsMerging(field, farm)) steps.push('merge');
         steps.push(plowed ? 'plow' : 'cultivate');
         if (until > 0 && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
@@ -700,6 +710,12 @@ window.openWorkModal = function (idx) {
                 markWeedsManual(farm, field);
             }
             if (work[i].step === 'roll') { if (e.target.checked) field.rolling = true; field.rollingDone = e.target.checked; }
+            if (work[i].step === 'merge') {
+                const key = String(field.number || '').trim();
+                farm.mergedFields = { ...(farm.mergedFields || {}) };
+                if (e.target.checked) farm.mergedFields[key] = true;
+                else delete farm.mergedFields[key];
+            }
         });
     });
     listEl.addEventListener('click', e => {
