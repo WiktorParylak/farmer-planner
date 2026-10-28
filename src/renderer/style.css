@@ -2288,6 +2288,36 @@ th.is-sortable[aria-sort="descending"]::after {
 .sidebar-item--supplies .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--fieldsoil .sidebar-item-icon { background-color: var(--color-rust); }
 .sidebar-item--notes .sidebar-item-icon { background-color: var(--color-sky); }
+
+/* Notes pinned to the current month: count badge on the Notes item. */
+.sidebar-item.has-month-notes {
+  position: relative;
+}
+
+.sidebar-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  animation: sidebar-badge-pulse 1.4s ease-out 2;
+}
+
+@keyframes sidebar-badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(201, 122, 43, 0.6); }
+  100% { box-shadow: 0 0 0 10px rgba(201, 122, 43, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-badge { animation: none; }
+}
 .sidebar-item--yieldforecast .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--feedplan .sidebar-item-icon { background-color: var(--color-accent); }
 

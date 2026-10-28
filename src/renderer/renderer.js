@@ -2194,6 +2194,7 @@ function saveNotes(farm, notes) {
     if (!p) return;
     try { fs.writeFileSync(p, JSON.stringify(notes, null, 2), 'utf-8'); }
     catch (err) { console.error('Could not write notes:', err); }
+    if (farm.id === currentFarmId) refreshNotesBadge(farm);
 }
 
 function generateNoteId() {
@@ -2255,8 +2256,11 @@ function renderNoteCard(note, currentMonth) {
         </div>` : '';
 
     // Collapsed: title, months, tags and the checklist count. Click the title
-    // row to unfold the text and checklist. Notes for the current month start open.
-    const open = noteOpenIds.has(note.id) || (isCurrent && !noteClosedIds.has(note.id));
+    // row to unfold the text and checklist. Which start open is an app setting
+    // (notesOpenMode): this month's notes (default), all, or none.
+    const mode = notesOpenMode();
+    const startsOpen = mode === 'open' || (mode === 'month' && isCurrent);
+    const open = noteOpenIds.has(note.id) || (startsOpen && !noteClosedIds.has(note.id));
     const hasDetails = !!(note.body || checklist.length);
     const summary = checklist.length ? `<span class="note-card-count">${doneCount}/${checklist.length}</span>` : '';
     return `
@@ -2283,6 +2287,31 @@ function renderNoteCard(note, currentMonth) {
 // the list keeps them as they were.
 const noteOpenIds = new Set();
 const noteClosedIds = new Set();
+
+const NOTES_OPEN_MODES = ['month', 'open', 'closed'];
+function notesOpenMode() {
+    const v = getSetting('notesOpenMode');
+    return NOTES_OPEN_MODES.includes(v) ? v : 'month';
+}
+
+// The Notes item in the sidebar shows how many notes are pinned to the
+// current in-game month (a badge that pulses once when it appears).
+function refreshNotesBadge(farm) {
+    const item = document.querySelector('#planner-sidebar .sidebar-item--notes');
+    if (!item) return;
+    const month = farm ? getFarmCurrentMonth(farm) : null;
+    const n = month ? loadNotes(farm).filter(note => (note.months || []).includes(month)).length : 0;
+    let badge = item.querySelector('.sidebar-badge');
+    if (!n) { if (badge) badge.remove(); item.classList.remove('has-month-notes'); item.removeAttribute('title'); return; }
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'sidebar-badge';
+        item.appendChild(badge);
+    }
+    badge.textContent = n;
+    item.classList.add('has-month-notes');
+    item.title = t('notesMonthBadge').replace('{n}', n).replace('{m}', translateMonth(month));
+}
 
 function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag, filterField) {
     const filtered = notes.filter(n => {
@@ -2380,10 +2409,20 @@ function renderNotesPanel(titleEl, bodyEl, modalEl) {
             ${allTags.length ? `<select id="notes-filter-tag" class="notes-filter-select">${tagOptionsHtml}</select>` : ''}
             ${noteFields.length ? `<select id="notes-filter-field" class="notes-filter-select">${fieldOptionsHtml}</select>` : ''}
             ${currentMonth ? `<button type="button" id="notes-filter-thismonth" class="notes-filter-thismonth-btn" data-month="${currentMonth}">${t('notesThisMonthFilter')}</button>` : ''}
+            <select id="notes-open-mode" class="notes-filter-select" title="${t('notesOpenModeHint')}">
+                ${NOTES_OPEN_MODES.map(m => `<option value="${m}" ${m === notesOpenMode() ? 'selected' : ''}>${t('notesOpenMode_' + m)}</option>`).join('')}
+            </select>
         </div>
         <div id="notes-list" class="notes-list" data-empty-text="${escapeHtml(t('notesEmpty'))}">${renderNotesListHtml(notes, currentMonth, '', '')}</div>`;
 
     wireNotesPanel(bodyEl, notes, currentMonth);
+    const openMode = document.getElementById('notes-open-mode');
+    if (openMode) openMode.addEventListener('change', () => {
+        setSetting('notesOpenMode', openMode.value);
+        noteOpenIds.clear();
+        noteClosedIds.clear();
+        showPlannerView('notes');
+    });
 }
 
 window.deleteNote = async function (noteId) {
@@ -4090,6 +4129,7 @@ function refreshPlannerHeader(farm) {
         plannerYear.readOnly = fromGame;
         plannerYear.title = fromGame ? t('yearFromGameHint') : t('yearManualHint');
     }
+    refreshNotesBadge(farm);
 
 }
 
