@@ -251,7 +251,19 @@ function feedRationOptionsHtml(type, plan, selectedId) {
         `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(mixerDisplayName(getCurrentFarm(), m))} (100%)</option>`).join('');
     const custom = plan.customFeeds.filter(f => f.animalType === type).map(f =>
         `<option value="custom:${f.id}" ${selectedId === 'custom:' + f.id ? 'selected' : ''}>${escapeHtml(f.name)} (${f.efficiency}%)</option>`).join('');
-    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '')
+        + `<option value="__new">+ ${escapeHtml(t('feedCustomNew'))}…</option>`;
+}
+
+// "+ New feed…" in a ration picker outside the feed planner: open the planner
+// on that barn with the new-feed editor for the species.
+function startNewCustomFeed(type, barnId) {
+    showPlannerView('feedplan');   // a fresh open resets the planner's state…
+    if (barnId != null) feedSelectedBuilding = barnId;   // …so set it afterwards
+    feedEditorDraft = { id: null, animalType: type || 'COW', name: '', efficiency: 100, ingredients: [{ category: 'HAY', pct: 100 }] };
+    rerenderFeedPlan();
+    const editor = document.querySelector('#hub-view .feed-editor');
+    if (editor) editor.scrollIntoView({ block: 'center' });
 }
 
 // Name the player gave a feed mixer (per farm), else the one from its mod.

@@ -1817,6 +1817,7 @@ window.openHubPanel = function (type) {
             activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
+                if (el.value === '__new') { startNewCustomFeed(el.dataset.type, el.dataset.barn); return; }
                 const plan = getFeedPlan(getCurrentFarm());
                 setBarnRation(plan, el.dataset.barn, el.dataset.type, el.value);
                 saveFeedPlan(plan);
