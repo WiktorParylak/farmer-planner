@@ -3857,12 +3857,20 @@ select:focus-visible,
 
 /* ========================================================= */
 /* 10. RESPONSIVE FALLBACK (narrow window)                    */
+/* Full HD at 100%: the 380 px crop list left the fields table ~35 px short
+   (a horizontal scrollbar under it). */
+@media (min-width: 1901px) and (max-width: 1980px) {
+  .planner-crops {
+    width: 320px;
+  }
+}
+
 /* ========================================================= */
 /* Compact planner — a maximized Full HD window with Windows display scaling
    at 125–150% only leaves ~1536×820 / 1280×680 CSS px. Tighter spacing and
    narrower side panels so the fields table fits without a horizontal
    scrollbar and the menu without a vertical one. */
-@media (max-width: 1680px), (max-height: 900px) {
+@media (max-width: 1900px), (max-height: 900px) {
   .app-container {
     padding: 0 16px;
   }
@@ -3937,7 +3945,7 @@ select:focus-visible,
 
 /* Full HD at 150% (~1280 px wide): squeeze a bit more out of the side panels
    and the table's widest controls. */
-@media (max-width: 1400px) {
+@media (max-width: 1520px) {
   .planner-sidebar {
     width: 158px;
   }
@@ -3989,7 +3997,7 @@ select:focus-visible,
 
 /* Narrow window: table and crop list stacked and scrolled together — from the
    top (centred, the overflow used to spill up under the header). */
-@media (max-width: 1180px) {
+@media (max-width: 1300px) {
   .planner-content {
     flex-direction: column;
     justify-content: flex-start;
