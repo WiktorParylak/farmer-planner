@@ -3080,6 +3080,14 @@ function loadFarmConfigs(farm) {
     // curves the barns actually follow.
     useSaveFarm(farm);
     ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
+    // Animal Package in the save: its breeds (chickens, Holstein…) and curves
+    // are what the game runs, whatever was imported before.
+    if (ANIMAL_MODS && ANIMAL_MODS.animalPackageXml.length) {
+        ANIMAL_MODS.animalPackageXml.forEach(xml => {
+            const parsed = parseAnimalNeedsXml(xml);
+            if (parsed) Object.keys(parsed).forEach(st => { ANIMAL_NEEDS_DATA[st] = { ...(ANIMAL_NEEDS_DATA[st] || {}), ...parsed[st] }; });
+        });
+    }
     if (afcActive(farm)) {
         const INPUTS = ['food', 'water', 'straw'];
         const applyInputs = (subType, src) => {
@@ -3316,10 +3324,9 @@ function parseAnimalNeedsXml(xmlText) {
     catch (err) { return null; }
     if (!doc || doc.querySelector('parsererror')) return null;
 
-    const animalsRoot = doc.querySelector('animals');
-    if (!animalsRoot) return null;
-
-    const subTypeEls = animalsRoot.querySelectorAll('animal > subType');
+    // animals.xml has <animals><animal type>…; Animal Package's per-species
+    // files have a single <animal type> (or another wrapper) as the root.
+    const subTypeEls = doc.querySelectorAll('animal > subType');
     if (subTypeEls.length === 0) return null;
 
     // Value attribute name isn't consistent across every crop/animal XML

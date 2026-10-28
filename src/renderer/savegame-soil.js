@@ -52,6 +52,11 @@ function openZip(zipPath) {
             const p = prefix.toLowerCase();
             return Object.keys(entries).filter(n => n.startsWith(p) && n.length > p.length && !n.slice(p.length).includes('/'));
         },
+        // Every file path (lower-cased) under `prefix`, at any depth.
+        listAll(prefix = '') {
+            const p = prefix.toLowerCase();
+            return Object.keys(entries).filter(n => n.startsWith(p) && !n.endsWith('/'));
+        },
         close() { fs.closeSync(fd); }
     };
 }
@@ -66,6 +71,21 @@ function openMod(modsDir, modName) {
                     return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
                         .filter(e => e.isFile()).map(e => (prefix + e.name).toLowerCase());
                 } catch { return []; }
+            },
+            listAll: (prefix = '') => {
+                const out = [];
+                const walk = (rel, depth) => {
+                    if (depth > 8) return;
+                    let entries;
+                    try { entries = fs.readdirSync(path.join(dir, rel), { withFileTypes: true }); } catch { return; }
+                    entries.forEach(e => {
+                        const r = rel + e.name;
+                        if (e.isDirectory()) walk(r + '/', depth + 1);
+                        else if (e.isFile()) out.push(r.toLowerCase());
+                    });
+                };
+                walk(prefix, 0);
+                return out;
             },
             close() {}
         };

@@ -31,7 +31,7 @@ function parseReproduction(body) {
 
 function parseAnimalDefs(xmlText) {
     const out = { visuals: {}, reproduction: {} };
-    if (!/<animals[\s>]/i.test(xmlText) || !/<subType\s/i.test(xmlText)) return out;
+    if (!/<animals?[\s>]/i.test(xmlText) || !/<subType\s/i.test(xmlText)) return out;
     const blocks = xmlText.split(/<subType\s/i).slice(1);
     blocks.forEach(block => {
         const idMatch = block.match(/^[^>]*\bsubType\s*=\s*"([^"]+)"/i);

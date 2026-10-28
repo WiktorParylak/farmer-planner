@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Fixed**
 - **Deleting a farm when Documents is synced by OneDrive** ([#14](https://github.com/WiktorParylak/farmer-planner/issues/14)): the app retries for a moment while OneDrive or an antivirus holds a file, then moves the folder to the Recycle Bin. If even that fails, the farm still goes off the list and a message says which folder is left, with *Open folder*. The *locked* error now suggests pausing OneDrive.
+- **Animal Package (vanilla edition)** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): the mod has no single `animals.xml` — each species has its own file in its own folder — so the app missed its breeds (chickens weren't in the Feed planner, mod cows were counted with the wrong food curve). Now every animal definition in the mod is read whenever it's in the savegame (not only when AnimalFoodCalculator points at it), and a definition file with one `<animal>` as its root is understood.
 
 ## 0.9.13 — 2026-10-23
 
