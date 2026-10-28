@@ -184,7 +184,8 @@ function getFeedPlan(farm) {
 
 // Mixer wagon ("paszowóz") settings kept in the feed plan: the chosen wagon,
 // wagons and bale types the player added by hand, capacities typed in for
-// wagons whose file we couldn't read, and the current load.
+// wagons whose file we couldn't read, and the load. Every wagon keeps its own
+// load (loads[wagonId]); `load` is the chosen wagon's.
 function normalizeMixerPlan(m) {
     m = (m && typeof m === 'object') ? m : {};
     return {
@@ -192,8 +193,19 @@ function normalizeMixerPlan(m) {
         custom: Array.isArray(m.custom) ? m.custom : [],
         capacity: { ...(m.capacity || {}) },
         customBales: Array.isArray(m.customBales) ? m.customBales : [],
-        load: Array.isArray(m.load) ? m.load : []
+        load: Array.isArray(m.load) ? m.load : [],
+        loads: { ...(m.loads || {}) },
+        sort: ['name', 'capacity'].includes(m.sort) ? m.sort : 'default'
     };
+}
+
+// Switches the wagon, keeping each wagon's load.
+function selectMixerWagon(plan, id) {
+    if (plan.mixer.selected === id) return;
+    if (plan.mixer.selected) plan.mixer.loads[plan.mixer.selected] = plan.mixer.load;
+    plan.mixer.selected = id;
+    plan.mixer.load = Array.isArray(plan.mixer.loads[id]) ? plan.mixer.loads[id] : [];
+    delete plan.mixer.loads[id];
 }
 
 function saveFeedPlan(plan) {
@@ -1187,10 +1199,20 @@ function mixerBaleTypes(farm, plan) {
         key: 'custom:' + b.id, label: b.name, fillType: null,
         category: b.category, litres: parseFloat(b.litres) || 0, count: null, custom: true
     }));
+    // The game's own bale sizes (data/objects/bales/*), to compare with what
+    // the farm has: litres per bale for hay, silage and straw.
+    const std = [];
+    Object.entries(MIXER_STANDARD_BALES).forEach(([size, byType]) => {
+        Object.entries(byType).forEach(([fillType, litres]) => {
+            const key = size + '|' + fillType + '|' + litres;
+            if (onFarm.some(b => b.key === key)) return;
+            std.push({ key, label: baleSizeLabel(size), fillType, category: FEED_FILLTYPE_CATEGORY[fillType], litres, count: null, std: true });
+        });
+    });
     // A loaded bale type the farm has run out of (key "round125|DRYCLOVER_WINDROW|4500")
     // stays pickable with 0 on the farm — otherwise its row showed the first
     // bale in the list and counted 0 l.
-    const known = new Set([...onFarm, ...own].map(b => b.key));
+    const known = new Set([...onFarm, ...own, ...std].map(b => b.key));
     const gone = [];
     plan.mixer.load.forEach(item => {
         if (item.kind !== 'bale' || known.has(item.baleKey) || String(item.baleKey).startsWith('custom:')) return;
@@ -1200,7 +1222,30 @@ function mixerBaleTypes(farm, plan) {
         known.add(item.baleKey);
         gone.push({ key: item.baleKey, label: baleSizeLabel(size), fillType, category, litres: parseFloat(litres), count: 0 });
     });
-    return [...onFarm, ...own, ...gone];
+    return [...onFarm, ...gone, ...own, ...std];
+}
+
+// FS25 base game bales (data/objects/bales/roundbales|squarebales/*.xml,
+// <fillType capacity>): litres of hay, silage and straw per bale.
+const MIXER_STANDARD_BALES = {
+    round125: { DRYGRASS_WINDROW: 4500, SILAGE: 3500, STRAW: 5000 },
+    round150: { DRYGRASS_WINDROW: 6500, SILAGE: 5500, STRAW: 7500 },
+    round180: { DRYGRASS_WINDROW: 9000, SILAGE: 7500, STRAW: 11000 },
+    square180: { DRYGRASS_WINDROW: 6000, SILAGE: 5000, STRAW: 7000 },
+    square220: { DRYGRASS_WINDROW: 7250, SILAGE: 6000, STRAW: 8250 },
+    square240: { DRYGRASS_WINDROW: 8000, SILAGE: 6500, STRAW: 9000 }
+};
+
+// <option>s grouped: on the farm / your own / the game's standard sizes.
+function mixerBaleOptionsHtml(baleTypes, selectedKey) {
+    const opt = x => `<option value="${escapeHtml(x.key)}" ${x.key === selectedKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`;
+    const groups = [
+        ['mixerGroupFarm', baleTypes.filter(x => !x.custom && !x.std)],
+        ['mixerGroupOwn', baleTypes.filter(x => x.custom)],
+        ['mixerGroupStd', baleTypes.filter(x => x.std)]
+    ];
+    return groups.filter(([, list]) => list.length)
+        .map(([label, list]) => `<optgroup label="${escapeHtml(t(label))}">${list.map(opt).join('')}</optgroup>`).join('');
 }
 
 function baleSizeLabel(size) {
@@ -1251,6 +1296,7 @@ function mixerLoadTotals(plan, baleTypes) {
 // Optional ingredients (0 % allowed, e.g. mineral feed) the farm has none of
 // are left out and the rest of the recipe fills their share.
 function mixerAutoLoad(plan, wagon, baleTypes, farm) {
+    baleTypes = baleTypes.filter(b => !b.std);
     const stock = mixerStockByCategory(farm);
     const used = MIXER_TMR_CATEGORIES.filter(c => TMR_LIMITS[c][0] > 0 || stock[c] > 0 || baleTypes.some(b => b.category === c && b.count !== 0));
     const share = c => used.includes(c) ? (parseFloat(plan.tmr[c]) || 0) : 0;
@@ -1312,28 +1358,43 @@ function renderMixerSection(farm, plan, barnNeed, num) {
     const wagon = selectedMixerWagon(farm, plan);
     plan.mixer.selected = wagon ? wagon.id : null;
     const baleTypes = mixerBaleTypes(farm, plan);
+    const sortBy = plan.mixer.sort;
+    const shown = sortBy === 'default' ? wagons : [...wagons].sort((a, b) => sortBy === 'name'
+        ? String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' })
+        : (b.capacity || 0) - (a.capacity || 0));
 
     let html = `<div class="hub-panel-subtitle">${t('mixerTitle')}</div><div class="mixer">`;
 
     // --- Wagon picker ---
+    if (wagons.length > 1) {
+        html += `<label class="mixer-sort">${t('mixerSort')}
+            <select class="feed-input mixer-sort-select">
+                ${['default', 'name', 'capacity'].map(k => `<option value="${k}" ${k === sortBy ? 'selected' : ''}>${t('mixerSort_' + k)}</option>`).join('')}
+            </select></label>`;
+    }
     html += `<div class="mixer-wagons">`;
-    wagons.forEach(w => {
+    shown.forEach(w => {
         html += `<div class="mixer-wagon-tile ${w.id === plan.mixer.selected ? 'mixer-wagon-tile--active' : ''}" role="button" tabindex="0" data-id="${escapeHtml(w.id)}">
             <span class="mixer-wagon-icon" aria-hidden="true"><i class="fa-solid fa-truck-ramp-box" aria-hidden="true"></i></span>
             <span class="mixer-wagon-text">
                 <span class="mixer-wagon-name">${escapeHtml(w.name)}</span>
                 <span class="mixer-wagon-meta">${w.capacity ? num(w.capacity) + ' l' : t('mixerNoCapacity')} · ${t(w.source === 'save' ? 'mixerFromSave' : 'mixerOwn')}</span>
             </span>
+            <button type="button" class="note-card-action mixer-wagon-edit" data-id="${escapeHtml(w.id)}" title="${t('notesEdit')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
             ${w.source === 'custom' ? `<button type="button" class="note-card-action note-card-action--danger mixer-wagon-delete" data-id="${escapeHtml(w.id)}" title="${t('delete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>` : ''}
         </div>`;
     });
     html += `<button type="button" class="mixer-add-btn mixer-new-wagon"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerNewWagon')}</button></div>`;
 
-    if (mixerFormOpen === 'wagon') {
+    if (mixerFormOpen === 'wagon' || String(mixerFormOpen).startsWith('wagon:')) {
+        // 'wagon:<id>' edits that wagon: a savegame wagon only its capacity
+        // (its name comes from the game), your own both.
+        const editing = String(mixerFormOpen).startsWith('wagon:') ? wagons.find(w => 'wagon:' + w.id === mixerFormOpen) : null;
+        const fromSave = editing && editing.source !== 'custom';
         html += `<div class="mixer-form">
-            <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}"></label>
-            <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000"><span class="supply-unit">l</span></span></label>
-            <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
+            <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}" value="${editing ? escapeHtml(editing.name) : ''}" ${fromSave ? 'disabled' : ''}></label>
+            <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000" value="${editing && editing.capacity ? editing.capacity : ''}"><span class="supply-unit">l</span></span></label>
+            <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
             <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
         </div>`;
     }
@@ -1351,6 +1412,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
         // --- Load list ---
         html += `<div class="mixer-load"><div class="mixer-col-title">${t('mixerLoad')}</div>`;
         if (!plan.mixer.load.length) html += `<p class="barn-empty">${t('mixerLoadEmpty')}</p>`;
+        else html += `<div class="mixer-row mixer-row--head"><span></span><span>${t('mixerColMaterial')}</span><span>${t('mixerColAmount')}</span><span>${t('mixerColLitres')}</span><span></span></div>`;
         plan.mixer.load.forEach((item, idx) => {
             if (item.kind === 'bale') {
                 const b = baleTypes.find(x => x.key === item.baleKey);
@@ -1360,12 +1422,12 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                     <span class="mixer-row-icon" aria-hidden="true"><i class="fa-solid fa-circle-dot" aria-hidden="true"></i></span>
                     <select class="feed-input mixer-bale-select" data-idx="${idx}">
                         ${b ? '' : '<option value="" selected disabled>—</option>'}
-                        ${baleTypes.map(x => `<option value="${escapeHtml(x.key)}" ${x.key === item.baleKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`).join('')}
+                        ${mixerBaleOptionsHtml(baleTypes, item.baleKey)}
                     </select>
                     <span class="mixer-qty">
-                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="-0.5" aria-label="-½">−</button>
-                        <input type="number" class="feed-input mixer-count" data-idx="${idx}" min="0" step="0.5" value="${item.count}">
-                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="0.5" aria-label="+½">+</button>
+                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="-0.25" aria-label="-¼">−</button>
+                        <input type="number" class="feed-input mixer-count" data-idx="${idx}" min="0" step="0.25" value="${item.count}">
+                        <button type="button" class="mixer-step" data-idx="${idx}" data-step="0.25" aria-label="+¼">+</button>
                         <span class="supply-unit">${t('mixerPcs')}</span>
                     </span>
                     <span class="mixer-row-litres ${tooMany ? 'feed-warn' : ''}" ${tooMany ? `title="${t('mixerTooManyBales').replace('{n}', b.count)}"` : ''}>${num(litres)} l</span>
@@ -1399,7 +1461,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 <label>${t('mixerBaleName')}<input type="text" class="feed-input mixer-f-bname" placeholder="${t('mixerBaleNamePh')}"></label>
                 <label>${t('mixerBaleContent')}<select class="feed-input mixer-f-bcat">${MIXER_TMR_CATEGORIES.map(c => `<option value="${c}">${feedCategoryLabel(c)}</option>`).join('')}</select></label>
                 <label>${t('mixerBaleLitres')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-blitres" min="1" step="50" placeholder="4000"><span class="supply-unit">l</span></span></label>
-                <button type="button" class="supply-fillplan-btn mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
+                <button type="button" class="supply-fillplan-btn mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
                 <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
             </div>`;
         }
@@ -1479,30 +1541,49 @@ function wireMixerSection(bodyEl) {
     const idx = el => parseInt(el.dataset.idx);
 
     on('.mixer-wagon-tile', 'click', (el, e) => {
-        if (e.target.closest('.mixer-wagon-delete')) return;
-        update(plan => { plan.mixer.selected = el.dataset.id; });
+        if (e.target.closest('.mixer-wagon-delete, .mixer-wagon-edit')) return;
+        update(plan => selectMixerWagon(plan, el.dataset.id));
     });
     on('.mixer-wagon-tile', 'keydown', (el, e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
-        update(plan => { plan.mixer.selected = el.dataset.id; });
+        update(plan => selectMixerWagon(plan, el.dataset.id));
     });
     on('.mixer-wagon-delete', 'click', (el, e) => {
         e.stopPropagation();
-        update(plan => { plan.mixer.custom = plan.mixer.custom.filter(w => w.id !== el.dataset.id); });
+        update(plan => {
+            plan.mixer.custom = plan.mixer.custom.filter(w => w.id !== el.dataset.id);
+            delete plan.mixer.loads[el.dataset.id];
+            if (plan.mixer.selected === el.dataset.id) { plan.mixer.selected = null; plan.mixer.load = []; }
+        });
     });
+    on('.mixer-wagon-edit', 'click', (el, e) => {
+        e.stopPropagation();
+        mixerFormOpen = 'wagon:' + el.dataset.id;
+        rerenderFeedPlan();
+    });
+    on('.mixer-sort-select', 'change', (el) => update(plan => { plan.mixer.sort = el.value; }));
     on('.mixer-new-wagon', 'click', () => { mixerFormOpen = 'wagon'; rerenderFeedPlan(); });
     on('.mixer-new-bale', 'click', () => { mixerFormOpen = 'bale'; rerenderFeedPlan(); });
     on('.mixer-f-cancel', 'click', () => { mixerFormOpen = null; rerenderFeedPlan(); });
     on('.mixer-f-save-wagon', 'click', () => {
         const name = (root.querySelector('.mixer-f-name').value || '').trim();
         const cap = parseFloat(root.querySelector('.mixer-f-cap').value);
-        if (!name || !(cap > 0)) return;
+        const editId = String(mixerFormOpen).startsWith('wagon:') ? String(mixerFormOpen).slice(6) : null;
+        if (!(cap > 0)) return;
+        const own = editId ? getFeedPlan(getCurrentFarm()).mixer.custom.find(w => w.id === editId) : null;
+        if ((!editId || own) && !name) return;
         mixerFormOpen = null;
         update(plan => {
-            const id = 'custom:' + Date.now().toString(36);
-            plan.mixer.custom.push({ id, name, capacity: cap });
-            plan.mixer.selected = id;
+            if (!editId) {
+                const id = 'custom:' + Date.now().toString(36);
+                plan.mixer.custom.push({ id, name, capacity: cap });
+                selectMixerWagon(plan, id);
+                return;
+            }
+            const mine = plan.mixer.custom.find(w => w.id === editId);
+            if (mine) { mine.name = name; mine.capacity = cap; }
+            else plan.mixer.capacity[editId] = cap;
         });
     });
     on('.mixer-f-save-bale', 'click', () => {
@@ -1536,11 +1617,11 @@ function wireMixerSection(bodyEl) {
     on('.mixer-bale-select', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].baleKey = el.value; }));
     on('.mixer-bulk-cat', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].category = el.value; }));
     on('.mixer-bulk-litres', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].litres = Math.max(0, parseFloat(el.value) || 0); }));
-    // Bales go in whole or in halves.
-    on('.mixer-count', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].count = Math.max(0, Math.round((parseFloat(el.value) || 0) * 2) / 2); }));
+    // Bales go in whole, in halves or in quarters.
+    on('.mixer-count', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].count = Math.max(0, Math.round((parseFloat(el.value) || 0) * 4) / 4); }));
     on('.mixer-step', 'click', (el) => update(plan => {
         const item = plan.mixer.load[idx(el)];
-        item.count = Math.max(0, Math.round(((parseFloat(item.count) || 0) + parseFloat(el.dataset.step)) * 2) / 2);
+        item.count = Math.max(0, Math.round(((parseFloat(item.count) || 0) + parseFloat(el.dataset.step)) * 4) / 4);
     }));
     on('.mixer-auto', 'click', () => update(plan => {
         const farm = getCurrentFarm();
@@ -1569,7 +1650,7 @@ function renderFeedEditor(d) {
         <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
         <p class="feed-ed-error feed-warn"></p>
         <div class="feed-editor-actions">
-            <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
+            <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
             <button type="button" class="supply-reset-btn feed-ed-cancel">${t('notesCancel')}</button>
         </div>
     </div>`;

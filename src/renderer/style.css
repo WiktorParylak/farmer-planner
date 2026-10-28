@@ -5672,6 +5672,32 @@ select:focus-visible,
 
 .mixer-row-icon--bulk { background-color: var(--color-accent); }
 
+.mixer-row--head {
+  padding: 0 0 2px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.mixer-row--head > span:nth-child(4) {
+  text-align: right;
+}
+
+.mixer-form .mixer-f-cap {
+  width: 96px;
+}
+
+.mixer-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
 .feed-plan .mixer-row select.feed-input {
   width: 100%;
   min-width: 0;
