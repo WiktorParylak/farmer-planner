@@ -3956,6 +3956,8 @@ function syncWeedsFromSave(farm) {
         const states = ids.map(id => byId[id]).filter(s => s > 0);
         if (!states.length) return;
         const next = states.some(s => s <= 6) ? 'needed' : 'done';
+        // Dead weeds after hoeing are still "weeded mechanically".
+        if (next === 'done' && field.weeds === 'hoed') return;
         if (field.weeds !== next) { field.weeds = next; changed = true; }
     });
     return changed;

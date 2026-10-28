@@ -4,9 +4,13 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.10.0 — unreleased
 
+**New**
+- **Weeding mechanically** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): the weeds chip has a fourth state, *weeded mechanically* (hoe / weeder, a broom icon), after *sprayed*. The game's dead weeds don't turn it back into *sprayed*.
+
 **Changed**
 - **Fill to recipe without mineral feed** ([#10](https://github.com/WiktorParylak/farmer-planner/issues/10)): mineral feed and straw are optional in the game's TMR recipe (0–7 % and 0–30 %), so when the farm has none of one, *Fill to recipe* leaves it out and hay and silage take its share instead of adding loose mineral feed you don't have.
 - **Lease from the game shows the season too** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): *Lease · 14 mo. (season 2)* — which year of the lease it is, next to the months.
+- **Weeds chip follows the field** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): on a field ploughed this season it's greyed out — *not needed, ploughing buries them* (still clickable); grass, meadows, alfalfa and clover have no weeds chip, since weeds don't grow on grassland in the game.
 
 **Fixed**
 - **Deleting a farm when Documents is synced by OneDrive** ([#14](https://github.com/WiktorParylak/farmer-planner/issues/14)): the app retries for a moment while OneDrive or an antivirus holds a file, then moves the folder to the Recycle Bin. If even that fails, the farm still goes off the list and a message says which folder is left, with *Open folder*. The *locked* error now suggests pausing OneDrive.

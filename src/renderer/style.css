@@ -6633,10 +6633,20 @@ button.tillage-switch-option {
   color: var(--color-surface);
 }
 
-.treatment-chip--weeds.is-done {
+.treatment-chip--weeds.is-done,
+.treatment-chip--weeds.is-hoed {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-surface);
+}
+
+/* Ploughed this season: weeds get buried, nothing to spray. */
+.treatment-chip--weeds.is-skip {
+  background-color: transparent;
+  border-color: var(--color-border);
+  border-style: dashed;
+  color: var(--color-ink-faint);
+  opacity: 0.55;
 }
 
 .season-nav-btn {

@@ -472,7 +472,7 @@ function renderFieldModal() {
             <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
-    work.push(`<p class="settings-hint">${state(field.weeds || '', { needed: 'weedsNeeded', done: 'weedsDone', '': 'weedsNone' })} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
+    work.push(`<p class="settings-hint">${state(field.weeds || '', WEEDS_TITLES)} · ${t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff')}</p>`);
     html += section(t('fieldViewWork'), work.join(''));
 
     // History of this field number.
@@ -750,8 +750,8 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         else if (!field.rollingDone) field.rollingDone = true;
         else { field.rolling = false; field.rollingDone = false; }
     } else if (btn.classList.contains('weeds-toggle')) {
-        // none -> to do -> done -> none
-        field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? null : 'needed');
+        // none -> to do -> sprayed -> weeded mechanically -> none
+        field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? 'hoed' : (field.weeds === 'hoed' ? null : 'needed'));
         markWeedsManual(farm, field);
     } else if (btn.classList.contains('tillage-toggle')) {
         field.tillage = field.tillage === 'plowed' ? 'noTill' : (field.tillage === 'noTill' ? null : 'plowed');
@@ -902,13 +902,20 @@ function rollingChipHtml(field, idx, isPastSeason) {
     return `<button type="button" class="${cls} table-chip-toggle rolling-toggle" data-idx="${idx}" title="${title} · ${t('rollingClickHint')}">${icon}</button>`;
 }
 
-// Weeds: nothing / to spray / sprayed. Cycles on click in the current season;
-// the savegame sync sets "to spray" when the game has live weeds on the field.
+// Weeds: nothing / to spray / sprayed / weeded mechanically (hoe, weeder).
+// Cycles on click in the current season; the savegame sync sets "to spray"
+// when the game has live weeds on the field. Grassland gets no weeds in the
+// game, so no chip; a field being ploughed this season shows it greyed out
+// (ploughing buries the weeds) unless it's already done.
+const WEEDS_STATES = ['needed', 'done', 'hoed'];
+const WEEDS_TITLES = { needed: 'weedsNeeded', done: 'weedsDone', hoed: 'weedsHoed', '': 'weedsNone' };
 function weedsChipHtml(field, idx, isPastSeason) {
-    const state = field.weeds === 'needed' || field.weeds === 'done' ? field.weeds : '';
-    const title = t(state === 'needed' ? 'weedsNeeded' : (state === 'done' ? 'weedsDone' : 'weedsNone'));
-    const cls = `treatment-chip treatment-chip--weeds${state ? ' is-' + state : ''}`;
-    const icon = '<i class="fa-solid fa-spray-can-sparkles" aria-hidden="true"></i>';
+    if (isPerennialCrop(field.crop) || isCutCrop(field.crop)) return '';
+    const state = WEEDS_STATES.includes(field.weeds) ? field.weeds : '';
+    const skip = field.tillage === 'plowed' && state !== 'done' && state !== 'hoed';
+    const title = t(skip ? 'weedsPlowed' : WEEDS_TITLES[state]);
+    const cls = `treatment-chip treatment-chip--weeds${state ? ' is-' + state : ''}${skip ? ' is-skip' : ''}`;
+    const icon = `<i class="fa-solid ${state === 'hoed' ? 'fa-broom' : 'fa-spray-can-sparkles'}" aria-hidden="true"></i>`;
     if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
     return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
 }
