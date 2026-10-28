@@ -426,6 +426,28 @@ document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(e
     el.addEventListener('click', () => showPlannerView(el.dataset.view));
 });
 
+// Back, like in a browser: Alt+← or the mouse's back button. Closes the open
+// window (as Escape does), else goes up one level: a barn -> the barn
+// overview, any other panel -> the plan.
+function navigateBack() {
+    if (tut.active) return;
+    const openModal = [...document.querySelectorAll('.modal')].some(m => getComputedStyle(m).display !== 'none');
+    if (openModal) {
+        (document.activeElement || document).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        return;
+    }
+    const planner = document.getElementById('planner-view');
+    if (!planner || getComputedStyle(planner).display === 'none') return;
+    if (currentPlannerView === 'animals' && animalSelectedBuilding) showPlannerView('animals');
+    else if (currentPlannerView !== 'plan') showPlannerView('plan');
+}
+document.addEventListener('keydown', e => {
+    if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); navigateBack(); }
+});
+document.addEventListener('mouseup', e => {
+    if (e.button === 3) { e.preventDefault(); navigateBack(); }
+});
+
 if (closeHubPanelBtn && hubPanelModal) {
     closeHubPanelBtn.addEventListener('click', () => {
         hubPanelModal.style.display = 'none';
