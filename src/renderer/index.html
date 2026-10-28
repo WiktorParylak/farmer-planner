@@ -124,6 +124,7 @@
                             </label>
                             <div class="main-table-header-btns">
                                 <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
+                                <button type="button" id="rotation-btn" class="edit-season-btn" data-i18n="rotBtn" data-i18n-title="rotBtnHint">ROTATION</button>
                                 <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
                                 <button type="button" id="cancel-edit-btn" class="edit-season-btn cancel-edit-btn" data-i18n="cancelEdit" hidden>CANCEL</button>
                                 <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
@@ -402,6 +403,19 @@
                 </div>
             </div>
         </div>
+        <div id="rotation-modal" class="modal rotation-modal">
+            <div class="modal-content rotation-content" role="dialog" aria-labelledby="rotation-title">
+                <h3 id="rotation-title" data-i18n="rotTitle">Crop rotation</h3>
+                <div class="settings-tabs" role="tablist">
+                    <button type="button" class="settings-tab rotation-tab" data-rtab="plan" data-i18n="rotTabPlan">Fields</button>
+                    <button type="button" class="settings-tab rotation-tab" data-rtab="cycles" data-i18n="rotTabCycles">Cycles</button>
+                </div>
+                <div id="rotation-body" class="rotation-body"></div>
+                <div class="modal-buttons">
+                    <button type="button" id="rotation-close" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
         <div id="work-modal" class="modal work-modal">
             <div class="modal-content work-content" role="dialog" aria-labelledby="work-title">
                 <h3 id="work-title"></h3>
@@ -523,6 +537,7 @@
     <script src="supplies.js"></script>
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
+    <script src="rotation.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

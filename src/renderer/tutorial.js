@@ -467,7 +467,8 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
             tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
-            tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum'])
+            tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum']),
+            tutInfo('c15', '#rotation-btn')
         ]
     },
     {

@@ -3985,6 +3985,7 @@ window.openPlanner = function (id) {
         viewedSeason = farm.currentSeason || 1;
         showPlannerView('plan');   // renders the season table
         maybeSuggestNewSeason(getCurrentFarm());
+        maybeFillFromRotation(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
         if (plannerView) plannerView.style.display = 'flex';
@@ -4225,12 +4226,14 @@ function runAutoSyncTick() {
         renderSeasonView();
         showAutoSyncToast();
         maybeSuggestNewSeason(getCurrentFarm());
+        maybeFillFromRotation(getCurrentFarm());
     }
 }
 
-function showAutoSyncToast() {
+// text / ms: another message in the same toast (e.g. crops filled from the rotation).
+function showAutoSyncToast(text, ms = 2500) {
     if (!autoSyncToast) return;
-    autoSyncToast.textContent = t('autoSyncedToast');
+    autoSyncToast.textContent = text || t('autoSyncedToast');
     autoSyncToast.hidden = false;
     // force reflow so the transition runs even on rapid re-triggers
     void autoSyncToast.offsetWidth;
@@ -4239,7 +4242,7 @@ function showAutoSyncToast() {
     autoSyncToastTimer = setTimeout(() => {
         autoSyncToast.classList.remove('is-visible');
         setTimeout(() => { autoSyncToast.hidden = true; }, 300);
-    }, 2500);
+    }, ms);
 }
 
 if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
@@ -4510,14 +4513,20 @@ async function runNewSeason({ intro = '' } = {}) {
         if (!startFarm) return;
         const seasonNow = parseInt(startFarm.currentSeason) || 1;
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
+        // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
+        const rotationMode = rotationFillMode(startFarm);
+        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
+        const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
-            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')),
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + rotationText,
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
+            extraText: rotationCount && rotationMode === 'ask' ? t('rotNewSeasonSkip') : null,
             icon: 'fa-seedling'
         });
         if (!confirmNew) return;
+        const fillFromRotation = rotationCount > 0 && confirmNew === true;
 
         const allFarms = getAllFarms();
         const farmIndex = allFarms.findIndex(f => f.id === currentFarmId);
@@ -4603,6 +4612,7 @@ async function runNewSeason({ intro = '' } = {}) {
             // the season just archived — a new crop on the same field starts clean.
             if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
+            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
@@ -4614,7 +4624,8 @@ async function runNewSeason({ intro = '' } = {}) {
             renderSeasonView();
 
             const done = s => s.replace(/\{c\}/g, currentSeasonNum).replace(/\{n\}/g, farm.currentSeason);
-            await showNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
+            await showNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone'))
+                + (rotationFilled.length ? '\n\n' + t('rotNewSeasonDone').replace('{list}', rotationFilledList(rotationFilled)) : ''));
         } catch (err) {
             console.error(err);
             await showNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
