@@ -1187,7 +1187,20 @@ function mixerBaleTypes(farm, plan) {
         key: 'custom:' + b.id, label: b.name, fillType: null,
         category: b.category, litres: parseFloat(b.litres) || 0, count: null, custom: true
     }));
-    return [...onFarm, ...own];
+    // A loaded bale type the farm has run out of (key "round125|DRYCLOVER_WINDROW|4500")
+    // stays pickable with 0 on the farm — otherwise its row showed the first
+    // bale in the list and counted 0 l.
+    const known = new Set([...onFarm, ...own].map(b => b.key));
+    const gone = [];
+    plan.mixer.load.forEach(item => {
+        if (item.kind !== 'bale' || known.has(item.baleKey) || String(item.baleKey).startsWith('custom:')) return;
+        const [size, fillType, litres] = String(item.baleKey).split('|');
+        const category = FEED_FILLTYPE_CATEGORY[fillType];
+        if (!category || !(parseFloat(litres) > 0)) return;
+        known.add(item.baleKey);
+        gone.push({ key: item.baleKey, label: baleSizeLabel(size), fillType, category, litres: parseFloat(litres), count: 0 });
+    });
+    return [...onFarm, ...own, ...gone];
 }
 
 function baleSizeLabel(size) {
@@ -1330,6 +1343,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 html += `<div class="mixer-row">
                     <span class="mixer-row-icon" aria-hidden="true"><i class="fa-solid fa-circle-dot" aria-hidden="true"></i></span>
                     <select class="feed-input mixer-bale-select" data-idx="${idx}">
+                        ${b ? '' : '<option value="" selected disabled>—</option>'}
                         ${baleTypes.map(x => `<option value="${escapeHtml(x.key)}" ${x.key === item.baleKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`).join('')}
                     </select>
                     <span class="mixer-qty">
