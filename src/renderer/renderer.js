@@ -751,11 +751,21 @@ function barnNameHtml(farm, building, cls) {
 // back to a species icon. Loading runs just after a render and re-renders
 // the Animals view once when new pictures are ready.
 const ANIMAL_PICTURE_DIR = path.join(appDataDir, 'animal-pictures');
-const animalPictures = { modsDir: null, index: null, timer: null, failed: new Set() };
+const animalPictures = { modsDir: null, index: null, timer: null, failed: new Set(), lookupFarmId: undefined, lookupDir: null };
+
+// The farm's mods folder, looked up once per opened farm: finding it reads the
+// farm and the game's settings, and a barn view asks once per animal (#13).
+function animalPicturesModsDir() {
+    if (animalPictures.lookupFarmId !== currentFarmId) {
+        const farm = getCurrentFarm();
+        animalPictures.lookupDir = animalImages.findModsDir(farm && farm.saveGamePath);
+        animalPictures.lookupFarmId = currentFarmId;
+    }
+    return animalPictures.lookupDir;
+}
 
 function animalPictureUrl(subType, age) {
-    const farm = getCurrentFarm();
-    const modsDir = animalImages.findModsDir(farm && farm.saveGamePath);
+    const modsDir = animalPicturesModsDir();
     if (!modsDir) return null;
     if (animalPictures.modsDir !== modsDir) { animalPictures.modsDir = modsDir; animalPictures.index = null; }
     if (!animalPictures.index) { queueAnimalPictures(); return null; }
@@ -3967,6 +3977,7 @@ window.openPlanner = function (id) {
     let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
         currentFarmId = farm.id;
+        animalPictures.lookupFarmId = undefined;   // save path may have changed
         clearFieldSearch();
 
         loadFarmConfigs(farm);
