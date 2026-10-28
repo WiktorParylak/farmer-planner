@@ -2206,7 +2206,7 @@ function saveNotes(farm, notes) {
     if (!p) return;
     try { fs.writeFileSync(p, JSON.stringify(notes, null, 2), 'utf-8'); }
     catch (err) { console.error('Could not write notes:', err); }
-    if (farm.id === currentFarmId) refreshNotesBadge(farm);
+    if (farm.id === currentFarmId) { refreshNotesBadge(farm); renderTodayPanel(); }
 }
 
 function generateNoteId() {
@@ -4316,6 +4316,8 @@ window.renderSeasonView = function () {
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
+
+    renderTodayPanel();
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
     updateDiscordPresence();
