@@ -30,7 +30,9 @@
 - Każde pole z powierzchnią, uprawą, miesiącem siewu, stanem, orką lub bezorką, typem gleby i planem nawożenia.
 - Międzyplony na tym samym polu, przed albo po głównej uprawie.
 - Historia sezonów: wrócisz do poprzednich i porównasz.
-- Ostrzeżenia o płodozmianie i podsumowanie hektarów każdej uprawy.
+- Cykle płodozmianu (z szablonów, np. norfolskiego, albo własne): następna uprawa wpisuje się sama, gdy zaczyna się nowy sezon, a widok płodozmianu ocenia każde pole.
+- Panel *Co dziś robić* pod planem: siew, zbiór, chwasty, wałowanie, kroki prac, kończąca się pasza i notatki z bieżącego miesiąca.
+- Podsumowanie hektarów każdej uprawy.
 
 **Zsynchronizowany z grą**
 - Saldo, kredyty, czas gry, maszyny i zwierzęta prosto z zapisu gry.
@@ -91,7 +93,8 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 - Sezony z historią — możesz wrócić do poprzednich sezonów i je porównać.
 - Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
 - Opcjonalnie areał całej działki (farmland) obok areału pola.
-- Ostrzeżenia o płodozmianie.
+- Płodozmian: cykle na farmie (szablony, np. norfolski, zboża + rzepak, pasza dla bydła, albo własne; kroki wielosezonowe dla traw i odłogu), przypisane do pól. Nowy sezon (albo nowy miesiąc w grze, gdy otwiera się okno siewu) wpisuje każdemu polu następną uprawę. Widok płodozmianu pokazuje minione i planowane sezony z oceną zieloną / żółtą / czerwoną i ostrzeżeniami (ta sama uprawa dwa razy, za dużo zbóż, rzepak lub burak za często, trawa ponad limit).
+- Panel *Co dziś robić* pod planem sezonu: pola do siewu i zbioru w tym miesiącu, spóźnione siewy, chwasty, wałowanie, następny krok z list prac, obory z małym zapasem paszy i notatki na ten miesiąc.
 - Kilka pól naraz w Edycji: zaznacz karty (albo kliknij je z **Shiftem**), a zmiana w jednej zaznaczonej karcie trafi do wszystkich.
 - Z modem Crop Dependent Rolling wałowanie jest planowane tylko dla upraw, które go potrzebują.
 

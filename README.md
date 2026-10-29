@@ -30,7 +30,9 @@
 - Every field with its area, crop, sowing month, state, ploughing or no-till, soil type and fertilization plan.
 - Catch crops on the same field, before or after the main crop.
 - Past seasons kept, so you can step back and compare.
-- Crop rotation warnings and a summary of hectares per crop.
+- Crop rotation cycles (from templates like Norfolk or your own): the next crop is filled in when a new season starts, and a rotation view scores each field.
+- A *What to do today* panel under the plan: this month's sowing, harvest, weeds, rolling, work steps, low feed and notes.
+- A summary of hectares per crop.
 
 **Synced with your game**
 - Balance, loans, playtime, equipment and animals read from your savegame.
@@ -92,7 +94,8 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - Seasons with history — step back to previous seasons and compare.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
-- Crop rotation warnings.
+- Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. A new season (or a new in-game month, once a sowing window opens) fills in each field's next crop. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).
+- *What to do today* panel under the season plan: fields to sow or harvest this month, late sowings, weeds, rolling, the next step of your work lists, barns low on feed and this month's notes.
 - Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them.
 - With the Crop Dependent Rolling mod, rolling is planned only for the crops that need it.
 

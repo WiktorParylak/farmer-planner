@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.10.0 — unreleased
+## 0.10.0 — 2026-10-29
 
 **New**
 - **Weeding mechanically** ([#15](https://github.com/WiktorParylak/farmer-planner/issues/15)): the weeds chip has a fourth state, *weeded mechanically* (hoe / weeder, a broom icon), after *sprayed*. The game's dead weeds don't turn it back into *sprayed*.
