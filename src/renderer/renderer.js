@@ -84,8 +84,14 @@ Object.keys(CROP_NAME_TRANSLATIONS).forEach(lang => {
 // ("Centeno"), their l10n says what it is ("Rye").
 let MAP_CROP_TITLES = {};
 
+// Crop names end up in HTML all over the app and can come from a farm file
+// (an imported backup, crops_config.json), so markup characters are dropped.
 function translateCropName(name) {
     if (!name) return name;
+    return String(translateCropNameRaw(name)).replace(/[<>"'`]/g, '');
+}
+
+function translateCropNameRaw(name) {
     const mapTitles = MAP_CROP_TITLES[String(name).replace(/[_\s]+/g, '').toUpperCase()];
     if (mapTitles && mapTitles[currentLang]) return mapTitles[currentLang];
     // No title in this language: use the map's English one through our dictionary.

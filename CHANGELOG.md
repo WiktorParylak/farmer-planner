@@ -31,6 +31,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - The *Save* button in the mixer wagon, bale type and custom feed forms said *Save note*.
 - **The Animals tab lagged on big herds** ([#13](https://github.com/WiktorParylak/farmer-planner/issues/13)): for every group of animals it read the farm again and looked up the mods folder (the game's settings, FSG Mod Assistant collections) to find the breed picture — with EnhancedAnimalSystem, where every animal is its own group, that took seconds each time a barn or its ration changed. The folder is now looked up once per opened farm (about 5× faster on the test farm).
 - The mixer wagon form cut off its capacity (10 500 l showed as *1050*), and *Save* / *Cancel* in the wagon, bale type and own feed forms didn't look like the app's other buttons.
+- **Security**: crop names from a farm file (an imported backup, `crops_config.json`) can no longer carry HTML into the plan, Supplies or the feed planner — markup characters are dropped, as they already were for names read from mods.
 
 ## 0.9.13 — 2026-10-23
 
