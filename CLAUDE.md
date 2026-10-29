@@ -117,7 +117,7 @@ src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → 
 data/                          dane bazowej gry dołączone do aplikacji
 installer/                     własny instalator/deinstalator (Setup.cs + Window.xaml, poza paczką aplikacji)
 tools/                         skrypty deweloperskie (nie są używane w runtime)
-docs/                          screenshoty, propozycje-funkcji.txt
+docs/                          logo i screenshoty do README
 ```
 
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.

@@ -146,7 +146,7 @@ src/
 data/          Bundled base-game data (default crops, animals, nitrogen by soil)
 Assets/        Logo and app icon
 tools/         Dev scripts that regenerate the files in data/ from game files
-docs/          Screenshots and notes
+docs/          Logo and screenshots
 ```
 
 Built with [Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript and [Font Awesome](https://fontawesome.com/).

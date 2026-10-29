@@ -145,7 +145,7 @@ src/
 data/          Dołączone dane z podstawowej gry (domyślne uprawy, zwierzęta, azot wg gleby)
 Assets/        Logo i ikona aplikacji
 tools/         Skrypty deweloperskie generujące pliki w data/ z plików gry
-docs/          Zrzuty ekranu i notatki
+docs/          Logo i zrzuty ekranu
 ```
 
 Zbudowane z [Electrona](https://www.electronjs.org/), czystego HTML/CSS/JavaScriptu i [Font Awesome](https://fontawesome.com/).
