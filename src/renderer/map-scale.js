@@ -238,7 +238,7 @@ async function msStart() {
     ms.result = null; ms.error = '';
     msRender();
     try {
-        ms.result = await msCall('run', { dir: map.dir, name: map.name, files, outRoot: msOutRoot(map), info: ms.info });
+        ms.result = await msCall('run', { dir: map.dir, name: map.name, files, outRoot: msOutRoot(map) });
     } catch (e) {
         console.error(e);
         ms.error = msErrorText(e);

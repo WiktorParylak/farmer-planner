@@ -22,6 +22,24 @@ function fail(code, extra) {
     throw e;
 }
 
+// A path from a mod (zip entry, i3d / xml reference) as a clean relative path,
+// or null when it is absolute or climbs out with "..": mods come from the
+// internet, and these paths decide where the output is written.
+function safeRel(rel) {
+    if (typeof rel !== 'string' || !rel) return null;
+    const p = path.posix.normalize(rel.replace(/\\/g, '/'));
+    if (p.startsWith('/') || p === '..' || p.startsWith('../') || /^[a-z]:/i.test(p) || p.includes(':') || p.includes('\0')) return null;
+    return p;
+}
+
+// `rel` joined to `root`, refusing anything that would land outside it.
+function inside(root, rel) {
+    const r = safeRel(rel);
+    const dst = r && path.resolve(root, r);
+    if (!dst || !dst.startsWith(path.resolve(root) + path.sep)) fail('MS_BAD_FILE');
+    return dst;
+}
+
 function attr(tag, name) {
     const m = tag.match(new RegExp('\\b' + name + '="([^"]*)"'));
     return m ? m[1] : null;
@@ -75,15 +93,15 @@ const ops = {
             const map = mapOfMod(mod);
             if (!map) fail('MS_NO_MAP');
             const cfg = readText(mod, map.config) || '';
-            const i3dRel = ((cfg.match(/<filename>\s*([^<\s]+)\s*<\/filename>/) || [])[1] || '').replace(/\\/g, '/');
-            const i3d = i3dRel ? readText(mod, i3dRel) : null;
+            const i3dRel = safeRel((cfg.match(/<filename>\s*([^<\s]+)\s*<\/filename>/) || [])[1] || '');
+            const i3d = i3dRel && /\.i3d$/i.test(i3dRel) ? readText(mod, i3dRel) : null;
             if (!i3d) fail('MS_NO_I3D');
             const baseDir = path.posix.dirname(i3dRel);
             const terrain = (i3d.match(/<TerrainTransformGroup\b[^>]*>/) || [])[0] || '';
             const upp = parseFloat(attr(terrain, 'unitsPerPixel')) || 1;
-            const demId = attr(terrain, 'heightMapId');
+            const demId = (attr(terrain, 'heightMapId') || '').match(/^\d+$/) ? attr(terrain, 'heightMapId') : null;
             const demTag = demId ? (i3d.match(new RegExp('<File\\b[^>]*\\bfileId="' + demId + '"[^>]*>')) || [])[0] : null;
-            const demRel = (demTag ? path.posix.join(baseDir, attr(demTag, 'filename').replace(/\\/g, '/')) : path.posix.join(baseDir, 'data/dem.png')).toLowerCase();
+            const demRel = (safeRel(demTag ? path.posix.join(baseDir, (attr(demTag, 'filename') || '').replace(/\\/g, '/')) : path.posix.join(baseDir, 'data/dem.png')) || '').toLowerCase();
             // Layers can sit anywhere under the map folder (data/, data/density/,
             // data/fieldGround/…); the height map is whatever the terrain names.
             const files = [];
@@ -94,14 +112,15 @@ const ops = {
                 if (!dem && !LAYER_RE.test(base)) return;
                 const b = mod.read(low);
                 if (!b) return;
-                const out = mod.realPath ? mod.realPath(low) : low;
+                const out = safeRel(mod.realPath ? mod.realPath(low) : low);
+                if (!out || !safeRel(low)) return;
                 const name = path.posix.basename(out), kind = core.kindOf(base);
                 let inf;
                 try { inf = core.info(base, b); } catch (e) { files.push({ rel: low, out, name, kind, bytes: b.length, reason: 'format' }); return; }
                 const grid = dem && inf.grid;
                 if (dem) demW = inf.w;
                 const w2 = grid ? (inf.w - 1) * 2 + 1 : inf.w * 2, h2 = grid ? (inf.h - 1) * 2 + 1 : inf.h * 2;
-                const reason = (grid ? w2 - 1 : w2) > MAX_DIM ? 'max' : (dem && !grid ? 'dem' : '');
+                const reason = Math.max(grid ? w2 - 1 : w2, grid ? h2 - 1 : h2) > MAX_DIM ? 'max' : (dem && !grid ? 'dem' : '');
                 files.push({ rel: low, out, name, kind, dem, w: inf.w, h: inf.h, w2, h2, bytes: b.length, reason });
             });
             return { i3dRel, upp, demW, sizeM: demW ? (demW - 1) * upp : 0, files };
@@ -112,8 +131,10 @@ const ops = {
 
     // Copies the picked files to backup/<stamp>, scales them into scaled/<stamp>
     // and reads every result back. With dem.png the i3d's unitsPerPixel halves.
-    async run({ dir, name, files, outRoot, info }) {
+    async run({ dir, name, files, outRoot }) {
         cancelled = false;
+        // The file list comes from the mod again, not from the window.
+        const info = ops.inspect({ dir, name });
         const d = new Date(), p2 = n => String(n).padStart(2, '0');
         const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
         const backupDir = path.join(outRoot, 'backup', stamp), scaledDir = path.join(outRoot, 'scaled', stamp);
@@ -138,7 +159,7 @@ const ops = {
                 send(0);
                 const src = mod.read(f.rel);
                 if (!src) fail('MS_READ', { name: f.name });
-                const bak = path.join(backupDir, f.out), out = path.join(scaledDir, f.out);
+                const bak = inside(backupDir, f.out), out = inside(scaledDir, f.out);
                 fs.mkdirSync(path.dirname(bak), { recursive: true });
                 fs.mkdirSync(path.dirname(out), { recursive: true });
                 fs.writeFileSync(bak, src);
@@ -154,10 +175,11 @@ const ops = {
                 const upp = parseFloat(attr(tag, 'unitsPerPixel')) || 1;
                 const upp2 = upp / 2;
                 const tag2 = /\bunitsPerPixel="/.test(tag) ? tag.replace(/\bunitsPerPixel="[^"]*"/, `unitsPerPixel="${upp2}"`) : tag.replace(/\s*(\/?)>$/, ` unitsPerPixel="${upp2}"$1>`);
-                fs.mkdirSync(path.dirname(path.join(backupDir, info.i3dRel)), { recursive: true });
-                fs.writeFileSync(path.join(backupDir, info.i3dRel), text);
-                fs.mkdirSync(path.dirname(path.join(scaledDir, info.i3dRel)), { recursive: true });
-                fs.writeFileSync(path.join(scaledDir, info.i3dRel), text.replace(tag, tag2));
+                const bakI3d = inside(backupDir, info.i3dRel), outI3d = inside(scaledDir, info.i3dRel);
+                fs.mkdirSync(path.dirname(bakI3d), { recursive: true });
+                fs.writeFileSync(bakI3d, text);
+                fs.mkdirSync(path.dirname(outI3d), { recursive: true });
+                fs.writeFileSync(outI3d, text.replace(tag, tag2));
                 i3d = { rel: info.i3dRel, from: upp, to: upp2 };
             }
             return { stamp, backupDir, scaledDir, files: done, i3d };
