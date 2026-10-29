@@ -367,7 +367,7 @@ function tlEntryRowHtml(e, withCheck) {
     const date = e.createdAt ? new Date(e.createdAt).toLocaleDateString(FIN_LOCALE()) : '';
     const wrong = tl.loaded && e.mapSize !== tl.loaded.dim;
     return `<li class="tl-entry${wrong ? ' is-wrong' : ''}" data-name="${escapeHtml(e.name)}">
-        ${withCheck ? `<input type="checkbox" class="tl-entry-check" ${tl.pasteSel.has(e.name) ? 'checked' : ''} ${wrong ? 'disabled' : ''}>` : ''}
+        ${withCheck ? `<input type="checkbox" class="fp-check tl-entry-check" ${tl.pasteSel.has(e.name) ? 'checked' : ''} ${wrong ? 'disabled' : ''}>` : ''}
         <span class="tl-entry-name">${escapeHtml(e.name)}</span>
         <span class="tl-entry-meta">${(e.px || 0).toLocaleString(FIN_LOCALE())} px${date ? ' · ' + date : ''}${wrong ? ' · ' + escapeHtml(t('tlWrongSize')) : ''}</span>
         <span class="tl-entry-tools">
@@ -406,12 +406,12 @@ function tlCutHtml(save) {
         </div>
         <div class="tl-colors"><strong>${t('tlColors')}</strong> ${chips || `<span class="settings-hint">${t('tlColorsNone')}</span>`}</div>
         <p class="settings-hint">${escapeHtml(t('tlColorsHint'))}</p>
-        <label class="tl-check"><input type="checkbox" id="tl-highlight" ${tl.highlight ? 'checked' : ''}> ${t('tlHighlight')}</label>
+        <label class="tl-check"><input type="checkbox" class="fp-check" id="tl-highlight" ${tl.highlight ? 'checked' : ''}> ${t('tlHighlight')}</label>
         ${fields.length ? `<div class="tl-row"><strong>${t('tlFields')}</strong><button type="button" class="tl-link tl-fields-all">${t('tlSelectAll')}</button><button type="button" class="tl-link tl-fields-none">${t('tlSelectNone')}</button></div>
-            <ul class="tl-entries tl-fields">${fields.map(f => `<li class="tl-entry" data-key="${escapeHtml(f.key)}"><input type="checkbox" class="tl-field-check" ${tl.selected.has(f.key) ? 'checked' : ''}><span class="tl-entry-name">${escapeHtml(f.label)}</span><span class="tl-entry-tools"><button type="button" class="feed-ration-tool tl-field-zoom" title="${escapeHtml(t('tlZoom'))}"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button></span></li>`).join('')}</ul>` : ''}
+            <ul class="tl-entries tl-fields">${fields.map(f => `<li class="tl-entry" data-key="${escapeHtml(f.key)}"><input type="checkbox" class="fp-check tl-field-check" ${tl.selected.has(f.key) ? 'checked' : ''}><span class="tl-entry-name">${escapeHtml(f.label)}</span><span class="tl-entry-tools"><button type="button" class="feed-ration-tool tl-field-zoom" title="${escapeHtml(t('tlZoom'))}"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button></span></li>`).join('')}</ul>` : ''}
         ${tl.lasso.length ? `<p class="settings-hint">${t('tlLassoCount').replace('{n}', tl.lasso.length)} <button type="button" class="tl-link tl-lasso-clear">${t('tlLassoClear')}</button></p>` : ''}
         <label class="settings-field"><span>${t('tlName')}</span><input type="text" id="tl-name" maxlength="60" placeholder="${escapeHtml(t('tlNamePlaceholder'))}"></label>
-        <label class="tl-check"><input type="checkbox" id="tl-merge"> ${t('tlMerge')}</label>
+        <label class="tl-check"><input type="checkbox" class="fp-check" id="tl-merge"> ${t('tlMerge')}</label>
         <button type="button" class="settings-btn tl-cut" ${sel ? '' : 'disabled'}>${escapeHtml(t('tlCutBtn').replace('{n}', sel))}</button>`;
 }
 

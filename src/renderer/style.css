@@ -6155,8 +6155,8 @@ select:focus-visible,
 
 .mixer-row-icon--bulk { background-color: var(--color-accent); }
 
-.mixer-form .mixer-f-cap {
-  width: 96px;
+.feed-plan .mixer-form input.mixer-f-cap {
+  width: 112px;
 }
 
 .feed-ration-tile--custom {
@@ -8091,6 +8091,45 @@ button.field-open:hover .field-number-chip {
 
 .tramlines-view[hidden] {
   display: none;
+}
+
+/* Text fields and drop-downs in the tools look like the ones in the panels. */
+.tramlines-view input:is([type="text"], [type="number"]),
+.tramlines-view select {
+  width: 100%;
+  margin: 0;
+  padding: 7px 10px;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: 400;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+
+.tramlines-view select {
+  cursor: pointer;
+}
+
+.tramlines-view input[type="number"] {
+  max-width: 160px;
+}
+
+.tramlines-view select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tramlines-view input:is([type="text"], [type="number"]):focus,
+.tramlines-view select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.tramlines-view input[type="range"] {
+  accent-color: var(--color-primary);
 }
 
 .tl-header {

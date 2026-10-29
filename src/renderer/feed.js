@@ -1622,8 +1622,8 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
         html += `<div class="mixer-form">
             <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}" value="${editing ? escapeHtml(editing.name) : ''}" ${fromSave ? `disabled title="${t('mixerNameFromSave')}"` : ''}></label>
             <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000" value="${editing && editing.capacity ? editing.capacity : ''}"><span class="supply-unit">l</span></span></label>
-            <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
-            <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+            <button type="button" class="btn btn--primary btn--sm mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+            <button type="button" class="btn btn--secondary btn--sm mixer-f-cancel">${t('notesCancel')}</button>
         </div>`;
     }
     if (!wagons.length && mixerFormOpen !== 'wagon') html += `<p class="hub-panel-note">${t('mixerNoWagons')}</p>`;
@@ -1689,8 +1689,8 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
                 <label>${t('mixerBaleName')}<input type="text" class="feed-input mixer-f-bname" placeholder="${t('mixerBaleNamePh')}"></label>
                 <label>${t('mixerBaleContent')}<select class="feed-input mixer-f-bcat">${MIXER_TMR_CATEGORIES.map(c => `<option value="${c}">${feedCategoryLabel(c)}</option>`).join('')}</select></label>
                 <label>${t('mixerBaleLitres')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-blitres" min="1" step="50" placeholder="4000"><span class="supply-unit">l</span></span></label>
-                <button type="button" class="supply-fillplan-btn mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
-                <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+                <button type="button" class="btn btn--primary btn--sm mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+                <button type="button" class="btn btn--secondary btn--sm mixer-f-cancel">${t('notesCancel')}</button>
             </div>`;
         }
         if (plan.mixer.customBales.length) {
@@ -1881,8 +1881,8 @@ function renderFeedEditor(d) {
         <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
         <p class="feed-ed-error feed-warn"></p>
         <div class="feed-editor-actions">
-            <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
-            <button type="button" class="supply-reset-btn feed-ed-cancel">${t('notesCancel')}</button>
+            <button type="button" class="btn btn--primary btn--sm feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+            <button type="button" class="btn btn--secondary btn--sm feed-ed-cancel">${t('notesCancel')}</button>
         </div>
     </div>`;
     return html;

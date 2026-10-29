@@ -30,6 +30,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Mixer wagon load showed the wrong bale and 0 l** ([#13](https://github.com/WiktorParylak/farmer-planner/issues/13)): when a bale type in the load was no longer on the farm (e.g. the last clover bales were used up), its row showed the first bale in the list and counted 0 l, so the mix and the TMR check were off. The row now keeps its own bale (*on the farm: 0*, amount in red) and its litres count.
 - The *Save* button in the mixer wagon, bale type and custom feed forms said *Save note*.
 - **The Animals tab lagged on big herds** ([#13](https://github.com/WiktorParylak/farmer-planner/issues/13)): for every group of animals it read the farm again and looked up the mods folder (the game's settings, FSG Mod Assistant collections) to find the breed picture — with EnhancedAnimalSystem, where every animal is its own group, that took seconds each time a barn or its ration changed. The folder is now looked up once per opened farm (about 5× faster on the test farm).
+- The mixer wagon form cut off its capacity (10 500 l showed as *1050*), and *Save* / *Cancel* in the wagon, bale type and own feed forms didn't look like the app's other buttons.
 
 ## 0.9.13 — 2026-10-23
 

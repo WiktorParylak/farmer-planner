@@ -135,7 +135,7 @@ function msFileRowHtml(f) {
     const size = f.w ? `${f.w} → ${f.w2} px` : '';
     const note = f.reason ? t('msReason_' + f.reason) : (Math.max(f.w2, f.h2) > MS_BIG ? t('msBigNote') : '');
     return `<label class="ms-file${f.reason ? ' is-off' : ''}">
-        <input type="checkbox" data-rel="${escapeHtml(f.rel)}"${ms.sel.has(f.rel) ? ' checked' : ''}${off ? ' disabled' : ''}>
+        <input type="checkbox" class="fp-check" data-rel="${escapeHtml(f.rel)}"${ms.sel.has(f.rel) ? ' checked' : ''}${off ? ' disabled' : ''}>
         <span class="ms-file-name" title="${escapeHtml(f.out)}">${escapeHtml(f.out)}</span>
         <span class="ms-file-size">${size}</span>
         <span class="ms-file-mb">${msFmtMb(f.bytes)}</span>
@@ -153,7 +153,7 @@ function msListHtml() {
         const all = on.length && on.every(f => ms.sel.has(f.rel));
         return `<section class="ms-group">
             <h3 class="ms-group-title">
-                <label class="tl-check"><input type="checkbox" data-group="${g}"${all ? ' checked' : ''}${!on.length || ms.running ? ' disabled' : ''}> ${escapeHtml(t('msGroup_' + g))}</label>
+                <label class="tl-check"><input type="checkbox" class="fp-check" data-group="${g}"${all ? ' checked' : ''}${!on.length || ms.running ? ' disabled' : ''}> ${escapeHtml(t('msGroup_' + g))}</label>
                 <span class="ms-group-count">${items.filter(f => ms.sel.has(f.rel)).length} / ${items.length}</span>
             </h3>
             ${items.map(msFileRowHtml).join('')}
