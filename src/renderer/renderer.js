@@ -84,8 +84,14 @@ Object.keys(CROP_NAME_TRANSLATIONS).forEach(lang => {
 // ("Centeno"), their l10n says what it is ("Rye").
 let MAP_CROP_TITLES = {};
 
+// Crop names end up in HTML all over the app and can come from a farm file
+// (an imported backup, crops_config.json), so markup characters are dropped.
 function translateCropName(name) {
     if (!name) return name;
+    return String(translateCropNameRaw(name)).replace(/[<>"'`]/g, '');
+}
+
+function translateCropNameRaw(name) {
     const mapTitles = MAP_CROP_TITLES[String(name).replace(/[_\s]+/g, '').toUpperCase()];
     if (mapTitles && mapTitles[currentLang]) return mapTitles[currentLang];
     // No title in this language: use the map's English one through our dictionary.
@@ -474,6 +480,28 @@ document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(e
     el.addEventListener('click', () => showPlannerView(el.dataset.view));
 });
 
+// Back, like in a browser: Alt+← or the mouse's back button. Closes the open
+// window (as Escape does), else goes up one level: a barn -> the barn
+// overview, any other panel -> the plan.
+function navigateBack() {
+    if (tut.active) return;
+    const openModal = [...document.querySelectorAll('.modal')].some(m => getComputedStyle(m).display !== 'none');
+    if (openModal) {
+        (document.activeElement || document).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        return;
+    }
+    const planner = document.getElementById('planner-view');
+    if (!planner || getComputedStyle(planner).display === 'none') return;
+    if (currentPlannerView === 'animals' && animalSelectedBuilding) showPlannerView('animals');
+    else if (currentPlannerView !== 'plan') showPlannerView('plan');
+}
+document.addEventListener('keydown', e => {
+    if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); navigateBack(); }
+});
+document.addEventListener('mouseup', e => {
+    if (e.button === 3) { e.preventDefault(); navigateBack(); }
+});
+
 if (closeHubPanelBtn && hubPanelModal) {
     closeHubPanelBtn.addEventListener('click', () => {
         closeModal(hubPanelModal);
@@ -777,11 +805,21 @@ function barnNameHtml(farm, building, cls) {
 // back to a species icon. Loading runs just after a render and re-renders
 // the Animals view once when new pictures are ready.
 const ANIMAL_PICTURE_DIR = path.join(appDataDir, 'animal-pictures');
-const animalPictures = { modsDir: null, index: null, timer: null, failed: new Set() };
+const animalPictures = { modsDir: null, index: null, timer: null, failed: new Set(), lookupFarmId: undefined, lookupDir: null };
+
+// The farm's mods folder, looked up once per opened farm: finding it reads the
+// farm and the game's settings, and a barn view asks once per animal (#13).
+function animalPicturesModsDir() {
+    if (animalPictures.lookupFarmId !== currentFarmId) {
+        const farm = getCurrentFarm();
+        animalPictures.lookupDir = animalImages.findModsDir(farm && farm.saveGamePath);
+        animalPictures.lookupFarmId = currentFarmId;
+    }
+    return animalPictures.lookupDir;
+}
 
 function animalPictureUrl(subType, age) {
-    const farm = getCurrentFarm();
-    const modsDir = animalImages.findModsDir(farm && farm.saveGamePath);
+    const modsDir = animalPicturesModsDir();
     if (!modsDir) return null;
     if (animalPictures.modsDir !== modsDir) { animalPictures.modsDir = modsDir; animalPictures.index = null; }
     if (!animalPictures.index) { queueAnimalPictures(); return null; }
@@ -1847,6 +1885,7 @@ window.openHubPanel = function (type) {
             activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
+                if (el.value === '__new') { startNewCustomFeed(el.dataset.type, el.dataset.barn); return; }
                 const plan = getFeedPlan(getCurrentFarm());
                 setBarnRation(plan, el.dataset.barn, el.dataset.type, el.value);
                 saveFeedPlan(plan);
@@ -1863,6 +1902,8 @@ window.openHubPanel = function (type) {
         renderNotesPanel(titleEl, bodyEl, modalEl);
     } else if (type === 'yieldforecast') {
         renderYieldForecastPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'rotation') {
+        renderRotationPanel(titleEl, bodyEl);
     } else if (type === 'feedplan') {
         renderFeedPlanPanel(titleEl, bodyEl, modalEl);
     } else {
@@ -2228,6 +2269,7 @@ function saveNotes(farm, notes) {
     if (!p) return;
     try { fs.writeFileSync(p, JSON.stringify(notes, null, 2), 'utf-8'); }
     catch (err) { console.error('Could not write notes:', err); }
+    if (farm.id === currentFarmId) { refreshNotesBadge(farm); renderTodayPanel(); }
 }
 
 function generateNoteId() {
@@ -2289,8 +2331,11 @@ function renderNoteCard(note, currentMonth) {
         </div>` : '';
 
     // Collapsed: title, months, tags and the checklist count. Click the title
-    // row to unfold the text and checklist. Notes for the current month start open.
-    const open = noteOpenIds.has(note.id) || (isCurrent && !noteClosedIds.has(note.id));
+    // row to unfold the text and checklist. Which start open is an app setting
+    // (notesOpenMode): this month's notes (default), all, or none.
+    const mode = notesOpenMode();
+    const startsOpen = mode === 'open' || (mode === 'month' && isCurrent);
+    const open = noteOpenIds.has(note.id) || (startsOpen && !noteClosedIds.has(note.id));
     const hasDetails = !!(note.body || checklist.length);
     const summary = checklist.length ? `<span class="note-card-count">${doneCount}/${checklist.length}</span>` : '';
     return `
@@ -2317,6 +2362,31 @@ function renderNoteCard(note, currentMonth) {
 // the list keeps them as they were.
 const noteOpenIds = new Set();
 const noteClosedIds = new Set();
+
+const NOTES_OPEN_MODES = ['month', 'open', 'closed'];
+function notesOpenMode() {
+    const v = getSetting('notesOpenMode');
+    return NOTES_OPEN_MODES.includes(v) ? v : 'month';
+}
+
+// The Notes item in the sidebar shows how many notes are pinned to the
+// current in-game month (a badge that pulses once when it appears).
+function refreshNotesBadge(farm) {
+    const item = document.querySelector('#planner-sidebar .sidebar-item--notes');
+    if (!item) return;
+    const month = farm ? getFarmCurrentMonth(farm) : null;
+    const n = month ? loadNotes(farm).filter(note => (note.months || []).includes(month)).length : 0;
+    let badge = item.querySelector('.sidebar-badge');
+    if (!n) { if (badge) badge.remove(); item.classList.remove('has-month-notes'); item.removeAttribute('title'); return; }
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'sidebar-badge';
+        item.appendChild(badge);
+    }
+    badge.textContent = n;
+    item.classList.add('has-month-notes');
+    item.title = t('notesMonthBadge').replace('{n}', n).replace('{m}', translateMonth(month));
+}
 
 function renderNotesListHtml(notes, currentMonth, filterMonth, filterTag, filterField) {
     const filtered = notes.filter(n => {
@@ -2414,10 +2484,20 @@ function renderNotesPanel(titleEl, bodyEl, modalEl) {
             ${allTags.length ? `<select id="notes-filter-tag" class="notes-filter-select">${tagOptionsHtml}</select>` : ''}
             ${noteFields.length ? `<select id="notes-filter-field" class="notes-filter-select">${fieldOptionsHtml}</select>` : ''}
             ${currentMonth ? `<button type="button" id="notes-filter-thismonth" class="notes-filter-thismonth-btn" data-month="${currentMonth}">${t('notesThisMonthFilter')}</button>` : ''}
+            <select id="notes-open-mode" class="notes-filter-select" title="${t('notesOpenModeHint')}">
+                ${NOTES_OPEN_MODES.map(m => `<option value="${m}" ${m === notesOpenMode() ? 'selected' : ''}>${t('notesOpenMode_' + m)}</option>`).join('')}
+            </select>
         </div>
         <div id="notes-list" class="notes-list" data-empty-text="${escapeHtml(t('notesEmpty'))}">${renderNotesListHtml(notes, currentMonth, '', '')}</div>`;
 
     wireNotesPanel(bodyEl, notes, currentMonth);
+    const openMode = document.getElementById('notes-open-mode');
+    if (openMode) openMode.addEventListener('change', () => {
+        setSetting('notesOpenMode', openMode.value);
+        noteOpenIds.clear();
+        noteClosedIds.clear();
+        showPlannerView('notes');
+    });
 }
 
 window.deleteNote = async function (noteId) {
@@ -3239,6 +3319,14 @@ function loadFarmConfigs(farm) {
     MOISTURE_DATA = null;
     loadMoistureData(farm);
     ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
+    // Animal Package in the save: its breeds (chickens, Holstein…) and curves
+    // are what the game runs, whatever was imported before.
+    if (ANIMAL_MODS && ANIMAL_MODS.animalPackageXml.length) {
+        ANIMAL_MODS.animalPackageXml.forEach(xml => {
+            const parsed = parseAnimalNeedsXml(xml);
+            if (parsed) Object.keys(parsed).forEach(st => { ANIMAL_NEEDS_DATA[st] = { ...(ANIMAL_NEEDS_DATA[st] || {}), ...parsed[st] }; });
+        });
+    }
     if (afcActive(farm)) {
         const INPUTS = ['food', 'water', 'straw'];
         const applyInputs = (subType, src) => {
@@ -3478,10 +3566,9 @@ function parseAnimalNeedsXml(xmlText) {
     catch (err) { return null; }
     if (!doc || doc.querySelector('parsererror')) return null;
 
-    const animalsRoot = doc.querySelector('animals');
-    if (!animalsRoot) return null;
-
-    const subTypeEls = animalsRoot.querySelectorAll('animal > subType');
+    // animals.xml has <animals><animal type>…; Animal Package's per-species
+    // files have a single <animal type> (or another wrapper) as the root.
+    const subTypeEls = doc.querySelectorAll('animal > subType');
     if (subTypeEls.length === 0) return null;
 
     // Value attribute name isn't consistent across every crop/animal XML
@@ -4060,6 +4147,7 @@ window.openPlanner = function (id) {
     let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
         currentFarmId = farm.id;
+        animalPictures.lookupFarmId = undefined;   // save path may have changed
         clearFieldSearch();
 
         loadFarmConfigs(farm);
@@ -4080,6 +4168,7 @@ window.openPlanner = function (id) {
         viewedSeason = farm.currentSeason || 1;
         showPlannerView('plan');   // renders the season table
         maybeSuggestNewSeason(getCurrentFarm());
+        maybeFillFromRotation(getCurrentFarm());
 
         if (dashboardView) dashboardView.style.display = 'none';
         if (plannerView) plannerView.style.display = 'flex';
@@ -4113,6 +4202,8 @@ function syncWeedsFromSave(farm) {
         const states = ids.map(id => byId[id]).filter(s => s > 0);
         if (!states.length) return;
         const next = states.some(s => s <= 6) ? 'needed' : 'done';
+        // Dead weeds after hoeing are still "weeded mechanically".
+        if (next === 'done' && field.weeds === 'hoed') return;
         if (field.weeds !== next) { field.weeds = next; changed = true; }
     });
     return changed;
@@ -4223,6 +4314,7 @@ function refreshPlannerHeader(farm) {
         plannerYear.readOnly = fromGame;
         plannerYear.title = fromGame ? t('yearFromGameHint') : t('yearManualHint');
     }
+    refreshNotesBadge(farm);
 
 }
 
@@ -4318,12 +4410,14 @@ function runAutoSyncTick() {
         renderSeasonView();
         showAutoSyncToast();
         maybeSuggestNewSeason(getCurrentFarm());
+        maybeFillFromRotation(getCurrentFarm());
     }
 }
 
-function showAutoSyncToast() {
+// text / ms: another message in the same toast (e.g. crops filled from the rotation).
+function showAutoSyncToast(text, ms = 2500) {
     if (!autoSyncToast) return;
-    autoSyncToast.textContent = t('autoSyncedToast');
+    autoSyncToast.textContent = text || t('autoSyncedToast');
     autoSyncToast.hidden = false;
     // force reflow so the transition runs even on rapid re-triggers
     void autoSyncToast.offsetWidth;
@@ -4332,7 +4426,7 @@ function showAutoSyncToast() {
     autoSyncToastTimer = setTimeout(() => {
         autoSyncToast.classList.remove('is-visible');
         setTimeout(() => { autoSyncToast.hidden = true; }, 300);
-    }, 2500);
+    }, ms);
 }
 
 if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
@@ -4393,6 +4487,8 @@ window.renderSeasonView = function () {
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
+
+    renderTodayPanel();
 
     // Field count may have changed (crop edits, new season) — refresh Discord.
     updateDiscordPresence();
@@ -4603,14 +4699,20 @@ async function runNewSeason({ intro = '' } = {}) {
         if (!startFarm) return;
         const seasonNow = parseInt(startFarm.currentSeason) || 1;
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
+        // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
+        const rotationMode = rotationFillMode(startFarm);
+        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
+        const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
-            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')),
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + rotationText,
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
+            extraText: rotationCount && rotationMode === 'ask' ? t('rotNewSeasonSkip') : null,
             icon: 'fa-seedling'
         });
         if (!confirmNew) return;
+        const fillFromRotation = rotationCount > 0 && confirmNew === true;
 
         const allFarms = getAllFarms();
         const farmIndex = allFarms.findIndex(f => f.id === currentFarmId);
@@ -4696,6 +4798,7 @@ async function runNewSeason({ intro = '' } = {}) {
             // the season just archived — a new crop on the same field starts clean.
             if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
+            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
@@ -4707,7 +4810,8 @@ async function runNewSeason({ intro = '' } = {}) {
             renderSeasonView();
 
             const done = s => s.replace(/\{c\}/g, currentSeasonNum).replace(/\{n\}/g, farm.currentSeason);
-            await showNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone')));
+            await showNotice(done(t('newSeasonDoneTitle')), done(t('newSeasonDone'))
+                + (rotationFilled.length ? '\n\n' + t('rotNewSeasonDone').replace('{list}', rotationFilledList(rotationFilled)) : ''));
         } catch (err) {
             console.error(err);
             await showNotice(t('seasonModalErrorTitle'), t('newSeasonError'), true);
@@ -5771,7 +5875,7 @@ window.prepareDelete = async function (id) {
         break;
     }
 
-    let error = null;
+    let error = null, leftover = null;
     if (!farmToKill) {
         console.error('Delete failed: no farm found with id', id);
         error = 'deleteErrorNotFound';
@@ -5784,16 +5888,40 @@ window.prepareDelete = async function (id) {
             console.error('Delete failed: folder does not exist on disk', folderPath);
             error = 'deleteErrorMissingOnDisk';
         } else {
+            // OneDrive (Documents synced) or an antivirus can hold a file for a
+            // moment — retry, then try the Recycle Bin, then at least take the
+            // farm off the list (data.json) and say what was left behind.
             try {
-                fs.rmSync(folderPath, { recursive: true, force: true });
+                fs.rmSync(folderPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
             } catch (err) {
-                console.error('Delete failed:', err);
-                error = 'deleteErrorLocked';
+                console.error('Delete failed:', err.code, err);
+                if (await ipcRenderer.invoke('trash-farm-folder', farmToKill.folderName)) {
+                    console.warn('Farm folder moved to the Recycle Bin instead:', folderPath);
+                } else {
+                    try {
+                        const jsonPath = path.join(folderPath, 'data.json');
+                        if (fs.existsSync(jsonPath)) fs.rmSync(jsonPath, { maxRetries: 5, retryDelay: 200 });
+                        leftover = farmToKill.folderName;
+                    } catch (err2) {
+                        console.error('Removing data.json failed too:', err2.code, err2);
+                        error = 'deleteErrorLocked';
+                    }
+                }
             }
         }
     }
     renderFarmList(getAllFarms());
     if (error) showNotice(t('noticeErrorTitle'), t(error), true);
+    else if (leftover) {
+        const open = await showDialog({
+            title: t('deleteFarmLeftoverTitle'),
+            body: t('deleteFarmLeftover').replace('{path}', path.join(appDataDir, leftover)),
+            confirmText: t('seasonModalOk'),
+            extraText: t('deleteFarmOpenFolder'),
+            icon: 'fa-triangle-exclamation'
+        });
+        if (open === 'extra') ipcRenderer.invoke('open-farm-folder', leftover);
+    }
 };
 
 // =============================================================

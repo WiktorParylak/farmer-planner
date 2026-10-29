@@ -430,6 +430,8 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('a6', tutDemoItem),
             tutInfo('a7', () => { const item = tutDemoItem(); return item ? item.querySelector('.export-btn-circle') : null; }),
             tutInfo('a8', '#import-backup-btn'),
+            tutInfo('a13', '#tramlines-btn'),
+            tutInfo('a14', '#mapscale-btn'),
             tutInfo('a9', () => { const item = tutDemoItem(); return item ? item.querySelector('.delete-btn-circle') : null; }),
             tutClick('a12', () => { const item = tutDemoItem(); return item ? item.querySelector('.select-btn') : null; },
                 () => tutPlannerShown() && currentFarmId === tut.demoId)
@@ -467,7 +469,8 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
             tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
-            tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum'])
+            tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum']),
+            tutInfo('c15', '#rotation-btn')
         ]
     },
     {

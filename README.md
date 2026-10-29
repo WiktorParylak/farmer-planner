@@ -30,7 +30,9 @@
 - Every field with its area, crop, sowing month, state, ploughing or no-till, soil type and fertilization plan.
 - Catch crops on the same field, before or after the main crop.
 - Past seasons kept, so you can step back and compare.
-- Crop rotation warnings and a summary of hectares per crop.
+- Crop rotation cycles (from templates like Norfolk or your own): the next crop is filled in when a new season starts, and a rotation view scores each field.
+- A *What to do today* panel under the plan: this month's sowing, harvest, weeds, rolling, work steps, low feed and notes.
+- A summary of hectares per crop.
 
 **Synced with your game**
 - Balance, loans, playtime, equipment and animals read from your savegame.
@@ -43,6 +45,8 @@
 - Supplies: how much seed and fertilizer to buy this season.
 - Predicted yields, with today's field moisture from Moisture System.
 - Notes pinned to months, with tags and a checklist.
+- Tramlines: save the tramlines of your fields from one save and paste them into another save of the same map.
+- Map scaling: double the resolution of a map mod's density maps, info layers and height map. The app writes the scaled files and a backup of the originals to its own folder; you copy them into the mod yourself.
 
 ## Animals and feed, worked out
 
@@ -68,7 +72,7 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 ## Questions
 
 **Does it change my savegame?**
-No. Farmer Planner only reads game files and never writes to them.
+No. Farmer Planner only reads game files, with one exception you start yourself: the tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm`. It only does that with the game closed, copies the file to `farmer_planner_backup` first, checks the new file before it replaces the old one, and can restore the last backup.
 
 **Which maps and mods does it support?**
 Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit and Enhanced Loan System.
@@ -90,7 +94,8 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - Seasons with history — step back to previous seasons and compare.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
-- Crop rotation warnings.
+- Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. A new season (or a new in-game month, once a sowing window opens) fills in each field's next crop. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).
+- *What to do today* panel under the season plan: fields to sow or harvest this month, late sowings, weeds, rolling, the next step of your work lists, barns low on feed and this month's notes.
 - Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them.
 - With the Crop Dependent Rolling mod, rolling is planned only for the crops that need it.
 
@@ -144,7 +149,7 @@ src/
 data/          Bundled base-game data (default crops, animals, nitrogen by soil)
 Assets/        Logo and app icon
 tools/         Dev scripts that regenerate the files in data/ from game files
-docs/          Screenshots and notes
+docs/          Logo and screenshots
 ```
 
 Built with [Electron](https://www.electronjs.org/), plain HTML/CSS/JavaScript and [Font Awesome](https://fontawesome.com/).

@@ -329,7 +329,8 @@ function normalizeMixerPlan(m) {
         custom: Array.isArray(m.custom) ? m.custom : [],
         capacity: { ...(m.capacity || {}) },
         customBales: Array.isArray(m.customBales) ? m.customBales : [],
-        loads
+        loads,
+        sort: ['name', 'capacity'].includes(m.sort) ? m.sort : 'default'
     };
 }
 
@@ -398,7 +399,19 @@ function feedRationOptionsHtml(type, plan, selectedId) {
         `<option value="mixer:${escapeHtml(m.id)}" ${selectedId === 'mixer:' + m.id ? 'selected' : ''}>${escapeHtml(t('feedRationMixer'))} · ${escapeHtml(mixerDisplayName(getCurrentFarm(), m))} (100%)</option>`).join('');
     const custom = plan.customFeeds.filter(f => f.animalType === type).map(f =>
         `<option value="custom:${f.id}" ${selectedId === 'custom:' + f.id ? 'selected' : ''}>${escapeHtml(f.name)} (${f.efficiency}%)</option>`).join('');
-    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '');
+    return builtIn + mixers + (custom ? `<optgroup label="${t('feedCustomGroup')}">${custom}</optgroup>` : '')
+        + `<option value="__new">+ ${escapeHtml(t('feedCustomNew'))}…</option>`;
+}
+
+// "+ New feed…" in a ration picker outside the feed planner: open the planner
+// on that barn with the new-feed editor for the species.
+function startNewCustomFeed(type, barnId) {
+    showPlannerView('feedplan');   // a fresh open resets the planner's state…
+    if (barnId != null) feedSelectedBuilding = barnId;   // …so set it afterwards
+    feedEditorDraft = { id: null, animalType: type || 'COW', name: '', efficiency: 100, ingredients: [{ category: 'HAY', pct: 100 }] };
+    rerenderFeedPlan();
+    const editor = document.querySelector('#hub-view .feed-editor');
+    if (editor) editor.scrollIntoView({ block: 'center' });
 }
 
 // Name the player gave a feed mixer (per farm), else the one from its mod.
@@ -1270,8 +1283,11 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             });
             plan.customFeeds.filter(f => f.animalType === type).forEach(f => {
                 const id = 'custom:' + f.id;
-                html += `<button type="button" class="feed-ration-tile ${current === id ? 'feed-ration-tile--active' : ''}" data-type="${type}" data-ration="${id}">
-                    <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span></button>`;
+                // Your own feed: edit and delete right on its tile.
+                html += `<div class="feed-ration-tile feed-ration-tile--custom ${current === id ? 'feed-ration-tile--active' : ''}" role="button" tabindex="0" data-type="${type}" data-ration="${id}">
+                    <span class="feed-ration-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span><span class="feed-ration-eff">${f.efficiency}%</span>
+                    <button type="button" class="feed-ration-tool feed-custom-edit" data-id="${f.id}" title="${t('notesEdit')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button type="button" class="feed-ration-tool feed-ration-tool--danger feed-custom-delete" data-id="${f.id}" title="${t('notesDelete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button></div>`;
             });
             html += `<button type="button" class="feed-ration-tile feed-ration-tile--new feed-custom-new" data-type="${type}"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomNew')}</button></div>`;
             // Mixer ration: say which recipe the crop needs below follow.
@@ -1404,7 +1420,53 @@ function mixerBaleTypes(farm, plan) {
         key: 'custom:' + b.id, label: b.name, fillType: null,
         category: b.category, litres: parseFloat(b.litres) || 0, count: null, custom: true
     }));
-    return [...onFarm, ...own];
+    // The game's own bale sizes (data/objects/bales/*), to compare with what
+    // the farm has: litres per bale for hay, silage and straw.
+    const std = [];
+    Object.entries(MIXER_STANDARD_BALES).forEach(([size, byType]) => {
+        Object.entries(byType).forEach(([fillType, litres]) => {
+            const key = size + '|' + fillType + '|' + litres;
+            if (onFarm.some(b => b.key === key)) return;
+            std.push({ key, label: baleSizeLabel(size), fillType, category: FEED_FILLTYPE_CATEGORY[fillType], litres, count: null, std: true });
+        });
+    });
+    // A loaded bale type the farm has run out of (key "round125|DRYCLOVER_WINDROW|4500")
+    // stays pickable with 0 on the farm — otherwise its row showed the first
+    // bale in the list and counted 0 l.
+    const known = new Set([...onFarm, ...own, ...std].map(b => b.key));
+    const gone = [];
+    Object.values(plan.mixer.loads).flat().forEach(item => {
+        if (item.kind !== 'bale' || known.has(item.baleKey) || String(item.baleKey).startsWith('custom:')) return;
+        const [size, fillType, litres] = String(item.baleKey).split('|');
+        const category = FEED_FILLTYPE_CATEGORY[fillType];
+        if (!category || !(parseFloat(litres) > 0)) return;
+        known.add(item.baleKey);
+        gone.push({ key: item.baleKey, label: baleSizeLabel(size), fillType, category, litres: parseFloat(litres), count: 0 });
+    });
+    return [...onFarm, ...gone, ...own, ...std];
+}
+
+// FS25 base game bales (data/objects/bales/roundbales|squarebales/*.xml,
+// <fillType capacity>): litres of hay, silage and straw per bale.
+const MIXER_STANDARD_BALES = {
+    round125: { DRYGRASS_WINDROW: 4500, SILAGE: 3500, STRAW: 5000 },
+    round150: { DRYGRASS_WINDROW: 6500, SILAGE: 5500, STRAW: 7500 },
+    round180: { DRYGRASS_WINDROW: 9000, SILAGE: 7500, STRAW: 11000 },
+    square180: { DRYGRASS_WINDROW: 6000, SILAGE: 5000, STRAW: 7000 },
+    square220: { DRYGRASS_WINDROW: 7250, SILAGE: 6000, STRAW: 8250 },
+    square240: { DRYGRASS_WINDROW: 8000, SILAGE: 6500, STRAW: 9000 }
+};
+
+// <option>s grouped: on the farm / your own / the game's standard sizes.
+function mixerBaleOptionsHtml(baleTypes, selectedKey) {
+    const opt = x => `<option value="${escapeHtml(x.key)}" ${x.key === selectedKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`;
+    const groups = [
+        ['mixerGroupFarm', baleTypes.filter(x => !x.custom && !x.std)],
+        ['mixerGroupOwn', baleTypes.filter(x => x.custom)],
+        ['mixerGroupStd', baleTypes.filter(x => x.std)]
+    ];
+    return groups.filter(([, list]) => list.length)
+        .map(([label, list]) => `<optgroup label="${escapeHtml(t(label))}">${list.map(opt).join('')}</optgroup>`).join('');
 }
 
 function baleSizeLabel(size) {
@@ -1453,6 +1515,7 @@ function mixerLoadTotals(plan, baleTypes) {
 // the rest (e.g. mineral feed) goes in loose. If rounding overfills the
 // wagon, quarter bales come off wherever the load overshoots its target the most.
 function mixerAutoLoad(shares, wagon, baleTypes) {
+    baleTypes = baleTypes.filter(b => !b.std);
     const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(shares[c]) || 0), 0) || 100;
     const target = {};
     const baleLoads = [];   // { category, item, litres }
@@ -1522,12 +1585,22 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
     const baleTypes = mixerBaleTypes(farm, plan);
     const load = mixerLoad(plan);
     const editing = mixerEditWagonId ? wagons.find(w => w.id === mixerEditWagonId) : null;
+    const sortBy = plan.mixer.sort;
+    const shown = sortBy === 'default' ? wagons : [...wagons].sort((a, b) => sortBy === 'name'
+        ? String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' })
+        : (b.capacity || 0) - (a.capacity || 0));
 
     let html = `<div class="hub-panel-subtitle">${t('mixerTitle')}</div><div class="mixer" data-shares="${escapeHtml(JSON.stringify(shares))}">`;
 
     // --- Wagon picker ---
+    if (wagons.length > 1) {
+        html += `<label class="mixer-sort">${t('mixerSort')}
+            <select class="feed-input mixer-sort-select">
+                ${['default', 'name', 'capacity'].map(k => `<option value="${k}" ${k === sortBy ? 'selected' : ''}>${t('mixerSort_' + k)}</option>`).join('')}
+            </select></label>`;
+    }
     html += `<div class="mixer-wagons">`;
-    wagons.forEach(w => {
+    shown.forEach(w => {
         html += `<div class="mixer-wagon-tile ${w.id === plan.mixer.selected ? 'mixer-wagon-tile--active' : ''}" role="button" tabindex="0" data-id="${escapeHtml(w.id)}">
             <span class="mixer-wagon-icon" aria-hidden="true"><i class="fa-solid fa-truck-ramp-box" aria-hidden="true"></i></span>
             <span class="mixer-wagon-text">
@@ -1549,8 +1622,8 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
         html += `<div class="mixer-form">
             <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}" value="${editing ? escapeHtml(editing.name) : ''}" ${fromSave ? `disabled title="${t('mixerNameFromSave')}"` : ''}></label>
             <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000" value="${editing && editing.capacity ? editing.capacity : ''}"><span class="supply-unit">l</span></span></label>
-            <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
-            <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+            <button type="button" class="btn btn--primary btn--sm mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+            <button type="button" class="btn btn--secondary btn--sm mixer-f-cancel">${t('notesCancel')}</button>
         </div>`;
     }
     if (!wagons.length && mixerFormOpen !== 'wagon') html += `<p class="hub-panel-note">${t('mixerNoWagons')}</p>`;
@@ -1576,7 +1649,8 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
                 html += `<div class="mixer-row">
                     <span class="mixer-row-icon" aria-hidden="true"><i class="fa-solid fa-circle-dot" aria-hidden="true"></i></span>
                     <select class="feed-input mixer-bale-select" data-idx="${idx}">
-                        ${baleTypes.map(x => `<option value="${escapeHtml(x.key)}" ${x.key === item.baleKey ? 'selected' : ''}>${escapeHtml(baleTypeLabel(x))}${x.count !== null ? ` (${t('mixerOnFarm').replace('{n}', x.count)})` : ''}</option>`).join('')}
+                        ${b ? '' : '<option value="" selected disabled>—</option>'}
+                        ${mixerBaleOptionsHtml(baleTypes, item.baleKey)}
                     </select>
                     <span class="mixer-qty">
                         <button type="button" class="mixer-step" data-idx="${idx}" data-step="-0.25" aria-label="-¼">−</button>
@@ -1615,8 +1689,8 @@ function renderMixerSection(farm, plan, barnNeed, num, shares) {
                 <label>${t('mixerBaleName')}<input type="text" class="feed-input mixer-f-bname" placeholder="${t('mixerBaleNamePh')}"></label>
                 <label>${t('mixerBaleContent')}<select class="feed-input mixer-f-bcat">${MIXER_TMR_CATEGORIES.map(c => `<option value="${c}">${feedCategoryLabel(c)}</option>`).join('')}</select></label>
                 <label>${t('mixerBaleLitres')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-blitres" min="1" step="50" placeholder="4000"><span class="supply-unit">l</span></span></label>
-                <button type="button" class="supply-fillplan-btn mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
-                <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
+                <button type="button" class="btn btn--primary btn--sm mixer-f-save-bale"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+                <button type="button" class="btn btn--secondary btn--sm mixer-f-cancel">${t('notesCancel')}</button>
             </div>`;
         }
         if (plan.mixer.customBales.length) {
@@ -1701,7 +1775,7 @@ function wireMixerSection(bodyEl) {
     on('.mixer-wagon-tile', 'keydown', (el, e) => {
         if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
         e.preventDefault();
-        update(plan => { plan.mixer.selected = el.dataset.id; });
+        update(plan => selectMixerWagon(plan, el.dataset.id));
     });
     on('.mixer-wagon-delete', 'click', (el, e) => {
         e.stopPropagation();
@@ -1807,8 +1881,8 @@ function renderFeedEditor(d) {
         <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
         <p class="feed-ed-error feed-warn"></p>
         <div class="feed-editor-actions">
-            <button type="button" class="supply-fillplan-btn feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('notesSave')}</button>
-            <button type="button" class="supply-reset-btn feed-ed-cancel">${t('notesCancel')}</button>
+            <button type="button" class="btn btn--primary btn--sm feed-ed-save"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
+            <button type="button" class="btn btn--secondary btn--sm feed-ed-cancel">${t('notesCancel')}</button>
         </div>
     </div>`;
     return html;
@@ -1915,8 +1989,13 @@ function wireFeedPlanPanel(bodyEl) {
         feedSelectedBuilding = el.dataset.building;
         rerenderFeedPlan();
     }));
-    bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => el.addEventListener('click', () =>
-        update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); })));
+    bodyEl.querySelectorAll('.feed-ration-tile[data-ration]').forEach(el => {
+        const pick = () => update(p => { setBarnRation(p, feedSelectedBuilding, el.dataset.type, el.dataset.ration); });
+        el.addEventListener('click', e => { if (!e.target.closest('.feed-ration-tool')) pick(); });
+        if (el.tagName !== 'BUTTON') el.addEventListener('keydown', e => {
+            if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(); }
+        });
+    });
     const tmrBox = bodyEl.querySelector('.tmr-shares');
     if (tmrBox) {
         const readShares = () => Object.fromEntries([...tmrBox.querySelectorAll('.tmr-share-input')].map(i => [i.dataset.cat, parseFloat(i.value) || 0]));
@@ -1947,6 +2026,8 @@ function wireFeedPlanPanel(bodyEl) {
         if (!f) return;
         feedEditorDraft = JSON.parse(JSON.stringify(f));
         rerenderFeedPlan();
+        const editor = document.querySelector('#hub-view .feed-editor');
+        if (editor) editor.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }));
     bodyEl.querySelectorAll('.feed-custom-delete').forEach(el => el.addEventListener('click', async () => {
         const sure = await showConfirm({ title: t('feedCustomDeleteTitle'), body: t('feedCustomDeleteConfirm'), confirmText: t('delete'), danger: true });

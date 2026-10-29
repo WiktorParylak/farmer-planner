@@ -44,7 +44,40 @@
                         <button type="button" id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</button>
                     </div>
                 </div>
+                <div class="start-tools">
+                    <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
+                    <button type="button" id="mapscale-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i> <span data-i18n="msTitle">Map scaling</span></button>
+                </div>
             </section>
+        </div>
+        <div id="tramlines-view" class="tramlines-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="tl-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="tlTitle">Tramlines</h1>
+                <div class="settings-tabs tl-tabs" role="tablist">
+                    <button type="button" class="settings-tab tl-tab is-active" data-tltab="paste" data-i18n="tlTabPaste">Paste into a save</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="cut" data-i18n="tlTabCut">Save from a save</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="editor" data-i18n="tlTabEditor">Editor</button>
+                    <button type="button" class="settings-tab tl-tab" data-tltab="settings" data-i18n="tlTabSettings">Settings</button>
+                </div>
+            </header>
+            <div class="tl-body">
+                <aside id="tl-side" class="tl-side"></aside>
+                <div class="tl-canvas-wrap">
+                    <canvas id="tl-canvas"></canvas>
+                    <div id="tl-busy" class="tl-busy" hidden></div>
+                </div>
+            </div>
+        </div>
+        <div id="mapscale-view" class="tramlines-view mapscale-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="ms-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="msTitle">Map scaling</h1>
+            </header>
+            <div class="tl-body ms-body">
+                <aside id="ms-side" class="tl-side"></aside>
+                <div id="ms-list" class="ms-list"></div>
+            </div>
         </div>
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
@@ -88,6 +121,10 @@
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFieldSoil">Field soil type</span>
                     </button>
+                    <button type="button" class="sidebar-item sidebar-item--rotation" data-view="rotation" data-i18n-title="rotTitle">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrows-spin" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="rotTitle">Crop rotation</span>
+                    </button>
                     <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes" data-i18n-title="hubNotes">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubNotes">Notes</span>
@@ -124,6 +161,7 @@
                             </label>
                             <div class="main-table-header-btns">
                                 <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
+                                <button type="button" id="rotation-btn" class="edit-season-btn" data-i18n="rotBtn" data-i18n-title="rotBtnHint">ROTATION</button>
                                 <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
                                 <button type="button" id="cancel-edit-btn" class="edit-season-btn cancel-edit-btn" data-i18n="cancelEdit" hidden>CANCEL</button>
                                 <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
@@ -154,6 +192,7 @@
                             <span id="sown-ha-sum" class="farmland-ha-sum"></span>
                             <span id="farmland-ha-sum" class="farmland-ha-sum" hidden></span>
                         </div>
+                        <section id="today-panel" class="today-panel" hidden></section>
                     </div>
                 </div>
                 <div class="planner-crops">
@@ -541,6 +580,10 @@
     <script src="supplies.js"></script>
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
+    <script src="rotation.js"></script>
+    <script src="today.js"></script>
+    <script src="tramlines.js"></script>
+    <script src="map-scale.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

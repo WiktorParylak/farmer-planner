@@ -12,7 +12,9 @@
 //   feed     — stock in every source, bales, two mixer wagons (one without a
 //              capacity);
 //   history  — two archived seasons and 32 in-game months for the charts;
-//   notes    — this month, several months, checklist, no checklist.
+//   notes    — this month, several months, checklist, no checklist;
+//   rotation — three cycles, a field on its cycle, one off it, grassland in
+//              its last season, an empty field the cycle fills in.
 // No savegame path, so nothing is ever synced over it.
 
 const DEV_FARM_ID = '1000000000001';
@@ -47,15 +49,18 @@ function devFields() {
     return [
         // Sow now; limed this season over an older liming, so "Undo liming" brings season 1 back.
         devField("1", 5.2, "Wheat", "OCTOBER", "To Plant", "plowed", {
+            rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 },
             limeAppliedSeason: DEV_SEASON, limePh: 1, limePrev: { season: 1, ph: 0.62 },
             work: [{ step: "harvest", done: true }, { step: "plow", done: true }, { step: "lime", done: true },
                 { step: "sow", done: false }, { step: "fertilize", done: false }]
         }),
         // Sowing month already passed; never limed; weeds to spray.
-        devField("2", 3.4, "Barley", "SEPTEMBER", "To Plant", null, { weeds: "needed" }),
+        // Off its rotation: the cycle wants wheat after canola.
+        devField("2", 3.4, "Barley", "SEPTEMBER", "To Plant", null, { weeds: "needed", rotation: { id: "rot_dev_canola", step: 1, stepSeason: 1 } }),
         // Two farmlands in one field; planted, rolled, fertilized.
         devField("3-4", 7.8, "Canola", "AUGUST", "Planted", "noTill", {
-            limeAppliedSeason: 2, limePh: 0.85, fertilizer: true, rolling: true, rollingDone: true
+            limeAppliedSeason: 2, limePh: 0.85, fertilizer: true, rolling: true, rollingDone: true,
+            rotation: { id: "rot_dev_canola", step: 0, stepSeason: 1 }
         }),
         // One field of 5 ha shared by two crops, 0.5 ha left unassigned; the first has a catch crop.
         devField("5", 2.0, "Soybean", "APRIL", "To Plant", "noTill", {
@@ -65,6 +70,7 @@ function devFields() {
         // Grassland: two cuts taken, the third still to do.
         devField("6", 4.0, "Grass", "MARCH", "Planted", null, {
             limeAppliedSeason: DEV_SEASON, limePh: 1, fertilizer: true,
+            rotation: { id: "rot_dev_dairy", step: 1, stepSeason: 3 },
             cuts: [
                 { month: "MAY", use: "silage", harvested: true, fertilized: true, limed: false, rolled: true },
                 { month: "JULY", use: "hay", harvested: true, fertilized: false, limed: false, rolled: false },
@@ -87,8 +93,8 @@ function devFields() {
         // Low pH from an old liming.
         devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55 }),
         devField("14", 3.1, "Oat", "MARCH", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true }),
-        // A field bought but not planned yet.
-        devField("15", 1.75, "", "", "To Plant", null, {})
+        // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
+        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } })
     ];
 }
 
@@ -253,6 +259,18 @@ function buildDevFarm({ pl }) {
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,
         fieldSizes: { "5": 5 },
+        // Crop rotation: three cycles; fields 1, 2, 3-4, 6 and 15 use them.
+        rotations: [
+            { id: "rot_dev_norfolk", name: "Norfolk", color: "#c97a2b", steps: [
+                { crop: "Wheat", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Sugarbeet", catchCrop: "", sowingMonth: "", seasons: 1 },
+                { crop: "Barley", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Canola", catchCrop: "", sowingMonth: "", seasons: 1 }] },
+            { id: "rot_dev_canola", name: pl ? "Rzepak + zboża" : "Canola + cereals", color: "#3f6fa8", steps: [
+                { crop: "Canola", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Wheat", catchCrop: "", sowingMonth: "", seasons: 1 },
+                { crop: "Barley", catchCrop: "Oilseedradish", sowingMonth: "", seasons: 1 }] },
+            { id: "rot_dev_dairy", name: pl ? "Pasza" : "Dairy feed", color: "#5b8c3a", steps: [
+                { crop: "Maize", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Grass", catchCrop: "", sowingMonth: "", seasons: 3 },
+                { crop: "Wheat", catchCrop: "Oilseedradish", sowingMonth: "", seasons: 1 }] }
+        ],
         // Field names (shown under the number, found by the search); most fields stay unnamed.
         fieldNames: pl
             ? { "1": "Za stodołą", "3-4": "Duże przy lesie", "6": "Łąka nad rzeką", "10-11-12": "Kukurydza północ" }

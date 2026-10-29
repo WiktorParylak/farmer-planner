@@ -28,7 +28,18 @@ const { locateMod } = require('./mod-locator');
 const AFC_MOD = 'FS25_AnimalFoodCalculator';
 const EAS_MOD = 'FS25_EnhancedAnimalSystem';
 const ANIMAL_PACKAGE_MOD = 'FS25_AnimalPackage_vanillaEdition';
-const ANIMAL_PACKAGE_XMLS = ['xmls/animals/cow.xml', 'xmls/animals/pig.xml', 'xmls/animals/sheep.xml', 'xmls/animals/horse.xml', 'xmls/animals/chicken.xml'];
+
+// Animal Package has no single animals.xml: every species (and some breeds)
+// has its own definition file in its own folder. Any XML in the mod with an
+// <animal type> holding <subType> entries counts.
+function readAnimalPackageXmls(mod) {
+    const out = [];
+    mod.listAll('').filter(n => n.endsWith('.xml')).forEach(rel => {
+        const xml = readText(mod, rel);
+        if (xml && /<animal\s[^>]*\btype\s*=/i.test(xml) && /<subType\s/i.test(xml)) out.push(xml);
+    });
+    return out;
+}
 
 function attr(tag, name) {
     const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"'));
@@ -65,10 +76,10 @@ function readEasLactation(mod) {
     return byType;
 }
 
-// -> { daysPerPeriod, afc: null | {...}, eas: null | {...} }
+// -> { daysPerPeriod, afc: null | {...}, eas: null | {...}, animalPackageXml: [] }
 // skip: Set of app mod ids switched off for the farm ('afc', 'eas', 'animalPackage').
 function readAnimalMods(careerSavegamePath, skip = new Set()) {
-    const out = { daysPerPeriod: 1, afc: null, eas: null };
+    const out = { daysPerPeriod: 1, afc: null, eas: null, animalPackageXml: [] };
     if (!careerSavegamePath || !fs.existsSync(careerSavegamePath)) return out;
     const saveDir = path.dirname(careerSavegamePath);
     let career = '';
@@ -77,6 +88,17 @@ function readAnimalMods(careerSavegamePath, skip = new Set()) {
     if (days > 0) out.daysPerPeriod = days;
     const active = new Set([...career.matchAll(/<mod\b[^>]*\bmodName="([^"]+)"/g)].map(m => m[1]));
     const openSaveMod = name => { const dir = locateMod(careerSavegamePath, name); return dir ? openMod(dir, name) : null; };
+
+    // The game loads Animal Package's breeds, so the barns follow its curves.
+    if (active.has(ANIMAL_PACKAGE_MOD) && !skip.has('animalPackage')) {
+        let mod = null;
+        try {
+            mod = openSaveMod(ANIMAL_PACKAGE_MOD);
+            if (mod) out.animalPackageXml = readAnimalPackageXmls(mod);
+            if (mod && !out.animalPackageXml.length) console.warn('Animal Package: no animal definitions found in the mod');
+        } catch (e) { console.warn('Animal Package definitions unreadable', e); }
+        finally { if (mod) mod.close(); }
+    }
 
     if (active.has(AFC_MOD) && !skip.has('afc')) {
         const afc = { enabled: false, autoScaleByDays: false, customMultiplier: 1, mode: 'vanilla', referenceSource: 'effective', referenceXml: [] };
@@ -101,8 +123,11 @@ function readAnimalMods(careerSavegamePath, skip = new Set()) {
                 const xml = refMod && readText(refMod, 'xmls/animals.xml');
                 if (xml) afc.referenceXml.push(xml);
             } else if (refSrc === 'animalpackage' && !skip.has('animalPackage')) {
-                refMod = openSaveMod(ANIMAL_PACKAGE_MOD);
-                if (refMod) ANIMAL_PACKAGE_XMLS.forEach(rel => { const xml = readText(refMod, rel); if (xml) afc.referenceXml.push(xml); });
+                if (out.animalPackageXml.length) afc.referenceXml.push(...out.animalPackageXml);
+                else {
+                    refMod = openSaveMod(ANIMAL_PACKAGE_MOD);
+                    if (refMod) afc.referenceXml.push(...readAnimalPackageXmls(refMod));
+                }
             }
         } catch (e) { console.warn('AFC reference curves unreadable', e); }
         finally { if (refMod) refMod.close(); }
