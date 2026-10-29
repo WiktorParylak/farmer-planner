@@ -7496,7 +7496,7 @@ button.field-open:hover .field-number-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 36px;
   background-color: var(--color-surface);
 }
 
