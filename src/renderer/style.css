@@ -7484,19 +7484,20 @@ button.field-open:hover .field-number-chip {
 }
 
 /* ---------- Tramlines tool ---------- */
-/* Round button in the bottom-left corner of the start screen. */
-.app-settings-btn.tramlines-btn {
-  top: auto;
-  right: auto;
-  bottom: 18px;
-  left: 18px;
-  width: 46px;
-  height: 46px;
-  background-color: var(--color-surface);
+/* Pill under the My Farms card; the card gives up the height it needs. */
+.menu-section .white-card {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
 }
 
-.app-settings-btn.tramlines-btn:hover {
-  transform: none;
+.tramlines-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  background-color: var(--color-surface);
 }
 
 .tramlines-view {

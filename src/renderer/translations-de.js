@@ -1092,7 +1092,7 @@ const UI = {
     tut_c15_t: "Fruchtfolge",
     tut_c15_x: "Lege Fruchtfolge-Zyklen an (aus Vorlagen wie Norfolker oder eigene) und weise sie Feldern zu. Bei einer neuen Saison — und wenn die nächste Frucht eines leeren Feldes bald gesät werden kann — trägt der Planer die Frucht ein. Der Reiter Felder zeigt vergangene und kommende Saisons mit grüner / gelber / roter Bewertung.",
     tut_a13_t: "Fahrgassen",
-    tut_a13_x: "Der runde Knopf in der Ecke des Startbildschirms öffnet das Fahrgassen-Werkzeug: sichere die Fahrgassen eines Feldes aus einem Spielstand in eine Bibliothek und füge sie in einen anderen Spielstand derselben Karte ein (bei geschlossenem Spiel — die Kartendatei wird vorher gesichert).",
+    tut_a13_x: "Der Knopf Fahrgassen unter der Hofliste öffnet das Fahrgassen-Werkzeug: sichere die Fahrgassen eines Feldes aus einem Spielstand in eine Bibliothek und füge sie in einen anderen Spielstand derselben Karte ein (bei geschlossenem Spiel — die Kartendatei wird vorher gesichert).",
     tut_i10_t: "Grünland & Währung",
     tut_i10_x: "Nach wie vielen Saisons Grünland umgebrochen werden soll (die Tabelle hebt es hervor) und die Währung — die des Spiels oder eine eigene. Bei einem Mehrspieler-Spielstand erscheint hier auch die Auswahl deines Hofs.",
     tut_i11_t: "Gefahrenbereich",
