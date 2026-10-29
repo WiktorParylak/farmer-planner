@@ -24,8 +24,9 @@ const FEED_ANIMAL_TYPES = ['COW', 'PIG', 'SHEEP', 'HORSE', 'CHICKEN'];
 // FS25 sdk/xmlDoku/character/animalFood.xml — food groups per animal type.
 // efficiency = the group's productionWeight (x100); PIG/HORSE eat every group
 // in parallel, so their fixed mix uses the eatWeight shares (horse weights
-// sum to 1.05 in the game file and are normalized here).
-const ANIMAL_FOOD_GROUPS = {
+// sum to 1.05 in the game file and are normalized here). A map with its own
+// animalFood.xml replaces these per farm — see applyMapAnimalFood.
+const BASE_ANIMAL_FOOD_GROUPS = {
     COW: {
         forage: { tmr: true, efficiency: 100 },
         hay: { efficiency: 80, ingredients: [{ category: 'HAY', pct: 100 }] },
@@ -51,8 +52,96 @@ const ANIMAL_FOOD_GROUPS = {
     }
 };
 // Same file, <recipes><recipe fillType="FORAGE">: allowed share per TMR ingredient.
-const TMR_LIMITS = { HAY: [20, 75], SILAGE: [20, 75], STRAW: [0, 30], MINERAL: [0, 7] };
+const BASE_TMR_LIMITS = { HAY: [20, 75], SILAGE: [20, 75], STRAW: [0, 30], MINERAL: [0, 7] };
 const TMR_DEFAULT = { HAY: 40, SILAGE: 40, STRAW: 15, MINERAL: 5 };
+
+// What the open farm's barns follow: the base game's, or its map's.
+let ANIMAL_FOOD_GROUPS = JSON.parse(JSON.stringify(BASE_ANIMAL_FOOD_GROUPS));
+let TMR_LIMITS = { ...BASE_TMR_LIMITS };
+let MIXER_TMR_CATEGORIES = Object.keys(TMR_LIMITS);
+// Which file they came from (null = base game), for the settings mod list.
+let animalFoodSource = null;
+
+// Feed categories a food group's fillTypes count as, in order, no repeats.
+function foodGroupCategories(fillTypes) {
+    return [...new Set(String(fillTypes || '').split(/\s+/).map(ft => FEED_FILLTYPE_CATEGORY[ft.toUpperCase()]).filter(Boolean))];
+}
+
+// Applies a map's animalFood.xml (map-crops.js readMapAnimalFood) on top of
+// the base game's groups — or resets to them when mapFood is null.
+// SERIAL animals: each base ration whose ingredients the map still feeds
+// takes the map group's productionWeight (Krajów: hay 60 % instead of 80 %);
+// rations the map doesn't feed are dropped, groups the base game doesn't
+// have become rations of their own. PARALLEL animals: one mix from the map's
+// eatWeights. The FORAGE recipe gives the TMR limits.
+function applyMapAnimalFood(mapFood) {
+    ANIMAL_FOOD_GROUPS = JSON.parse(JSON.stringify(BASE_ANIMAL_FOOD_GROUPS));
+    TMR_LIMITS = { ...BASE_TMR_LIMITS };
+    animalFoodSource = null;
+    const xml = mapFood && mapFood.xml;
+    if (xml) {
+        try {
+            const attrOf = (tag, name) => { const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"')); return m ? m[1] : null; };
+            for (const am of xml.matchAll(/<animal\b([^>]*)>([\s\S]*?)<\/animal>/g)) {
+                const type = (attrOf(am[1], 'animalType') || '').toUpperCase();
+                if (!FEED_ANIMAL_TYPES.includes(type)) continue;
+                const parallel = /parallel/i.test(attrOf(am[1], 'consumptionType') || '');
+                const groups = [...am[2].matchAll(/<foodGroup\b[^>]*>/g)].map(m => ({
+                    id: ((attrOf(m[0], 'title') || '').match(/fillTypeGroup_(\w+)/) || [])[1] || '',
+                    fillTypes: attrOf(m[0], 'fillTypes') || '',
+                    production: parseFloat(attrOf(m[0], 'productionWeight')),
+                    eat: parseFloat(attrOf(m[0], 'eatWeight'))
+                })).filter(g => !isNaN(g.production));
+                if (!groups.length) continue;
+                if (parallel) {
+                    const eatSum = groups.reduce((sum, g) => sum + (g.eat > 0 ? g.eat : 0), 0) || 1;
+                    const ingredients = [];
+                    groups.forEach(g => {
+                        const cat = foodGroupCategories(g.fillTypes)[0];
+                        if (cat && g.eat > 0) ingredients.push({ category: cat, pct: g.eat / eatSum * 100 });
+                    });
+                    if (ingredients.length) ANIMAL_FOOD_GROUPS[type] = { mix: { efficiency: 100, ingredients } };
+                    continue;
+                }
+                const base = BASE_ANIMAL_FOOD_GROUPS[type] || {};
+                const next = {};
+                groups.forEach(g => {
+                    const eff = Math.round(g.production * 100);
+                    if (/\bFORAGE\b/i.test(g.fillTypes)) { next.forage = { tmr: true, efficiency: eff }; return; }
+                    const cats = foodGroupCategories(g.fillTypes);
+                    let matched = false;
+                    Object.keys(base).forEach(id => {
+                        const r = base[id];
+                        if (r.tmr || next[id] || !r.ingredients.every(i => cats.includes(i.category))) return;
+                        next[id] = { ...r, efficiency: eff };
+                        matched = true;
+                    });
+                    if (!matched && cats.length && g.id && !next[g.id]) {
+                        next[g.id] = { efficiency: eff, ingredients: [{ category: cats[0], pct: 100 }] };
+                    }
+                });
+                if (Object.keys(next).length) ANIMAL_FOOD_GROUPS[type] = next;
+            }
+            const recipe = (xml.match(/<recipe\b[^>]*fillType="FORAGE"[^>]*>([\s\S]*?)<\/recipe>/i) || [])[1];
+            if (recipe) {
+                const limits = {};
+                for (const m of recipe.matchAll(/<ingredient\b[^>]*>/g)) {
+                    const cat = foodGroupCategories(attrOf(m[0], 'fillTypes'))[0];
+                    const min = parseFloat(attrOf(m[0], 'minPercentage'));
+                    const max = parseFloat(attrOf(m[0], 'maxPercentage'));
+                    if (cat && !isNaN(min) && !isNaN(max)) limits[cat] = [min, max];
+                }
+                if (Object.keys(limits).length) TMR_LIMITS = limits;
+            }
+            animalFoodSource = mapFood.modName || null;
+        } catch (e) {
+            console.warn('Map animalFood.xml unreadable, using the base game', e);
+            ANIMAL_FOOD_GROUPS = JSON.parse(JSON.stringify(BASE_ANIMAL_FOOD_GROUPS));
+            TMR_LIMITS = { ...BASE_TMR_LIMITS };
+        }
+    }
+    MIXER_TMR_CATEGORIES = Object.keys(TMR_LIMITS);
+}
 
 // Which feed category a crop can go to, per "use" option in the field table.
 // 'sale' is always offered on top of these. Grassland crops are cut several
@@ -96,10 +185,6 @@ function feedDaysPerPeriod(farm) {
     const d = parseInt(farm && farm.daysPerPeriod);
     return d > 0 ? d : 1;
 }
-// Calendar days in an in-game year — for "how many days does this last".
-function feedDaysPerYear(farm) {
-    return FEED_PERIODS_PER_YEAR * feedDaysPerPeriod(farm);
-}
 function afcActive(farm) {
     return !!(ANIMAL_MODS && ANIMAL_MODS.afc && !disabledModsOf(farm).has('afc'));
 }
@@ -112,30 +197,6 @@ function feedConsumptionScale(farm) {
     const afc = ANIMAL_MODS.afc;
     if (!afc.enabled) return 1;
     return (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier;
-}
-// A cluster's food or straw over the next year, month by month the way
-// AnimalFoodCalculator projects it (#10): the animals get a month older each
-// month, and with EAS a pregnant group calves and starts a new lactation, so
-// young stock and fresh cows count with what they'll eat, not today's rate.
-function clusterYearNeed(farm, type, c, needType) {
-    const eas = needType === 'food' && easActive(farm) ? ANIMAL_MODS.eas : null;
-    const def = eas ? getReproductionDef(c.subType) : null;
-    const dur = def && def.supported !== false ? parseFloat(def.durationMonth) || 0 : 0;
-    const st = { age: c.age || 0, hadABirth: !!c.hadABirth, monthsSinceLastBirth: parseInt(c.monthsSinceLastBirth, 10) || 0, reproduction: parseFloat(c.reproduction) || 0, inseminated: c.isInseminated === true };
-    let sum = 0;
-    for (let m = 0; m < FEED_PERIODS_PER_YEAR; m++) {
-        if (m > 0) {
-            st.age++;
-            let born = false;
-            if (dur > 0 && st.inseminated && st.age >= (def.minAgeMonth || 0)) {
-                st.reproduction += 100 / dur;
-                if (st.reproduction >= 100) { st.reproduction = 0; st.monthsSinceLastBirth = 0; st.hadABirth = true; st.inseminated = false; born = true; }
-            }
-            if (!born) st.monthsSinceLastBirth++;
-        }
-        sum += getDailyAnimalNeed(c.subType, st.age, needType) * (eas ? easFoodFactor(eas, type, st) : 1);
-    }
-    return sum * c.numAnimals * feedConsumptionScale(farm);
 }
 function clusterFoodFactor(farm, type, cluster) {
     return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
@@ -190,9 +251,9 @@ function getFeedPlan(farm) {
         // A barn without its own choice uses the species' ration above.
         barnRations: JSON.parse(JSON.stringify(saved.barnRations || {})),
         customFeeds: Array.isArray(saved.customFeeds) ? saved.customFeeds : [],
-        // Fixed to the game's default recipe — it's no longer editable, so an
-        // older saved recipe is ignored.
-        tmr: { ...TMR_DEFAULT },
+        // The farm's TMR shares (tmrShares — the old fixed `tmr` key is
+        // ignored), kept only while they fit the map's recipe.
+        tmr: validTmrShares(saved.tmrShares) || defaultTmrShares(),
         fieldUse: { ...(saved.fieldUse || {}) },
         strawFields: { ...(saved.strawFields || {}) },
         grassCuts: parseFloat(saved.grassCuts) > 0 ? parseFloat(saved.grassCuts) : 3,
@@ -202,36 +263,103 @@ function getFeedPlan(farm) {
     };
 }
 
+// The game's default TMR shares, limited to the ingredients the map's recipe has.
+function defaultTmrShares() {
+    const shares = {};
+    MIXER_TMR_CATEGORIES.forEach(c => {
+        const [min, max] = TMR_LIMITS[c];
+        shares[c] = Math.min(max, Math.max(min, TMR_DEFAULT[c] || 0));
+    });
+    return shares;
+}
+
+// Saved TMR shares when every ingredient of the recipe is there, within its
+// limits, and they add up to 100 % — else null.
+function validTmrShares(shares) {
+    if (!shares || typeof shares !== 'object') return null;
+    const out = {};
+    for (const c of MIXER_TMR_CATEGORIES) {
+        const v = parseFloat(shares[c]);
+        const [min, max] = TMR_LIMITS[c];
+        if (isNaN(v) || v < min - 0.05 || v > max + 0.05) return null;
+        out[c] = v;
+    }
+    const sum = Object.values(out).reduce((s, v) => s + v, 0);
+    return Math.abs(sum - 100) <= 0.05 ? out : null;
+}
+
+// A ration a mixer wagon can make: the built-in TMR, or an own feed made only
+// of the recipe's ingredients within its limits (e.g. TMR without mineral feed).
+function rationIsTmr(ration) {
+    if (!ration) return false;
+    if (ration.tmr) return true;
+    if (!ration.custom || !ration.ingredients.length) return false;
+    const sum = ration.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100;
+    const pct = {};
+    ration.ingredients.forEach(i => { pct[i.category] = (pct[i.category] || 0) + (parseFloat(i.pct) || 0) / sum * 100; });
+    if (Object.keys(pct).some(c => !TMR_LIMITS[c])) return false;
+    return MIXER_TMR_CATEGORIES.every(c => {
+        const [min, max] = TMR_LIMITS[c];
+        const v = pct[c] || 0;
+        return v >= min - 0.05 && v <= max + 0.05;
+    });
+}
+
+// A ration's shares per TMR ingredient, adding up to 100.
+function rationTmrShares(ration) {
+    const sum = ration.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100;
+    const shares = {};
+    MIXER_TMR_CATEGORIES.forEach(c => { shares[c] = 0; });
+    ration.ingredients.forEach(i => { if (i.category in shares) shares[i.category] += (parseFloat(i.pct) || 0) / sum * 100; });
+    return shares;
+}
+
 // Mixer wagon ("paszowóz") settings kept in the feed plan: the chosen wagon,
 // wagons and bale types the player added by hand, capacities typed in for
-// wagons whose file we couldn't read, and the load. Every wagon keeps its own
-// load (loads[wagonId]); `load` is the chosen wagon's.
+// wagons whose file we couldn't read, and each wagon's own load. The single
+// load of older versions belongs to the wagon that was chosen then ('' when
+// none was — it moves to the first wagon shown, see mixerLoad).
 function normalizeMixerPlan(m) {
     m = (m && typeof m === 'object') ? m : {};
+    const loads = {};
+    Object.keys(m.loads || {}).forEach(id => { if (Array.isArray(m.loads[id])) loads[id] = m.loads[id]; });
+    if (!m.loads && Array.isArray(m.load) && m.load.length) loads[m.selected || ''] = m.load;
     return {
         selected: m.selected || null,
         custom: Array.isArray(m.custom) ? m.custom : [],
         capacity: { ...(m.capacity || {}) },
         customBales: Array.isArray(m.customBales) ? m.customBales : [],
-        load: Array.isArray(m.load) ? m.load : [],
-        loads: { ...(m.loads || {}) },
+        loads,
         sort: ['name', 'capacity'].includes(m.sort) ? m.sort : 'default'
     };
 }
 
-// Switches the wagon, keeping each wagon's load.
-function selectMixerWagon(plan, id) {
-    if (plan.mixer.selected === id) return;
-    if (plan.mixer.selected) plan.mixer.loads[plan.mixer.selected] = plan.mixer.load;
-    plan.mixer.selected = id;
-    plan.mixer.load = Array.isArray(plan.mixer.loads[id]) ? plan.mixer.loads[id] : [];
-    delete plan.mixer.loads[id];
+// The chosen wagon's load (created empty on first use).
+function mixerLoad(plan) {
+    const wagon = selectedMixerWagon(getCurrentFarm(), plan);
+    const id = wagon ? wagon.id : '';
+    if (!plan.mixer.loads[id] && plan.mixer.loads['']) {
+        plan.mixer.loads[id] = plan.mixer.loads[''];
+        delete plan.mixer.loads[''];
+    }
+    return plan.mixer.loads[id] || (plan.mixer.loads[id] = []);
+}
+
+function setMixerLoad(plan, list) {
+    const wagon = selectedMixerWagon(getCurrentFarm(), plan);
+    plan.mixer.loads[wagon ? wagon.id : ''] = list;
+}
+
+// Bales go in by the quarter.
+function quarterBales(n) {
+    return Math.max(0, Math.round((parseFloat(n) || 0) * 4) / 4);
 }
 
 function saveFeedPlan(plan) {
     const farm = getCurrentFarm();
     if (!farm) return;
-    farm.feedPlan = plan;
+    const { tmr, ...rest } = plan;
+    farm.feedPlan = { ...rest, tmrShares: tmr };
     saveFarmData(farm);
 }
 
@@ -330,7 +458,7 @@ function mixerRation(mixer, type) {
     }
     const ingredients = Object.keys(byCat).length
         ? Object.entries(byCat).map(([category, pct]) => ({ category, pct }))
-        : ANIMAL_FOOD_GROUPS[type].mix.ingredients;
+        : ((ANIMAL_FOOD_GROUPS[type] || {}).mix || { ingredients: [] }).ingredients;
     return {
         id: 'mixer:' + mixer.id, name: t('feedRationMixer') + ' · ' + mixerDisplayName(getCurrentFarm(), mixer), efficiency: 100,
         ingredients, absolute: !!Object.keys(byCat).length,
@@ -402,6 +530,58 @@ function clusterDailyNeed(c, needType) {
     return getDailyAnimalNeed(c.subType, c.age, needType) * c.numAnimals;
 }
 
+// The cluster month by month over the coming in-game year (m = 0 is today),
+// the way AnimalFoodCalculator projects it (afcGetProjectedClusterState):
+// one month older each month; an inseminated animal old enough to breed
+// gains 100 / durationMonth and calves at 100 % (months since birth back to
+// 0), otherwise months since birth + 1. Deaths, sales and the calves
+// themselves aren't projected.
+function projectedClusterMonths(c) {
+    const def = getReproductionDef(c.subType);
+    const minAge = def && def.supported !== false ? (parseFloat(def.minAgeMonth) || 0) : null;
+    const delta = def && parseFloat(def.durationMonth) > 0 ? 100 / parseFloat(def.durationMonth) : 0;
+    const canBreed = age => minAge !== null && age >= minAge;
+    const s = {
+        age: parseFloat(c.age) || 0,
+        monthsSinceLastBirth: parseInt(c.monthsSinceLastBirth, 10) || 0,
+        reproduction: parseFloat(c.reproduction) || 0,
+        hadABirth: !!c.hadABirth,
+        isInseminated: !!c.isInseminated
+    };
+    const months = [];
+    for (let m = 0; m < FEED_PERIODS_PER_YEAR; m++) {
+        if (m > 0) {
+            s.age++;
+            let calved = false;
+            if (canBreed(s.age) && s.isInseminated && delta > 0) {
+                s.reproduction += delta;
+                if (s.reproduction >= 100) {
+                    s.reproduction = 0;
+                    s.monthsSinceLastBirth = 0;
+                    s.hadABirth = true;
+                    s.isInseminated = false;
+                    calved = true;
+                }
+            }
+            if (!calved) s.monthsSinceLastBirth++;
+        }
+        // EAS's food factor only counts once the animal may breed (AFC: canReproduce).
+        months.push({ ...s, hadABirth: s.hadABirth && (minAge === null || canBreed(s.age)) });
+    }
+    return months;
+}
+
+// A cluster's litres over the coming in-game year (before AFC's scale),
+// summed over its projected months — so calves growing up and cows calving
+// count, as in AnimalFoodCalculator's yearly figure. Food includes the EAS
+// lactation factor of each month.
+function clusterYearNeed(farm, type, c, needType) {
+    return projectedClusterMonths(c).reduce((sum, s) => {
+        const perHead = getDailyAnimalNeed(c.subType, s.age, needType);
+        return sum + perHead * (needType === 'food' ? clusterFoodFactor(farm, type, s) : 1);
+    }, 0) * c.numAnimals;
+}
+
 // Output fillTypes that don't depend on how well the animals are fed.
 const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 
@@ -417,14 +597,15 @@ function buildFeedDemand(farm, plan) {
     const byCategory = {};
     const bySpecies = {};
     let unknownSubTypes = 0;
+    const scale = feedConsumptionScale(farm);
     ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type || !ANIMAL_NEEDS_DATA[c.subType]) { unknownSubTypes++; return; }
         const s = bySpecies[type] || (bySpecies[type] = { head: 0, food: 0, straw: 0 });
-        const food = clusterYearNeed(farm, type, c, 'food');
+        const food = clusterYearNeed(farm, type, c, 'food') * scale;
         s.head += c.numAnimals;
         s.food += food;
-        s.straw += clusterYearNeed(farm, type, c, 'straw');
+        s.straw += clusterYearNeed(farm, type, c, 'straw') * scale;
         // Each barn's own ration splits its food into ingredients.
         const ration = resolveRation(type, plan, b.id);
         if (ration) splitByRecipe(food, ration, byCategory);
@@ -889,25 +1070,28 @@ function feedBalanceFor(category, balanceRows) {
 }
 
 // Yearly litres per feed category eaten in one building (ration split + straw
-// bedding), plus head count per species.
+// bedding), plus head count per species. foodNow: this month's food, with
+// today's ages (the yearly figures age the herd month by month).
 function buildBarnFeedNeed(building, plan, farm) {
+    const scale = feedConsumptionScale(farm);
     const byCategory = {};
     const heads = {};
-    let food = 0, bedding = 0;
+    let food = 0, bedding = 0, foodNow = 0;
     (building.clusters || []).forEach(c => {
         const type = animalTypeOf(c.subType);
         if (!type) return;
         heads[type] = (heads[type] || 0) + c.numAnimals;
         if (!ANIMAL_NEEDS_DATA[c.subType]) return;
         const ration = resolveRation(type, plan, building.id);
-        const f = clusterYearNeed(farm, type, c, 'food');
-        const b = clusterYearNeed(farm, type, c, 'straw');
+        const f = clusterYearNeed(farm, type, c, 'food') * scale;
+        const b = clusterYearNeed(farm, type, c, 'straw') * scale;
         food += f;
+        foodNow += clusterDailyFood(farm, type, c) * scale;
         bedding += b;
         if (ration) splitByRecipe(f, ration, byCategory);
         byCategory.STRAW = (byCategory.STRAW || 0) + b;
     });
-    return { byCategory, heads, food, bedding };
+    return { byCategory, heads, food, bedding, foodNow };
 }
 
 function feedIsShort(row) {
@@ -1043,6 +1227,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
         feedSelectedBuilding = null;
         feedSettingsOpen = false;
         mixerFormOpen = null;
+        mixerEditWagonId = null;
     }
 
     const farm = getCurrentFarm();
@@ -1116,9 +1301,11 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
         if (feedEditorDraft && !feedEditorDraft.id) html += renderFeedEditor(feedEditorDraft);
 
-        // --- 2b. Mixer wagon, for barns fed TMR (the only thing a mixer makes) ---
-        const barnUsesTmr = Object.keys(barnNeed.heads).some(type => { const r = resolveRation(type, plan, barn.id); return r && r.tmr; });
-        if (barnUsesTmr) html += renderMixerSection(farm, plan, barnNeed, num);
+        // --- 2b. Mixer wagon, for barns fed TMR (the only thing a mixer makes):
+        // the built-in TMR with the farm's shares, or an own TMR-like feed ---
+        const tmrRation = Object.keys(barnNeed.heads).map(type => resolveRation(type, plan, barn.id)).find(rationIsTmr);
+        if (tmrRation && tmrRation.tmr) html += renderTmrSharesEditor(plan);
+        if (tmrRation) html += renderMixerSection(farm, plan, barnNeed, num, rationTmrShares(tmrRation));
 
         // --- 3. Ingredient tiles ---
         const cats = FEED_CATEGORIES.filter(c => c !== 'STRAW' && barnNeed.byCategory[c] > 0);
@@ -1128,7 +1315,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             html += `<div class="feed-need-summary">
                 <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedFood')}</span><span class="feed-need-value">${num(barnNeed.food)} l</span></div>
                 ${barnNeed.bedding > 0 ? `<div class="feed-need-item"><span class="feed-need-label">${t('feedStrawBedding')}</span><span class="feed-need-value">${num(barnNeed.bedding)} l</span></div>` : ''}
-                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.food / FEED_PERIODS_PER_YEAR)} l</span><span class="feed-need-label">${feedScaleNote(farm)}</span></div>
+                <div class="feed-need-item"><span class="feed-need-label">${t('feedYearNeedMonth')}</span><span class="feed-need-value">${num(barnNeed.foodNow)} l</span><span class="feed-need-label">${feedScaleNote(farm)}</span></div>
             </div>`;
         }
         if (!cats.length) {
@@ -1153,7 +1340,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     if (!supply.rows.length) {
         html += `<p class="hub-panel-note">${t('feedNoFields')}</p>`;
     } else {
-        html += `<table class="supply-table feed-table"><thead><tr>
+        html += `<table class="data-table supply-table feed-table"><thead><tr>
             <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
             <th>${t('feedColUse')}</th><th>${t('feedColStraw')}</th><th>${t('feedColYield')}</th></tr></thead><tbody>`;
         supply.rows.forEach(r => {
@@ -1203,11 +1390,12 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 }
 
 // --- Mixer wagon (paszowóz) ------------------------------------------------
-// Load the wagon from bales (whole or halves) and loose products and check
+// Load the wagon from bales (by the quarter) and loose products and check
 // the result against the TMR recipe the game's mixer needs.
-const MIXER_TMR_CATEGORIES = Object.keys(TMR_LIMITS);
-// Which inline form is open: null | 'wagon' | 'bale'.
+// Which inline form is open: null | 'wagon' | 'bale'; the wagon being edited
+// in the 'wagon' form (null = a new one).
 let mixerFormOpen = null;
+let mixerEditWagonId = null;
 
 function mixerWagons(farm, plan) {
     const fromSave = ((farm && farm.mixerWagons) || []).map(w => ({
@@ -1247,7 +1435,7 @@ function mixerBaleTypes(farm, plan) {
     // bale in the list and counted 0 l.
     const known = new Set([...onFarm, ...own, ...std].map(b => b.key));
     const gone = [];
-    plan.mixer.load.forEach(item => {
+    Object.values(plan.mixer.loads).flat().forEach(item => {
         if (item.kind !== 'bale' || known.has(item.baleKey) || String(item.baleKey).startsWith('custom:')) return;
         const [size, fillType, litres] = String(item.baleKey).split('|');
         const category = FEED_FILLTYPE_CATEGORY[fillType];
@@ -1306,7 +1494,7 @@ function baleTypeLabel(b) {
 function mixerLoadTotals(plan, baleTypes) {
     const byCategory = {};
     let total = 0;
-    plan.mixer.load.forEach(item => {
+    mixerLoad(plan).forEach(item => {
         let cat = null, litres = 0;
         if (item.kind === 'bale') {
             const b = baleTypes.find(x => x.key === item.baleKey);
@@ -1322,29 +1510,24 @@ function mixerLoadTotals(plan, baleTypes) {
     return { byCategory, total };
 }
 
-// Fills the wagon to the TMR recipe. Ingredients you have bales of go in as
-// bales rounded to the nearest half (never more than the farm has); the
-// rest (e.g. mineral feed) goes in loose. If rounding overfills the wagon,
-// half bales come off wherever the load overshoots its target the most.
-// Optional ingredients (0 % allowed, e.g. mineral feed) the farm has none of
-// are left out and the rest of the recipe fills their share.
-function mixerAutoLoad(plan, wagon, baleTypes, farm) {
+// Fills the wagon to the barn's TMR shares. Ingredients you have bales of go
+// in as bales rounded to the nearest quarter (never more than the farm has);
+// the rest (e.g. mineral feed) goes in loose. If rounding overfills the
+// wagon, quarter bales come off wherever the load overshoots its target the most.
+function mixerAutoLoad(shares, wagon, baleTypes) {
     baleTypes = baleTypes.filter(b => !b.std);
-    const stock = mixerStockByCategory(farm);
-    const used = MIXER_TMR_CATEGORIES.filter(c => TMR_LIMITS[c][0] > 0 || stock[c] > 0 || baleTypes.some(b => b.category === c && b.count !== 0));
-    const share = c => used.includes(c) ? (parseFloat(plan.tmr[c]) || 0) : 0;
-    const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + share(c), 0) || 100;
+    const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(shares[c]) || 0), 0) || 100;
     const target = {};
     const baleLoads = [];   // { category, item, litres }
     const load = [];
     MIXER_TMR_CATEGORIES.forEach(c => {
-        target[c] = wagon.capacity * share(c) / recipeSum;
+        target[c] = wagon.capacity * (parseFloat(shares[c]) || 0) / recipeSum;
         if (target[c] <= 0) return;
         let left = target[c];
         const bales = baleTypes.filter(b => b.category === c && b.litres > 0)
             .sort((a, b) => (b.count || 0) - (a.count || 0) || b.litres - a.litres);
         for (const b of bales) {
-            let n = Math.round(left / b.litres * 2) / 2;
+            let n = quarterBales(left / b.litres);
             if (b.count !== null) n = Math.min(n, b.count);
             if (n <= 0) continue;
             const item = { kind: 'bale', baleKey: b.key, count: n };
@@ -1370,33 +1553,44 @@ function mixerAutoLoad(plan, wagon, baleTypes, farm) {
         const candidates = baleLoads.filter(x => x.item.count > 0);
         if (!candidates.length) break;
         candidates.sort((a, b) => (litresOf(b.category) - target[b.category]) - (litresOf(a.category) - target[a.category]));
-        candidates[0].item.count -= 0.5;
+        candidates[0].item.count = quarterBales(candidates[0].item.count - 0.25);
     }
     return load.filter(i => i.kind === 'bulk' || i.count > 0);
 }
 
-// Litres on the farm per feed category (silos, bales, pallets from the save).
-function mixerStockByCategory(farm) {
-    const out = {};
-    Object.entries((farm && farm.feedStock) || {}).forEach(([fillType, where]) => {
-        const cat = FEED_FILLTYPE_CATEGORY[fillType];
-        if (!cat) return;
-        out[cat] = (out[cat] || 0) + Object.values(where || {}).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+// The farm's TMR shares, each within the map's recipe limits (mineral feed
+// and straw may be 0 %). Saved as soon as they add up to 100 %.
+function renderTmrSharesEditor(plan) {
+    const sum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0);
+    let html = `<div class="tmr-shares"><div class="tmr-shares-head">
+        <span class="mixer-col-title">${t('tmrSharesTitle')}</span>
+        <button type="button" class="supply-reset-btn tmr-shares-reset">${t('tmrSharesReset')}</button></div>
+        <div class="tmr-shares-row">`;
+    MIXER_TMR_CATEGORIES.forEach(c => {
+        const [min, max] = TMR_LIMITS[c];
+        html += `<label class="tmr-share">${feedCategoryLabel(c)}
+            <span class="feed-pct"><input type="number" class="feed-input tmr-share-input" data-cat="${c}" min="${min}" max="${max}" step="1" value="${Math.round((parseFloat(plan.tmr[c]) || 0) * 10) / 10}"><span class="supply-unit">%</span></span>
+            <span class="tmr-share-range">${t('mixerRange').replace('{a}', min).replace('{b}', max)}</span></label>`;
     });
-    return out;
+    html += `</div><p class="tmr-shares-sum">${t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10)}</p>
+        <p class="tmr-shares-error feed-warn"></p></div>`;
+    return html;
 }
 
-function renderMixerSection(farm, plan, barnNeed, num) {
+// shares: the barn's TMR shares (the built-in TMR or an own TMR-like feed).
+function renderMixerSection(farm, plan, barnNeed, num, shares) {
     const wagons = mixerWagons(farm, plan);
     const wagon = selectedMixerWagon(farm, plan);
     plan.mixer.selected = wagon ? wagon.id : null;
     const baleTypes = mixerBaleTypes(farm, plan);
+    const load = mixerLoad(plan);
+    const editing = mixerEditWagonId ? wagons.find(w => w.id === mixerEditWagonId) : null;
     const sortBy = plan.mixer.sort;
     const shown = sortBy === 'default' ? wagons : [...wagons].sort((a, b) => sortBy === 'name'
         ? String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' })
         : (b.capacity || 0) - (a.capacity || 0));
 
-    let html = `<div class="hub-panel-subtitle">${t('mixerTitle')}</div><div class="mixer">`;
+    let html = `<div class="hub-panel-subtitle">${t('mixerTitle')}</div><div class="mixer" data-shares="${escapeHtml(JSON.stringify(shares))}">`;
 
     // --- Wagon picker ---
     if (wagons.length > 1) {
@@ -1413,19 +1607,20 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 <span class="mixer-wagon-name">${escapeHtml(w.name)}</span>
                 <span class="mixer-wagon-meta">${w.capacity ? num(w.capacity) + ' l' : t('mixerNoCapacity')} · ${t(w.source === 'save' ? 'mixerFromSave' : 'mixerOwn')}</span>
             </span>
-            <button type="button" class="note-card-action mixer-wagon-edit" data-id="${escapeHtml(w.id)}" title="${t('notesEdit')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
-            ${w.source === 'custom' ? `<button type="button" class="note-card-action note-card-action--danger mixer-wagon-delete" data-id="${escapeHtml(w.id)}" title="${t('delete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>` : ''}
+            <span class="mixer-wagon-actions">
+                <button type="button" class="note-card-action mixer-wagon-edit" data-id="${escapeHtml(w.id)}" title="${t('mixerEditWagon')}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                ${w.source === 'custom' ? `<button type="button" class="note-card-action note-card-action--danger mixer-wagon-delete" data-id="${escapeHtml(w.id)}" title="${t('delete')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>` : ''}
+            </span>
         </div>`;
     });
     html += `<button type="button" class="mixer-add-btn mixer-new-wagon"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerNewWagon')}</button></div>`;
 
-    if (mixerFormOpen === 'wagon' || String(mixerFormOpen).startsWith('wagon:')) {
-        // 'wagon:<id>' edits that wagon: a savegame wagon only its capacity
-        // (its name comes from the game), your own both.
-        const editing = String(mixerFormOpen).startsWith('wagon:') ? wagons.find(w => 'wagon:' + w.id === mixerFormOpen) : null;
+    if (mixerFormOpen === 'wagon') {
+        // New wagon, or editing one: an own wagon's name and capacity; a wagon
+        // from the save keeps the game's name, only its capacity can change.
         const fromSave = editing && editing.source !== 'custom';
         html += `<div class="mixer-form">
-            <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}" value="${editing ? escapeHtml(editing.name) : ''}" ${fromSave ? 'disabled' : ''}></label>
+            <label>${t('mixerWagonName')}<input type="text" class="feed-input mixer-f-name" placeholder="${t('mixerWagonNamePh')}" value="${editing ? escapeHtml(editing.name) : ''}" ${fromSave ? `disabled title="${t('mixerNameFromSave')}"` : ''}></label>
             <label>${t('mixerCapacity')}<span class="feed-pct"><input type="number" class="feed-input mixer-f-cap" min="100" step="100" placeholder="10000" value="${editing && editing.capacity ? editing.capacity : ''}"><span class="supply-unit">l</span></span></label>
             <button type="button" class="supply-fillplan-btn mixer-f-save-wagon"><i class="fa-solid fa-check" aria-hidden="true"></i> ${t('feedSave')}</button>
             <button type="button" class="supply-reset-btn mixer-f-cancel">${t('notesCancel')}</button>
@@ -1444,9 +1639,9 @@ function renderMixerSection(farm, plan, barnNeed, num) {
 
         // --- Load list ---
         html += `<div class="mixer-load"><div class="mixer-col-title">${t('mixerLoad')}</div>`;
-        if (!plan.mixer.load.length) html += `<p class="barn-empty">${t('mixerLoadEmpty')}</p>`;
-        else html += `<div class="mixer-row mixer-row--head"><span></span><span>${t('mixerColMaterial')}</span><span>${t('mixerColAmount')}</span><span>${t('mixerColLitres')}</span><span></span></div>`;
-        plan.mixer.load.forEach((item, idx) => {
+        if (!load.length) html += `<p class="barn-empty">${t('mixerLoadEmpty')}</p>`;
+        else html += `<div class="mixer-row mixer-row--head" aria-hidden="true"><span></span><span>${t('mixerColMaterial')}</span><span>${t('mixerColQty')}</span><span>${t('mixerColLitres')}</span><span></span></div>`;
+        load.forEach((item, idx) => {
             if (item.kind === 'bale') {
                 const b = baleTypes.find(x => x.key === item.baleKey);
                 const litres = b ? b.litres * (parseFloat(item.count) || 0) : 0;
@@ -1486,7 +1681,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
             <button type="button" class="mixer-add-btn mixer-add-bulk"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerAddBulk')}</button>
             <button type="button" class="mixer-add-btn mixer-new-bale"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('mixerNewBale')}</button>
             <button type="button" class="supply-fillplan-btn mixer-auto" ${wagon.capacity ? '' : 'disabled'}><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> ${t('mixerAuto')}</button>
-            ${plan.mixer.load.length ? `<button type="button" class="supply-reset-btn mixer-clear">${t('mixerClear')}</button>` : ''}
+            ${load.length ? `<button type="button" class="supply-reset-btn mixer-clear">${t('mixerClear')}</button>` : ''}
         </div>`;
         if (!baleTypes.length) html += `<p class="barn-empty">${t('mixerNoBales')}</p>`;
         if (mixerFormOpen === 'bale') {
@@ -1520,7 +1715,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
         if (over) html += `<p class="barn-empty feed-warn">${t('mixerOver').replace('{l}', num(totals.total - cap))}</p>`;
 
         if (totals.total > 0) {
-            const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(plan.tmr[c]) || 0), 0) || 100;
+            const recipeSum = MIXER_TMR_CATEGORIES.reduce((s, c) => s + (parseFloat(shares[c]) || 0), 0) || 100;
             const problems = [];
             // Shares rounded to 0.1 % so the shown figures add up to exactly 100.
             const shownPct = sharesTo100(Object.fromEntries(Object.entries(totals.byCategory).map(([c, l]) => [c, l / totals.total * 100])));
@@ -1529,7 +1724,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 const litres = totals.byCategory[c] || 0;
                 const pct = litres / totals.total * 100;
                 const [min, max] = TMR_LIMITS[c];
-                const target = (parseFloat(plan.tmr[c]) || 0) / recipeSum * 100;
+                const target = (parseFloat(shares[c]) || 0) / recipeSum * 100;
                 const ok = pct >= min - 0.05 && pct <= max + 0.05;
                 if (!ok) problems.push(feedCategoryLabel(c));
                 // Ingredients the recipe allows at 0 % (mineral feed, straw) are optional.
@@ -1557,7 +1752,7 @@ function renderMixerSection(farm, plan, barnNeed, num) {
                 ? `<div class="mixer-status mixer-status--bad"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('mixerInvalid').replace('{list}', problems.join(', '))}</div>`
                 : `<div class="mixer-status mixer-status--ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${t('mixerValid')}</div>`;
 
-            const daily = barnNeed.food / feedDaysPerYear(farm);
+            const daily = barnNeed.foodNow / feedDaysPerPeriod(farm);
             if (daily > 0) html += `<p class="mixer-days">${t('mixerLasts').replace('{d}', (totals.total / daily).toFixed(1)).replace('{l}', num(daily))}</p>`;
         }
         html += `</div></div>`;   // .mixer-summary, .mixer-body
@@ -1574,49 +1769,49 @@ function wireMixerSection(bodyEl) {
     const idx = el => parseInt(el.dataset.idx);
 
     on('.mixer-wagon-tile', 'click', (el, e) => {
-        if (e.target.closest('.mixer-wagon-delete, .mixer-wagon-edit')) return;
-        update(plan => selectMixerWagon(plan, el.dataset.id));
+        if (e.target.closest('.mixer-wagon-actions')) return;
+        update(plan => { plan.mixer.selected = el.dataset.id; });
     });
     on('.mixer-wagon-tile', 'keydown', (el, e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
         e.preventDefault();
         update(plan => selectMixerWagon(plan, el.dataset.id));
     });
     on('.mixer-wagon-delete', 'click', (el, e) => {
         e.stopPropagation();
+        if (mixerEditWagonId === el.dataset.id) { mixerFormOpen = null; mixerEditWagonId = null; }
         update(plan => {
             plan.mixer.custom = plan.mixer.custom.filter(w => w.id !== el.dataset.id);
             delete plan.mixer.loads[el.dataset.id];
-            if (plan.mixer.selected === el.dataset.id) { plan.mixer.selected = null; plan.mixer.load = []; }
         });
     });
     on('.mixer-wagon-edit', 'click', (el, e) => {
         e.stopPropagation();
-        mixerFormOpen = 'wagon:' + el.dataset.id;
+        mixerFormOpen = 'wagon';
+        mixerEditWagonId = el.dataset.id;
         rerenderFeedPlan();
     });
-    on('.mixer-sort-select', 'change', (el) => update(plan => { plan.mixer.sort = el.value; }));
-    on('.mixer-new-wagon', 'click', () => { mixerFormOpen = 'wagon'; rerenderFeedPlan(); });
+    on('.mixer-new-wagon', 'click', () => { mixerFormOpen = 'wagon'; mixerEditWagonId = null; rerenderFeedPlan(); });
     on('.mixer-new-bale', 'click', () => { mixerFormOpen = 'bale'; rerenderFeedPlan(); });
-    on('.mixer-f-cancel', 'click', () => { mixerFormOpen = null; rerenderFeedPlan(); });
+    on('.mixer-f-cancel', 'click', () => { mixerFormOpen = null; mixerEditWagonId = null; rerenderFeedPlan(); });
     on('.mixer-f-save-wagon', 'click', () => {
-        const name = (root.querySelector('.mixer-f-name').value || '').trim();
+        const nameEl = root.querySelector('.mixer-f-name');
+        const name = (nameEl.value || '').trim();
         const cap = parseFloat(root.querySelector('.mixer-f-cap').value);
-        const editId = String(mixerFormOpen).startsWith('wagon:') ? String(mixerFormOpen).slice(6) : null;
-        if (!(cap > 0)) return;
-        const own = editId ? getFeedPlan(getCurrentFarm()).mixer.custom.find(w => w.id === editId) : null;
-        if ((!editId || own) && !name) return;
+        const editId = mixerEditWagonId;
+        if ((!name && !nameEl.disabled) || !(cap > 0)) return;
         mixerFormOpen = null;
+        mixerEditWagonId = null;
         update(plan => {
             if (!editId) {
                 const id = 'custom:' + Date.now().toString(36);
                 plan.mixer.custom.push({ id, name, capacity: cap });
-                selectMixerWagon(plan, id);
+                plan.mixer.selected = id;
                 return;
             }
-            const mine = plan.mixer.custom.find(w => w.id === editId);
-            if (mine) { mine.name = name; mine.capacity = cap; }
-            else plan.mixer.capacity[editId] = cap;
+            const own = plan.mixer.custom.find(w => w.id === editId);
+            if (own) { own.name = name; own.capacity = cap; }
+            else plan.mixer.capacity[editId] = cap;   // wagon from the save
         });
     });
     on('.mixer-f-save-bale', 'click', () => {
@@ -1628,12 +1823,14 @@ function wireMixerSection(bodyEl) {
         update(plan => {
             const id = Date.now().toString(36);
             plan.mixer.customBales.push({ id, name, category, litres });
-            plan.mixer.load.push({ kind: 'bale', baleKey: 'custom:' + id, count: 1 });
+            mixerLoad(plan).push({ kind: 'bale', baleKey: 'custom:' + id, count: 1 });
         });
     });
     on('.mixer-own-bale-del', 'click', (el) => update(plan => {
         plan.mixer.customBales = plan.mixer.customBales.filter(b => b.id !== el.dataset.id);
-        plan.mixer.load = plan.mixer.load.filter(i => i.baleKey !== 'custom:' + el.dataset.id);
+        Object.keys(plan.mixer.loads).forEach(id => {
+            plan.mixer.loads[id] = plan.mixer.loads[id].filter(i => i.baleKey !== 'custom:' + el.dataset.id);
+        });
     }));
     on('.mixer-cap-input', 'change', (el) => {
         const cap = parseFloat(el.value);
@@ -1642,24 +1839,25 @@ function wireMixerSection(bodyEl) {
 
     on('.mixer-add-bale', 'click', () => update(plan => {
         const types = mixerBaleTypes(getCurrentFarm(), plan);
-        if (types.length) plan.mixer.load.push({ kind: 'bale', baleKey: types[0].key, count: 1 });
+        if (types.length) mixerLoad(plan).push({ kind: 'bale', baleKey: types[0].key, count: 1 });
     }));
-    on('.mixer-add-bulk', 'click', () => update(plan => { plan.mixer.load.push({ kind: 'bulk', category: 'MINERAL', litres: 500 }); }));
-    on('.mixer-remove', 'click', (el) => update(plan => { plan.mixer.load.splice(idx(el), 1); }));
-    on('.mixer-clear', 'click', () => update(plan => { plan.mixer.load = []; }));
-    on('.mixer-bale-select', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].baleKey = el.value; }));
-    on('.mixer-bulk-cat', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].category = el.value; }));
-    on('.mixer-bulk-litres', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].litres = Math.max(0, parseFloat(el.value) || 0); }));
-    // Bales go in whole, in halves or in quarters.
-    on('.mixer-count', 'change', (el) => update(plan => { plan.mixer.load[idx(el)].count = Math.max(0, Math.round((parseFloat(el.value) || 0) * 4) / 4); }));
+    on('.mixer-add-bulk', 'click', () => update(plan => { mixerLoad(plan).push({ kind: 'bulk', category: 'MINERAL', litres: 500 }); }));
+    on('.mixer-remove', 'click', (el) => update(plan => { mixerLoad(plan).splice(idx(el), 1); }));
+    on('.mixer-clear', 'click', () => update(plan => { setMixerLoad(plan, []); }));
+    on('.mixer-bale-select', 'change', (el) => update(plan => { mixerLoad(plan)[idx(el)].baleKey = el.value; }));
+    on('.mixer-bulk-cat', 'change', (el) => update(plan => { mixerLoad(plan)[idx(el)].category = el.value; }));
+    on('.mixer-bulk-litres', 'change', (el) => update(plan => { mixerLoad(plan)[idx(el)].litres = Math.max(0, parseFloat(el.value) || 0); }));
+    on('.mixer-count', 'change', (el) => update(plan => { mixerLoad(plan)[idx(el)].count = quarterBales(el.value); }));
     on('.mixer-step', 'click', (el) => update(plan => {
-        const item = plan.mixer.load[idx(el)];
-        item.count = Math.max(0, Math.round(((parseFloat(item.count) || 0) + parseFloat(el.dataset.step)) * 4) / 4);
+        const item = mixerLoad(plan)[idx(el)];
+        item.count = quarterBales((parseFloat(item.count) || 0) + parseFloat(el.dataset.step));
     }));
     on('.mixer-auto', 'click', () => update(plan => {
         const farm = getCurrentFarm();
         const wagon = selectedMixerWagon(farm, plan);
-        if (wagon && wagon.capacity) plan.mixer.load = mixerAutoLoad(plan, wagon, mixerBaleTypes(farm, plan), farm);
+        let shares = null;
+        try { shares = JSON.parse(root.dataset.shares || 'null'); } catch { shares = null; }
+        if (wagon && wagon.capacity) setMixerLoad(plan, mixerAutoLoad(shares || plan.tmr, wagon, mixerBaleTypes(farm, plan)));
     }));
 }
 
@@ -1798,6 +1996,22 @@ function wireFeedPlanPanel(bodyEl) {
             if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(); }
         });
     });
+    const tmrBox = bodyEl.querySelector('.tmr-shares');
+    if (tmrBox) {
+        const readShares = () => Object.fromEntries([...tmrBox.querySelectorAll('.tmr-share-input')].map(i => [i.dataset.cat, parseFloat(i.value) || 0]));
+        tmrBox.querySelectorAll('.tmr-share-input').forEach(el => el.addEventListener('change', () => {
+            const shares = readShares();
+            const sum = Object.values(shares).reduce((s, v) => s + v, 0);
+            tmrBox.querySelector('.tmr-shares-sum').textContent = t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10);
+            const out = MIXER_TMR_CATEGORIES.find(c => shares[c] < TMR_LIMITS[c][0] || shares[c] > TMR_LIMITS[c][1]);
+            const error = out
+                ? t('tmrSharesOutOfRange').replace('{name}', feedCategoryLabel(out)).replace('{a}', TMR_LIMITS[out][0]).replace('{b}', TMR_LIMITS[out][1])
+                : (validTmrShares(shares) ? '' : t('tmrSharesNot100'));
+            tmrBox.querySelector('.tmr-shares-error').textContent = error;
+            if (!error) update(p => { p.tmr = validTmrShares(shares); });
+        }));
+        tmrBox.querySelector('.tmr-shares-reset').addEventListener('click', () => update(p => { p.tmr = defaultTmrShares(); }));
+    }
     const settings = bodyEl.querySelector('.feed-settings');
     if (settings) settings.addEventListener('toggle', () => { feedSettingsOpen = settings.open; });
     bodyEl.querySelectorAll('.feed-use-select').forEach(el => el.addEventListener('change', () =>
@@ -1876,3 +2090,164 @@ function wireFeedPlanPanel(bodyEl) {
     });
 }
 
+
+// --- Breed norms (Animals view) ----------------------------------------------
+// Read-only: what one breed eats and gives per in-game month at a given age,
+// and for a herd you type in — the same curves and scales the planner uses
+// (ANIMAL_NEEDS_DATA, AnimalFoodCalculator's consumption scale for food,
+// water and straw, the barn's ration for milk, eggs and wool). EAS lactation
+// isn't in it: it depends on when each animal calved.
+let breedNormsState = { subType: null, count: 1, age: 24 };
+let breedNormsOpen = false;
+
+// Breeds with curves, those in the farm's barns first.
+// inBarns: subType -> { heads, ageSum, barnId } (barnId = the first barn holding them).
+function breedNormsBreeds(farm) {
+    const inBarns = new Map();
+    ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
+        const e = inBarns.get(c.subType) || { heads: 0, ageSum: 0, barnId: b.id };
+        e.heads += c.numAnimals;
+        e.ageSum += c.age * c.numAnimals;
+        inBarns.set(c.subType, e);
+    }));
+    const all = Object.keys(ANIMAL_NEEDS_DATA).filter(st => {
+        const d = ANIMAL_NEEDS_DATA[st];
+        return d && ((d.food && d.food.length) || (d.production && Object.keys(d.production).length));
+    });
+    const byName = (a, b) => String(formatAnimalName(a)).localeCompare(String(formatAnimalName(b)));
+    return { inBarns, own: all.filter(st => inBarns.has(st)).sort(byName), rest: all.filter(st => !inBarns.has(st)).sort(byName) };
+}
+
+function breedNormsDefaults(farm, subType) {
+    const e = breedNormsBreeds(farm).inBarns.get(subType);
+    return { subType, count: e ? e.heads : 1, age: e && e.heads ? Math.round(e.ageSum / e.heads) : 24 };
+}
+
+// Per head and in-game month: { rows: [{ key, label, perHead, out }], ration, scale }.
+function breedNormsRows(farm, subType, age, barnId) {
+    const def = ANIMAL_NEEDS_DATA[subType] || {};
+    const scale = feedConsumptionScale(farm);
+    const rows = [];
+    ['food', 'water', 'straw'].forEach(k => {
+        if (def[k] && def[k].length) rows.push({ key: k, label: t('breedNorm_' + k), perHead: interpolateNeedCurve(def[k], age) * scale, out: false });
+    });
+    const type = animalTypeOf(subType);
+    const ration = type && barnId != null ? resolveRation(type, getFeedPlan(farm), barnId) : null;
+    const eff = ration ? ration.efficiency / 100 : 1;
+    Object.keys(def.production || {}).forEach(ft => {
+        const v = interpolateNeedCurve(def.production[ft], age) * (FEED_UNSCALED_OUTPUT.includes(ft) ? 1 : eff);
+        rows.push({ key: ft, label: formatFillType(ft), perHead: v, out: true });
+    });
+    return { rows, ration, scale };
+}
+
+// Food (and the main product) over the breed's age range, with a marker at `age`.
+function breedNormsCurveHtml(subType, age) {
+    const def = ANIMAL_NEEDS_DATA[subType] || {};
+    const main = Object.keys(def.production || {}).find(ft => !FEED_UNSCALED_OUTPUT.includes(ft));
+    const lines = [{ label: t('breedNorm_food'), curve: def.food, cls: 'breed-curve-food' }];
+    if (main) lines.push({ label: formatFillType(main), curve: def.production[main], cls: 'breed-curve-out' });
+    const keys = lines.flatMap(l => (l.curve || []).map(p => p.ageMonth));
+    if (!keys.length) return '';
+    const maxAge = Math.max(1, ...keys, age);
+    const W = 320, H = 90, P = 4;
+    const x = a => P + (Math.max(0, Math.min(a, maxAge)) / maxAge) * (W - 2 * P);
+    let svg = '';
+    lines.forEach(l => {
+        if (!l.curve || !l.curve.length) return;
+        const top = Math.max(...l.curve.map(p => p.value)) || 1;
+        const y = v => H - P - (v / top) * (H - 2 * P);
+        const pts = [];
+        for (let i = 0; i <= 60; i++) {
+            const a = maxAge * i / 60;
+            pts.push(`${x(a).toFixed(1)},${y(interpolateNeedCurve(l.curve, a)).toFixed(1)}`);
+        }
+        svg += `<polyline class="${l.cls}" points="${pts.join(' ')}"/>`;
+    });
+    svg += `<line class="breed-curve-marker" x1="${x(age).toFixed(1)}" x2="${x(age).toFixed(1)}" y1="0" y2="${H}"/>`;
+    const legend = lines.filter(l => l.curve && l.curve.length)
+        .map(l => `<span class="breed-curve-key ${l.cls}">${escapeHtml(l.label)}</span>`).join('');
+    return `<figure class="breed-curve-wrap">
+        <svg class="breed-curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${svg}</svg>
+        <figcaption>${legend}<span class="breed-curve-axis">${t('breedNormsAxis').replace('{max}', Math.round(maxAge))}</span></figcaption>
+    </figure>`;
+}
+
+function breedNormsResultHtml(farm) {
+    const st = breedNormsState;
+    if (!ANIMAL_NEEDS_DATA[st.subType]) return '';
+    const barn = breedNormsBreeds(farm).inBarns.get(st.subType);
+    const { rows, ration, scale } = breedNormsRows(farm, st.subType, st.age, barn ? barn.barnId : null);
+    if (!rows.length) return `<p class="hub-panel-note">${t('breedNormsNoCurves')}</p>`;
+    const days = feedDaysPerPeriod(farm);
+    const num = v => v.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: v !== 0 && Math.abs(v) < 10 ? 2 : 0 });
+    const body = group => rows.filter(r => r.out === group).map(r => `<tr>
+            <td>${escapeHtml(r.label)}</td>
+            <td>${num(r.perHead)} l</td>
+            <td>${num(r.perHead * st.count)} l<span class="breed-norms-day">${num(r.perHead * st.count / days)} l ${t('breedNormsPerDay')}</span></td>
+        </tr>`).join('');
+    const head = (label, group) => rows.some(r => r.out === group)
+        ? `<tr class="breed-norms-group"><th colspan="3">${label}</th></tr>${body(group)}` : '';
+    const notes = [t('breedNormsNote').replace('{days}', days)];
+    if (scale !== 1) notes.push(t('breedNormsAfc').replace('{x}', scale.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 })));
+    notes.push(ration
+        ? t('breedNormsRation').replace('{ration}', ration.name || t('feedRation_' + ration.id)).replace('{pct}', ration.efficiency)
+        : t('breedNormsFullRation'));
+    const pic = animalPictureUrl(st.subType, st.age);
+    return `<div class="breed-norms-body">
+        <div class="breed-norms-side">
+            ${pic ? `<span class="animal-pic breed-norms-pic"><img src="${escapeHtml(pic)}" alt="" draggable="false"></span>` : ''}
+            ${breedNormsCurveHtml(st.subType, st.age)}
+        </div>
+        <table class="data-table supply-table breed-norms-table"><thead><tr>
+            <th></th><th>${t('breedNormsPerHead')}</th><th>${t('breedNormsHerd').replace('{n}', st.count.toLocaleString(FIN_LOCALE()))}</th>
+        </tr></thead><tbody>
+            ${head(t('breedNormsNeeds'), false)}
+            ${head(t('breedNormsGives'), true)}
+        </tbody></table>
+    </div>
+    <ul class="breed-norms-notes">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`;
+}
+
+function breedNormsHtml(farm) {
+    const { own, rest } = breedNormsBreeds(farm);
+    if (!own.length && !rest.length) return '';
+    if (!ANIMAL_NEEDS_DATA[breedNormsState.subType]) breedNormsState = breedNormsDefaults(farm, own[0] || rest[0]);
+    const st = breedNormsState;
+    const opt = s => `<option value="${escapeHtml(s)}" ${s === st.subType ? 'selected' : ''}>${escapeHtml(formatAnimalName(s))}</option>`;
+    const options = (own.length ? `<optgroup label="${escapeHtml(t('breedNormsInBarns'))}">${own.map(opt).join('')}</optgroup>` : '')
+        + (rest.length ? `<optgroup label="${escapeHtml(t('breedNormsAllBreeds'))}">${rest.map(opt).join('')}</optgroup>` : '');
+    return `<details class="breed-norms"${breedNormsOpen ? ' open' : ''}>
+        <summary class="anim-section-title">${t('breedNormsTitle')}</summary>
+        <p class="supply-intro">${t('breedNormsIntro')}</p>
+        <div class="breed-norms-controls">
+            <label class="settings-field"><span>${t('breedNormsBreed')}</span><select class="breed-norms-breed">${options}</select></label>
+            <label class="settings-field"><span>${t('breedNormsCount')}</span><input type="number" class="breed-norms-count" min="1" max="100000" step="1" value="${st.count}"></label>
+            <label class="settings-field"><span>${t('breedNormsAge')}</span><input type="number" class="breed-norms-age" min="0" max="600" step="1" value="${st.age}"></label>
+        </div>
+        <div class="breed-norms-result">${breedNormsResultHtml(farm)}</div>
+    </details>`;
+}
+
+// Only the result is redrawn while typing, so the inputs keep focus.
+function wireBreedNorms(root, farm) {
+    const box = root.querySelector('.breed-norms');
+    if (!box) return;
+    box.addEventListener('toggle', () => { breedNormsOpen = box.open; });
+    const result = box.querySelector('.breed-norms-result');
+    const redraw = () => { result.innerHTML = breedNormsResultHtml(farm); };
+    box.querySelector('.breed-norms-breed').addEventListener('change', e => {
+        breedNormsState = breedNormsDefaults(farm, e.target.value);
+        box.querySelector('.breed-norms-count').value = breedNormsState.count;
+        box.querySelector('.breed-norms-age').value = breedNormsState.age;
+        redraw();
+    });
+    const watch = (el, min, max, key) => el.addEventListener('input', () => {
+        const v = parseInt(el.value, 10);
+        if (isNaN(v)) return;
+        breedNormsState[key] = Math.min(max, Math.max(min, v));
+        redraw();
+    });
+    watch(box.querySelector('.breed-norms-count'), 1, 100000, 'count');
+    watch(box.querySelector('.breed-norms-age'), 0, 600, 'age');
+}

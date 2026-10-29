@@ -101,6 +101,18 @@ function parseAnimalNeedsXml(xmlText) {
             if (Object.keys(production).length > 0) entry.production = production;
         }
 
+        // Same shape as animal-images.js parseReproduction.
+        const repro = readChildBlock(subTypeBody, 'reproduction');
+        if (repro) {
+            const num = name => { const v = parseFloat(getAttr(repro.attrs, name)); return isNaN(v) ? null : v; };
+            entry.reproduction = {
+                supported: getAttr(repro.attrs, 'supported') !== 'false',
+                minAgeMonth: num('minAgeMonth'),
+                durationMonth: num('durationMonth'),
+                minHealthFactor: num('minHealthFactor')
+            };
+        }
+
         needs[subType] = entry;
     }
 

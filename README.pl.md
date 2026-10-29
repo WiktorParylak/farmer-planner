@@ -41,13 +41,13 @@
 **Narzędzia**
 - Finanse miesiąc po miesiącu i sezon po sezonie.
 - Zaopatrzenie: ile nasion i nawozu kupić na sezon.
-- Przewidywane plony.
+- Przewidywane plony, z dzisiejszą wilgotnością pól z moda Moisture System.
 - Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
 - Ścieżki technologiczne: zapisz ścieżki z pól jednego zapisu i wklej je do innego zapisu tej samej mapy.
 
 ## Zwierzęta i pasza policzone
 
-Kafelek dla każdego budynku: stado według rasy i wieku, na ile dni starczy paszy, dzienne zapotrzebowanie, produkcja i ciąże. Planer pasz powie, czego brakuje i ile hektarów obsiać, a kalkulator wozu paszowego sprawdzi mieszankę z przepisem TMR z gry.
+Kafelek dla każdego budynku: stado według rasy i wieku, na ile dni starczy paszy, dzienne zapotrzebowanie, produkcja i ciąże. Planer pasz powie, czego brakuje i ile hektarów obsiać, a kalkulator wozu paszowego sprawdzi mieszankę z przepisem TMR Twojej mapy. Normy rasy pokażą, ile jedna sztuka albo całe stado zjada i daje w dowolnym wieku.
 
 Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z Twoich modów.
 
@@ -62,6 +62,8 @@ Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z T
 4. Włącz automatyczną synchronizację i kliknij **Zapisz i importuj**.
 5. Planuj pola. Planer nadąża za Tobą, kiedy grasz.
 
+Gdy wyjdzie nowa wersja, aplikacja powie o tym przy starcie i może zaktualizować się sama: **Aktualizuj teraz** pobiera instalator i podmienia wersję, a jeśli coś pójdzie nie tak, przywraca poprzednią. Twoje farmy zostają nietknięte.
+
 Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w `gameSettings.xml` gry oraz w kolekcjach FSG Mod Assistanta. Stamtąd automatycznie wczytywane są też obrazki ras. Zwierzęta z podstawowej gry (spakowane w archiwach gry) są pokazywane jako ikony.
 
 ## Pytania
@@ -70,7 +72,7 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu. Robi to tylko przy zamkniętej grze, najpierw kopiuje plik do `farmer_planner_backup`, sprawdza nowy plik, zanim podmieni stary, i potrafi przywrócić ostatnią kopię.
 
 **Jakie mapy i mody obsługuje?**
-Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Bank And Credit i Enhanced Loan System.
+Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit i Enhanced Loan System.
 
 **Gdzie są zapisane moje farmy?**
 W `Dokumenty\Farmer Planner`, więc łatwo je znaleźć, skopiować albo zarchiwizować. Aplikacja umie też wyeksportować i zaimportować kopię zapasową farmy.
@@ -90,6 +92,8 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 - Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
 - Opcjonalnie areał całej działki (farmland) obok areału pola.
 - Ostrzeżenia o płodozmianie.
+- Kilka pól naraz w Edycji: zaznacz karty (albo kliknij je z **Shiftem**), a zmiana w jednej zaznaczonej karcie trafi do wszystkich.
+- Z modem Crop Dependent Rolling wałowanie jest planowane tylko dla upraw, które go potrzebują.
 
 **Synchronizacja z grą**
 - Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` — łącznie z kredytami z modów Enhanced Loan System i Bank And Credit.
@@ -100,11 +104,11 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 
 **Narzędzia (pasek po lewej)**
 - **Finanse** — saldo i kredyt miesiąc po miesiącu i sezon po sezonie.
-- **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja i reprodukcja (postęp ciąży, miesiące do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można zmieniać nazwy.
+- **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja i reprodukcja (postęp ciąży, miesiące do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można zmieniać nazwy. **Normy rasy** pokazują, ile jedna sztuka albo stado danej rasy zjada i daje na miesiąc w danym wieku.
 - **Zaopatrzenie** — ile nasion i nawozów kupić na sezon.
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
 - **Notatki** — przypięte do miesięcy i pól, z tagami i listą zadań, która co rok w grze zaczyna się od nowa.
-- **Przewidywane plony**.
+- **Przewidywane plony** — z modem Moisture System także dzisiejsza wilgotność pól, jej idealny zakres i jak zmienia plon zbiorów w tym miesiącu.
 - **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry. Wykrywa też mieszalniki pasz (pasza dla świń, TMR, pasza mineralna) z zapasami, recepturami i wydajnością miesięczną.
 
 **Inne**

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const DiscordPresence = require('./discord-presence');
+const updater = require('./updater');
 
 // Discord "application" id for Rich Presence. Create one (free) at
 // https://discord.com/developers/applications — the app name shown on the
@@ -208,6 +209,8 @@ function createWindow() {
     if (consoleLog.length > CONSOLE_LOG_LIMIT) consoleLog.splice(0, consoleLog.length - CONSOLE_LOG_LIMIT);
   });
 }
+
+updater.register();
 
 const CONSOLE_LOG_LIMIT = 200;
 const consoleLog = [];

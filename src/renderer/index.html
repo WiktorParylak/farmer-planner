@@ -101,49 +101,49 @@
             <div class="planner-body">
             <nav id="planner-sidebar" class="planner-sidebar">
                 <div class="sidebar-nav">
-                    <button type="button" class="sidebar-item sidebar-item--plan is-active" data-view="plan">
+                    <button type="button" class="sidebar-item sidebar-item--plan is-active" data-view="plan" data-i18n-title="navPlan">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-table-cells" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="navPlan">Plan</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--finance" data-view="finance">
+                    <button type="button" class="sidebar-item sidebar-item--finance" data-view="finance" data-i18n-title="hubFinance">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFinance">Finance</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--animals" data-view="animals">
+                    <button type="button" class="sidebar-item sidebar-item--animals" data-view="animals" data-i18n-title="hubAnimals">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubAnimals">Animals</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--supplies" data-view="supplies">
+                    <button type="button" class="sidebar-item sidebar-item--supplies" data-view="supplies" data-i18n-title="hubSupplies">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubSupplies">Supplies</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--fieldsoil" data-view="fieldsoil">
+                    <button type="button" class="sidebar-item sidebar-item--fieldsoil" data-view="fieldsoil" data-i18n-title="hubFieldSoil">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFieldSoil">Field soil type</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--rotation" data-view="rotation">
+                    <button type="button" class="sidebar-item sidebar-item--rotation" data-view="rotation" data-i18n-title="rotTitle">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrows-spin" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="rotTitle">Crop rotation</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes">
+                    <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes" data-i18n-title="hubNotes">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubNotes">Notes</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--yieldforecast" data-view="yieldforecast">
+                    <button type="button" class="sidebar-item sidebar-item--yieldforecast" data-view="yieldforecast" data-i18n-title="hubYieldForecast">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubYieldForecast">Predicted yields</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--feedplan" data-view="feedplan">
+                    <button type="button" class="sidebar-item sidebar-item--feedplan" data-view="feedplan" data-i18n-title="hubFeedPlan">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFeedPlan">Feed planner</span>
                     </button>
                 </div>
                 <div class="sidebar-footer">
-                    <button type="button" id="settings-btn" class="sidebar-item sidebar-item--util">
+                    <button type="button" id="settings-btn" class="sidebar-item sidebar-item--util" data-i18n-title="settings">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="settings">Settings</span>
                     </button>
-                    <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util">
+                    <button type="button" id="exit-btn" class="sidebar-item sidebar-item--util" data-i18n-title="exit">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="exit">Exit</span>
                     </button>
@@ -167,6 +167,7 @@
                                 <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
                             </div>
                         </div>
+                        <div id="bulk-bar" class="bulk-bar" hidden></div>
                         <div class="table-container">
                             <table id="fields-table">
                                 <thead>
@@ -510,6 +511,23 @@
             <div class="modal-buttons">
                 <button type="button" id="whats-new-web" class="modal-cancel-btn" data-i18n="whatsNewWebsite">See it on the website</button>
                 <button type="button" id="whats-new-ok" data-i18n="whatsNewOk">Got it</button>
+            </div>
+        </div>
+    </div>
+    <!-- Update available: download the installer inside the app, then it takes over. -->
+    <div id="update-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-body">
+        <div class="modal-content app-dialog-content update-content">
+            <div id="update-icon" class="app-dialog-icon" aria-hidden="true"><i class="fa-solid fa-circle-arrow-up"></i></div>
+            <h3 id="update-title"></h3>
+            <p id="update-body"></p>
+            <div id="update-progress" class="update-progress" hidden>
+                <div class="update-progress-track"><div id="update-progress-bar" class="update-progress-bar"></div></div>
+                <div id="update-progress-text" class="update-progress-text"></div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" id="update-web" class="modal-cancel-btn update-web-btn"></button>
+                <button type="button" id="update-later" class="modal-cancel-btn"></button>
+                <button type="button" id="update-now"></button>
             </div>
         </div>
     </div>

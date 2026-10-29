@@ -7,8 +7,9 @@ const { webUtils, ipcRenderer } = require('electron');
 const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
-const { readMapCrops, readModL10n, readPfSeedRates } = require('./map-crops');
+const { readMapCrops, readModL10n, readPfSeedRates, readMapAnimalFood } = require('./map-crops');
 const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
+const { readMoistureSystem, moistureYieldFactor } = require('./moisture-mod');
 const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
 const { TRANSLATIONS, MONTH_TRANSLATIONS, CROP_NAME_TRANSLATIONS, ANIMAL_SPECIES_TRANSLATIONS, PRODUCTION_FILLTYPE_TRANSLATIONS } = require('./translations');
 const diagnostics = require('./diagnostics');
@@ -318,13 +319,11 @@ if (appSettingsBtn && appSettingsModal) {
         if (devSetting) devSetting.hidden = !IS_DEV_BUILD;
         const devToggle = document.getElementById('dev-farm-toggle');
         if (devToggle) devToggle.checked = devFarmExists();
-        appSettingsModal.style.display = 'flex';
+        openModal(appSettingsModal);
     });
 }
 if (closeAppSettingsBtn && appSettingsModal) {
-    closeAppSettingsBtn.addEventListener('click', () => {
-        appSettingsModal.style.display = 'none';
-    });
+    closeAppSettingsBtn.addEventListener('click', () => closeModal(appSettingsModal));
 }
 langButtons.forEach(btn => {
     btn.addEventListener('click', () => applyLanguage(btn.getAttribute('data-lang')));
@@ -407,8 +406,55 @@ function setActiveSidebarItem(view) {
     });
 }
 
+// Dialogs: style.display stays the open / closed state the rest of the app
+// checks. openModal shows one (its fade-in is CSS: .modal's animation);
+// closeModal plays the fade-out and hides it when that ends (at once with
+// reduced motion), then runs `after`.
+function openModal(el) {
+    if (!el) return;
+    if (el._closeTimer) { clearTimeout(el._closeTimer); el._closeTimer = null; }
+    el.classList.remove('is-closing');
+    el.style.display = 'flex';
+}
+
+function closeModal(el, after) {
+    if (!el) return;
+    if (el.style.display === 'none' || el.classList.contains('is-closing')) {
+        if (after && el.style.display === 'none') after();
+        return;
+    }
+    const finish = () => {
+        if (el._closeTimer) { clearTimeout(el._closeTimer); el._closeTimer = null; }
+        if (!el.classList.contains('is-closing')) return;   // reopened meanwhile
+        el.classList.remove('is-closing');
+        el.style.display = 'none';
+        if (after) after();
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.style.display = 'none';
+        if (after) after();
+        return;
+    }
+    el.classList.add('is-closing');
+    el.addEventListener('animationend', function onEnd(e) {
+        if (e.target !== el) return;
+        el.removeEventListener('animationend', onEnd);
+        finish();
+    });
+    el._closeTimer = setTimeout(finish, 400);   // in case animationend never comes
+}
+
+// Replays the view-in motion on a view that just came up.
+function playViewEnter(el) {
+    if (!el) return;
+    el.classList.remove('view-enter');
+    void el.offsetWidth;
+    el.classList.add('view-enter');
+}
+
 window.showPlannerView = function (view) {
     if (!view || view === 'plan') {
+        if (currentPlannerView !== 'plan') playViewEnter(plannerContentEl);
         setActiveSidebarItem('plan');
         if (hubView) hubView.hidden = true;
         if (plannerContentEl) plannerContentEl.style.display = '';
@@ -418,8 +464,10 @@ window.showPlannerView = function (view) {
         return;
     }
     if (view === 'animals') animalSelectedBuilding = null;   // sidebar always opens the barn overview
+    const changed = view !== currentPlannerView;
     openHubPanel(view);
     if (hubView) hubView.scrollTop = 0;
+    if (changed) playViewEnter(hubView);
 };
 
 document.querySelectorAll('#planner-sidebar .sidebar-item[data-view]').forEach(el => {
@@ -450,7 +498,7 @@ document.addEventListener('mouseup', e => {
 
 if (closeHubPanelBtn && hubPanelModal) {
     closeHubPanelBtn.addEventListener('click', () => {
-        hubPanelModal.style.display = 'none';
+        closeModal(hubPanelModal);
         // Supplies lists "fill in the plan" per field — refresh it after editing one.
         if (currentPlannerView === 'supplies') openHubPanel('supplies');
     });
@@ -1343,10 +1391,10 @@ function renderFinancePanel(bodyEl, farm) {
     if (monthly.length) {
         const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
             const prev = arr[idx + 1];
-            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td>${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
         }).join('');
         html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
-            <table class="fin-table"><thead><tr><th>${t('finColMonth')}</th><th>${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
             <tbody>${rowsHtml}</tbody></table></details>`;
     }
     bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
@@ -1483,9 +1531,11 @@ window.openHubPanel = function (type) {
         if (buildings.length === 0) {
             bodyEl.innerHTML = `<div class="fin-view anim-view">
                 <p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>
+                ${breedNormsHtml(farm)}
                 ${animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth)}
             </div>`;
             activateTrendCharts(bodyEl);
+            wireBreedNorms(bodyEl, farm);
         } else {
             // Fallback reference for buildings without a manually-entered
             // capacity: scaled against the fullest total feed load among
@@ -1818,12 +1868,14 @@ window.openHubPanel = function (type) {
                     </div>`;
                 });
                 html += `</div>`; // .barn-tile-grid
+                html += breedNormsHtml(farm);
                 html += animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth);
                 html = `<div class="fin-view anim-view">${html}</div>`;
             }
 
             bodyEl.innerHTML = html;
             wireBarnPanel(bodyEl, farm);
+            wireBreedNorms(bodyEl, farm);
             activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
@@ -1913,7 +1965,7 @@ function renderFieldSoilPanel(titleEl, bodyEl, modalEl) {
         body += `<tr><td>${escapeHtml(r.number)}${name ? `<span class="field-name">${escapeHtml(name)}</span>` : ''}</td>${cells}</tr>`;
     });
 
-    html += `<table class="supply-table supply-soil-table"><thead><tr>
+    html += `<table class="data-table supply-table supply-soil-table"><thead><tr>
             <th>${t('suppliesColField')}</th>${heads}</tr></thead>
             <tbody>${body}</tbody></table>
         <p class="hub-panel-note">${t('suppliesSoilFileNote')}</p>`;
@@ -2003,7 +2055,8 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const isPast = season < currentSeason;
 
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates);
+    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates, isPast ? null : farm);
+    const showMoisture = !isPast && !!MOISTURE_DATA;
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
@@ -2022,22 +2075,26 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    html += `<table class="supply-table"><thead><tr>
-        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th><th>${t('yieldForecastColYield')}</th>
+    html += `<table class="data-table supply-table"><thead><tr>
+        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
         </tr></thead><tbody>`;
     data.rows.forEach(r => {
         const flag = r.known ? '' : ` <span class="supply-flag" title="${t('yieldForecastUnknownFlag')}">?</span>`;
+        const m = r.moisture;
+        const moistureCell = !showMoisture ? ''
+            : `<td class="moisture-cell">${m ? moistureCellHtml(m.sum / m.area, m.def, m.nowArea ? m.nowFactor / m.nowArea : 1, m.nowArea > 0) : '–'}</td>`;
         html += `<tr><td>${translateCropName(r.crop)}${flag}</td>
-            <td>${r.area.toFixed(2)} ha</td>
+            <td>${r.area.toFixed(2)} ha</td>${moistureCell}
             <td>${num(r.litres)} l</td></tr>`;
     });
     html += `</tbody><tfoot><tr class="supply-total-row">
-        <td colspan="2">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
+        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
     }
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
+    if (showMoisture) html += `<p class="hub-panel-note">${t('yieldMoistureNote')}</p>`;
 
     bodyEl.innerHTML = html;
     wireArrows();
@@ -2576,13 +2633,11 @@ window.openNoteEditModal = function (noteId) {
     renderNoteEditTags();
     renderNoteEditChecklist();
 
-    const modal = document.getElementById('note-edit-modal');
-    if (modal) modal.style.display = 'flex';
+    openModal(document.getElementById('note-edit-modal'));
 };
 
 function closeNoteEditModal() {
-    const modal = document.getElementById('note-edit-modal');
-    if (modal) modal.style.display = 'none';
+    closeModal(document.getElementById('note-edit-modal'));
     noteEditState = null;
     openHubPanel('notes');
 }
@@ -2743,6 +2798,9 @@ function cropAgronomyFromDoc(doc) {
     if (seed) out.seed = seed;
     if (yld) out.yield = yld;
     if (straw) out.straw = straw;
+    const seeding = doc.querySelector('seeding');
+    const rolling = seeding ? seeding.getAttribute('needsRolling') : null;
+    if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
     return Object.keys(out).length ? out : null;
 }
 
@@ -2768,6 +2826,45 @@ function buildCropAgronomy(mapCrops) {
 function cropAgronomy(crop, key) {
     const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
     return a && a[key] > 0 ? a[key] : null;
+}
+
+// FS25_CropDependentRolling: only crops whose fruit type has
+// <seeding needsRolling="true"> get rolled (the map's crop files, else the
+// base game's), with the player's changes from <savegame>/cropDependentRolling.xml
+// on top (only crops that differ from that default). A crop the files don't
+// mention, or the mod not in the save, keeps rolling as in the base game.
+let ROLLING_OVERRIDES = {};   // cropOrderKey -> needsRolling
+
+function readRollingOverrides(saveGamePath) {
+    const out = {};
+    try {
+        const file = path.join(path.dirname(saveGamePath), 'cropDependentRolling.xml');
+        if (!fs.existsSync(file)) return out;
+        const xml = fs.readFileSync(file, 'utf-8');
+        const version = parseInt((xml.match(/<cropDependentRolling\b[^>]*\bformatVersion="(\d+)"/) || [])[1], 10) || 0;
+        if (version > 1) return out;   // a newer format than the mod's 1 — the mod ignores it too
+        for (const m of xml.matchAll(/<fruit\b[^>]*>/g)) {
+            const name = (m[0].match(/\sname="([^"]+)"/) || [])[1];
+            const value = (m[0].match(/\sneedsRolling="(true|false)"/) || [])[1];
+            if (name && value) out[cropOrderKey(name)] = value === 'true';
+        }
+    } catch (e) {
+        console.error('Could not read cropDependentRolling.xml', e);
+    }
+    return out;
+}
+
+// Whether the crop needs rolling by the mod's rules (whether the mod is on or not).
+function cropRollingRule(crop) {
+    const k = cropOrderKey(crop || '');
+    if (k in ROLLING_OVERRIDES) return ROLLING_OVERRIDES[k];
+    const a = CROP_AGRONOMY[k];
+    return !(a && a.needsRolling === false);
+}
+
+// Whether the planner offers rolling for the crop (chip, work step, field window).
+function cropNeedsRolling(crop) {
+    return !crop || !modEnabled('cropRolling') || cropRollingRule(crop);
 }
 
 let DEFAULT_CROPS = {};
@@ -2839,7 +2936,9 @@ try {
 // fieldYieldFactor above) since those are the only levers this app models;
 // a crop with no known yield rate taints its whole aggregated row rather
 // than silently under-counting one field.
-function buildYieldForecastRows(fields, rates) {
+// farm (current season only): with FS25_MoistureSystem, fields harvested this
+// month get the yield factor of today's field moisture (see fieldMoistureInfo).
+function buildYieldForecastRows(fields, rates, farm = null) {
     fields = fields || [];
     const byCrop = new Map();
     fields.forEach((f, i) => {
@@ -2850,11 +2949,19 @@ function buildYieldForecastRows(fields, rates) {
         [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
             const rate = getCropYieldRate(crop);
             const known = rate !== null;
-            const litres = known ? area * rate * fieldYieldFactor(soilMix) : 0;
+            const moist = farm ? fieldMoistureInfo(f, crop, crop === f.crop ? f.sowingMonth : f.catchSowingMonth, farm) : null;
+            const litres = known ? area * rate * fieldYieldFactor(soilMix) * (moist && moist.now ? moist.factor : 1) : 0;
 
-            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true };
+            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null };
             entry.area += area;
             entry.litres += litres;
+            if (moist) {
+                // Area-weighted: moisture of all its fields, factor of those harvested now.
+                const m = entry.moisture || (entry.moisture = { def: moist.def, area: 0, sum: 0, nowArea: 0, nowFactor: 0 });
+                m.area += area;
+                m.sum += area * moist.moisture;
+                if (moist.now) { m.nowArea += area; m.nowFactor += area * moist.factor; }
+            }
             if (!known) entry.known = false;
             byCrop.set(crop, entry);
         });
@@ -2865,6 +2972,53 @@ function buildYieldForecastRows(fields, rates) {
         total: rows.reduce((s, r) => s + r.litres, 0),
         missingCount: rows.filter(r => !r.known).length
     };
+}
+
+// FS25_MoistureSystem (moisture-mod.js): today's moisture from the save,
+// read with the farm's configs and again on every sync.
+let MOISTURE_DATA = null;
+
+function loadMoistureData(farm) {
+    const known = MOISTURE_DATA && MOISTURE_DATA.crops;
+    MOISTURE_DATA = farm && farm.saveGamePath && modEnabled('moisture') ? readMoistureSystem(farm.saveGamePath, known) : null;
+}
+
+// Moisture of a field (0..1): the farm-wide value plus the irrigation boost of
+// its farmland — a combined row (10-11) averages its fields. The mod's ±2 pp
+// for terrain height is left out (it needs the map's terrain).
+function fieldMoisture(field) {
+    if (!MOISTURE_DATA) return null;
+    const ids = String((field && field.number) || '').match(/\d+/g) || [];
+    const boost = ids.length ? ids.reduce((s, id) => s + (MOISTURE_DATA.boosts[id] || 0), 0) / ids.length : 0;
+    return Math.min(1, MOISTURE_DATA.moisture + boost);
+}
+
+function formatMoisturePct(m) {
+    return (m * 100).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 1 }) + ' %';
+}
+
+// "24 % · too wet" with the crop's ideal window under it (yield forecast, field window).
+function moistureCellHtml(moisture, def, factor, now) {
+    const state = moisture < def.idealMin ? 'dry' : (moisture > def.idealMax ? 'wet' : 'ideal');
+    const ideal = t('moistureIdeal').replace('{min}', Math.round(def.idealMin * 100)).replace('{max}', Math.round(def.idealMax * 100));
+    const effect = now && factor < 0.9995
+        ? `<span class="moisture-effect">${t('moistureThisMonth').replace('{x}', factor.toLocaleString(FIN_LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>` : '';
+    return `<span class="moisture-state is-${state}">${formatMoisturePct(moisture)} · ${t('moisture_' + state)}</span><span class="moisture-ideal">${ideal}</span>${effect}`;
+}
+
+// -> null when the mod isn't in play or doesn't track the crop, else
+//    { moisture, def, factor, state: 'dry' | 'ideal' | 'wet', now }
+// now = harvested in the farm's month (the crop calendar of its sowing month):
+// only then does today's moisture decide the yield.
+function fieldMoistureInfo(field, crop, sowingMonth, farm) {
+    const def = MOISTURE_DATA && crop ? MOISTURE_DATA.crops[cropOrderKey(crop)] : null;
+    if (!def) return null;
+    const moisture = fieldMoisture(field);
+    const cal = CROP_CALENDAR[crop];
+    const month = String((farm && farm.month) || '').toUpperCase();
+    const now = !!(cal && month && cal[String(sowingMonth || '').toUpperCase()] === month);
+    const state = moisture < def.idealMin ? 'dry' : (moisture > def.idealMax ? 'wet' : 'ideal');
+    return { moisture, def, factor: moistureYieldFactor(def, moisture), state, now };
 }
 
 // Maps a savegame fruit token ("WHEAT", "SUGARBEET", "OILSEEDRADISH") to the
@@ -3083,6 +3237,9 @@ function loadFarmConfigs(farm) {
     mapCropsInfo = null;
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
+    ROLLING_OVERRIDES = farm && farm.saveGamePath ? readRollingOverrides(farm.saveGamePath) : {};
+    // Food groups and the TMR recipe: the map's animalFood.xml, else the base game's.
+    applyMapAnimalFood(farm && farm.saveGamePath ? readMapAnimalFood(farm.saveGamePath) : null);
     // Same pattern as crops: base FS25 animal needs/production are always
     // available; a farm's own imported animal-defs data is merged on top
     // below, per subType.
@@ -3153,6 +3310,8 @@ function loadFarmConfigs(farm) {
     // AnimalFoodCalculator's reference source decides whose food/water/straw
     // curves the barns actually follow.
     useSaveFarm(farm);
+    MOISTURE_DATA = null;
+    loadMoistureData(farm);
     ANIMAL_MODS = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null;
     // Animal Package in the save: its breeds (chickens, Holstein…) and curves
     // are what the game runs, whatever was imported before.
@@ -3203,6 +3362,9 @@ function clearFarmConfigs() {
     MAP_CROP_TITLES = {};
     ANIMAL_MODS = null;
     ANIMAL_NEEDS_DATA = {};
+    ROLLING_OVERRIDES = {};
+    MOISTURE_DATA = null;
+    applyMapAnimalFood(null);
 }
 
 // XML files under a folder whose name mentions animals — the fallback for
@@ -3614,6 +3776,8 @@ const SUPPORTED_MODS = [
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
+    { id: 'cropRolling', name: 'Crop Dependent Rolling', modNames: ['FS25_CropDependentRolling'] },
+    { id: 'moisture', name: 'Moisture System', modNames: ['FS25_MoistureSystem'] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -4071,6 +4235,7 @@ function applyGameSaveToFarm(farm) {
     if (!farm || !farm.saveGamePath) return false;
     let changed = resolveGameFarmId(farm);
     useSaveFarm(farm);
+    loadMoistureData(farm);
     const gameData = readGameSave(farm.saveGamePath);
 
     if (gameData.balance !== null && gameData.balance !== farm.balance) { farm.balance = gameData.balance; changed = true; }
@@ -4453,7 +4618,7 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
 
     return new Promise(resolve => {
         const finish = result => {
-            modal.style.display = 'none';
+            closeModal(modal);
             confirmBtn.removeEventListener('click', onConfirm);
             cancelBtn.removeEventListener('click', onCancel);
             extraBtn.removeEventListener('click', onExtra);
@@ -4473,7 +4638,7 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
         extraBtn.addEventListener('click', onExtra);
         modal.addEventListener('mousedown', onBackdrop);
         document.addEventListener('keydown', onKey, true);
-        modal.style.display = 'flex';
+        openModal(modal);
         confirmBtn.focus();
     });
 }
@@ -4811,6 +4976,13 @@ function renderAnimalModsInfo(farm) {
             const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';
             detail += ' · ' + t('easLine').replace('{list}', species);
         }
+        if (def.id === 'cropRolling' && inSave) {
+            const noRolling = AVAILABLE_CROPS.filter(c => !cropRollingRule(c)).map(translateCropName).join(', ') || '–';
+            detail += ' · ' + t('cropRollingLine').replace('{list}', noRolling);
+        }
+        if (def.id === 'moisture' && inSave && MOISTURE_DATA && farm.id === currentFarmId) {
+            detail += ' · ' + t('moistureModLine').replace('{pct}', formatMoisturePct(MOISTURE_DATA.moisture));
+        }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
             <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
             <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
@@ -4992,7 +5164,7 @@ if (settingsBtn) {
         }
 
         if (settingsModal) {
-            settingsModal.style.display = 'flex';
+            openModal(settingsModal);
             const content = settingsModal.querySelector('.modal-content');
             if (content) content.scrollTop = 0;
         }
@@ -5312,11 +5484,11 @@ if (saveSettingsBtn) {
             saveSupplyRates(rates);
         }
 
-        if (settingsModal) settingsModal.style.display = 'none';
+        closeModal(settingsModal);
     });
 }
 
-if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => { if (settingsModal) settingsModal.style.display = 'none'; });
+if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => closeModal(settingsModal));
 
 // =============================================================
 // SECTION 10: DASHBOARD LOGIC (FARM MANAGEMENT)
@@ -5459,7 +5631,7 @@ function openDiagnosticsModal() {
     const preferred = currentFarmId || (farms[0] && farms[0].id) || '';
     select.innerHTML = `<option value="">${escapeHtml(t('diagNoFarm'))}</option>` +
         farms.map(f => `<option value="${escapeHtml(f.id)}"${f.id === preferred ? ' selected' : ''}>${escapeHtml(f.name || f.id)}</option>`).join('');
-    modal.style.display = 'flex';
+    openModal(modal);
 }
 
 async function saveDiagnosticsFile() {
@@ -5497,7 +5669,7 @@ async function saveDiagnosticsFile() {
     const diagBtn = document.getElementById('diagnostics-btn');
     if (diagBtn) diagBtn.addEventListener('click', openDiagnosticsModal);
     const cancelBtn = document.getElementById('diagnostics-cancel-btn');
-    if (cancelBtn) cancelBtn.addEventListener('click', () => { document.getElementById('diagnostics-modal').style.display = 'none'; });
+    if (cancelBtn) cancelBtn.addEventListener('click', () => closeModal(document.getElementById('diagnostics-modal')));
     const saveBtn = document.getElementById('diagnostics-save-btn');
     if (saveBtn) saveBtn.addEventListener('click', saveDiagnosticsFile);
     const githubBtn = document.getElementById('report-github-btn');
@@ -5634,10 +5806,10 @@ if (newFarmSavesBox) newFarmSavesBox.addEventListener('click', e => {
 if (addFarmBtn) addFarmBtn.addEventListener('click', () => {
     newFarmSavePath = '';
     renderNewFarmSaves();
-    if (addFarmModal) addFarmModal.style.display = 'flex';
+    openModal(addFarmModal);
     if (newFarmInput) newFarmInput.focus();
 });
-if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { if (addFarmModal) addFarmModal.style.display = 'none'; if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
+if (cancelAddBtn) cancelAddBtn.addEventListener('click', () => { closeModal(addFarmModal); if (newFarmInput) newFarmInput.value = ""; if (newFarmMapInput) newFarmMapInput.value = ""; });
 
 if (confirmAddBtn) {
     confirmAddBtn.addEventListener('click', () => {
@@ -5665,7 +5837,7 @@ if (confirmAddBtn) {
             };
             if (newFarmSavePath && fs.existsSync(newFarmSavePath)) newFarm.saveGamePath = newFarmSavePath;
             saveFarmData(newFarm);
-            if (addFarmModal) addFarmModal.style.display = 'none';
+            closeModal(addFarmModal);
             newFarmInput.value = "";
             if (newFarmMapInput) newFarmMapInput.value = "";
             newFarmSavePath = '';
@@ -5750,11 +5922,17 @@ window.prepareDelete = async function (id) {
 // UPDATE CHECK
 // =============================================================
 // Asks GitHub Releases (pre-releases included — every version is published as
-// one) whether a newer version exists. Only informs: "Download" opens the
-// release page; the installer is run by the user.
+// one) whether a newer version exists. The installed app can update itself:
+// the main process downloads the release's installer (src/main/updater.js) and
+// starts it with --update; from source, or without that file in the release,
+// the dialog opens the website's download page instead.
 const APP_VERSION = ipcRenderer.sendSync('get-app-version') || '0.0.0';
 const RELEASES_API = 'https://api.github.com/repos/WiktorParylak/farmer-planner/releases?per_page=20';
 const CONFIG_KEY_UPDATE_CHECK = 'farmer_planner_update_check';
+// The version an update was started to (cleared on the next start). The
+// dialog itself comes back on every start until the update is installed.
+const CONFIG_KEY_UPDATE_ATTEMPT = 'farmer_planner_update_attempt';
+const UPDATE_LOG_PATH = path.join(require('os').tmpdir(), 'Farmer Planner update', 'setup.log');
 
 function isUpdateCheckEnabled() {
     return getSetting(CONFIG_KEY_UPDATE_CHECK) !== '0';
@@ -5795,6 +5973,11 @@ async function checkForUpdates({ manual = false } = {}) {
         return;
     }
 
+    const asset = releaseInstallerAsset(newest, latest);
+    let canInstall = false;
+    try { canInstall = !!asset && await ipcRenderer.invoke('update-can-install'); } catch (e) { canInstall = false; }
+    if (canInstall) { await runUpdateDialog(latest, asset); return; }
+
     const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
     const download = await showDialog({
         title: fill(t('updateAvailableTitle')),
@@ -5804,6 +5987,147 @@ async function checkForUpdates({ manual = false } = {}) {
         icon: 'fa-circle-arrow-up'
     });
     if (download) ipcRenderer.invoke('open-release-page', latest, currentLang);
+}
+
+// The release's own installer, "Farmer Planner Setup X.Y.Z.exe" (GitHub shows
+// the spaces in asset names as dots).
+function releaseInstallerAsset(release, version) {
+    const norm = s => String(s || '').toLowerCase().replace(/[.\s]+/g, ' ');
+    const want = norm(`Farmer Planner Setup ${version}.exe`);
+    return ((release && release.assets) || []).find(a => norm(a.name) === want && a.browser_download_url) || null;
+}
+
+// Update now · What's new · Later -> download with progress (Cancel) -> the
+// installer starts and the app quits. A failed download leaves everything as
+// it was and points to the website.
+function runUpdateDialog(latest, asset) {
+    const modal = document.getElementById('update-modal');
+    if (!modal) return Promise.resolve();
+    const content = modal.querySelector('.app-dialog-content');
+    const icon = document.getElementById('update-icon');
+    const titleEl = document.getElementById('update-title');
+    const bodyEl = document.getElementById('update-body');
+    const progressEl = document.getElementById('update-progress');
+    const bar = document.getElementById('update-progress-bar');
+    const progressText = document.getElementById('update-progress-text');
+    const webBtn = document.getElementById('update-web');
+    const laterBtn = document.getElementById('update-later');
+    const nowBtn = document.getElementById('update-now');
+    const fill = s => s.replace('{v}', latest).replace('{c}', APP_VERSION);
+    const mb = n => (n / 1048576).toFixed(1);
+    let state = 'offer';
+
+    const setState = (next, reason) => {
+        state = next;
+        const failed = next === 'failed';
+        content.classList.toggle('is-danger', failed);
+        icon.classList.toggle('is-danger', failed);
+        icon.innerHTML = `<i class="fa-solid ${failed ? 'fa-triangle-exclamation' : 'fa-circle-arrow-up'}"></i>`;
+        progressEl.hidden = next !== 'downloading' && next !== 'installing';
+        webBtn.hidden = next === 'downloading' || next === 'installing';
+        laterBtn.hidden = next === 'installing';
+        nowBtn.hidden = next !== 'offer';
+        titleEl.textContent = fill(t(failed ? 'updateFailedTitle' : 'updateAvailableTitle'));
+        webBtn.textContent = t(failed ? 'updateFromWebsite' : 'updateWhatsNew');
+        laterBtn.textContent = t(next === 'downloading' ? 'cancel' : failed ? 'close' : 'updateLater');
+        nowBtn.textContent = t('updateNow');
+        if (next === 'offer') bodyEl.textContent = fill(t('updateAvailableBodyInstall'));
+        if (next === 'downloading') {
+            bodyEl.textContent = fill(t('updateDownloading'));
+            bar.style.width = '0%';
+            progressText.textContent = '';
+        }
+        if (next === 'installing') {
+            bodyEl.textContent = fill(t('updateInstalling'));
+            bar.style.width = '100%';
+        }
+        if (failed) {
+            const reasons = t('updateFailReasons') || {};
+            bodyEl.textContent = fill(t('updateFailed')).replace('{reason}', reasons[reason] || reasons.download || reason);
+        }
+    };
+
+    const onProgress = (event, p) => {
+        if (state !== 'downloading' || !p) return;
+        const total = p.total || asset.size || 0;
+        bar.style.width = total ? Math.min(100, 100 * p.received / total).toFixed(1) + '%' : '50%';
+        progressText.textContent = total
+            ? t('updateProgress').replace('{r}', mb(p.received)).replace('{t}', mb(total))
+            : mb(p.received) + ' MB';
+    };
+
+    return new Promise(resolve => {
+        const finish = () => {
+            closeModal(modal);
+            ipcRenderer.removeListener('update-progress', onProgress);
+            webBtn.removeEventListener('click', onWeb);
+            laterBtn.removeEventListener('click', onLater);
+            nowBtn.removeEventListener('click', onNow);
+            modal.removeEventListener('mousedown', onBackdrop);
+            document.removeEventListener('keydown', onKey, true);
+            resolve();
+        };
+        const closable = () => state === 'offer' || state === 'failed';
+        const onWeb = () => ipcRenderer.invoke('open-release-page', latest, currentLang);
+        const onLater = () => {
+            if (state === 'downloading') ipcRenderer.invoke('update-cancel');
+            else if (closable()) finish();
+        };
+        const onNow = async () => {
+            if (state !== 'offer') return;
+            // Unsaved edits would be lost when the app closes for the installer.
+            if (isEditMode) { bodyEl.textContent = t('updateFinishEdit'); return; }
+            setState('downloading');
+            let res;
+            try {
+                res = await ipcRenderer.invoke('update-download', {
+                    version: latest, url: asset.browser_download_url, size: asset.size, digest: asset.digest
+                });
+            } catch (err) {
+                res = { ok: false, reason: 'download', detail: err.message };
+            }
+            if (!res.ok) {
+                if (res.reason === 'cancelled') setState('offer');
+                else { console.warn('Update download failed', res); setState('failed', res.reason); }
+                return;
+            }
+            setState('installing');
+            setSetting(CONFIG_KEY_UPDATE_ATTEMPT, latest);
+            let started;
+            try { started = await ipcRenderer.invoke('update-install', latest, currentLang); }
+            catch (err) { started = { ok: false, reason: 'start' }; }
+            if (!started.ok) {
+                setSetting(CONFIG_KEY_UPDATE_ATTEMPT, '');
+                console.warn('Update installer did not start', started);
+                setState('failed', started.reason);
+            }
+        };
+        const onBackdrop = e => { if (e.target === modal && closable()) finish(); };
+        const onKey = e => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (closable()) finish(); }
+        };
+        ipcRenderer.on('update-progress', onProgress);
+        webBtn.addEventListener('click', onWeb);
+        laterBtn.addEventListener('click', onLater);
+        nowBtn.addEventListener('click', onNow);
+        modal.addEventListener('mousedown', onBackdrop);
+        document.addEventListener('keydown', onKey, true);
+        setState('offer');
+        openModal(modal);
+        nowBtn.focus();
+    });
+}
+
+// On start after "Update now": still the old version -> the installer didn't
+// finish (it puts the previous version back). Say so once, with the log; the
+// update is then offered again as on any start.
+async function reportUnfinishedUpdate() {
+    const attempted = getSetting(CONFIG_KEY_UPDATE_ATTEMPT);
+    if (!attempted) return;
+    setSetting(CONFIG_KEY_UPDATE_ATTEMPT, '');
+    if (compareVersions(APP_VERSION, attempted) >= 0) return;
+    await showNotice(t('updateRestoredTitle'), t('updateRestored')
+        .replace('{v}', attempted).replace('{c}', APP_VERSION).replace('{log}', UPDATE_LOG_PATH), true);
 }
 
 const updateCheckToggle = document.getElementById('update-check-toggle');
@@ -5901,7 +6225,7 @@ function showWhatsNew(since) {
     const webBtn = document.getElementById('whats-new-web');
     return new Promise(resolve => {
         const finish = () => {
-            modal.style.display = 'none';
+            closeModal(modal);
             okBtn.removeEventListener('click', finish);
             webBtn.removeEventListener('click', onWeb);
             modal.removeEventListener('mousedown', onBackdrop);
@@ -5915,7 +6239,7 @@ function showWhatsNew(since) {
         webBtn.addEventListener('click', onWeb);
         modal.addEventListener('mousedown', onBackdrop);
         document.addEventListener('keydown', onKey, true);
-        modal.style.display = 'flex';
+        openModal(modal);
         okBtn.focus();
     });
 }
@@ -5981,6 +6305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFarmList(getAllFarms());
     }
     await askDiscordOnce();
+    await reportUnfinishedUpdate();
     await showWhatsNewAfterUpdate(!languageChosen);
     if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);

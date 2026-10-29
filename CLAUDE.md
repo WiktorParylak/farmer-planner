@@ -89,6 +89,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 ```
 src/main/main.js               proces główny: okno, dialogi (IPC show-save/open-dialog), migracja danych
 src/main/discord-presence.js   Discord Rich Presence
+src/main/updater.js            aktualizacja z aplikacji: pobranie instalatora z GitHuba (.part, rozmiar, sha256), start z --update
 src/renderer/index.html        cały UI (jedna strona)
 src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
 src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
@@ -138,10 +139,13 @@ docs/                          screenshoty, propozycje-funkcji.txt
 - Folder zawsze `<wybrany>\Farmer Planner`; brak prawa zapisu → restart z UAC (`--elevated`). Argumenty do testów:
   `--lang=en|pl|de`, `--dir=<folder>`. Fonty (Google Fonts, TTF) pobierane raz do `build-cache/` (w `.gitignore`).
 - Teksty okna (EN/PL/DE) są w słowniku `Texts` w `Setup.cs`, nie w `translations.js`.
+- `--update` (start z „Aktualizuj teraz” w aplikacji): bez ekranu folderu, czeka na zamknięcie aplikacji, kopiuje folder do `<folder>.backup` i zapamiętuje wpisy rejestru, po NSIS sprawdza wersję exe (ProductVersion); błąd → przywraca kopię i uruchamia starą wersję. Log zawsze w `%TEMP%\Farmer Planner update\setup.log`. Aplikacja zapisuje `farmer_planner_update_attempt` przed wyjściem; jeśli po starcie wersja jest stara, pokazuje komunikat; okno aktualizacji wraca przy każdym starcie, dopóki nowa wersja nie zostanie zainstalowana. Pełny test wymaga dwóch zbudowanych instalatorów i zainstalowanej aplikacji (`npm start` nie instaluje).
 
 ## Dane gry (komputer główny)
 
 Ścieżki dotyczą głównego komputera; na drugim mogą być inne albo gry może nie być wcale.
+Na komputerze z OneDrive (Dokumenty przekierowane) katalog gry to `C:\Users\paryl\OneDrive\Dokumenty\My Games\FarmingSimulator2025`,
+a instalacja Steam `C:\Program Files (x86)\Steam\steamapps\common\Farming Simulator 25` (`data\foliage`, `sdk\xmlDoku`; reszta danych gry jest w `dataS.gar`).
 
 - Katalog gry: `C:\Users\paryl\Documents\My Games\FarmingSimulator2025`. Farma Solek = `savegame2`, mod mapy rozpakowany w `mods/FS25_Solek` (config `map/mapUS.xml`).
 - Dawki wysiewu PF: `mapUS.xml <precisionFarming><seedRateMap>` nadpisuje część upraw, reszta w `mods/FS25_precisionFarming.zip/PrecisionFarming.xml`.
@@ -167,6 +171,3 @@ Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farme
 - Commity: krótki tytuł po angielsku w trybie rozkazującym („Show the in-game day next to the month in the header").
 - Nie commituj binariów (instalatorów, zipów, PDF-ów z materiałami do KingMods) — należą do GitHub Releases albo poza repo.
 
-## Odłożone — przypomnij użytkownikowi
-
-- **Wałowanie zależne od uprawy** (punkt 9 z listy do 0.9.10, odłożony 2026-10-16). Przyciski/krok wałowania tylko dla upraw, które go wymagają, jak w modzie `FS25_CropDependentRolling`. Mod nie ma własnej listy: domyślnie czyta z gry atrybut `needsRolling` definicji owocu (fruitType), a zmiany gracza zapisuje w `<savegame>/cropDependentRolling.xml` (`<cropDependentRolling><fruit name="WHEAT" needsRolling="false"/>`, tylko odstępstwa). Plan: czytać `needsRolling` w `tools/generate-default-agronomy.js` i `cropAgronomyFromXml` (wymaga `<FS25>\data\foliage`), nałożyć odstępstwa z zapisu, ręczne wyjątki jak `NO_LIME_CROPS`; nieznana uprawa → wałowanie pokazywane jak dziś.

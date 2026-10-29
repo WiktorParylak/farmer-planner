@@ -65,6 +65,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "COW_HOLSTEIN": {
@@ -133,6 +139,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "COW_ANGUS": {
@@ -187,6 +199,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "COW_LIMOUSIN": {
@@ -241,6 +259,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "COW_WATERBUFFALO": {
@@ -309,6 +333,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "COW_HIGHLAND_CATTLE": {
@@ -363,6 +393,12 @@
           "value": 250
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 18,
+      "durationMonth": 10,
+      "minHealthFactor": 0.75
     }
   },
   "PIG_LANDRACE": {
@@ -417,6 +453,12 @@
           "value": 65
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 6,
+      "durationMonth": 4,
+      "minHealthFactor": 0.75
     }
   },
   "PIG_BLACK_PIED": {
@@ -471,6 +513,12 @@
           "value": 65
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 6,
+      "durationMonth": 4,
+      "minHealthFactor": 0.75
     }
   },
   "PIG_BERKSHIRE": {
@@ -525,6 +573,12 @@
           "value": 65
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 6,
+      "durationMonth": 4,
+      "minHealthFactor": 0.75
     }
   },
   "SHEEP_LANDRACE": {
@@ -568,6 +622,12 @@
           "value": 60
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 8,
+      "durationMonth": 5,
+      "minHealthFactor": 0.75
     }
   },
   "SHEEP_STEINSCHAF": {
@@ -611,6 +671,12 @@
           "value": 60
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 8,
+      "durationMonth": 5,
+      "minHealthFactor": 0.75
     }
   },
   "SHEEP_SWISS_MOUNTAIN": {
@@ -654,6 +720,12 @@
           "value": 60
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 8,
+      "durationMonth": 5,
+      "minHealthFactor": 0.75
     }
   },
   "SHEEP_BLACK_WELSH": {
@@ -697,6 +769,12 @@
           "value": 60
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 8,
+      "durationMonth": 5,
+      "minHealthFactor": 0.75
     }
   },
   "GOAT": {
@@ -740,6 +818,12 @@
           "value": 25
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 8,
+      "durationMonth": 5,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_GRAY": {
@@ -784,6 +868,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_PINTO": {
@@ -828,6 +918,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_PALOMINO": {
@@ -872,6 +968,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_CHESTNUT": {
@@ -916,6 +1018,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_BAY": {
@@ -960,6 +1068,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_BLACK": {
@@ -1004,6 +1118,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_SEAL_BROWN": {
@@ -1048,6 +1168,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "HORSE_DUN": {
@@ -1092,6 +1218,12 @@
           "value": 200
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 22,
+      "durationMonth": 11,
+      "minHealthFactor": 0.75
     }
   },
   "CHICKEN": {
@@ -1118,6 +1250,12 @@
           "value": 5
         }
       ]
+    },
+    "reproduction": {
+      "supported": true,
+      "minAgeMonth": 6,
+      "durationMonth": 2,
+      "minHealthFactor": 0.75
     }
   },
   "CHICKEN_ROOSTER": {
@@ -1128,6 +1266,12 @@
       }
     ],
     "water": [],
-    "straw": []
+    "straw": [],
+    "reproduction": {
+      "supported": false,
+      "minAgeMonth": null,
+      "durationMonth": null,
+      "minHealthFactor": null
+    }
   }
 }

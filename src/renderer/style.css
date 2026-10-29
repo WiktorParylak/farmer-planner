@@ -69,6 +69,15 @@
   --fs-7xl: 40px;
   --fs-hero: 46px;
 
+  /* Motion: fast = hover, press, chips; base = folds, dialogs, view changes,
+     toasts; slow = bars and charts. Every transition and animation uses these
+     (so reduced motion turns them all off in one place). */
+  --motion-fast: 120ms;
+  --motion: 200ms;
+  --motion-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Buttons: three sizes, one border width */
   --btn-border: 1.5px;
   --btn-pad-lg: 11px 22px;
@@ -165,7 +174,8 @@ body {
   font-size: var(--fs-sm);
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
 }
 
 .titlebar-btn:hover {
@@ -260,7 +270,12 @@ body {
   color: var(--color-ink-soft);
   font-size: var(--fs-xl);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
   z-index: 10;
 }
 
@@ -289,7 +304,12 @@ body {
   font-weight: 700;
   font-size: var(--fs-md);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
 }
 
 .first-lang-buttons {
@@ -452,7 +472,12 @@ body {
   font-weight: 700;
   font-size: var(--fs-md);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
 }
 
 .farm-list-empty-cta:hover {
@@ -471,7 +496,8 @@ body {
   border-radius: var(--radius-medium);
   padding: 0 18px;
   border: 1px solid var(--color-border);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition: border-color var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out);
 }
 
 .farm-item:hover {
@@ -534,7 +560,12 @@ body {
   color: var(--color-surface);
   background-color: var(--color-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
   flex-shrink: 0;
 }
 
@@ -564,7 +595,12 @@ body {
   background-color: transparent;
   border: 1.5px solid var(--color-border-strong);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
   flex-shrink: 0;
   font-size: var(--fs-md);
 }
@@ -624,7 +660,7 @@ body {
   letter-spacing: 0.04em;
   color: var(--color-ink-faint);
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color var(--motion) var(--ease-out);
   text-decoration: underline;
   text-decoration-color: transparent;
   text-underline-offset: 3px;
@@ -940,7 +976,12 @@ body {
   background-color: var(--color-primary);
   color: var(--color-surface);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
   min-width: 100px;
   text-align: center;
 }
@@ -1124,7 +1165,8 @@ body {
   letter-spacing: 0.02em;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out);
   pointer-events: none;
 }
 
@@ -1367,7 +1409,12 @@ tbody tr:hover {
   background: var(--color-surface-soft);
   color: var(--color-ink);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
 }
 
 .fertplan-open-btn:hover {
@@ -1627,7 +1674,7 @@ tbody tr:hover {
 .pen-bar-fill {
   height: 100%;
   border-radius: var(--radius-pill);
-  transition: width 0.3s ease;
+  transition: width var(--motion-slow) var(--ease-out);
 }
 
 .pen-bar-fill--ok {
@@ -1955,7 +2002,7 @@ tbody tr:hover {
   font-size: var(--fs-base);
   letter-spacing: 0.04em;
   padding: 12px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out);
 }
 
 .add-row-trigger:hover {
@@ -2051,8 +2098,11 @@ th.is-sortable[aria-sort="descending"]::after {
   background-color: transparent;
   color: var(--color-ink);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
-    box-shadow 0.15s ease, transform 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 /* Sizes: large = page actions next to a title, small = inside tables and lists */
@@ -2245,7 +2295,8 @@ th.is-sortable[aria-sort="descending"]::after {
   color: var(--color-ink);
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 
 .sidebar-item:hover {
@@ -2393,7 +2444,9 @@ th.is-sortable[aria-sort="descending"]::after {
   background-color: var(--color-surface-soft);
   border: 1.5px solid var(--color-border);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 .barn-tile:hover {
@@ -2518,7 +2571,8 @@ th.is-sortable[aria-sort="descending"]::after {
   color: var(--color-ink-faint);
   cursor: pointer;
   font-size: var(--fs-base);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 
 .barn-rename-btn:hover,
@@ -3285,7 +3339,12 @@ th.is-sortable[aria-sort="descending"]::after {
   padding: 0;
   cursor: default;
   user-select: none;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
 }
 
 button.treatment-chip {
@@ -3315,7 +3374,8 @@ button.treatment-chip:hover {
   bottom: 0;
   height: var(--lime-pct, 0%);
   background-color: var(--lime-color, transparent);
-  transition: height 0.2s ease, background-color 0.2s ease;
+  transition: height var(--motion) var(--ease-out),
+    background-color var(--motion) var(--ease-out);
 }
 
 .treatment-chip--lime .lime-letter {
@@ -3370,7 +3430,10 @@ button.treatment-chip:hover {
   color: var(--color-ink-faint);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 button.tillage-switch-option:hover:not(.is-active) {
@@ -3589,7 +3652,73 @@ button.tillage-chip {
 /* ========================================================= */
 #dashboard-view,
 #planner-view {
-  animation: fadeIn 0.4s ease-in-out;
+  animation: fadeIn var(--motion-slow) var(--ease-out);
+}
+
+/* A planner view (Plan, Finance, Animals…) coming in: fade and a small rise. */
+.view-enter {
+  animation: view-in var(--motion) var(--ease-out);
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Dialogs: the backdrop fades and the card settles in; closing (closeModal
+   in renderer.js) plays it backwards before the dialog is hidden. */
+.modal {
+  animation: modal-backdrop-in var(--motion) var(--ease-out);
+}
+
+.modal > .modal-content {
+  animation: modal-card-in var(--motion) var(--ease-out);
+}
+
+.modal.is-closing {
+  animation: modal-backdrop-out var(--motion-fast) var(--ease-in-out) forwards;
+  pointer-events: none;
+}
+
+.modal.is-closing > .modal-content {
+  animation: modal-card-out var(--motion-fast) var(--ease-in-out) forwards;
+}
+
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+}
+
+@keyframes modal-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes modal-backdrop-out {
+  to { opacity: 0; }
+}
+
+@keyframes modal-card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Folded sections (barn notes, breed norms, settings' Advanced…) open with a
+   short fade and slide of their content. */
+details[open] > :not(summary) {
+  animation: fold-in var(--motion) var(--ease-out);
+}
+
+@keyframes fold-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes fadeIn {
@@ -3778,7 +3907,8 @@ button.tillage-chip {
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 
 .field-num-group .field-number-add-btn:hover {
@@ -3804,6 +3934,149 @@ button.tillage-chip {
   height: 22px;
   cursor: pointer;
   align-self: flex-start;
+}
+
+/* Several fields at once (Edit mode): the bar above the cards and the
+   checkbox in each card's corner. A selected card pops in with a green ring;
+   deselecting lets it settle back. */
+input[type="checkbox"].fp-check {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 6px;
+  background-color: var(--color-surface);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+input[type="checkbox"].fp-check::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 6px;
+  height: 11px;
+  border: solid var(--color-surface);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform var(--motion) var(--ease-out);
+}
+input[type="checkbox"].fp-check:hover { border-color: var(--color-primary); }
+input[type="checkbox"].fp-check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-primary-soft); }
+input[type="checkbox"].fp-check:active { transform: scale(0.9); }
+input[type="checkbox"].fp-check:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+input[type="checkbox"].fp-check:checked::after { transform: rotate(45deg) scale(1); }
+input[type="checkbox"].fp-check:indeterminate {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+input[type="checkbox"].fp-check:indeterminate::after {
+  left: 3px;
+  top: 7px;
+  width: 10px;
+  height: 0;
+  border-width: 0 0 2.5px 0;
+  transform: none;
+}
+
+.field-edit-tr .field-card {
+  transition: border-color var(--motion) var(--ease-out),
+    background-color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out);
+}
+.field-edit-tr.is-bulk-selected .field-card {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+.field-edit-tr.is-bulk-anim-on .field-card { animation: card-select-in var(--motion-slow) var(--ease-out); }
+.field-edit-tr.is-bulk-anim-off .field-card { animation: card-select-out var(--motion) var(--ease-out); }
+.field-edit-tr.is-bulk-anim-on .fp-check { animation: check-pop var(--motion-slow) var(--ease-out); }
+.field-edit-tr.is-bulk-mirror .field-card { animation: card-mirror var(--motion-slow) var(--ease-out); }
+
+/* A card that just took a change from another selected card. */
+@keyframes card-mirror {
+  0% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 7px var(--color-primary-soft); }
+  100% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 0 transparent; }
+}
+
+@keyframes card-select-in {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.012); }
+  100% { transform: scale(1); }
+}
+@keyframes card-select-out {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.992); }
+  100% { transform: scale(1); }
+}
+@keyframes check-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-medium);
+  font-size: var(--fs-sm);
+}
+.bulk-bar[hidden] { display: none; }
+.bulk-count { font-weight: 700; color: var(--color-ink); }
+.bulk-field { display: inline-flex; align-items: center; gap: 6px; color: var(--color-ink-soft); }
+.bulk-bar select {
+  max-width: 190px;
+  padding: 5px 8px;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.bulk-bar select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.bulk-hint { color: var(--color-ink-faint); font-size: var(--fs-xs); }
+.bulk-select-all { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
+.bulk-controls { display: contents; }
+.bulk-controls[hidden] { display: none; }
+.bulk-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-border);
+}
+
+.field-card-select {
+  position: absolute;
+  top: 10px;
+  right: 40px;
+  display: flex;
+  cursor: pointer;
 }
 
 .field-card-delete {
@@ -3880,6 +4153,13 @@ select:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion: 0ms;
+    --motion-slow: 0ms;
+  }
+
+  /* Anything still timed by hand (the tutorial's pulse) stops too. */
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
@@ -4026,6 +4306,61 @@ select:focus-visible,
   }
 }
 
+/* 1280 px and narrower (Full HD at 150 %, 1366×768 laptops at 125 %): the
+   sidebar keeps only its icons — the name is the button's tooltip — so the
+   season table gets the width back. */
+@media (max-width: 1280px) {
+  .planner-sidebar {
+    width: auto;
+    padding: 10px 6px;
+  }
+
+  .sidebar-item {
+    justify-content: center;
+    padding: 6px;
+  }
+
+  .sidebar-item-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .sidebar-item-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* …and in a low window (800×600) the icon column fits without scrolling. */
+@media (max-width: 1280px) and (max-height: 760px) {
+  .planner-sidebar {
+    gap: 8px;
+    padding: 8px 5px;
+  }
+
+  .sidebar-nav,
+  .sidebar-footer {
+    gap: 2px;
+  }
+
+  .sidebar-footer {
+    padding-top: 6px;
+  }
+
+  .sidebar-item {
+    padding: 4px;
+  }
+
+  .sidebar-item-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* Narrow window: table and crop list stacked and scrolled together — from the
    top (centred, the overflow used to spill up under the header). */
 @media (max-width: 1300px) {
@@ -4137,7 +4472,11 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
-.supply-table {
+/* Side tables (Supplies, yield forecast, rates, field soil, feed, finance,
+   breed norms): one base — the page's sticky header look made compact, labels
+   in the first column, numbers right-aligned in tabular figures, a strong rule
+   over the total row. Variants only add what really differs. */
+.data-table {
   width: 100%;
   border-collapse: collapse;
   margin: 4px 0 2px;
@@ -4145,7 +4484,7 @@ select:focus-visible,
   font-size: var(--fs-base);
 }
 
-.supply-table th {
+.data-table th {
   padding: 4px 8px;
   text-align: left;
   font-family: var(--font-body);
@@ -4157,46 +4496,55 @@ select:focus-visible,
   border-bottom: 1px solid var(--color-border);
 }
 
-.supply-table td {
+.data-table td {
   padding: 5px 8px;
+  text-align: left;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-ink);
 }
 
-.supply-table th:not(:first-child),
-.supply-table td:not(:first-child) {
+.data-table th:not(:first-child),
+.data-table td:not(:first-child) {
   text-align: right;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+/* A text column after the first (e.g. the year in Finance). */
+.data-table th.is-text,
+.data-table td.is-text {
+  text-align: left;
+  font-family: var(--font-body);
+}
+
 /* Column headers stay in the label font even over number columns. */
-.supply-table th:not(:first-child) {
+.data-table th:not(:first-child) {
   font-family: var(--font-body);
   font-size: var(--fs-xs);
 }
 
-.supply-table tbody tr:last-child td {
+.data-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.supply-table .supply-total-row td,
-.supply-table td.supply-total-row {
+.data-table .supply-total-row td,
+.data-table td.supply-total-row {
   border-top: 2px solid var(--color-border-strong);
   border-bottom: none;
   font-weight: 700;
   color: var(--color-ink);
 }
 
-.supply-table .supply-total-row td:first-child {
+.data-table .supply-total-row td:first-child {
   font-family: var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: var(--fs-xs);
 }
 
-.supply-table .supply-subtotal-row td {
+.data-table .supply-subtotal-row td {
   border-bottom: none;
   padding-top: 2px;
   font-size: var(--fs-xs);
@@ -4226,6 +4574,23 @@ select:focus-visible,
   font-weight: 700;
   cursor: help;
 }
+
+/* FS25_MoistureSystem: today's moisture, the crop's ideal window under it and
+   the yield factor when it's harvested this month. */
+.moisture-cell { white-space: nowrap; }
+.moisture-state { font-weight: 600; }
+.moisture-state.is-ideal { color: var(--color-primary-dark); }
+.moisture-state.is-dry { color: var(--color-accent-dark); }
+.moisture-state.is-wet { color: var(--color-sky); }
+.moisture-ideal,
+.moisture-effect {
+  display: block;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-faint);
+}
+.moisture-effect { color: var(--color-rust); }
+.field-view-moisture .moisture-ideal,
+.field-view-moisture .moisture-effect { display: inline; margin-left: 6px; }
 
 /* Text label instead of a single-glyph circle (e.g. the "plan" flag on
    plan-aware fertilizer rows) — same colours, sized to fit the word. */
@@ -4497,7 +4862,7 @@ select:focus-visible,
   border: 1px solid var(--color-border);
   border-radius: var(--radius-medium);
   background-color: var(--color-surface-soft);
-  transition: border-color 0.2s ease;
+  transition: border-color var(--motion) var(--ease-out);
 }
 
 .note-card--current-month {
@@ -4513,7 +4878,7 @@ select:focus-visible,
   font-size: var(--fs-sm);
   margin-right: 8px;
   color: var(--color-ink-faint);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-fast) var(--ease-out);
 }
 
 .note-card.is-open .note-card-caret {
@@ -4579,7 +4944,12 @@ select:focus-visible,
   background-color: var(--color-surface);
   color: var(--color-ink-soft);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
 }
 
 .note-card-action:hover {
@@ -4868,7 +5238,10 @@ select:focus-visible,
   border-radius: var(--radius-small);
   box-shadow: 0 0 0 9999px var(--color-bg-dim), 0 0 0 3px var(--color-accent);
   pointer-events: none;
-  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
+  transition: top var(--motion-slow) var(--ease-out),
+    left var(--motion-slow) var(--ease-out),
+    width var(--motion-slow) var(--ease-out),
+    height var(--motion-slow) var(--ease-out);
 }
 
 .tutorial-spotlight.is-action {
@@ -4894,11 +5267,12 @@ select:focus-visible,
   color: var(--color-ink);
   box-shadow: var(--shadow-card);
   font-family: var(--font-body);
-  transition: top 0.3s ease, left 0.3s ease;
+  transition: top var(--motion-slow) var(--ease-out),
+    left var(--motion-slow) var(--ease-out);
 }
 
 .tutorial-bubble.is-animating {
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn var(--motion-slow) var(--ease-out);
 }
 
 .tutorial-step-count {
@@ -5018,7 +5392,12 @@ select:focus-visible,
   text-align: left;
   cursor: pointer;
   counter-increment: tutorial-chapter;
-  transition: all 0.2s ease;
+  transition: background-color var(--motion) var(--ease-out),
+    border-color var(--motion) var(--ease-out),
+    color var(--motion) var(--ease-out),
+    box-shadow var(--motion) var(--ease-out),
+    transform var(--motion) var(--ease-out),
+    opacity var(--motion) var(--ease-out);
 }
 
 .tutorial-chapter-name::before {
@@ -5256,7 +5635,9 @@ select:focus-visible,
   background-color: var(--color-surface-soft);
   border: 1.5px solid var(--color-border);
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
 }
 
 .feed-barn-tile {
@@ -5570,7 +5951,9 @@ select:focus-visible,
   background-color: var(--color-surface-soft);
   border: 1.5px solid var(--color-border);
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
 }
 
 .mixer-wagon-tile:hover { border-color: var(--color-primary); }
@@ -5618,6 +6001,13 @@ select:focus-visible,
 .mixer-wagon-meta {
   font-size: var(--fs-sm);
   color: var(--color-ink-soft);
+}
+
+.mixer-wagon-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
 }
 
 .mixer-add-btn {
@@ -5689,6 +6079,68 @@ select:focus-visible,
   border-bottom: 1px dashed var(--color-border);
 }
 
+/* Column names over the load list: Material | Quantity | Litres. */
+.mixer-row--head {
+  padding: 2px 0 4px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.mixer-row--head span:nth-child(4) { text-align: right; }
+
+/* TMR recipe: one share per ingredient, within the map's limits. */
+.tmr-shares {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+}
+
+.tmr-shares-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tmr-shares-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 16px;
+}
+
+.tmr-share {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.tmr-share .feed-input { width: 76px; }
+
+.tmr-share-range {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--color-ink-soft);
+}
+
+.tmr-shares-sum,
+.tmr-shares-error {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.tmr-shares-error:empty { display: none; }
+
 .mixer-row-icon {
   display: flex;
   align-items: center;
@@ -5702,19 +6154,6 @@ select:focus-visible,
 }
 
 .mixer-row-icon--bulk { background-color: var(--color-accent); }
-
-.mixer-row--head {
-  padding: 0 0 2px;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-faint);
-}
-
-.mixer-row--head > span:nth-child(4) {
-  text-align: right;
-}
 
 .mixer-form .mixer-f-cap {
   width: 96px;
@@ -6420,31 +6859,7 @@ button.table-chip-toggle:hover {
 }
 
 .fin-table {
-  width: 100%;
   margin-top: 10px;
-  border-collapse: collapse;
-  font-size: var(--fs-base);
-}
-
-.fin-table th,
-.fin-table td {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-}
-
-.fin-table th {
-  position: static;
-  font-size: var(--fs-xs);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--color-ink-soft);
-  background: none;
-}
-
-.fin-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 1180px) {
@@ -6673,6 +7088,114 @@ button.table-chip-toggle:hover {
 
 .anim-view .barn-tile-grid {
   margin: 0;
+}
+
+/* Breed norms: read-only preview of one breed's needs and output. */
+.breed-norms > summary {
+  margin: 4px 0 0;
+  cursor: pointer;
+}
+.breed-norms[open] > summary { margin-bottom: 8px; }
+.breed-norms-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 14px;
+  margin: 8px 0 12px;
+  max-width: 640px;
+}
+.breed-norms-controls select,
+.breed-norms-controls input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+.breed-norms-controls select:focus,
+.breed-norms-controls input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.breed-norms-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.breed-norms-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+.breed-norms-pic { width: 72px; height: 72px; }
+.breed-norms-table { flex: 1 1 320px; width: auto; }
+.breed-norms-group th {
+  text-align: left;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+.breed-norms-day {
+  display: block;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-faint);
+}
+.breed-curve-wrap { margin: 0; }
+.breed-curve {
+  display: block;
+  width: 100%;
+  height: 90px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+}
+.breed-curve polyline {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.breed-curve .breed-curve-food { stroke: var(--color-primary); }
+.breed-curve .breed-curve-out { stroke: var(--color-accent); }
+.breed-curve-marker {
+  stroke: var(--color-rust);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.breed-curve-wrap figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-soft);
+}
+.breed-curve-key::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.breed-curve-key.breed-curve-food::before { background: var(--color-primary); }
+.breed-curve-key.breed-curve-out::before { background: var(--color-accent); }
+.breed-curve-axis { margin-left: auto; color: var(--color-ink-faint); }
+.breed-norms-notes {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
 }
 
 /* Edit mode: row with data but no field number (save refused). */
@@ -7088,6 +7611,50 @@ button.field-open:hover .field-number-chip {
 
 .modal-buttons .app-dialog-extra[hidden] {
   display: none;
+}
+
+/* ---- Update dialog (download progress) ---- */
+.update-content {
+  max-width: 520px;
+}
+
+.update-progress {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.update-progress[hidden],
+#update-modal .modal-buttons button[hidden] {
+  display: none;
+}
+
+.update-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+}
+
+.update-progress-bar {
+  width: 0;
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width var(--motion) var(--ease-out);
+}
+
+.update-progress-text {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-soft);
+}
+
+.modal-buttons .update-web-btn {
+  margin-right: auto;
 }
 
 /* ---- What's new (after an update) ---- */
