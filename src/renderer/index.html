@@ -44,7 +44,10 @@
                         <button type="button" id="import-backup-btn" class="import-backup-link" data-i18n="importBackup">IMPORT BACKUP</button>
                     </div>
                 </div>
-                <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
+                <div class="start-tools">
+                    <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
+                    <button type="button" id="mapscale-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i> <span data-i18n="msTitle">Map scaling</span></button>
+                </div>
             </section>
         </div>
         <div id="tramlines-view" class="tramlines-view" hidden>
@@ -64,6 +67,16 @@
                     <canvas id="tl-canvas"></canvas>
                     <div id="tl-busy" class="tl-busy" hidden></div>
                 </div>
+            </div>
+        </div>
+        <div id="mapscale-view" class="tramlines-view mapscale-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="ms-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="msTitle">Map scaling</h1>
+            </header>
+            <div class="tl-body ms-body">
+                <aside id="ms-side" class="tl-side"></aside>
+                <div id="ms-list" class="ms-list"></div>
             </div>
         </div>
         <div class="planner-view" id="planner-view">
@@ -552,6 +565,7 @@
     <script src="rotation.js"></script>
     <script src="today.js"></script>
     <script src="tramlines.js"></script>
+    <script src="map-scale.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

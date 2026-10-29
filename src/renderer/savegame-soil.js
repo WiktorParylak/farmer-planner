@@ -36,7 +36,7 @@ function openZip(zipPath) {
         const nameLen = cd.readUInt16LE(p + 28), extraLen = cd.readUInt16LE(p + 30), commentLen = cd.readUInt16LE(p + 32);
         const local = cd.readUInt32LE(p + 42);
         const name = cd.toString('utf8', p + 46, p + 46 + nameLen);
-        entries[name.toLowerCase()] = { method, csize, local };
+        entries[name.toLowerCase()] = { method, csize, local, name };
         p += 46 + nameLen + extraLen + commentLen;
     }
     return {
@@ -56,6 +56,11 @@ function openZip(zipPath) {
         listAll(prefix = '') {
             const p = prefix.toLowerCase();
             return Object.keys(entries).filter(n => n.startsWith(p) && !n.endsWith('/'));
+        },
+        // The entry's path as the archive spells it.
+        realPath(rel) {
+            const e = entries[rel.replace(/\\/g, '/').toLowerCase()];
+            return e ? e.name : rel;
         },
         close() { fs.closeSync(fd); }
     };
@@ -86,6 +91,10 @@ function openMod(modsDir, modName) {
                 };
                 walk(prefix, 0);
                 return out;
+            },
+            // The path as the disk spells it.
+            realPath: rel => {
+                try { return path.relative(dir, fs.realpathSync.native(path.join(dir, rel))).replace(/\\/g, '/'); } catch { return rel; }
             },
             close() {}
         };

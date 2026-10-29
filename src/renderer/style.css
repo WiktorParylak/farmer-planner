@@ -7491,12 +7491,19 @@ button.field-open:hover .field-number-chip {
   height: auto;
 }
 
-.tramlines-btn {
+.start-tools {
   flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.tramlines-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 36px;
   background-color: var(--color-surface);
 }
 
@@ -7709,6 +7716,175 @@ button.field-open:hover .field-number-chip {
 @media (max-width: 1100px) {
   .tl-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .tl-side { max-height: 40vh; }
+}
+
+/* ---------- Map scaling tool ---------- */
+.ms-list {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-right: 6px;
+}
+
+.ms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.ms-mapinfo,
+.ms-total {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.ms-start {
+  align-self: flex-start;
+}
+
+.ms-start:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ms-warn {
+  color: var(--color-accent-dark);
+}
+
+.ms-error {
+  color: var(--color-rust);
+}
+
+.ms-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ms-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.ms-group-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.ms-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 6em;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.ms-file input {
+  width: auto;
+  margin: 0;
+}
+
+.ms-file.is-off {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ms-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-file-size,
+.ms-file-mb {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+}
+
+.ms-file-mb {
+  text-align: right;
+}
+
+.ms-file-note {
+  grid-column: 2 / -1;
+  font-size: var(--fs-xs);
+  color: var(--color-accent-dark);
+}
+
+.ms-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+
+.ms-progress[hidden] {
+  display: none;
+}
+
+.ms-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-border);
+  overflow: hidden;
+}
+
+.ms-bar > span {
+  display: block;
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.2s ease-out;
+}
+
+.ms-done {
+  padding: 14px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-primary-soft);
+}
+
+.ms-done .settings-hint {
+  color: var(--color-ink);
+}
+
+.ms-done .ms-group-title .fa-solid {
+  color: var(--color-primary);
+}
+
+.ms-done-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+
+.ms-done-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-top: 1px solid var(--color-border);
 }
 
 /* ---------- "Today" panel under the season plan ---------- */

@@ -44,6 +44,7 @@
 - Predicted yields.
 - Notes pinned to months, with tags and a checklist.
 - Tramlines: save the tramlines of your fields from one save and paste them into another save of the same map.
+- Map scaling: double the resolution of a map mod's density maps, info layers and height map. The app writes the scaled files and a backup of the originals to its own folder; you copy them into the mod yourself.
 
 ## Animals and feed, worked out
 
