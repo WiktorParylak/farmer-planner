@@ -276,9 +276,30 @@ async function tlRequestView() {
 const tlToScreen = (x, y) => [(x - tl.view.x0) * tl.view.scale, (y - tl.view.y0) * tl.view.scale];
 const tlToMap = (sx, sy) => [tl.view.x0 + sx / tl.view.scale, tl.view.y0 + sy / tl.view.scale];
 
+// Editor cursor: a ring the size of the brush at the current zoom — solid
+// with a dot to paint, dashed with a cross to erase. Ctrl (pick a colour)
+// and brushes too big for a cursor image fall back to a crosshair.
+function tlUpdateCursor(ctrl) {
+    const c = tlCanvas();
+    if (!c) return;
+    const ed = tl.editor;
+    if (tl.tab !== 'editor' || !ed || !tl.view || ctrl) { c.style.cursor = tl.tab === 'editor' && ed ? 'crosshair' : ''; return; }
+    const d = Math.max(6, Math.round(tlSettings().brush * tl.view.scale / (window.devicePixelRatio || 1)));
+    if (d > 120) { c.style.cursor = 'crosshair'; return; }
+    const size = d + 4, h = size / 2, r = d / 2;
+    const erase = ed.mode === 'erase';
+    const ring = (stroke, width, dash) => `<circle cx="${h}" cy="${h}" r="${r}" fill="none" stroke="${stroke}" stroke-width="${width}"${dash ? ' stroke-dasharray="3 2"' : ''}/>`;
+    const mark = erase
+        ? `<path d="M${h - 3} ${h - 3}L${h + 3} ${h + 3}M${h + 3} ${h - 3}L${h - 3} ${h + 3}" stroke="#000" stroke-width="3"/><path d="M${h - 3} ${h - 3}L${h + 3} ${h + 3}M${h + 3} ${h - 3}L${h - 3} ${h + 3}" stroke="#fff" stroke-width="1.2"/>`
+        : `<circle cx="${h}" cy="${h}" r="1.5" fill="#fff" stroke="#000" stroke-width="0.8"/>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${ring('#000', 3, false)}${ring(erase ? '#f08a6c' : '#fff', 1.2, erase)}${mark}</svg>`;
+    c.style.cursor = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${Math.round(h)} ${Math.round(h)}, crosshair`;
+}
+
 function tlDraw() {
     const c = tlCanvas();
     if (!c) return;
+    tlUpdateCursor();
     const g = c.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = '#18201c';
@@ -352,6 +373,7 @@ function tlDraw() {
 function tlRenderSide() {
     const side = document.getElementById('tl-side');
     if (!side) return;
+    tlUpdateCursor();
     document.querySelectorAll('#tramlines-view .tl-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tltab === tl.tab));
     const save = tlCurrentSave();
     const saveSel = `<label class="settings-field"><span>${t('tlSave')}</span><select id="tl-save">${tl.saves.map(s => `<option value="${escapeHtml(s.dir)}" ${s.dir === tl.saveDir ? 'selected' : ''}>${escapeHtml(s.name)}${s.title ? ' · ' + escapeHtml(s.title) : ''}</option>`).join('')}</select></label>`;
@@ -856,5 +878,7 @@ function tlEditorOpenKeepView(name) {
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && tl.tab === 'editor' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) {
             e.preventDefault(); tlEditorUndo();
         }
+        if (e.key === 'Control') tlUpdateCursor(true);
     });
+    document.addEventListener('keyup', e => { if (e.key === 'Control' && !view.hidden) tlUpdateCursor(); });
 })();
