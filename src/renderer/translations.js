@@ -1181,7 +1181,7 @@ const TRANSLATIONS = {
         updateCurrentVersion: "Zainstalowana: {v}",
         whatsNewTitle: "Co nowego w wersji {v}",
         whatsNewLead: "Farmer Planner został zaktualizowany z wersji {old} do {v}.",
-        whatsNewEnglish: "Lista zmian jest po angielsku, tak jak na stronie.",
+        whatsNewEnglish: "Wersje bez polskiego opisu są po angielsku, tak jak na stronie.",
         whatsNewWebsite: "Zobacz na stronie",
         whatsNewOk: "Rozumiem",
         whatsNewButton: "Co nowego",

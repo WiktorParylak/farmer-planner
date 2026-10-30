@@ -6233,20 +6233,30 @@ if (checkUpdatesBtn) {
 
 // ---------- what's new after an update ----------
 // The version the app last ran is kept in settings; after an update the
-// CHANGELOG.md sections in between are shown once (in English, as on the
-// website's Versions page).
+// CHANGELOG.md sections in between are shown once. A version that has a
+// section in the app language's own file (CHANGELOG.pl.md) is shown from
+// there; the others in English, as on the website's Versions page.
 const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
 const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
 
-// [{ version, lines }] for every "## X.Y.Z — date" (or "— unreleased") section.
-function readChangelogSections() {
+function changelogFileSections(file) {
     let text = '';
-    try { text = fs.readFileSync(CHANGELOG_PATH, 'utf8'); } catch (e) { return []; }
+    try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
     return text.split(/^## /m).slice(1).map(section => {
         const [heading, ...lines] = section.split(/\r?\n/);
         const m = heading.trim().match(/^(\d+\.\d+\.\d+)\b/);
         return m ? { version: m[1], lines } : null;
     }).filter(Boolean);
+}
+
+// [{ version, lines, english }] for every "## X.Y.Z — date" (or "— unreleased")
+// section of the English changelog, in the app language where translated.
+function readChangelogSections() {
+    const local = currentLang === 'en' ? [] : changelogFileSections(CHANGELOG_PATH.replace(/\.md$/, '.' + currentLang + '.md'));
+    return changelogFileSections(CHANGELOG_PATH).map(s => {
+        const own = local.find(l => l.version === s.version);
+        return own ? { ...own, english: false } : { ...s, english: currentLang !== 'en' };
+    });
 }
 
 // The small Markdown subset CHANGELOG.md uses: "**New**" labels, "- " lists
@@ -6301,7 +6311,7 @@ function showWhatsNew(since) {
 
     document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
     const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
-    document.getElementById('whats-new-lead').textContent = [lead, currentLang === 'en' ? '' : t('whatsNewEnglish')].filter(Boolean).join(' ');
+    document.getElementById('whats-new-lead').textContent = [lead, sections.some(s => s.english) ? t('whatsNewEnglish') : ''].filter(Boolean).join(' ');
     document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
     const body = document.getElementById('whats-new-body');
     body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');

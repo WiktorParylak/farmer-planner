@@ -56,7 +56,7 @@ const UI = {
     updateCurrentVersion: "Installiert: {v}",
     whatsNewTitle: "Neu in Version {v}",
     whatsNewLead: "Farmer Planner wurde von Version {old} auf {v} aktualisiert.",
-    whatsNewEnglish: "Die Änderungen sind auf Englisch beschrieben, wie auf der Website.",
+    whatsNewEnglish: "Versionen ohne deutsche Beschreibung stehen auf Englisch, wie auf der Website.",
     whatsNewWebsite: "Auf der Website ansehen",
     whatsNewOk: "Verstanden",
     whatsNewButton: "Was ist neu",
