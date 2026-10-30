@@ -737,13 +737,21 @@ function nextWorkStep(field, idx, farm) {
 // next job, in the colour of the field's state (badgeCls: planted / plant now /
 // overdue / to plant; stateLabel in the tooltip). Click ticks the job off,
 // right-click steps back; the list itself is edited in the field view.
-// With every job done it shows the state itself.
-function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
+// With every job done it shows the state itself. urgent (sowing month / late
+// sowing): the badge leads with that, with an icon — "Plant now · Cultivate",
+// or just "Plant now" when sowing is the next job.
+function workCellHtml(field, idx, farm, badgeCls, stateLabel, urgent) {
     const { next, done, total } = nextWorkStep(field, idx, farm);
-    const label = next ? t('work_' + next.step) : stateLabel;
+    const job = next ? t('work_' + next.step) : '';
     const count = next && done ? ` <span class="work-count">${done}/${total}</span>` : '';
     const title = stateLabel + ' · ' + t('workBadgeHint');
-    return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${escapeHtml(label)}${count}</span></button>`;
+    let label = escapeHtml(job || stateLabel);
+    if (urgent) {
+        const icon = urgent.overdue ? 'fa-clock' : 'fa-seedling';
+        label = `<i class="fa-solid ${icon}" aria-hidden="true"></i> ${escapeHtml(urgent.label)}`
+            + (next && next.step !== 'sow' ? `<span class="badge-work-job"> · ${escapeHtml(job)}</span>` : '');
+    }
+    return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${label}${count}</span></button>`;
 }
 
 let workFieldIdx = null;
@@ -1523,7 +1531,7 @@ function renderFieldsTable(fields) {
 
             let stateDisplay;
             // A field with a crop shows its next job in a badge of its state's colour.
-            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant');
+            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant'), stateUrgent = null;
 
             if (field.state === 'Planted') {
                 stateDisplay = `<span class="badge badge--planted">${t('planted')}</span>`;
@@ -1533,9 +1541,11 @@ function renderFieldsTable(fields) {
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
                     stateBadge = 'badge--plant-now'; stateLabel = t('plantNow');
+                    stateUrgent = { label: t('plantNow') };
                 } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
                     stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
                     stateBadge = 'badge--overdue'; stateLabel = t('overdue') + ' — ' + t('overdueHint');
+                    stateUrgent = { label: t('overdue'), overdue: true };
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
                 }
@@ -1574,7 +1584,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
+                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel, stateUrgent) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {

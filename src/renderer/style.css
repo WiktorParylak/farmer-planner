@@ -7458,6 +7458,12 @@ button.tillage-switch-option {
   box-shadow: 0 0 0 2px var(--color-primary);
 }
 
+/* Sowing month / late sowing: the job after the state, a touch lighter. */
+.badge-work-job {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 .badge--work .work-count {
   margin-left: 4px;
 }
