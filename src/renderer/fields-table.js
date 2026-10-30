@@ -609,10 +609,27 @@ function needsMerging(field, farm) {
     return parts.length > 1 && !(farm && farm.mergedFields && farm.mergedFields[key]);
 }
 
+// A catch crop comes before the main crop (green rye before beet) when it's
+// sown before the main crop's harvest, counting from the main sowing month;
+// sown at or after that harvest (a rotation's catch crop) it comes after.
+// Without a calendar or months to compare, before — as it always was.
+function catchCropComesFirst(field) {
+    const sow = (field.sowingMonth || '').toUpperCase();
+    const catchSow = (field.catchSowingMonth || '').toUpperCase();
+    const harvest = String((CROP_CALENDAR[field.crop] || {})[sow] || '').toUpperCase();
+    const from = ALL_MONTHS.indexOf(sow);
+    if (from < 0 || ALL_MONTHS.indexOf(catchSow) < 0 || ALL_MONTHS.indexOf(harvest) < 0) return true;
+    const offset = m => (ALL_MONTHS.indexOf(m) - from + 12) % 12;
+    if (!offset(harvest)) return true;
+    return offset(catchSow) < offset(harvest);
+}
+
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
     const steps = [];
-    if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
+    const catchSteps = ['fertilize', 'mow', 'bale', 'harvestWrap'];
+    const catchFirst = field.catchCrop && catchCropComesFirst(field);
+    if (catchFirst) steps.push(...catchSteps);
     const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
     const cur = ALL_MONTHS.indexOf(((farm && farm.month) || '').toUpperCase());
     // Months until the sowing month (0 = this month), wrapping round the year.
@@ -629,6 +646,7 @@ function suggestedWork(field, idx, farm) {
     }
     steps.push('fertilize');
     if (!plowed) steps.push('weeds');
+    if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
     return steps.map(step => ({ step, done: false }));
 }
 

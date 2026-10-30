@@ -15,12 +15,41 @@ function todayPanelOpen() {
 // urgent group, and names its other tasks after the crop.
 const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'weeds', 'roll', 'work'];
 
+// The save's fields by id, read again only when fields.xml changes (the panel
+// renders with every season view). Null without a readable save.
+let todaySaveCache = { key: null, byId: null };
+function todaySaveFieldsById(farm) {
+    let key = null;
+    try { key = farm.saveGamePath + ':' + fs.statSync(path.join(path.dirname(farm.saveGamePath), 'fields.xml')).mtimeMs; }
+    catch (e) { return null; }
+    if (todaySaveCache.key !== key) {
+        const save = readSaveFields(farm);
+        const byId = save.ok ? {} : null;
+        if (byId) save.fields.forEach(f => { byId[f.id] = f; });
+        todaySaveCache = { key, byId };
+    }
+    return todaySaveCache.byId;
+}
+
+// A field ticked "sown" by hand (or carried on by its rotation) may still grow
+// something else in the game. With the save at hand, harvest only when the
+// game fields of the row grow the planned crop; rows the save doesn't know
+// (not owned, no save) keep what the plan says.
+function todayGrowsPlannedCrop(field, byId) {
+    if (!byId) return true;
+    const ids = gameFieldIds(field);
+    const games = ids.map(id => byId[id]).filter(Boolean);
+    if (!games.length || games.length !== ids.length) return true;
+    return games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+}
+
 // { key, fields: [{ idx, field, extra }] } groups for the current season.
 function todayFieldGroups(farm) {
     const month = getFarmCurrentMonth(farm);
     const fields = farm.fields || [];
     const groups = { sow: [], late: [], harvest: [], weeds: [], roll: [], work: [] };
     if (!month) return groups;
+    const saveById = todaySaveFieldsById(farm);
     fields.forEach((field, idx) => {
         if (!field.crop) return;
         const tasks = {};
@@ -30,7 +59,7 @@ function todayFieldGroups(farm) {
         const cut = isCutCrop(field.crop) || isPerennialCrop(field.crop);
         if (!planted && sow === month) tasks.sow = t('work_sow');
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
-        if (planted && !cut && sow && cal[sow] === month) tasks.harvest = t('work_harvest');
+        if (planted && !cut && sow && cal[sow] === month && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = t('work_harvest');
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
         if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
