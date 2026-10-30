@@ -4967,9 +4967,9 @@ async function undoLastNewSeason() {
 const undoSeasonBtn = document.getElementById('undo-season-btn');
 if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeason());
 
-// A year went by in the game since this season started — offer a new season
-// once per in-game year (farm.seasonHintYear). The first sync only notes the
-// year the season is in.
+// This season's crops are in (seasonEndInfo, today.js) — offer a new season,
+// once per season (farm.seasonHintSeason). The first sync only notes the year
+// the season is in.
 function maybeSuggestNewSeason(farm) {
     if (!farm || !farm.saveGamePath || isEditMode) return;
     const year = parseInt(farm.yearNumber, 10);
@@ -4979,10 +4979,15 @@ function maybeSuggestNewSeason(farm) {
         saveFarmData(farm, { touch: false });
         return;
     }
-    if (year <= farm.seasonStartedGameYear || farm.seasonHintYear === year) return;
-    farm.seasonHintYear = year;
+    const season = parseInt(farm.currentSeason, 10) || 1;
+    if (farm.seasonHintSeason === season) return;
+    const info = seasonEndInfo(farm);
+    if (!info.ready) return;
+    farm.seasonHintSeason = season;
     saveFarmData(farm, { touch: false });
-    const intro = t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
+    const intro = info.total
+        ? t('newSeasonReadyHint').replace('{c}', season).replace('{n}', info.total)
+        : t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
     setTimeout(() => runNewSeason({ intro }), 600);
 }
 

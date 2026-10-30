@@ -1415,6 +1415,13 @@ tbody tr:hover {
   color: var(--color-ink-soft);
 }
 
+/* This season's crops are in: time for the next one. */
+.main-table-header-btns > .new-season-btn.is-ready {
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
 .main-table-header-btns > .new-season-btn:hover {
   background-color: var(--color-surface-alt);
   border-color: var(--color-ink-soft);
@@ -9126,6 +9133,19 @@ button.field-open.has-callout .field-number-chip {
 
 .today-group.is-warn .today-chip {
   border-color: var(--color-rust-soft);
+}
+
+.today-group--season .today-group-title .fa-solid {
+  color: var(--color-accent-dark);
+}
+
+.today-group--season .today-chip {
+  border-color: var(--color-accent);
+}
+
+.today-group--season .today-chip-ha {
+  color: var(--color-accent-dark);
+  font-weight: 700;
 }
 
 .today-chip-main {

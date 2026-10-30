@@ -77,6 +77,53 @@ function todayFieldGroups(farm) {
     return groups;
 }
 
+// When to start a new season: a new season clears every field, so it is time
+// once this season's crops are in. A field counts as harvested once its
+// harvest month (crop calendar, from its sowing month) has gone by — or, with
+// the save at hand, in that month once the game field no longer grows the
+// crop. Grass and other cut crops don't hold it up, nor a missed sowing.
+// A farm with no field crops to go by falls back to a year gone by in the game.
+function seasonEndInfo(farm) {
+    const month = getFarmCurrentMonth(farm);
+    const m = ALL_MONTHS.indexOf(month || '');
+    const saveById = farm.saveGamePath ? todaySaveFieldsById(farm) : null;
+    const year = parseInt(farm.yearNumber, 10), started = parseInt(farm.seasonStartedGameYear, 10);
+    const yearPassed = !!farm.saveGamePath && year > 0 && started > 0 && year > started;
+    let total = 0, harvested = 0;
+    (farm.fields || []).forEach(field => {
+        if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return;
+        const sow = (field.sowingMonth || '').toUpperCase();
+        const s = ALL_MONTHS.indexOf(sow);
+        const h = ALL_MONTHS.indexOf((CROP_CALENDAR[field.crop] || {})[sow] || '');
+        if (s < 0 || h < 0) return;
+        if (field.state !== 'Planted') {
+            if (!isSowingOverdue(field, month)) total++;
+            return;
+        }
+        total++;
+        if (m < 0) return;
+        const untilHarvest = (h - s + 12) % 12, sinceSowing = (m - s + 12) % 12;
+        const gone = !todayGrowsPlannedCrop(field, saveById);
+        if (sinceSowing > untilHarvest || (gone && (sinceSowing === untilHarvest || yearPassed))) harvested++;
+    });
+    const ready = total ? harvested === total : yearPassed;
+    return { total, harvested, yearPassed, ready };
+}
+
+// The New season button says when to use it; once it's time it stands out.
+function refreshNewSeasonHint(farm, info) {
+    if (!newSeasonBtn) return;
+    const current = farm && viewedSeason === (farm.currentSeason || 1);
+    const ready = !!(current && info && info.ready);
+    newSeasonBtn.classList.toggle('is-ready', ready);
+    let title = '';
+    if (current && info) {
+        title = ready ? t('newSeasonBtnReady')
+            : t('newSeasonBtnWait').replace('{h}', info.harvested).replace('{n}', info.total);
+    }
+    newSeasonBtn.title = title;
+}
+
 // Barns whose trough lasts under TODAY_FEED_LOW_DAYS days at today's need.
 function todayLowFeedBarns(farm) {
     const out = [];
@@ -124,16 +171,30 @@ function renderTodayPanel() {
     const farm = getCurrentFarm();
     const current = farm && viewedSeason === (farm.currentSeason || 1);
     const month = farm ? getFarmCurrentMonth(farm) : null;
+    const seasonEnd = farm && current ? seasonEndInfo(farm) : null;
+    refreshNewSeasonHint(farm, seasonEnd);
     if (!farm || !current || isEditMode || !month) { el.hidden = true; return; }
     el.hidden = false;
 
     const groups = todayFieldGroups(farm);
     const barns = todayLowFeedBarns(farm);
     const notes = loadNotes(farm).filter(n => (n.months || []).includes(month)).length;
-    const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0);
+    const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0)
+        + (seasonEnd.ready ? 1 : 0);
     const open = todayPanelOpen();
 
     let body = '';
+    if (seasonEnd.ready) {
+        const why = seasonEnd.total ? t('seasonEndHarvested').replace('{n}', seasonEnd.total) : t('seasonEndYear');
+        const next = (parseInt(farm.currentSeason, 10) || 1) + 1;
+        body += `<div class="today-group today-group--season">
+            <h3 class="today-group-title"><i class="fa-solid fa-forward" aria-hidden="true"></i> ${t('today_newSeason')}</h3>
+            <div class="today-chips"><button type="button" class="today-chip today-new-season" title="${escapeHtml(why)}">
+                <span class="today-chip-main">${escapeHtml(why)}</span>
+                <span class="today-chip-ha">${escapeHtml(t('newSeasonStart').replace('{n}', next))}</span>
+            </button></div>
+        </div>`;
+    }
     TODAY_GROUPS.forEach(g => {
         const items = groups[g.key];
         if (!items.length) return;
@@ -180,6 +241,7 @@ function renderTodayPanel() {
             renderTodayPanel();
             return;
         }
+        if (e.target.closest('.today-new-season')) { runNewSeason(); return; }
         const field = e.target.closest('.today-field');
         if (field) { openFieldModal(parseInt(field.dataset.idx, 10)); return; }
         const view = e.target.closest('.today-view');
