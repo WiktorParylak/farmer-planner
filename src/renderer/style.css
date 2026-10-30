@@ -7334,6 +7334,18 @@ button.tillage-switch-option {
   color: var(--color-surface);
 }
 
+/* Fertilization: natural only = rust outline, mineral (with or without natural) = green. */
+.treatment-chip--fert.is-natural {
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.treatment-chip--fert.is-mineral {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
 /* Ploughed this season: weeds get buried, nothing to spray. */
 .treatment-chip--weeds.is-skip {
   background-color: transparent;

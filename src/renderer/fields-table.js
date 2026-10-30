@@ -1020,6 +1020,13 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     if (e.target.closest('.field-open-callout-close')) { markFieldViewKnown(); return; }
     const fieldBtn = e.target.closest('.field-open');
     if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
+    const fertBtn = e.target.closest('.fert-open');
+    if (fertBtn && !isEditMode) {
+        openFieldModal(parseInt(fertBtn.dataset.idx, 10));
+        const target = document.querySelector('#field-modal-body .field-view-fert-target');
+        if (target) target.closest('section').scrollIntoView({ block: 'start' });
+        return;
+    }
     const workBtn = e.target.closest('.work-open');
     if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
@@ -1209,6 +1216,18 @@ function weedsChipHtml(field, idx, isPastSeason) {
     const icon = `<i class="fa-solid ${state === 'hoed' ? 'fa-broom' : 'fa-spray-can-sparkles'}" aria-hidden="true"></i>`;
     if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
     return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
+}
+
+// Fertilization: the "applied" ticks of the field's nitrogen plan — nothing /
+// natural only (rust outline) / mineral, with or without natural (green).
+// Click opens the field view at its nitrogen section.
+function fertChipHtml(field, idx, isPastSeason) {
+    if (!field.crop) return '';
+    const state = field.fertilizer ? 'mineral' : (field.manure ? 'natural' : '');
+    const title = t(field.fertilizer && field.manure ? 'fertChipBoth' : (state === 'mineral' ? 'fertChipMineral' : (state === 'natural' ? 'fertChipNatural' : 'fertChipNone')));
+    const cls = `treatment-chip treatment-chip--fert${state ? ' is-' + state : ''}`;
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">N</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle fert-open" data-idx="${idx}" title="${title} · ${t('fertChipClickHint')}">N</button>`;
 }
 
 // ---------- field names and search ----------
@@ -1422,7 +1441,7 @@ function renderFieldsTable(fields) {
                                 <span class="lime-letter">${t('limeLetter')}</span>
                             </${tag}>`;
                             const rollingHtml = rollingChipHtml(field, origIdx, isPastSeason);
-                            return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
+                            return limeHtml + fertChipHtml(field, origIdx, isPastSeason) + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
                 </tr>
