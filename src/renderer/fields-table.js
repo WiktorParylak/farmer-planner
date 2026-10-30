@@ -1077,15 +1077,29 @@ function applyEditBulk(action, bar) {
 // The job badge / line in the table: dir 1 ticks off the next job (left click
 // on the badge), -1 unticks the last one done (right click on the badge or
 // the "→" line). Same as ticking it in the work list (Sow sets the state).
-function stepFieldWork(idx, dir) {
+// unsow: right-click on the "Planted" badge — takes the sowing back. A sown
+// field's suggested list has no Sow step any more, so the same happens on the
+// "→" line when nothing in its list is ticked yet.
+function stepFieldWork(idx, dir, unsow) {
     const allFarms = getAllFarms();
     const farm = allFarms.find(f => f.id === currentFarmId);
     const field = farm && (farm.fields || [])[idx];
     if (!field) return;
+    // "Plant now" isn't sown yet: its right-click steps back like the job badge.
+    unsow = !!unsow && field.state === 'Planted';
     const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     let i = -1;
     if (dir > 0) i = list.findIndex(w => !w.done);
-    else for (let j = list.length - 1; j >= 0; j--) if (list[j].done) { i = j; break; }
+    else if (!unsow) for (let j = list.length - 1; j >= 0; j--) if (list[j].done) { i = j; break; }
+    if (dir < 0 && field.state === 'Planted' && (unsow || i < 0) && !list.some(w => w.step === 'sow')) {
+        field.state = 'To Plant';
+        syncSowStep(field);
+        saveFarmData(farm);
+        renderSeasonView();
+        showAutoSyncToast(t('workStepUndoneToast').replace('{job}', t('work_sow')));
+        return;
+    }
+    if (unsow) i = list.findIndex(w => w.step === 'sow' && w.done);
     if (i < 0) return;
     changeFieldWork(farm, field, idx, (work, f, fm) => setWorkStepDone(work, i, dir > 0, f, fm));
     saveFarmData(farm);
@@ -1095,10 +1109,11 @@ function stepFieldWork(idx, dir) {
 
 // Right-click on the N chip: the field's full fertilization plan.
 if (fieldsBody) fieldsBody.addEventListener('contextmenu', e => {
-    const workBtn = e.target.closest('.work-open');
+    // The "Planted" / "Plant now" badge too: back one job (from Planted that's Sow).
+    const workBtn = e.target.closest('.work-open, .state-toggle');
     if (workBtn && !isEditMode) {
         e.preventDefault();
-        stepFieldWork(parseInt(workBtn.dataset.idx, 10), -1);
+        stepFieldWork(parseInt(workBtn.dataset.idx, 10), -1, workBtn.classList.contains('state-toggle'));
         return;
     }
     const fertBtn = e.target.closest('.fert-open');
