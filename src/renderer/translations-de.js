@@ -147,6 +147,7 @@ const UI = {
     thHa: "ha",
     totalPlantedArea: "Geplante Fläche",
     fieldViewOpenHint: "Feld öffnen: Feldfrucht, Boden, pH, Düngung, Futternutzung, Arbeiten und Verlauf",
+    fieldOpenCallout: "Klicke auf eine Feldnummer — alles zum Feld in einem Fenster",
     fieldViewTitle: "Feld {field}",
     fieldName: "Name",
     fieldNamePlaceholder: "z. B. Hinter der Scheune",

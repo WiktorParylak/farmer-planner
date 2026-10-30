@@ -7521,8 +7521,125 @@ button.field-open {
   cursor: pointer;
 }
 
-button.field-open:hover .field-number-chip {
-  outline: 2px solid var(--color-primary-soft);
+/* The number (and name) opens the field view: it looks like a button. */
+button.field-open {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  border-radius: var(--radius-small);
+}
+
+button.field-open .field-number-chip {
+  box-shadow: 0 1px 0 var(--color-border-strong);
+  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+.field-open-icon {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--color-ink-faint);
+  transition: color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+
+button.field-open:hover .field-number-chip,
+button.field-open:focus-visible .field-number-chip {
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-surface));
+  box-shadow: 0 3px 8px rgba(28, 42, 32, 0.18);
+  transform: translateY(-1px);
+}
+
+button.field-open:hover .field-open-icon,
+button.field-open:focus-visible .field-open-icon {
+  color: var(--color-primary);
+  transform: translate(1px, -1px);
+}
+
+button.field-open:hover .field-name {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+button.field-open:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 2px;
+}
+
+/* One-time pointer to the field view, on the first row until it's opened. */
+.field-number-cell {
+  position: relative;
+}
+
+.field-open-callout {
+  position: absolute;
+  z-index: 5;
+  left: calc(100% - 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 8px 7px 12px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  box-shadow: var(--shadow-hover);
+  animation: field-open-callout-in 0.35s var(--ease-out) both;
+}
+
+.field-open-callout::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  margin-top: -6px;
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: var(--color-ink);
+}
+
+.field-open-callout-close {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.field-open-callout-close:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+button.field-open.has-callout .field-number-chip {
+  animation: field-open-pulse 2.4s ease-out 0.4s 3;
+}
+
+@keyframes field-open-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(63, 107, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0); }
+}
+
+@keyframes field-open-callout-in {
+  from { opacity: 0; transform: translate(-6px, -50%); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-open-callout,
+  button.field-open .field-number-chip { animation: none; }
 }
 
 .field-modal .modal-content.field-modal-content {

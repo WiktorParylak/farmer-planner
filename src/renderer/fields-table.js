@@ -501,6 +501,7 @@ function renderFieldModal() {
 }
 
 window.openFieldModal = function (idx) {
+    markFieldViewKnown();
     fieldModalIdx = idx;
     renderFieldModal();
     const modal = document.getElementById('field-modal');
@@ -995,6 +996,7 @@ function applyEditBulk(action, bar) {
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
+    if (e.target.closest('.field-open-callout-close')) { markFieldViewKnown(); return; }
     const fieldBtn = e.target.closest('.field-open');
     if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
     const workBtn = e.target.closest('.work-open');
@@ -1259,6 +1261,22 @@ function clearFieldSearch() {
     if (input) input.value = '';
 }
 
+// Settings come back as strings.
+function fieldViewKnown() {
+    return String(getSetting('fieldViewOpened')) === 'true';
+}
+
+function fieldOpenCalloutHtml() {
+    return `<span class="field-open-callout" role="note">${escapeHtml(t('fieldOpenCallout'))}<button type="button" class="field-open-callout-close" aria-label="${escapeHtml(t('close'))}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></span>`;
+}
+
+function markFieldViewKnown() {
+    if (fieldViewKnown()) return;
+    setSetting('fieldViewOpened', 'true');
+    document.querySelectorAll('.field-open-callout').forEach(el => el.remove());
+    document.querySelectorAll('.field-open.has-callout').forEach(el => el.classList.remove('has-callout'));
+}
+
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
     if (!fieldsBody) return;
@@ -1276,6 +1294,9 @@ function renderFieldsTable(fields) {
     let sownArea = 0;      // ...of which already sown
     const seasonHistory = loadSeasonHistory(farm, viewedSeason);
     const grassLimit = grasslandSeasonLimit(farm);
+    // Few players find the field view: the first row points at it until it's opened once.
+    const showOpenCallout = !isPastSeason && !fieldViewKnown() && !(typeof tut !== 'undefined' && tut.active);
+    let openCalloutShown = false;
 
     if (fields && fields.length > 0) {
         const numberTotals = getFieldNumberTotals(fields);
@@ -1372,11 +1393,13 @@ function renderFieldsTable(fields) {
                 fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" ${fertPlanOpenAttrs(planK, soilK, dispNum, field.crop, area)}>${t('fertPlanBtn')}</button></td>`;
             }
 
+            const calloutHere = showOpenCallout && !openCalloutShown;
+            if (calloutHere) openCalloutShown = true;
             htmlString += `
                 <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
                     <td class="field-number-cell"${numberCellTitle}>${isPastSeason
-                        ? `<span class="field-number-chips">${numberChipsHtml}</span>`
-                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}${leaseBadgeHtml(field, viewedSeason)}</td>
+                        ? `<span class="field-number-chips">${numberChipsHtml}</span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}`
+                        : `<button type="button" class="field-open${calloutHere ? ' has-callout' : ''}" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}<i class="fa-solid fa-up-right-from-square field-open-icon" aria-hidden="true"></i></span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}</button>${calloutHere ? fieldOpenCalloutHtml() : ''}`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
