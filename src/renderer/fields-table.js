@@ -1438,7 +1438,7 @@ function renderFieldsTable(fields) {
                             const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
                             const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limedNow ? ' is-limed-now' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${escapeHtml(limeHint)}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
                                 <span class="lime-fill"></span>
-                                <span class="lime-letter">${t('limeLetter')}</span>
+                                <span class="lime-letter" data-letter="${t('limeLetter')}">${t('limeLetter')}</span>
                             </${tag}>`;
                             const rollingHtml = rollingChipHtml(field, origIdx, isPastSeason);
                             return limeHtml + fertChipHtml(field, origIdx, isPastSeason) + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
@@ -1654,7 +1654,7 @@ function buildFieldEditCard(field, opts) {
                             <div class="treatments-cell">
                                 <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}${limePhForCard != null && limePhForCard >= 0.5 ? ' lime-strong' : ''}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
                                     <span class="lime-fill"></span>
-                                    <span class="lime-letter">${t('limeLetter')}</span>
+                                    <span class="lime-letter" data-letter="${t('limeLetter')}">${t('limeLetter')}</span>
                                 </button>
                                 <span class="fc-chip-text">${t('work_lime')}</span>
                             </div>

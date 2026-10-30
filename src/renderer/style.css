@@ -6647,11 +6647,26 @@ button.treatment-chip--lime.is-warning {
   box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 
-/* Black letter with a light halo: readable on the empty chip, on any fill
-   colour and in the dark theme. */
+/* Ink letter over the empty part of the chip, a white copy clipped to the
+   fill height over the coloured part — readable at any level and in the
+   dark theme (every fill colour is dark enough for white). */
+.treatment-chip--lime .lime-letter,
+.treatment-chip--lime .lime-letter::after {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .treatment-chip--lime .lime-letter {
-  color: #000;
-  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  color: var(--color-ink);
+}
+
+.treatment-chip--lime .lime-letter::after {
+  content: attr(data-letter);
+  color: #fff;
+  clip-path: inset(calc(100% - var(--lime-pct, 0%)) 0 0 0);
 }
 
 /* Limed this season: a clear ring so it's obvious it's been marked. */
