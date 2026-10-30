@@ -681,8 +681,34 @@ function fieldWork(field) {
 // Next step for the table button: your list, else the month-based suggestion.
 // The field's state is the one truth for sowing: a Sow step is done exactly
 // when the field is sown (the state badge and the checklist can't disagree).
+// Work found in the save (field.workDetected, see syncWorkFromSave) ticks its
+// steps too: a flag every step of that kind, a count that many of them (a
+// step ticked by hand uses one up); weeds and rolling follow their chips.
 function withSowFromState(field, list) {
-    return list.map(w => w.step === 'sow' ? { ...w, done: field.state === 'Planted' } : w);
+    const det = field.workDetected || {};
+    const left = {};
+    Object.keys(det).forEach(k => { if (typeof det[k] === 'number') left[k] = det[k]; });
+    return list.map(w => {
+        if (w.step === 'sow') return { ...w, done: field.state === 'Planted' };
+        if (left[w.step] > 0) {
+            left[w.step]--;
+            return w.done ? w : { ...w, done: true };
+        }
+        if (w.done) return w;
+        const found = det[w.step] === true
+            || (w.step === 'weeds' && (field.weeds === 'done' || field.weeds === 'hoed'))
+            || (w.step === 'roll' && !!field.rollingDone);
+        return found ? { ...w, done: true } : w;
+    });
+}
+
+// Unticking a step by hand drops what the save said about it.
+function forgetDetectedStep(field, step) {
+    const det = field.workDetected;
+    if (!det || det[step] === undefined) return;
+    if (typeof det[step] === 'number' && det[step] > 1) det[step]--;
+    else delete det[step];
+    if (!Object.keys(det).length) delete field.workDetected;
 }
 
 // Writes the state into the field's own list (after the state changed elsewhere).
@@ -697,12 +723,16 @@ function nextWorkStep(field, idx, farm) {
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-function workCellHtml(field, idx, isPastSeason, farm) {
+// asBadge: a field waiting for its crop shows its next job in place of the
+// "To plant" badge (same look), instead of the badge plus a "→ job" line.
+function workCellHtml(field, idx, isPastSeason, farm, asBadge) {
     if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
     const { next, done, total, own } = nextWorkStep(field, idx, farm);
     const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
-    const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
+    const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    const title = t(own ? 'workOpenHint' : 'workSuggestedHint');
+    if (asBadge) return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${title}"><span class="badge badge--to-plant badge--work">${escapeHtml(label)}${count}</span></button>`;
+    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${title}">→ ${escapeHtml(label)}${own && done ? count : ''}</button>`;
 }
 
 let workFieldIdx = null;
@@ -742,6 +772,12 @@ function changeFieldWork(farm, field, idx, fn) {
 // Ticks a step on or off, with what that step means for the field itself.
 function setWorkStepDone(work, i, done, field, farm) {
     work[i].done = done;
+    if (!done) forgetDetectedStep(field, work[i].step);
+    if (!done && work[i].step === 'weeds' && (field.weeds === 'done' || field.weeds === 'hoed')) {
+        field.weeds = 'needed';
+        markWeedsManual(farm, field);
+    }
+    if (!done && work[i].step === 'roll') field.rollingDone = false;
     // Sowing done = the field is sown.
     if (work[i].step === 'sow') field.state = done ? 'Planted' : 'To Plant';
     if (work[i].step === 'weeds' && done) {
@@ -1395,6 +1431,8 @@ function renderFieldsTable(fields) {
             areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
+            // Not sown and not in its sowing month (or late): the next job is the state.
+            let workAsState = false;
 
             if (field.state === 'Planted') {
                 stateDisplay = `<span class="badge badge--planted">${t('planted')}</span>`;
@@ -1406,6 +1444,7 @@ function renderFieldsTable(fields) {
                     stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
+                    workAsState = !isPastSeason && !!field.crop && !isCutCrop(field.crop);
                 }
             }
 
@@ -1442,7 +1481,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
+                    <td>${workAsState ? workCellHtml(field, origIdx, isPastSeason, farm, true) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay) + workCellHtml(field, origIdx, isPastSeason, farm)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
@@ -1524,7 +1563,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

@@ -7420,6 +7420,25 @@ button.tillage-switch-option {
   color: var(--color-ink-faint);
 }
 
+/* Field waiting for its crop: the next job sits where "To plant" was. */
+.work-open.work-open--badge {
+  display: inline-block;
+  margin-top: 0;
+  border-radius: var(--radius-pill);
+}
+
+.work-open--badge:hover {
+  text-decoration: none;
+}
+
+.work-open--badge:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.badge--work .work-count {
+  margin-left: 4px;
+}
+
 .work-count {
   font-family: var(--font-mono);
   font-weight: 600;

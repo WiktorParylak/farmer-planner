@@ -3083,7 +3083,9 @@ function readSaveFields(farm) {
                 growthState,
                 sown: fruitType !== 'UNKNOWN' && fruitType !== '' && fruitType !== 'FALLOW' && growthState > 0,
                 sprayLevel: parseInt(attrOf(tag, 'sprayLevel')) || 0,
+                sprayType: attrOf(tag, 'sprayType'),
                 limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
+                groundType: attrOf(tag, 'groundType'),
                 weedState: parseInt(attrOf(tag, 'weedState')) || 0
             });
         }
@@ -4212,6 +4214,76 @@ function syncWeedsFromSave(farm) {
     return changed;
 }
 
+// Field work done in the game, from fields.xml (read only). The work list
+// (fields-table.js, withSowFromState) shows these steps as done:
+// - sow: the planned crop grows on every game field of the row -> state "Planted";
+// - cultivate / plow: the ground is cultivated (seedbed, stubble tillage) or
+//   ploughed now, or the planned crop is already sown;
+// - roll: the ground shows roller lines / a rolled seedbed;
+// - fertilize / manure / lime: the field's spray or lime level went up since the
+//   last read (levels carry over from earlier seasons, so only a rise counts).
+//   Every game field of a row has to get it before it counts once.
+// One-off steps are flags (workDetected.cultivate = true), repeatable ones
+// counts (workDetected.fertilize = 2). New season clears both.
+const SAVE_GROUND_CULTIVATED = ['CULTIVATED', 'SEEDBED', 'ROLLED_SEEDBED', 'STUBBLE_TILLAGE', 'PLOWED'];
+const SAVE_GROUND_ROLLED = ['ROLLED_SEEDBED', 'ROLLER_LINES'];
+const SAVE_SPRAY_NATURAL = ['LIQUID_MANURE', 'MANURE', 'DIGESTATE'];
+function syncWorkFromSave(farm) {
+    const save = readSaveFields(farm);
+    if (!save.ok) return false;
+    const byId = {};
+    save.fields.forEach(g => { byId[g.id] = g; });
+    let changed = false;
+    (farm.fields || []).forEach((field, idx) => {
+        const ids = gameFieldIds(field);
+        const games = ids.map(id => byId[id]);
+        if (!games.length || games.some(g => !g)) return;
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]);
+        const det = { ...(field.workDetected || {}) };
+        const rise = { ...(field.workRise || {}) };
+        const seen = { ...(field.workSeen || {}) };
+        const grows = !!field.crop && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+        if (grows && field.state !== 'Planted') field.state = 'Planted';
+        if (field.crop && !isCutCrop(field.crop)) {
+            const allGround = list => games.every(g => list.includes(g.groundType));
+            if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
+            if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
+            if (allGround(SAVE_GROUND_ROLLED)) {
+                det.roll = true;
+                if (field.rolling) field.rollingDone = true;
+            }
+        }
+        // Rises of the spray / lime level, per game field.
+        games.forEach(g => {
+            const last = seen[g.id];
+            if (last && field.crop) {
+                if (g.sprayLevel > last.s) {
+                    const step = SAVE_SPRAY_NATURAL.includes(g.sprayType) ? 'manure' : 'fertilize';
+                    rise[step] = [...new Set([...(rise[step] || []), g.id])];
+                }
+                if (g.limeLevel > last.l) rise.lime = [...new Set([...(rise.lime || []), g.id])];
+            }
+            seen[g.id] = { s: g.sprayLevel, l: g.limeLevel };
+        });
+        Object.keys(rise).forEach(step => {
+            if (!ids.every(id => rise[step].includes(id))) return;
+            delete rise[step];
+            if (step === 'manure') field.manure = true;
+            if (step === 'fertilize') field.fertilizer = true;
+            // Manure counts for a Manure step when the list has one left, else for Fertilize.
+            const list = fieldWork(field) || suggestedWork(field, idx, farm);
+            const key = step === 'manure' && !list.some(w => w.step === 'manure') ? 'fertilize' : step;
+            det[key] = (typeof det[key] === 'number' ? det[key] : 0) + 1;
+        });
+        field.workSeen = seen;
+        if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
+        if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
+        syncSowStep(field);
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]) !== before) changed = true;
+    });
+    return changed;
+}
+
 // "12-13" -> ["12", "13"]
 function gameFieldIds(field) {
     return String(field.number || '').split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
@@ -4283,6 +4355,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
+    if (syncWorkFromSave(farm)) changed = true;
     if (syncWeedsFromSave(farm)) changed = true;
     if (syncLeasesFromSave(farm)) changed = true;
 
@@ -4794,6 +4867,10 @@ async function runNewSeason({ intro = '' } = {}) {
                 delete field.weedsManual;
                 delete field.work;
                 delete field.workCleared;
+                // Work found in the save belongs to the season just archived
+                // (workSeen stays: the levels to compare the next read with).
+                delete field.workDetected;
+                delete field.workRise;
                 // Undo only covers the season the liming was made in.
                 delete field.limePrev;
             });
