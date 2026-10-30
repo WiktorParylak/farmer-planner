@@ -95,7 +95,9 @@ function devFields() {
         // Sown, weeds to spray ("What to do today" lists it).
         devField("14", 3.1, "Oat", "MARCH", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true, weeds: "needed" }),
         // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
-        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } })
+        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } }),
+        // Nothing planned and no cycle: giving it one fills in the step's crop.
+        devField("16", 0.9, "", "", "To Plant", null, {})
     ];
 }
 

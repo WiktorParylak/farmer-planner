@@ -4,6 +4,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.10.1 — unreleased
 
+**Changed**
+- **A crop rotation fills in an empty field**: giving a field with nothing planned this season a cycle (or another step) — in the field view, the *Crop rotation* plan or Edit season — puts the step's crop on it right away, with its sowing month and catch crop, instead of waiting for the next season or its sowing window. A crop you planned is never replaced, and a fallow step leaves the field empty.
+
 **Fixed**
 - **What to do today listed weeds on fields not sown yet**: the game's weeds on a field waiting for its crop belong to what grows there now (last crop, grass, stubble), and cultivating or sowing clears them. Those fields no longer show under *Weeds to control* or get *· Weeds* on their sowing chip, and syncing with the save no longer marks weeds on them.
 - **Mowing and harvest on fields not sown yet**: a catch crop that follows the main crop (sown at or after its harvest, as crop rotation plans it) put *Fertilize, Mow, Bale, Collect & wrap* at the top of the suggested work list, so *What to do today* asked to mow an unsown field. Its steps now come after the main crop's; a catch crop sown before the main crop (green rye before beet) still comes first. And with the save at hand, *Harvest this month* lists a field only when the game field really grows the planned crop — not when it's ticked as sown while something else still grows there.

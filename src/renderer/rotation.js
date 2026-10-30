@@ -434,10 +434,52 @@ document.addEventListener('change', e => {
     if (!stepSel) return;
     const crop = row.querySelector('.field-crop');
     const number = row.querySelector('.field-number');
-    const probe = { number: number ? number.value : '', crop: crop ? crop.value : '' };
+    // A crop this card filled in from a cycle doesn't count as the field's own.
+    const own = crop && crop.value && crop.value !== row.dataset.rotationCrop ? crop.value : '';
+    const probe = { number: number ? number.value : '', crop: own };
     const idx = rot ? detectRotationSlot(rot, probe, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1) : 0;
     stepSel.innerHTML = rotationStepOptionsHtml(rot, idx);
+    fillEditCardFromRotation(row, rot);
 });
+
+document.addEventListener('change', e => {
+    const sel = e.target;
+    if (!sel.classList || !sel.classList.contains('field-rotation-step')) return;
+    const row = sel.closest('tr');
+    const cycle = row && row.querySelector('.field-rotation');
+    if (cycle) fillEditCardFromRotation(row, rotationById(getCurrentFarm(), cycle.value));
+});
+
+// Edit card: an empty crop (or one this card filled in before) takes the
+// chosen step's crop, sowing month and catch crop, so they show before saving.
+function fillEditCardFromRotation(row, rot) {
+    const crop = row.querySelector('.field-crop');
+    const sow = row.querySelector('.field-sow');
+    const stepSel = row.querySelector('.field-rotation-step');
+    if (!crop || !sow || !stepSel) return;
+    if (crop.value && crop.value !== row.dataset.rotationCrop) return;
+    const slot = rot ? rotationSlotAt(rot, parseInt(stepSel.value, 10) || 0) : null;
+    if (!slot || !slot.crop || !crop.querySelector(`option[value="${CSS.escape(slot.crop)}"]`)) {
+        // Cycle removed or a fallow step: take back what this card filled in.
+        if (row.dataset.rotationCrop) {
+            crop.value = '';
+            onCropChange(crop);
+            delete row.dataset.rotationCrop;
+        }
+        return;
+    }
+    crop.value = slot.crop;
+    onCropChange(crop);
+    sow.value = rotationSowMonth(slot);
+    row.dataset.rotationCrop = slot.crop;
+    const catchSel = row.querySelector('.field-catch-crop');
+    const catchSow = row.querySelector('.field-catch-sow');
+    if (catchSel && !catchSel.value && slot.catchCrop && catchSel.querySelector(`option[value="${CSS.escape(slot.catchCrop)}"]`)) {
+        catchSel.value = slot.catchCrop;
+        onCatchCropChange(catchSel);
+        if (catchSow) catchSow.value = rotationCatchSowMonth(slot.crop, sow.value, slot.catchCrop);
+    }
+}
 
 // Reads the cycle back from an edit card (keeps `filled` when nothing changed).
 function readRotationInputs(row, farm, previous) {
@@ -477,11 +519,29 @@ function setFieldCycle(farm, field, rotId) {
     const rot = rotationById(farm, rotId);
     if (!rot) { delete field.rotation; return; }
     setFieldRotationSlot(field, rot, detectRotationSlot(rot, field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1));
+    fillEmptyFieldFromRotation(farm, field);
 }
 
 function setFieldCycleStep(farm, field, index) {
     const info = fieldRotationInfo(farm, field);
-    if (info) setFieldRotationSlot(field, info.rot, parseInt(index, 10) || 0);
+    if (!info) return;
+    setFieldRotationSlot(field, info.rot, parseInt(index, 10) || 0);
+    fillEmptyFieldFromRotation(farm, field);
+}
+
+// A field with nothing planned this season takes its step's crop as soon as
+// it gets a cycle (or another step). A planned crop is never replaced, and a
+// fallow step fills nothing. Marked filled, so the month fill leaves it alone;
+// the plan's keys (number + crop) move along, as when the crop is picked by hand.
+function fillEmptyFieldFromRotation(farm, field) {
+    const info = field.crop ? null : fieldRotationInfo(farm, field);
+    if (!info || !info.slot.crop) return false;
+    const before = JSON.parse(JSON.stringify(farm.fields));
+    applyRotationSlot(field, info.slot);
+    field.rotation.filled = farm.currentSeason || 1;
+    migrateFieldKeys(farm, before, farm.fields);
+    showAutoSyncToast(t('rotFieldFilled').replace('{crop}', translateCropName(field.crop)), 4000);
+    return true;
 }
 
 // Changes from the field view section (wired in fields-table.js).

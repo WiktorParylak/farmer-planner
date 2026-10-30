@@ -718,6 +718,7 @@ const UI = {
     rotMonthFillAsk: "Die nächste Frucht kann diesen oder nächsten Monat gesät werden:\n{list}\n\nEintragen?",
     rotMonthFillConfirm: "Eintragen",
     rotMonthFilled: "Aus der Fruchtfolge: {list}",
+    rotFieldFilled: "Kultur aus der Fruchtfolge: {crop}",
     rotNewSeasonInfo: "{n} Feld(er) bekommen ihre nächste Frucht aus der Fruchtfolge.",
     rotNewSeasonSkip: "Ohne Fruchtfolge",
     rotNewSeasonDone: "Aus der Fruchtfolge: {list}",
