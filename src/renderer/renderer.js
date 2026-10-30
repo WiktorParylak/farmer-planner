@@ -1992,7 +1992,8 @@ let fieldSoilImportMsg = '';
 // "Load soils from the game": fills rates.fieldSoil for every field whose
 // number(s) exist on the map. A combined field ("168-169", "69-70-71") gets
 // the pixel-weighted mix of its parts. Returns the status line (HTML-safe text).
-function importFieldSoilFromGame(farm) {
+// onlyKey: just that field (the field view's button).
+function importFieldSoilFromGame(farm, onlyKey) {
     const res = readFieldSoilFromSave(farm && farm.saveGamePath);
     if (!res.ok) {
         const reasons = t('fieldSoilImportReasons') || {};
@@ -2014,6 +2015,7 @@ function importFieldSoilFromGame(farm) {
     let filled = 0;
     const missing = [], areaOff = [];
     Object.keys(areaByKey).forEach(key => {
+        if (onlyKey && key !== onlyKey) return;
         const ids = key.split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
         if (!ids.length) return;
         const parts = ids.map(id => res.fields[id]);
@@ -2040,6 +2042,11 @@ function importFieldSoilFromGame(farm) {
     });
     saveSupplyRates(rates);
 
+    if (onlyKey) {
+        if (!filled) return t('fieldViewSoilNotFound').replace('{n}', escapeHtml(onlyKey));
+        return t('fieldViewSoilImported').replace('{map}', escapeHtml(res.mapTitle || res.modName || ''))
+            + (areaOff.length ? ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', '))) : '');
+    }
     let msg = t('fieldSoilImportDone').replace('{n}', filled).replace('{map}', escapeHtml(res.mapTitle || res.modName || ''));
     if (missing.length) msg += ' ' + t('fieldSoilImportMissing').replace('{list}', escapeHtml(missing.join(', ')));
     if (areaOff.length) msg += ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', ')));

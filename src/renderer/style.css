@@ -7782,6 +7782,23 @@ button.field-open.has-callout .field-number-chip {
   gap: 8px;
 }
 
+.field-view-soil-import-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.field-view-soil-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field-view-soil-msg {
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+
 .field-view-crop-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

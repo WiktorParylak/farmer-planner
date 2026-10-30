@@ -236,6 +236,17 @@ function carriedCaptionHtml(field) {
     return `<span class="ha-caption carried-caption" title="${escapeHtml(hint)}"><i class="fa-solid fa-arrow-turn-down" aria-hidden="true"></i> ${escapeHtml(t('carriedCaption').replace('{s}', field.carriedFrom))}</span>`;
 }
 
+// "Load from the game" in the field view's soil section: this field only, from
+// Precision Farming's soil map (same as Field soil type → Load soils from the game).
+function fieldViewSoilImportHtml(farm) {
+    const hasSave = !!(farm && farm.saveGamePath);
+    const pfOn = hasSave && modEnabled('precisionFarming');
+    const why = !hasSave ? t('fieldSoilImportNoPath') : (pfOn ? t('fieldViewSoilImportHint') : t('fieldSoilImportNoPf'));
+    const msg = fieldViewSoilMsg;
+    fieldViewSoilMsg = '';
+    return `<div class="field-view-soil-import-row"><button type="button" class="settings-btn field-view-soil-import" title="${escapeHtml(why)}" ${pfOn ? '' : 'disabled'}><i class="fa-solid fa-download" aria-hidden="true"></i> ${t('fieldViewSoilImport')}</button>${pfOn ? '' : `<span class="settings-hint">${escapeHtml(why)}</span>`}</div>${msg ? `<p class="settings-hint field-view-soil-msg">${msg}</p>` : ''}`;
+}
+
 function catchCropCaption(field) {
     if (!field.catchCrop) return '';
     const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
@@ -372,6 +383,8 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
 // nitrogen and the fertilization plan, feed use, cuts, work, and what grew
 // there in past seasons. Opened from the field number in the table.
 let fieldModalIdx = null;
+// One-shot status line under the soil section after "Load from the game".
+let fieldViewSoilMsg = '';
 
 // FS25_MoistureSystem: today's moisture for the main and catch crop, and the
 // yield factor when one is harvested this month (see fieldMoistureInfo).
@@ -432,7 +445,7 @@ function renderFieldModal() {
     html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
             <span>${escapeHtml(soilLabel(s.id))}</span>
             <input type="number" min="0" max="100" step="1" class="field-view-soil" data-soil="${s.id}" value="${mix[s.id] != null ? mix[s.id] : ''}" placeholder="0">
-        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>`);
+        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>${fieldViewSoilImportHtml(farm)}`);
 
     // pH and lime.
     const lime = getLimeStatus(field, idx, season, rates);
@@ -613,6 +626,11 @@ window.openFieldModal = function (idx) {
         if (!field) return;
         if (handleRotationFieldViewClick(e.target, farm, field)) {
             saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
+        if (e.target.closest('.field-view-soil-import')) {
+            fieldViewSoilMsg = importFieldSoilFromGame(farm, fertPlanSoilKey(field, idx));
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
             return;
         }
