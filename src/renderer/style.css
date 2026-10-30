@@ -3489,6 +3489,13 @@ span.tillage-switch-option {
   color: var(--color-ink-soft);
 }
 
+/* Still growing from the last season: clears itself after the harvest. */
+.carried-caption {
+  color: var(--color-accent-dark);
+  font-weight: 600;
+  cursor: help;
+}
+
 .table-footer-controls #total-ha-sum {
   margin-left: auto;
 }

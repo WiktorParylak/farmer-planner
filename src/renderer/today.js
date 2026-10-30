@@ -77,37 +77,76 @@ function todayFieldGroups(farm) {
     return groups;
 }
 
-// When to start a new season: a new season clears every field, so it is time
-// once this season's crops are in. A field counts as harvested once its
-// harvest month (crop calendar, from its sowing month) has gone by — or, with
-// the save at hand, in that month once the game field no longer grows the
-// crop. Grass and other cut crops don't hold it up, nor a missed sowing.
-// A farm with no field crops to go by falls back to a year gone by in the game.
-function seasonEndInfo(farm) {
-    const month = getFarmCurrentMonth(farm);
+// Where a field's crop of this season stands: 'harvested', 'growing',
+// 'unsown' or null (no annual crop to go by — grass and other cut crops, a
+// missed sowing). Harvested once its harvest month (crop calendar, from its
+// sowing month) has gone by — or, with the save at hand, in that month once
+// the game field no longer grows the crop.
+function fieldHarvestState(field, month, saveById, yearPassed) {
+    if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return null;
+    const sow = (field.sowingMonth || '').toUpperCase();
+    const s = ALL_MONTHS.indexOf(sow);
+    const h = ALL_MONTHS.indexOf((CROP_CALENDAR[field.crop] || {})[sow] || '');
+    if (s < 0 || h < 0) return null;
+    if (field.state !== 'Planted') return isSowingOverdue(field, month) ? null : 'unsown';
     const m = ALL_MONTHS.indexOf(month || '');
-    const saveById = farm.saveGamePath ? todaySaveFieldsById(farm) : null;
+    if (m < 0) return 'growing';
+    const untilHarvest = (h - s + 12) % 12, sinceSowing = (m - s + 12) % 12;
+    const gone = !todayGrowsPlannedCrop(field, saveById);
+    return sinceSowing > untilHarvest || (gone && (sinceSowing === untilHarvest || yearPassed)) ? 'harvested' : 'growing';
+}
+
+function seasonHarvestContext(farm) {
     const year = parseInt(farm.yearNumber, 10), started = parseInt(farm.seasonStartedGameYear, 10);
-    const yearPassed = !!farm.saveGamePath && year > 0 && started > 0 && year > started;
-    let total = 0, harvested = 0;
-    (farm.fields || []).forEach(field => {
-        if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return;
-        const sow = (field.sowingMonth || '').toUpperCase();
-        const s = ALL_MONTHS.indexOf(sow);
-        const h = ALL_MONTHS.indexOf((CROP_CALENDAR[field.crop] || {})[sow] || '');
-        if (s < 0 || h < 0) return;
-        if (field.state !== 'Planted') {
-            if (!isSowingOverdue(field, month)) total++;
-            return;
-        }
-        total++;
-        if (m < 0) return;
-        const untilHarvest = (h - s + 12) % 12, sinceSowing = (m - s + 12) % 12;
-        const gone = !todayGrowsPlannedCrop(field, saveById);
-        if (sinceSowing > untilHarvest || (gone && (sinceSowing === untilHarvest || yearPassed))) harvested++;
+    return {
+        month: getFarmCurrentMonth(farm),
+        saveById: farm.saveGamePath ? todaySaveFieldsById(farm) : null,
+        yearPassed: !!farm.saveGamePath && year > 0 && started > 0 && year > started
+    };
+}
+
+// Fields a new season would carry over: their crop is still in the ground.
+function seasonCarryIndexes(farm) {
+    const ctx = seasonHarvestContext(farm);
+    const out = [];
+    (farm.fields || []).forEach((field, i) => {
+        if (fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'growing') out.push(i);
     });
-    const ready = total ? harvested === total : yearPassed;
-    return { total, harvested, yearPassed, ready };
+    return out;
+}
+
+// When to start a new season. Fields still growing go over to the new season
+// with their crop (runNewSeason), so it needn't wait for the last harvest —
+// it's time once a harvested field's next crop (its rotation step) is to be
+// sown this month or next, once most of the area is harvested, or once every
+// crop is in. A farm with no field crops to go by falls back to a year gone
+// by in the game. why: the reason to show.
+function seasonEndInfo(farm) {
+    const ctx = seasonHarvestContext(farm);
+    let total = 0, harvested = 0, area = 0, harvestedArea = 0, sowSoon = null;
+    (farm.fields || []).forEach(field => {
+        const state = fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed);
+        if (!state || field.carriedFrom) return;
+        const ha = parseFloat(field.area) || 0;
+        total++;
+        area += ha;
+        if (state !== 'harvested') return;
+        harvested++;
+        harvestedArea += ha;
+        const info = !sowSoon && typeof fieldRotationInfo === 'function' ? fieldRotationInfo(farm, field) : null;
+        if (!info) return;
+        const next = rotationSlotAt(info.rot, info.index + 1);
+        const when = next.crop ? rotationSowMonthSoon(next, ctx.month) : '';
+        if (when) sowSoon = { field, crop: next.crop, month: when };
+    });
+    let why = '';
+    if (total && harvested === total) why = t('seasonEndHarvested').replace('{n}', total);
+    else if (sowSoon) {
+        why = t('seasonEndSowSoon').replace('{n}', sowSoon.field.number)
+            .replace('{crop}', translateCropName(sowSoon.crop)).replace('{m}', translateMonth(sowSoon.month));
+    } else if (area > 0 && harvestedArea * 2 >= area) why = t('seasonEndMost').replace('{h}', harvested).replace('{n}', total);
+    else if (!total && ctx.yearPassed) why = t('seasonEndYear');
+    return { total, harvested, yearPassed: ctx.yearPassed, ready: !!why, why };
 }
 
 // The New season button says when to use it; once it's time it stands out.
@@ -185,7 +224,7 @@ function renderTodayPanel() {
 
     let body = '';
     if (seasonEnd.ready) {
-        const why = seasonEnd.total ? t('seasonEndHarvested').replace('{n}', seasonEnd.total) : t('seasonEndYear');
+        const why = seasonEnd.why;
         const next = (parseInt(farm.currentSeason, 10) || 1) + 1;
         body += `<div class="today-group today-group--season">
             <h3 class="today-group-title"><i class="fa-solid fa-forward" aria-hidden="true"></i> ${t('today_newSeason')}</h3>

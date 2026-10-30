@@ -229,6 +229,13 @@ document.querySelectorAll('#fields-table thead [data-sort]').forEach(th => {
     });
 });
 
+// A crop carried over from the last season: it clears itself after its harvest.
+function carriedCaptionHtml(field) {
+    if (!field.carriedFrom) return '';
+    const hint = t('carriedHint').replace('{s}', field.carriedFrom);
+    return `<span class="ha-caption carried-caption" title="${escapeHtml(hint)}"><i class="fa-solid fa-arrow-turn-down" aria-hidden="true"></i> ${escapeHtml(t('carriedCaption').replace('{s}', field.carriedFrom))}</span>`;
+}
+
 function catchCropCaption(field) {
     if (!field.catchCrop) return '';
     const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
@@ -1582,7 +1589,7 @@ function renderFieldsTable(fields) {
                         ? `<span class="field-number-chips">${numberChipsHtml}</span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}`
                         : `<button type="button" class="field-open${calloutHere ? ' has-callout' : ''}" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}<i class="fa-solid fa-up-right-from-square field-open-icon" aria-hidden="true"></i></span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}</button>${calloutHere ? fieldOpenCalloutHtml() : ''}`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
-                    <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
+                    <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${carriedCaptionHtml(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
                     <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel, stateUrgent) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
@@ -1666,7 +1673,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'carriedFrom', 'carriedCrop'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

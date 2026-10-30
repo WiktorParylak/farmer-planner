@@ -326,7 +326,8 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
     const filled = [];
     (farm.fields || []).forEach(field => {
         const info = fieldRotationInfo(farm, field);
-        if (!info) return;
+        // A carried-over crop moves on after its harvest (settleCarriedFields).
+        if (!info || field.carriedFrom) return;
         setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
         if (!fill) return;
         applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1));
