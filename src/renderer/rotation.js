@@ -37,18 +37,39 @@ function rotationCropColor(crop) {
 // Rules for the warnings (FS25 itself has no rotation bonus — these are the
 // usual farming rules of thumb).
 const ROTATION_CEREALS = ['Wheat', 'Barley', 'Oat', 'Rye', 'Triticale', 'Spelt', 'Sorghum'];
-const ROTATION_BREAK_CROPS = ['Canola', 'Sugarbeet'];   // at most every 3rd season
-const ROTATION_BREAK_GAP = 3;
+// Crops that need a break (soil-borne disease and pests): at most every n-th
+// season. Canola (clubroot, blackleg) and sugar beet (nematodes, Rhizoctonia)
+// 1 in 3; potato (nematodes, scab), sunflower (Sclerotinia) and peas (foot rot)
+// 1 in 4 — the usual advice is 3-4 and 4-6 years.
+const ROTATION_BREAK_CROPS = { Canola: 3, Sugarbeet: 3, Potato: 4, Sunflower: 4, Pea: 4 };
 const cropIn = (list, crop) => !!crop && list.some(c => cropOrderKey(c) === cropOrderKey(crop));
 
 // Templates to start from: copied into the farm, then editable. Crops the
 // map doesn't have are left out (a template with fewer than 2 steps isn't offered).
+// Built on the game's calendars: an autumn crop (wheat, barley Sep-Oct, canola
+// Aug-Sep) follows a crop harvested by then; a spring crop (beet, potato,
+// maize, peas, sunflower) after a cereal gets oilseed radish over the winter
+// gap, which also feeds the next crop when it's worked in. Every template
+// passes the warnings below (no crop twice, at most two cereals in a row,
+// break crops within their gap). sowingMonth only where the default (the
+// window's first month) comes too early: a cereal after a September harvest
+// goes in in October, grass after the barley harvest in August. A map whose
+// calendar doesn't allow it falls back to the default (rotationSowMonth).
 const ROTATION_TEMPLATES = [
-    { key: 'norfolk', steps: [{ crop: 'Wheat' }, { crop: 'Sugarbeet' }, { crop: 'Barley' }, { crop: 'Canola' }] },
+    // Norfolk four-course: cereal, root crop, cereal, legume (clover -> peas).
+    { key: 'norfolk', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Pea' }] },
+    // Canola after barley (harvested in time for an August sowing), wheat after canola.
     { key: 'cerealsCanola', steps: [{ crop: 'Canola' }, { crop: 'Wheat' }, { crop: 'Barley' }] },
-    { key: 'dairy', steps: [{ crop: 'Maize' }, { crop: 'Grass', seasons: 3 }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }] },
-    { key: 'roots', steps: [{ crop: 'Potato' }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley' }] },
-    { key: 'catchCrops', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', catchCrop: 'Oilseedradish' }, { crop: 'Soybean' }] }
+    // Peas leave nitrogen for the wheat after them; canola every fifth season.
+    { key: 'pea', steps: [{ crop: 'Pea' }, { crop: 'Wheat' }, { crop: 'Canola' }, { crop: 'Wheat' }, { crop: 'Barley', catchCrop: 'Oilseedradish' }] },
+    // Silage maize twice (not in a row), grass sown after the barley harvest.
+    { key: 'dairy', steps: [{ crop: 'Maize' }, { crop: 'Wheat', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER' }, { crop: 'Grass', sowingMonth: 'AUGUST', seasons: 3 }] },
+    { key: 'roots', steps: [{ crop: 'Potato' }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }] },
+    { key: 'catchCrops', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Soybean' }] },
+    // Warm, dry maps: sunflower one season in four, wheat straight after its September harvest.
+    { key: 'sunflower', steps: [{ crop: 'Sunflower' }, { crop: 'Wheat', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }] },
+    // Southern maps: cotton with maize and soybeans in between.
+    { key: 'cotton', steps: [{ crop: 'Cotton' }, { crop: 'Maize' }, { crop: 'Soybean' }] }
 ];
 
 // The map's own spelling of a crop, or '' when the map doesn't have it.
@@ -60,7 +81,7 @@ function rotationTemplateSteps(tpl) {
     return tpl.steps.map(s => ({
         crop: rotationMapCrop(s.crop),
         catchCrop: s.catchCrop ? rotationMapCrop(s.catchCrop) : '',
-        sowingMonth: '',
+        sowingMonth: s.sowingMonth || '',
         seasons: s.seasons || (isPerennialCrop(s.crop) ? grasslandSeasonLimit(getCurrentFarm()) : 1)
     })).filter(s => s.crop);
 }
@@ -250,13 +271,14 @@ function rotationSequenceWarnings(seq, fromIdx, grassLimit) {
             break;
         }
     }
-    ROTATION_BREAK_CROPS.forEach(bc => {
+    Object.keys(ROTATION_BREAK_CROPS).forEach(bc => {
+        const minGap = ROTATION_BREAK_CROPS[bc];
         const at = seq.map((e, i) => (e.crops.some(c => cropOrderKey(c) === cropOrderKey(bc)) ? i : -1)).filter(i => i >= 0);
         for (let j = 1; j < at.length; j++) {
             if (at[j] < fromIdx) continue;
             const gap = at[j] - at[j - 1];
-            if (gap > 1 && gap < ROTATION_BREAK_GAP) {
-                warn.push({ level: 'red', text: t('rotWarnBreak').replace('{crop}', translateCropName(bc)).replace('{n}', ROTATION_BREAK_GAP).replace('{a}', label(at[j - 1])).replace('{b}', label(at[j])) });
+            if (gap > 1 && gap < minGap) {
+                warn.push({ level: 'red', text: t('rotWarnBreak').replace('{crop}', translateCropName(bc)).replace('{n}', minGap).replace('{a}', label(at[j - 1])).replace('{b}', label(at[j])) });
                 break;
             }
         }
@@ -769,7 +791,7 @@ function addRotation(farm, rot) {
         }
         if (el.classList.contains('rotation-template') && el.value) {
             const tpl = ROTATION_TEMPLATES.find(x => x.key === el.value);
-            if (tpl) addRotation(farm, { name: t('rotTpl_' + tpl.key).split(' (')[0], steps: rotationTemplateSteps(tpl) });
+            if (tpl) addRotation(farm, { name: t('rotTpl_' + tpl.key).split(/ \(| — /)[0], steps: rotationTemplateSteps(tpl) });
             return;
         }
         if (el.classList.contains('rotation-copy-farm') && el.value) {
