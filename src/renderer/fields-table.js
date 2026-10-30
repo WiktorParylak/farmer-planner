@@ -496,9 +496,13 @@ function renderFieldModal() {
         work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
             <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
     } else if (field.crop) {
-        const { next, done, total } = nextWorkStep(field, idx, farm);
-        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t(total ? 'workAllDone' : 'workEmpty')}</p>
-            <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
+        // The work list itself, ticked off right here; reorder / add / remove in the work window.
+        const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+        work.push((list.length
+            ? `<ul class="field-view-work-list">${list.map((w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label></li>`).join('')}</ul>`
+            : `<p class="settings-hint">${t('workEmpty')}</p>`)
+            + `<p class="settings-hint">${t(fieldWork(field) ? 'workIntro' : 'workIntroSuggested')}</p>
+            <button type="button" class="settings-btn field-view-work"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${t('workEditList')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
     const rollingLine = cropNeedsRolling(field.crop) ? ' · ' + t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff') : '';
@@ -579,6 +583,11 @@ window.openFieldModal = function (idx) {
         } else if (el.classList.contains('field-view-fert')) {
             setFertPlanValue(fertPlanKey(field, fieldModalIdx), el.dataset.key, el.value);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-work-check')) {
+            const i = +el.dataset.i;
+            changeFieldWork(farm, field, fieldModalIdx, (work, f, fm) => setWorkStepDone(work, i, el.checked, f, fm));
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-fert-done')) {
             field[el.dataset.prop] = el.checked;
             saveFarmData(farm);
@@ -605,6 +614,7 @@ window.openFieldModal = function (idx) {
             openCutsModal(idx);
         } else if (e.target.closest('.field-view-work')) {
             close();
+            workReturnToField = idx;
             openWorkModal(idx);
         }
     });
@@ -723,19 +733,22 @@ function nextWorkStep(field, idx, farm) {
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-// asBadge: a field waiting for its crop shows its next job in place of the
-// "To plant" badge (same look), instead of the badge plus a "→ job" line.
-function workCellHtml(field, idx, isPastSeason, farm, asBadge) {
-    if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
-    const { next, done, total, own } = nextWorkStep(field, idx, farm);
-    const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
-    const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    const title = t(own ? 'workOpenHint' : 'workSuggestedHint') + ' · ' + t('workUndoHint');
-    if (asBadge) return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${t('workBadgeHint')}"><span class="badge badge--to-plant badge--work">${escapeHtml(label)}${count}</span></button>`;
-    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${title}">→ ${escapeHtml(label)}${own && done ? count : ''}</button>`;
+// State column of a field with a crop (current season): one badge with the
+// next job, in the colour of the field's state (badgeCls: planted / plant now /
+// overdue / to plant; stateLabel in the tooltip). Click ticks the job off,
+// right-click steps back; the list itself is edited in the field view.
+// With every job done it shows the state itself.
+function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
+    const { next, done, total } = nextWorkStep(field, idx, farm);
+    const label = next ? t('work_' + next.step) : stateLabel;
+    const count = next && done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    const title = stateLabel + ' · ' + t('workBadgeHint');
+    return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${escapeHtml(label)}${count}</span></button>`;
 }
 
 let workFieldIdx = null;
+// Opened from the field view: closing the work window goes back there.
+let workReturnToField = null;
 
 function renderWorkModal() {
     const farm = getCurrentFarm();
@@ -813,7 +826,12 @@ window.openWorkModal = function (idx) {
     const modal = document.getElementById('work-modal');
     const listEl = document.getElementById('work-list');
     if (!modal || !listEl) return;
-    const close = () => { closeModal(modal); workFieldIdx = null; renderSeasonView(); };
+    const close = () => {
+        closeModal(modal);
+        workFieldIdx = null;
+        renderSeasonView();
+        if (workReturnToField != null) { const i = workReturnToField; workReturnToField = null; openFieldModal(i); }
+    };
     document.getElementById('work-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -1504,20 +1522,22 @@ function renderFieldsTable(fields) {
             areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
-            // Not sown and not in its sowing month (or late): the next job is the state.
-            let workAsState = false;
+            // A field with a crop shows its next job in a badge of its state's colour.
+            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant');
 
             if (field.state === 'Planted') {
                 stateDisplay = `<span class="badge badge--planted">${t('planted')}</span>`;
+                stateBadge = 'badge--planted'; stateLabel = t('planted');
             } else {
                 const sowMonth = field.sowingMonth ? field.sowingMonth.toUpperCase() : "";
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
+                    stateBadge = 'badge--plant-now'; stateLabel = t('plantNow');
                 } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
                     stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
+                    stateBadge = 'badge--overdue'; stateLabel = t('overdue') + ' — ' + t('overdueHint');
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
-                    workAsState = !isPastSeason && !!field.crop && !isCutCrop(field.crop);
                 }
             }
 
@@ -1554,7 +1574,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${workAsState ? workCellHtml(field, origIdx, isPastSeason, farm, true) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay) + workCellHtml(field, origIdx, isPastSeason, farm)}</td>
+                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
