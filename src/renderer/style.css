@@ -6265,19 +6265,20 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
-.tmr-shares-sum,
-.tmr-shares-error {
+/* .tmr-shares in front: .hub-view p would win otherwise. */
+.tmr-shares .tmr-shares-sum,
+.tmr-shares .tmr-shares-error {
   margin: 0;
   text-align: left;
   font-size: var(--fs-sm);
 }
 
-.tmr-shares-sum {
+.tmr-shares .tmr-shares-sum {
   font-weight: 600;
   color: var(--color-ink-soft);
 }
 
-.tmr-shares-sum.is-off {
+.tmr-shares .tmr-shares-sum.is-off {
   color: var(--color-rust);
 }
 

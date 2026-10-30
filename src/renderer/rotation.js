@@ -470,7 +470,8 @@ function fillEditCardFromRotation(row, rot) {
     }
     crop.value = slot.crop;
     onCropChange(crop);
-    sow.value = rotationSowMonth(slot);
+    const farm = getCurrentFarm();
+    sow.value = rotationSowMonthSoon(slot, farm && farm.month) || rotationSowMonth(slot);
     row.dataset.rotationCrop = slot.crop;
     const catchSel = row.querySelector('.field-catch-crop');
     const catchSow = row.querySelector('.field-catch-sow');
@@ -538,6 +539,8 @@ function fillEmptyFieldFromRotation(farm, field) {
     if (!info || !info.slot.crop) return false;
     const before = JSON.parse(JSON.stringify(farm.fields));
     applyRotationSlot(field, info.slot);
+    // Mid-season, like the month fill: this month or next when the crop allows it.
+    field.sowingMonth = rotationSowMonthSoon(info.slot, farm.month) || field.sowingMonth;
     field.rotation.filled = farm.currentSeason || 1;
     migrateFieldKeys(farm, before, farm.fields);
     showAutoSyncToast(t('rotFieldFilled').replace('{crop}', translateCropName(field.crop)), 4000);
