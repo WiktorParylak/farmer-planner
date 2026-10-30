@@ -7559,6 +7559,66 @@ button.field-open:hover .field-number-chip {
   color: var(--color-surface);
 }
 
+/* Views of one tool (tramlines, crop rotation): one recessed track with the
+   tabs inside, the open one raised like a card — not a row of action buttons. */
+.view-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+  box-shadow: inset 0 1px 3px rgba(28, 42, 32, 0.18);
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink-soft);
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.view-tab i {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+.view-tab:hover {
+  color: var(--color-ink);
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.view-tab.is-active {
+  background-color: var(--color-surface-soft);
+  color: var(--color-primary-dark);
+  box-shadow: 0 1px 3px rgba(28, 42, 32, 0.25);
+  cursor: default;
+}
+
+.view-tab.is-active i { opacity: 1; }
+
+.view-tab:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 1px;
+}
+
+.view-tabs-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 4px;
+  background-color: var(--color-border-strong);
+}
+
 #settings-modal [data-settings-tab]:not(.is-active-tab) {
   display: none !important;
 }
@@ -7736,7 +7796,7 @@ button.field-open:hover .field-number-chip {
 }
 
 .rotation-tabs {
-  justify-content: flex-start;
+  align-self: flex-start;
 }
 
 .rotation-body {
@@ -8148,6 +8208,22 @@ button.field-open:hover .field-number-chip {
 
 .tl-tabs {
   margin-left: auto;
+}
+
+.tl-view-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tl-view-title {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+}
+
+.tl-view-desc {
+  margin: 0;
+  color: var(--color-ink-soft);
 }
 
 .tl-body {

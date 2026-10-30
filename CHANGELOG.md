@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Changed**
 - **A crop rotation fills in an empty field**: giving a field with nothing planned this season a cycle (or another step) — in the field view, the *Crop rotation* plan or Edit season — puts the step's crop on it right away, with its sowing month and catch crop, instead of waiting for the next season or its sowing window. A crop you planned is never replaced, and a fallow step leaves the field empty.
+- **Tramlines tool: views look like views**: *Save from a save*, *Editor*, *Paste into a save* and *Settings* sit in one tab bar with icons (in the order you use them, settings set apart), the open one raised like a card instead of a green button that read as *do it now*. The side panel starts with the view's name and one line on what it's for. The *Plan / Cycles* tabs of *Crop rotation* use the same bar.
 
 **Fixed**
 - **What to do today listed weeds on fields not sown yet**: the game's weeds on a field waiting for its crop belong to what grows there now (last crop, grass, stubble), and cultivating or sowing clears them. Those fields no longer show under *Weeds to control* or get *· Weeds* on their sowing chip, and syncing with the save no longer marks weeds on them.

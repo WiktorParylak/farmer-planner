@@ -54,15 +54,16 @@
             <header class="tl-header">
                 <button type="button" id="tl-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
                 <h1 class="tl-title" data-i18n="tlTitle">Tramlines</h1>
-                <div class="settings-tabs tl-tabs" role="tablist">
-                    <button type="button" class="settings-tab tl-tab is-active" data-tltab="paste" data-i18n="tlTabPaste">Paste into a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="cut" data-i18n="tlTabCut">Save from a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="editor" data-i18n="tlTabEditor">Editor</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="settings" data-i18n="tlTabSettings">Settings</button>
+                <div class="view-tabs tl-tabs" role="tablist">
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="cut"><i class="fa-solid fa-scissors" aria-hidden="true"></i> <span data-i18n="tlTabCut">Save from a save</span></button>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="editor"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> <span data-i18n="tlTabEditor">Editor</span></button>
+                    <button type="button" class="view-tab tl-tab is-active" role="tab" aria-selected="true" aria-controls="tl-side" data-tltab="paste"><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="tlTabPaste">Paste into a save</span></button>
+                    <span class="view-tabs-sep" aria-hidden="true"></span>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> <span data-i18n="tlTabSettings">Settings</span></button>
                 </div>
             </header>
             <div class="tl-body">
-                <aside id="tl-side" class="tl-side"></aside>
+                <aside id="tl-side" class="tl-side" role="tabpanel"></aside>
                 <div class="tl-canvas-wrap">
                     <canvas id="tl-canvas"></canvas>
                     <div id="tl-busy" class="tl-busy" hidden></div>

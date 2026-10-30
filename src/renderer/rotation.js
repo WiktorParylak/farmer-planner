@@ -595,9 +595,10 @@ function renderRotationPanel(titleEl, bodyEl) {
     titleEl.textContent = t('rotTitle');
     const farm = getCurrentFarm();
     if (!farm) { bodyEl.innerHTML = ''; return; }
-    const tabs = ['plan', 'cycles'].map(k => `<button type="button" class="settings-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" data-rtab="${k}">${t(k === 'plan' ? 'rotTabPlan' : 'rotTabCycles')}</button>`).join('');
+    const tabs = [['plan', 'fa-table-cells', 'rotTabPlan'], ['cycles', 'fa-arrows-spin', 'rotTabCycles']].map(([k, icon, key]) =>
+        `<button type="button" class="view-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" role="tab" aria-selected="${k === rotationTab}" data-rtab="${k}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${t(key)}</button>`).join('');
     bodyEl.innerHTML = `<div class="rotation-panel">
-        <div class="settings-tabs rotation-tabs" role="tablist">${tabs}</div>
+        <div class="view-tabs rotation-tabs" role="tablist">${tabs}</div>
         <div class="rotation-body">${rotationTab === 'cycles' ? rotationCyclesHtml(farm) : rotationPlanHtml(farm)}</div>
     </div>`;
 }
