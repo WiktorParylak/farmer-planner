@@ -1009,6 +1009,19 @@ function applyEditBulk(action, bar) {
     });
 }
 
+// Right-click on the N chip: the field's full fertilization plan.
+if (fieldsBody) fieldsBody.addEventListener('contextmenu', e => {
+    const fertBtn = e.target.closest('.fert-open');
+    if (!fertBtn || isEditMode) return;
+    e.preventDefault();
+    const farm = getCurrentFarm();
+    const idx = parseInt(fertBtn.dataset.idx, 10);
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    const num = (field.number || '').toString().trim();
+    openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
+});
+
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
 // cycles rolling (none / to roll / rolled) straight away; the lime chip asks first in a small

@@ -332,8 +332,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
             if (!m) return;
             m.field[prop] = el.checked;
             saveFarmData(farm);
-            // Refresh the table underneath so the "Nawożenie" button's white /
-            // brown / green state is already right when this modal closes.
+            // Refresh the table underneath so the N chip's empty /
+            // rust / green state is already right when this modal closes.
             if (typeof renderSeasonView === 'function') renderSeasonView();
         });
     };
