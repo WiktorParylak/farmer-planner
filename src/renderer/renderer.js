@@ -4186,13 +4186,16 @@ window.openPlanner = function (id) {
 // A state you set by hand (chip or work planner) wins until the game saves a
 // different weedState for that field: the save may still show live weeds
 // because the game hasn't saved since spraying, or because its per-field
-// value lags behind. Returns true if any field changed.
+// value lags behind. Fields not sown yet are skipped: their weeds belong to
+// whatever grows there now (last crop, grass, stubble), and cultivating or
+// sowing clears them anyway. Returns true if any field changed.
 function syncWeedsFromSave(farm) {
     const save = readSaveFields(farm);
     if (!save.ok) return false;
     const byId = weedStatesById(save);
     let changed = false;
     (farm.fields || []).forEach(field => {
+        if (field.state !== 'Planted') return;
         const ids = gameFieldIds(field);
         if (field.weedsManual !== undefined) {
             if (field.weedsManual === weedStatesKey(ids, byId)) return;

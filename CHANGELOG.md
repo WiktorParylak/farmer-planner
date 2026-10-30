@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.10.1 — unreleased
+
+**Fixed**
+- **What to do today listed weeds on fields not sown yet**: the game's weeds on a field waiting for its crop belong to what grows there now (last crop, grass, stubble), and cultivating or sowing clears them. Those fields no longer show under *Weeds to control* or get *· Weeds* on their sowing chip, and syncing with the save no longer marks weeds on them.
+
 ## 0.10.0 — 2026-10-29
 
 **New**

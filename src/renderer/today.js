@@ -31,7 +31,8 @@ function todayFieldGroups(farm) {
         if (!planted && sow === month) tasks.sow = t('work_sow');
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
         if (planted && !cut && sow && cal[sow] === month) tasks.harvest = t('work_harvest');
-        if (field.weeds === 'needed') tasks.weeds = t('work_weeds');
+        // Weeds on an unsown field belong to what grows there now, not the planned crop.
+        if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
         if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
         // Your own work list: its next step, unless a group above already covers it.
         if (fieldWork(field) && !cut) {
