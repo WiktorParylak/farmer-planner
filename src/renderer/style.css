@@ -7892,19 +7892,37 @@ button.field-open:hover .field-number-chip {
   overflow-x: auto;
 }
 
+/* Rows = fields, columns = seasons. The field and cycle columns stay put
+   while the seasons scroll sideways, so their cells need a solid background. */
 .rotation-grid {
+  --rot-field-w: 190px;
+  --rot-assign-w: 196px;
+  --rot-row-bg: var(--color-surface);
   width: 100%;
   border-collapse: separate;
-  border-spacing: 4px 4px;
+  border-spacing: 0;
   font-size: var(--fs-sm);
 }
 
-.rotation-grid th {
-  padding: 4px 4px;
-  font-weight: 600;
-  color: var(--color-ink-soft);
-  text-align: left;
+.rotation-grid tbody tr:nth-child(even) {
+  --rot-row-bg: color-mix(in srgb, var(--color-ink) 2.5%, var(--color-surface));
+}
+
+.rotation-grid thead th {
+  padding: 10px 8px;
   white-space: nowrap;
+}
+
+.rotation-grid tbody th,
+.rotation-grid tbody td {
+  padding: 7px 6px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rotation-grid tbody td {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
 }
 
 .rotation-grid thead th.is-current {
@@ -7920,32 +7938,151 @@ button.field-open:hover .field-number-chip {
   color: var(--color-ink-faint);
 }
 
+/* This season as a column band. */
+.rotation-grid thead th.is-current-col {
+  background-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-alt));
+}
+
+.rotation-grid tbody td.is-current-col {
+  background-color: color-mix(in srgb, var(--color-primary) 7%, var(--rot-row-bg));
+}
+
+.rotation-grid tbody td.is-past-col .rotation-cell:not(.is-empty) {
+  opacity: 0.72;
+}
+
+.rotation-grid .rotation-field-cell,
+.rotation-grid .rotation-assign {
+  position: sticky;
+  z-index: 2;
+}
+
+.rotation-grid .rotation-field-cell {
+  left: 0;
+  width: var(--rot-field-w);
+  min-width: var(--rot-field-w);
+  max-width: var(--rot-field-w);
+  padding-left: 8px;
+  text-align: left;
+}
+
+.rotation-grid .rotation-assign {
+  left: var(--rot-field-w);
+  width: var(--rot-assign-w);
+  min-width: var(--rot-assign-w);
+  box-shadow: inset -1px 0 0 var(--color-border-strong);
+}
+
+.rotation-grid tbody .rotation-field-cell,
+.rotation-grid tbody .rotation-assign {
+  background-color: var(--rot-row-bg);
+}
+
+.rotation-grid thead .rotation-field-cell,
+.rotation-grid thead .rotation-assign {
+  z-index: 12;
+}
+
 .rotation-field {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
 }
 
-.rotation-field-name,
+.rotation-field-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.rotation-field-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
 .rotation-field-ha {
   font-weight: 400;
   font-size: var(--fs-xs);
   color: var(--color-ink-faint);
+  white-space: nowrap;
 }
 
-.rotation-assign {
-  white-space: nowrap;
+.rotation-assign-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rotation-assign-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .rotation-assign select {
   display: block;
-  margin: 1px 0;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 6px;
+  font-size: var(--fs-xs);
 }
 
-.rotation-assign select {
-  max-width: 116px;
-  padding: 3px 6px;
+.rotation-assign-step select {
+  flex: 1 1 auto;
+}
+
+.rotation-assign select.is-none {
+  color: var(--color-ink-faint);
+  border-style: dashed;
+}
+
+.rotation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
   font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.rotation-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rotation-legend-cell {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  border-left: 3px solid var(--color-ink-faint);
+  border-radius: 3px;
+  background-color: var(--color-surface-alt);
+}
+
+.rotation-legend-cell.is-current {
+  outline: 2px solid var(--color-ink-soft);
+  outline-offset: 1px;
+}
+
+.rotation-legend-cell.is-projected {
+  border-left-style: dashed;
+  background-color: color-mix(in srgb, var(--color-surface-alt) 50%, var(--color-surface));
+}
+
+.rotation-legend-catch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #9a7fc0;
 }
 
 .rotation-plan-realign {
@@ -7982,6 +8119,8 @@ button.field-open:hover .field-number-chip {
 .rotation-cell.is-empty {
   background-color: transparent;
   color: var(--color-ink-faint);
+  opacity: 0.7;
+  text-align: center;
 }
 
 .rotation-cell.is-projected {

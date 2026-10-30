@@ -634,12 +634,13 @@ function rotationPlanHtml(farm) {
         }
         const tip = score.warnings.map(w => '• ' + w.text).join('\n') || t(score.level ? 'rotScoreOk' : 'rotScoreNone');
         const name = fieldNameOf(farm, field.number);
+        const colCls = s => s === season ? 'is-current-col' : (s < season ? 'is-past-col' : '');
         return `<tr>
-            <th scope="row" class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><span class="field-number-chip">${escapeHtml(String(field.number))}</span>${name ? `<span class="rotation-field-name">${escapeHtml(name)}</span>` : ''}<span class="rotation-field-ha">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></th>
-            <td class="rotation-assign">${rotationSelectHtml(farm, score.info ? score.info.rot.id : '', 'rotation-plan-cycle', ` data-idx="${idx}"`)}
-                ${score.info ? `<select class="rotation-plan-step" data-idx="${idx}">${rotationStepOptionsHtml(score.info.rot, score.info.index)}</select>` : ''}
-                ${score.offCycle ? `<button type="button" class="rotation-plan-realign" data-idx="${idx}" title="${escapeHtml(t('rotRealignHint'))}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>` : ''}</td>
-            ${cols.map(s => `<td>${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
+            <th scope="row" class="rotation-field-cell"><div class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><span class="field-number-chip">${escapeHtml(String(field.number))}</span>
+                <span class="rotation-field-meta">${name ? `<span class="rotation-field-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>` : ''}<span class="rotation-field-ha">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></span></div></th>
+            <td class="rotation-assign"><div class="rotation-assign-inner">${rotationSelectHtml(farm, score.info ? score.info.rot.id : '', 'rotation-plan-cycle' + (score.info ? '' : ' is-none'), ` data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldCycle'))}"`)}
+                ${score.info ? `<span class="rotation-assign-step"><select class="rotation-plan-step" data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldStep'))}">${rotationStepOptionsHtml(score.info.rot, score.info.index)}</select>${score.offCycle ? `<button type="button" class="rotation-plan-realign" data-idx="${idx}" title="${escapeHtml(t('rotRealignHint'))}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>` : ''}</span>` : ''}</div></td>
+            ${cols.map(s => `<td class="${colCls(s)}">${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
         </tr>`;
     }).join('');
     const areaList = Object.entries(nextArea).sort((a, b) => b[1] - a[1])
@@ -652,9 +653,15 @@ function rotationPlanHtml(farm) {
         </div>
         ${getRotations(farm).length ? '' : `<p class="settings-hint">${t('rotNoCyclesHint')}</p>`}
         <div class="rotation-grid-wrap"><table class="rotation-grid">
-            <thead><tr><th>${t('thFieldNo')}</th><th>${t('rotFieldCycle')}</th>${cols.map(s => `<th class="${s === season ? 'is-current' : (s > season ? 'is-projected' : '')}">${t('season')} ${s}${s === season ? ` <small>(${t('rotNow')})</small>` : ''}</th>`).join('')}</tr></thead>
+            <thead><tr><th class="rotation-field-cell">${t('thFieldNo')}</th><th class="rotation-assign">${t('rotFieldCycle')}</th>${cols.map(s => `<th class="${s === season ? 'is-current is-current-col' : (s > season ? 'is-projected' : 'is-past-col')}">${t('season')} ${s}${s === season ? ` <small>(${t('rotNow')})</small>` : ''}</th>`).join('')}</tr></thead>
             <tbody>${rows}</tbody>
         </table></div>
+        <div class="rotation-legend">
+            <span><span class="rotation-legend-cell is-current"></span>${t('rotLegendCurrent')}</span>
+            <span><span class="rotation-legend-cell is-projected"></span>${t('rotLegendProjected')}</span>
+            <span><span class="rotation-legend-catch"></span>${t('rotLegendCatch')}</span>
+            <span><span class="rotation-dot is-green"></span><span class="rotation-dot is-yellow"></span><span class="rotation-dot is-red"></span>${t('rotLegendScore')}</span>
+        </div>
         ${areaList ? `<div class="rotation-next-area"><strong>${t('rotNextArea').replace('{n}', season + 1)}</strong> ${areaList}</div>` : ''}`;
 }
 
