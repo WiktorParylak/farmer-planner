@@ -730,8 +730,8 @@ function workCellHtml(field, idx, isPastSeason, farm, asBadge) {
     const { next, done, total, own } = nextWorkStep(field, idx, farm);
     const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
     const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    const title = t(own ? 'workOpenHint' : 'workSuggestedHint');
-    if (asBadge) return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${title}"><span class="badge badge--to-plant badge--work">${escapeHtml(label)}${count}</span></button>`;
+    const title = t(own ? 'workOpenHint' : 'workSuggestedHint') + ' · ' + t('workUndoHint');
+    if (asBadge) return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${t('workBadgeHint')}"><span class="badge badge--to-plant badge--work">${escapeHtml(label)}${count}</span></button>`;
     return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${title}">→ ${escapeHtml(label)}${own && done ? count : ''}</button>`;
 }
 
@@ -1074,8 +1074,33 @@ function applyEditBulk(action, bar) {
     });
 }
 
+// The job badge / line in the table: dir 1 ticks off the next job (left click
+// on the badge), -1 unticks the last one done (right click on the badge or
+// the "→" line). Same as ticking it in the work list (Sow sets the state).
+function stepFieldWork(idx, dir) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+    let i = -1;
+    if (dir > 0) i = list.findIndex(w => !w.done);
+    else for (let j = list.length - 1; j >= 0; j--) if (list[j].done) { i = j; break; }
+    if (i < 0) return;
+    changeFieldWork(farm, field, idx, (work, f, fm) => setWorkStepDone(work, i, dir > 0, f, fm));
+    saveFarmData(farm);
+    renderSeasonView();
+    showAutoSyncToast(t(dir > 0 ? 'workStepDoneToast' : 'workStepUndoneToast').replace('{job}', t('work_' + list[i].step)));
+}
+
 // Right-click on the N chip: the field's full fertilization plan.
 if (fieldsBody) fieldsBody.addEventListener('contextmenu', e => {
+    const workBtn = e.target.closest('.work-open');
+    if (workBtn && !isEditMode) {
+        e.preventDefault();
+        stepFieldWork(parseInt(workBtn.dataset.idx, 10), -1);
+        return;
+    }
     const fertBtn = e.target.closest('.fert-open');
     if (!fertBtn || isEditMode) return;
     e.preventDefault();
@@ -1106,7 +1131,11 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         return;
     }
     const workBtn = e.target.closest('.work-open');
-    if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
+    if (workBtn && !isEditMode) {
+        if (workBtn.classList.contains('work-open--badge')) stepFieldWork(parseInt(workBtn.dataset.idx, 10), 1);
+        else openWorkModal(parseInt(workBtn.dataset.idx, 10));
+        return;
+    }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
