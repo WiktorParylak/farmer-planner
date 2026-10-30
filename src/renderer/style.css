@@ -6161,12 +6161,29 @@ select:focus-visible,
   gap: 10px 16px;
 }
 
+/* Name, input and range share one left edge (the feed panel centres text). */
 .tmr-share {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
   font-size: var(--fs-sm);
   font-weight: 600;
+}
+
+.tmr-share-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.tmr-share .feed-pct {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .tmr-share .feed-input { width: 76px; }
@@ -6180,7 +6197,17 @@ select:focus-visible,
 .tmr-shares-sum,
 .tmr-shares-error {
   margin: 0;
+  text-align: left;
   font-size: var(--fs-sm);
+}
+
+.tmr-shares-sum {
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+.tmr-shares-sum.is-off {
+  color: var(--color-rust);
 }
 
 .tmr-shares-error:empty { display: none; }

@@ -1568,11 +1568,11 @@ function renderTmrSharesEditor(plan) {
         <div class="tmr-shares-row">`;
     MIXER_TMR_CATEGORIES.forEach(c => {
         const [min, max] = TMR_LIMITS[c];
-        html += `<label class="tmr-share">${feedCategoryLabel(c)}
+        html += `<label class="tmr-share"><span class="tmr-share-name">${feedCategoryLabel(c)}</span>
             <span class="feed-pct"><input type="number" class="feed-input tmr-share-input" data-cat="${c}" min="${min}" max="${max}" step="1" value="${Math.round((parseFloat(plan.tmr[c]) || 0) * 10) / 10}"><span class="supply-unit">%</span></span>
             <span class="tmr-share-range">${t('mixerRange').replace('{a}', min).replace('{b}', max)}</span></label>`;
     });
-    html += `</div><p class="tmr-shares-sum">${t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10)}</p>
+    html += `</div><p class="tmr-shares-sum${Math.abs(sum - 100) > 0.05 ? ' is-off' : ''}">${t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10)}</p>
         <p class="tmr-shares-error feed-warn"></p></div>`;
     return html;
 }
@@ -2002,7 +2002,9 @@ function wireFeedPlanPanel(bodyEl) {
         tmrBox.querySelectorAll('.tmr-share-input').forEach(el => el.addEventListener('change', () => {
             const shares = readShares();
             const sum = Object.values(shares).reduce((s, v) => s + v, 0);
-            tmrBox.querySelector('.tmr-shares-sum').textContent = t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10);
+            const sumEl = tmrBox.querySelector('.tmr-shares-sum');
+            sumEl.textContent = t('feedCustomSum').replace('{s}', Math.round(sum * 10) / 10);
+            sumEl.classList.toggle('is-off', Math.abs(sum - 100) > 0.05);
             const out = MIXER_TMR_CATEGORIES.find(c => shares[c] < TMR_LIMITS[c][0] || shares[c] > TMR_LIMITS[c][1]);
             const error = out
                 ? t('tmrSharesOutOfRange').replace('{name}', feedCategoryLabel(out)).replace('{a}', TMR_LIMITS[out][0]).replace('{b}', TMR_LIMITS[out][1])

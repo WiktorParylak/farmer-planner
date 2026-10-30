@@ -11,6 +11,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **Fixed**
 - **What to do today listed weeds on fields not sown yet**: the game's weeds on a field waiting for its crop belong to what grows there now (last crop, grass, stubble), and cultivating or sowing clears them. Those fields no longer show under *Weeds to control* or get *· Weeds* on their sowing chip, and syncing with the save no longer marks weeds on them.
+- **TMR recipe labels out of line**: the ingredient names and *allowed …%* were centred above inputs that sat on the left, and the sum floated off to the side. Name, field and range now share one left edge, and the sum turns red when it isn't 100 %.
 - **Mowing and harvest on fields not sown yet**: a catch crop that follows the main crop (sown at or after its harvest, as crop rotation plans it) put *Fertilize, Mow, Bale, Collect & wrap* at the top of the suggested work list, so *What to do today* asked to mow an unsown field. Its steps now come after the main crop's; a catch crop sown before the main crop (green rye before beet) still comes first. And with the save at hand, *Harvest this month* lists a field only when the game field really grows the planned crop — not when it's ticked as sown while something else still grows there.
 
 ## 0.10.0 — 2026-10-29
