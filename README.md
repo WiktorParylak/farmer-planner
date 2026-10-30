@@ -27,10 +27,12 @@
 ## One plan for the whole farm
 
 **Season plan**
-- Every field with its area, crop, sowing month, state, ploughing or no-till, soil type and fertilization plan.
+- Every field with its area, crop, sowing month, next job, ploughing or no-till, soil type and fertilization plan.
+- A field view with everything about one field: crop, rotation, soils (loaded from the game), lime, nitrogen plan and the work list to tick off.
 - Catch crops on the same field, before or after the main crop.
 - Past seasons kept, so you can step back and compare.
 - Crop rotation cycles (from templates like Norfolk or your own): the next crop is filled in when a new season starts, and a rotation view scores each field.
+- Seasons that overlap: crops still growing carry over to the new season, and the planner tells you when to start it.
 - A *What to do today* panel under the plan: this month's sowing, harvest, weeds, rolling, work steps, low feed and notes.
 - A summary of hectares per crop.
 
@@ -87,16 +89,18 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 <summary><b>Full feature list</b></summary>
 
 **Season plan**
-- Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, state (to plant / plant now / planted), plowed or no-till, soil type and a per-field fertilization plan. Click a column header to sort.
+- Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, the next job in the colour of the field's state (to plant / plant now / overdue / planted; click it when the job is done, right-click to step back), plowed or no-till, lime and nitrogen chips. Click a column header to sort.
+- Field view (click the field number): crop, catch crop, rotation, soils with *Load from the game*, pH and lime, notes, the nitrogen plan (requirement, nitrogen in the soil and from manure, what mineral fertilizer still has to cover) and the work list to tick off.
+- Work done in the game ticks itself off: with the save connected, cultivating, ploughing, sowing, fertilizing, liming and rolling tick the matching steps.
 - Your own field names (*Behind the barn*), kept across seasons, and a search box (**Ctrl+F**) that filters the fields by number, name or crop — handy on big farms.
 - Combined fields add up their hectares: typing `10-11-12` fills in the area from the fields' known sizes or the save.
 - Catch crops (green rye, oilseed radish…) on the same field, before or after the main crop.
-- Seasons with history — step back to previous seasons and compare.
+- Seasons with history — step back to previous seasons and compare. A new season keeps fields whose crop is still growing (maize harvested in October while canola goes in in August); they clear themselves after the harvest. *New season* lights up when it's time.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
 - Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. A new season (or a new in-game month, once a sowing window opens) fills in each field's next crop. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).
 - *What to do today* panel under the season plan: fields to sow or harvest this month, late sowings, weeds, rolling, the next step of your work lists, barns low on feed and this month's notes.
-- Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them.
+- Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them, or merge them into one field.
 - With the Crop Dependent Rolling mod, rolling is planned only for the crops that need it.
 
 **Game sync**

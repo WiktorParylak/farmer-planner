@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.10.1 — unreleased
+## 0.10.1 — 2026-10-30
 
 **New**
 - **Load soils from the game in the field view**: the *Soil* section of the field view has a *Load from the game* button that fills that field's soil shares from Precision Farming’s soil map (the same as *Field soil type → Load soils from the game*, for this field only).

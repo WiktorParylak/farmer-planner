@@ -2,7 +2,7 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
-## 0.10.1 — unreleased
+## 0.10.1 — 2026-10-30
 
 **Nowe**
 - **Wczytywanie gleb z gry w oknie pola**: sekcja *Gleba* w oknie pola ma przycisk *Wczytaj z gry*, który uzupełnia udział gleb tego pola z mapy gleb Precision Farming (to samo co *Typ gleby pól → Wczytaj gleby z gry*, tylko dla tego pola).
