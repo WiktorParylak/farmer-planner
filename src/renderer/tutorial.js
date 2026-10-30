@@ -642,7 +642,7 @@ const TUTORIAL_CHAPTERS = [
                 const plan = getFeedPlan(getCurrentFarm());
                 return tutNumValue(tutFeed('.mixer-cap-input')) > 0 || parseFloat(plan.mixer.capacity['save:demo-mixer']) > 0;
             }, '20000'),
-            tutClick('m7', () => tutFeed('.mixer-auto'), () => getFeedPlan(getCurrentFarm()).mixer.load.length > 0),
+            tutClick('m7', () => tutFeed('.mixer-auto'), () => Object.values(getFeedPlan(getCurrentFarm()).mixer.loads || {}).some(l => l.length > 0)),
             tutInfo('m8', () => tutFeed('.mixer-load')),
             tutInfo('m9', () => tutFeed('.mixer-summary')),
             tutInfo('m10', () => { if (!tutFeed('.feed-ing-grid')) return null; return tqa('#hub-panel-body .feed-need-summary, #hub-panel-body .feed-ing-grid'); }),
