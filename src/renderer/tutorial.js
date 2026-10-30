@@ -470,7 +470,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
             tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
             tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum']),
-            tutInfo('c15', '#rotation-btn')
+            tutInfo('c15', '.sidebar-item--rotation')
         ]
     },
     {

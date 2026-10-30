@@ -1387,7 +1387,51 @@ tbody tr:hover {
 
 .main-table-header-btns {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+}
+
+/* One size for the whole group, a notch below the old page buttons; Edit is
+   the main action, New season a quiet outline (it's rare and can't be undone). */
+.main-table-header-btns > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-base);
+  padding: var(--btn-pad);
+}
+
+.main-table-header-btns > button[hidden] {
+  display: none;
+}
+
+.main-table-header-btns > button i {
+  font-size: 0.9em;
+}
+
+.main-table-header-btns > .new-season-btn {
+  background-color: transparent;
+  border-color: var(--color-border-strong);
+  color: var(--color-ink-soft);
+}
+
+.main-table-header-btns > .new-season-btn:hover {
+  background-color: var(--color-surface-alt);
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink);
+  box-shadow: none;
+  transform: none;
+}
+
+.main-table-header-btns > .edit-main-btn:not(.is-saving) {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.main-table-header-btns > .edit-main-btn:not(.is-saving):hover {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
 }
 
 .fertplan-cell {

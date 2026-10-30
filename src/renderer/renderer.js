@@ -4486,7 +4486,7 @@ window.renderSeasonView = function () {
         });
     }
 
-    const displayStyle = isPastSeason ? 'none' : 'inline-block';
+    const displayStyle = isPastSeason ? 'none' : '';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;

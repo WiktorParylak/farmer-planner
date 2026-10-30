@@ -736,8 +736,6 @@ function addRotation(farm, rot) {
 (function wireRotationView() {
     const body = document.getElementById('hub-panel-body');
     if (!body) return;
-    const btn = document.getElementById('rotation-btn');
-    if (btn) btn.addEventListener('click', () => openRotationView());
     body.addEventListener('click', e => {
         const tab = e.target.closest('.rotation-tab');
         if (tab) { rotationTab = tab.dataset.rtab; renderRotationModal(); }

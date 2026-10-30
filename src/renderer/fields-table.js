@@ -2221,7 +2221,13 @@ function editTableSnapshot(farm) {
 function setEditModeUi(on) {
     isEditMode = on;
     if (editSeasonBtn) {
-        editSeasonBtn.innerText = t(on ? 'saveChanges' : 'edit');
+        const label = editSeasonBtn.querySelector('.edit-main-label');
+        const icon = editSeasonBtn.querySelector('i');
+        if (label) {
+            label.dataset.i18n = on ? 'saveChanges' : 'edit';
+            label.textContent = t(label.dataset.i18n);
+        }
+        if (icon) icon.className = 'fa-solid ' + (on ? 'fa-check' : 'fa-pen');
         editSeasonBtn.classList.toggle('is-saving', on);
     }
     const cancelBtn = document.getElementById('cancel-edit-btn');
@@ -2229,10 +2235,7 @@ function setEditModeUi(on) {
     const loadBtn = document.getElementById('load-fields-btn');
     if (loadBtn && on) loadBtn.hidden = true;
     // Starting a new season mid-edit would throw the edits away.
-    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
-    // Cycles are assigned in the edit cards meanwhile.
-    const rotationBtn = document.getElementById('rotation-btn');
-    if (rotationBtn) rotationBtn.hidden = on;
+    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : '';
     // Edit lists every field, so the search steps aside until it's done.
     const searchWrap = document.getElementById('fields-search-wrap');
     if (searchWrap) searchWrap.hidden = on;
