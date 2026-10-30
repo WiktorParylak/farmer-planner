@@ -992,6 +992,7 @@ function renderEditBulkBar() {
                 <button type="button" class="btn btn--sm btn--secondary" data-ebulk="noTill">${t('tillageNoTill')}</button>
                 <button type="button" class="btn btn--sm" data-ebulk="noTillage" title="${t('bulkNoTillageHint')}">–</button>
             </span>
+            <button type="button" class="btn btn--sm btn--secondary" data-ebulk="merge" title="${t('bulkMergeHint')}"><i class="fa-solid fa-object-group" aria-hidden="true"></i> ${t('bulkMerge')}</button>
             <button type="button" class="btn btn--sm btn--danger" data-ebulk="delete">${t('bulkDelete')}</button>
         </span>`;
     updateEditBulkCount();
@@ -1014,6 +1015,30 @@ function updateEditBulkCount() {
     if (all) { all.checked = total > 0 && n === total; all.indeterminate = n > 0 && n < total; }
 }
 
+// Joins the selected cards into the first one: its number becomes all their
+// game field numbers ("10-11-12", in order, each once), its area their sum;
+// crop, month and the rest stay the first card's. The other cards go, as with
+// Delete — Save keeps it, Cancel undoes it. A row of several game fields then
+// gets "Merge the fields" in its work list (see needsMerging).
+function mergeEditRows(rows) {
+    if (rows.length < 2) { showAutoSyncToast(t('bulkMergeNeedTwo')); return; }
+    const parts = [];
+    rows.forEach(row => {
+        String(row.querySelector('.field-number').value || '').split(/[^0-9]+/).filter(Boolean)
+            .map(s => String(parseInt(s, 10))).forEach(p => { if (!parts.includes(p)) parts.push(p); });
+    });
+    parts.sort((a, b) => a - b);
+    const area = rows.reduce((sum, row) => sum + (parseFloat(String(row.querySelector('.field-area').value).replace(',', '.')) || 0), 0);
+    const [keep, ...rest] = rows;
+    keep.querySelector('.field-number').value = parts.join('-');
+    keep.querySelector('.field-area').value = area.toFixed(2);
+    rest.forEach(r => r.remove());
+    updateSplitHints();
+    flashMirrored(keep);
+    updateEditBulkCount();
+    showAutoSyncToast(t('bulkMerged').replace('{n}', rows.length).replace('{field}', parts.join('-')));
+}
+
 // Writes into the selected cards' inputs as if typed there.
 function applyEditBulk(action, bar) {
     const rows = editBulkRows();
@@ -1022,6 +1047,10 @@ function applyEditBulk(action, bar) {
         rows.forEach(r => r.remove());
         updateSplitHints();
         updateEditBulkCount();
+        return;
+    }
+    if (action === 'merge') {
+        mergeEditRows(rows);
         return;
     }
     rows.forEach(row => {

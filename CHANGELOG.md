@@ -5,6 +5,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 ## 0.10.1 — unreleased
 
 **New**
+- **Merge selected fields into one**: in Edit season, tick two or more cards and press *Merge into one field* — the first card gets all their field numbers (*10-11-12*) and their hectares added up, keeping its crop and the rest; the other cards go. Save keeps it, Cancel undoes it, and the merged row gets *Merge the fields* in its work list.
 - **Work done in the game ticks itself off**: with the save connected, every sync reads the fields and ticks the matching steps of a field's work list — *Cultivate* once the ground is cultivated (or seedbed, stubble tillage), *Plough* once it's ploughed, *Sow* when the planned crop grows there (the field turns *Planted*, no *Fields from game* click needed), *Roll* on roller lines, and *Fertilize*, *Manure* or *Lime* each time the game's fertilizer or lime level goes up (the *applied* ticks of the nitrogen plan follow). A row joining several game fields counts once all of them got it. Unticking a step in the list overrides what the game said.
 
 **Changed**
