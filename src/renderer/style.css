@@ -1387,60 +1387,63 @@ tbody tr:hover {
 
 .main-table-header-btns {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+}
+
+/* One size for the whole group, a notch below the old page buttons; Edit is
+   the main action, New season a quiet outline (it's rare and can't be undone). */
+.main-table-header-btns > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-base);
+  padding: var(--btn-pad);
+}
+
+.main-table-header-btns > button[hidden] {
+  display: none;
+}
+
+.main-table-header-btns > button i {
+  font-size: 0.9em;
+}
+
+.main-table-header-btns > .new-season-btn {
+  background-color: transparent;
+  border-color: var(--color-border-strong);
+  color: var(--color-ink-soft);
+}
+
+/* This season's crops are in: time for the next one. */
+.main-table-header-btns > .new-season-btn.is-ready {
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.main-table-header-btns > .new-season-btn:hover {
+  background-color: var(--color-surface-alt);
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink);
+  box-shadow: none;
+  transform: none;
+}
+
+.main-table-header-btns > .edit-main-btn:not(.is-saving) {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.main-table-header-btns > .edit-main-btn:not(.is-saving):hover {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
 }
 
 .fertplan-cell {
   text-align: center;
   white-space: nowrap;
-}
-
-/* White = nothing applied yet, brown = natural fertilizer marked, green =
-   synthetic marked (checked in the plan's "Zabiegi" section). */
-.fertplan-open-btn {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-base);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  padding: 10px 22px;
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-soft);
-  color: var(--color-ink);
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-out),
-    border-color var(--motion-fast) var(--ease-out),
-    color var(--motion-fast) var(--ease-out),
-    box-shadow var(--motion-fast) var(--ease-out),
-    transform var(--motion-fast) var(--ease-out),
-    opacity var(--motion-fast) var(--ease-out);
-}
-
-.fertplan-open-btn:hover {
-  background: var(--color-surface-alt);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
-
-.fertplan-open-btn--natural {
-  border-color: var(--color-rust);
-  background: var(--color-rust);
-  color: #fff;
-}
-
-.fertplan-open-btn--natural:hover {
-  background: #7e3a24;
-}
-
-.fertplan-open-btn--synthetic {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.fertplan-open-btn--synthetic:hover {
-  background: var(--color-primary-dark);
 }
 
 .fertplan-field {
@@ -3337,6 +3340,7 @@ th.is-sortable[aria-sort="descending"]::after {
   font-weight: 700;
   font-size: var(--fs-sm);
   padding: 0;
+  vertical-align: middle;
   cursor: default;
   user-select: none;
   transition: background-color var(--motion-fast) var(--ease-out),
@@ -3485,6 +3489,13 @@ span.tillage-switch-option {
   color: var(--color-ink-soft);
 }
 
+/* Still growing from the last season: clears itself after the harvest. */
+.carried-caption {
+  color: var(--color-accent-dark);
+  font-weight: 600;
+  cursor: help;
+}
+
 .table-footer-controls #total-ha-sum {
   margin-left: auto;
 }
@@ -3496,12 +3507,83 @@ span.tillage-switch-option {
   color: var(--color-ink-soft);
 }
 
-/* Catch-crop row in the field edit card: lighter, it's optional. */
+/* Optional rows of the field edit card (catch crop, rotation, lease) fold
+   under one summary line; it opens by itself when the field uses any of them. */
 /* auto-fill (not auto-fit) keeps the columns lined up with the row above. */
-.field-card-row.field-card-row--catch {
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  padding-top: 8px;
+.field-card-more {
   border-top: 1px dashed var(--color-border);
+  padding-top: 6px;
+}
+
+.field-card-more > .field-card-row {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  margin-top: 8px;
+}
+
+.field-card-more-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
+.field-card-more-summary::-webkit-details-marker { display: none; }
+
+.field-card-more-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.field-card-more-label::before {
+  content: "\25B8";
+  display: inline-block;
+  width: 1em;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.field-card-more[open] .field-card-more-label::before {
+  transform: rotate(90deg);
+}
+
+.field-card-more-summary:hover .field-card-more-label {
+  color: var(--color-ink);
+}
+
+.field-card-more-summary:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 2px;
+  border-radius: var(--radius-small);
+}
+
+.field-card-more-set {
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.field-card .fc-cell[hidden] {
+  display: none;
+}
+
+.field-card .treatments-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.fc-chip-text {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-ink-soft);
 }
 
 .animal-mods-info {
@@ -4248,10 +4330,6 @@ select:focus-visible,
   .tillage-switch-option {
     padding: 5px 10px;
   }
-
-  .fertplan-open-btn {
-    padding: 8px 14px;
-  }
 }
 
 /* Full HD at 150% (~1280 px wide): squeeze a bit more out of the side panels
@@ -4294,11 +4372,6 @@ select:focus-visible,
   .tillage-switch-option {
     padding: 4px 7px;
     font-size: var(--fs-xs);
-  }
-
-  .fertplan-open-btn {
-    padding: 7px 10px;
-    font-size: var(--fs-sm);
   }
 
   .badge {
@@ -5134,6 +5207,29 @@ select:focus-visible,
 
 .field-view-notes li {
   margin-bottom: 4px;
+}
+
+/* Field view: the work list, ticked off in place. */
+.field-view-work-list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.field-view-work-list li {
+  padding: 3px 0;
+}
+
+.field-view-work-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.field-view-work-list li.is-done label {
+  color: var(--color-ink-faint);
+  text-decoration: line-through;
 }
 
 .note-edit-month-option {
@@ -6117,12 +6213,29 @@ select:focus-visible,
   gap: 10px 16px;
 }
 
+/* Name, input and range share one left edge (the feed panel centres text). */
 .tmr-share {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
   font-size: var(--fs-sm);
   font-weight: 600;
+}
+
+.tmr-share-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.tmr-share .feed-pct {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .tmr-share .feed-input { width: 76px; }
@@ -6133,10 +6246,21 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
-.tmr-shares-sum,
-.tmr-shares-error {
+/* .tmr-shares in front: .hub-view p would win otherwise. */
+.tmr-shares .tmr-shares-sum,
+.tmr-shares .tmr-shares-error {
   margin: 0;
+  text-align: left;
   font-size: var(--fs-sm);
+}
+
+.tmr-shares .tmr-shares-sum {
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+.tmr-shares .tmr-shares-sum.is-off {
+  color: var(--color-rust);
 }
 
 .tmr-shares-error:empty { display: none; }
@@ -6561,11 +6685,26 @@ button.treatment-chip--lime.is-warning {
   box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 
-/* Black letter with a light halo: readable on the empty chip, on any fill
-   colour and in the dark theme. */
+/* Ink letter over the empty part of the chip, a white copy clipped to the
+   fill height over the coloured part — readable at any level and in the
+   dark theme (every fill colour is dark enough for white). */
+.treatment-chip--lime .lime-letter,
+.treatment-chip--lime .lime-letter::after {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .treatment-chip--lime .lime-letter {
-  color: #000;
-  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  color: var(--color-ink);
+}
+
+.treatment-chip--lime .lime-letter::after {
+  content: attr(data-letter);
+  color: #fff;
+  clip-path: inset(calc(100% - var(--lime-pct, 0%)) 0 0 0);
 }
 
 /* Limed this season: a clear ring so it's obvious it's been marked. */
@@ -7248,6 +7387,18 @@ button.tillage-switch-option {
   color: var(--color-surface);
 }
 
+/* Fertilization: natural only = rust outline, mineral (with or without natural) = green. */
+.treatment-chip--fert.is-natural {
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.treatment-chip--fert.is-mineral {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
 /* Ploughed this season: weeds get buried, nothing to spray. */
 .treatment-chip--weeds.is-skip {
   background-color: transparent;
@@ -7304,6 +7455,31 @@ button.tillage-switch-option {
 
 .work-open.is-complete {
   color: var(--color-ink-faint);
+}
+
+/* Field waiting for its crop: the next job sits where "To plant" was. */
+.work-open.work-open--badge {
+  display: inline-block;
+  margin-top: 0;
+  border-radius: var(--radius-pill);
+}
+
+.work-open--badge:hover {
+  text-decoration: none;
+}
+
+.work-open--badge:hover .badge {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Sowing month / late sowing: the job after the state, a touch lighter. */
+.badge-work-job {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.badge--work .work-count {
+  margin-left: 4px;
 }
 
 .work-count {
@@ -7450,8 +7626,125 @@ button.field-open {
   cursor: pointer;
 }
 
-button.field-open:hover .field-number-chip {
-  outline: 2px solid var(--color-primary-soft);
+/* The number (and name) opens the field view: it looks like a button. */
+button.field-open {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  border-radius: var(--radius-small);
+}
+
+button.field-open .field-number-chip {
+  box-shadow: 0 1px 0 var(--color-border-strong);
+  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+.field-open-icon {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--color-ink-faint);
+  transition: color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+
+button.field-open:hover .field-number-chip,
+button.field-open:focus-visible .field-number-chip {
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-surface));
+  box-shadow: 0 3px 8px rgba(28, 42, 32, 0.18);
+  transform: translateY(-1px);
+}
+
+button.field-open:hover .field-open-icon,
+button.field-open:focus-visible .field-open-icon {
+  color: var(--color-primary);
+  transform: translate(1px, -1px);
+}
+
+button.field-open:hover .field-name {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+button.field-open:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 2px;
+}
+
+/* One-time pointer to the field view, on the first row until it's opened. */
+.field-number-cell {
+  position: relative;
+}
+
+.field-open-callout {
+  position: absolute;
+  z-index: 5;
+  left: calc(100% - 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 8px 7px 12px;
+  border-radius: var(--radius-medium);
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  box-shadow: var(--shadow-hover);
+  animation: field-open-callout-in 0.35s var(--ease-out) both;
+}
+
+.field-open-callout::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  margin-top: -6px;
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: var(--color-ink);
+}
+
+.field-open-callout-close {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.field-open-callout-close:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+button.field-open.has-callout .field-number-chip {
+  animation: field-open-pulse 2.4s ease-out 0.4s 3;
+}
+
+@keyframes field-open-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(63, 107, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0); }
+}
+
+@keyframes field-open-callout-in {
+  from { opacity: 0; transform: translate(-6px, -50%); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-open-callout,
+  button.field-open .field-number-chip { animation: none; }
 }
 
 .field-modal .modal-content.field-modal-content {
@@ -7487,6 +7780,23 @@ button.field-open:hover .field-number-chip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+
+.field-view-soil-import-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.field-view-soil-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field-view-soil-msg {
+  color: var(--color-primary-dark);
+  font-weight: 600;
 }
 
 .field-view-crop-grid {
@@ -7557,6 +7867,66 @@ button.field-open:hover .field-number-chip {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-surface);
+}
+
+/* Views of one tool (tramlines, crop rotation): one recessed track with the
+   tabs inside, the open one raised like a card — not a row of action buttons. */
+.view-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+  box-shadow: inset 0 1px 3px rgba(28, 42, 32, 0.18);
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink-soft);
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.view-tab i {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+.view-tab:hover {
+  color: var(--color-ink);
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.view-tab.is-active {
+  background-color: var(--color-surface-soft);
+  color: var(--color-primary-dark);
+  box-shadow: 0 1px 3px rgba(28, 42, 32, 0.25);
+  cursor: default;
+}
+
+.view-tab.is-active i { opacity: 1; }
+
+.view-tab:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 1px;
+}
+
+.view-tabs-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 4px;
+  background-color: var(--color-border-strong);
 }
 
 #settings-modal [data-settings-tab]:not(.is-active-tab) {
@@ -7736,7 +8106,7 @@ button.field-open:hover .field-number-chip {
 }
 
 .rotation-tabs {
-  justify-content: flex-start;
+  align-self: flex-start;
 }
 
 .rotation-body {
@@ -7761,19 +8131,37 @@ button.field-open:hover .field-number-chip {
   overflow-x: auto;
 }
 
+/* Rows = fields, columns = seasons. The field and cycle columns stay put
+   while the seasons scroll sideways, so their cells need a solid background. */
 .rotation-grid {
+  --rot-field-w: 190px;
+  --rot-assign-w: 196px;
+  --rot-row-bg: var(--color-surface);
   width: 100%;
   border-collapse: separate;
-  border-spacing: 4px 4px;
+  border-spacing: 0;
   font-size: var(--fs-sm);
 }
 
-.rotation-grid th {
-  padding: 4px 4px;
-  font-weight: 600;
-  color: var(--color-ink-soft);
-  text-align: left;
+.rotation-grid tbody tr:nth-child(even) {
+  --rot-row-bg: color-mix(in srgb, var(--color-ink) 2.5%, var(--color-surface));
+}
+
+.rotation-grid thead th {
+  padding: 10px 8px;
   white-space: nowrap;
+}
+
+.rotation-grid tbody th,
+.rotation-grid tbody td {
+  padding: 7px 6px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rotation-grid tbody td {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
 }
 
 .rotation-grid thead th.is-current {
@@ -7789,32 +8177,151 @@ button.field-open:hover .field-number-chip {
   color: var(--color-ink-faint);
 }
 
+/* This season as a column band. */
+.rotation-grid thead th.is-current-col {
+  background-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-alt));
+}
+
+.rotation-grid tbody td.is-current-col {
+  background-color: color-mix(in srgb, var(--color-primary) 7%, var(--rot-row-bg));
+}
+
+.rotation-grid tbody td.is-past-col .rotation-cell:not(.is-empty) {
+  opacity: 0.72;
+}
+
+.rotation-grid .rotation-field-cell,
+.rotation-grid .rotation-assign {
+  position: sticky;
+  z-index: 2;
+}
+
+.rotation-grid .rotation-field-cell {
+  left: 0;
+  width: var(--rot-field-w);
+  min-width: var(--rot-field-w);
+  max-width: var(--rot-field-w);
+  padding-left: 8px;
+  text-align: left;
+}
+
+.rotation-grid .rotation-assign {
+  left: var(--rot-field-w);
+  width: var(--rot-assign-w);
+  min-width: var(--rot-assign-w);
+  box-shadow: inset -1px 0 0 var(--color-border-strong);
+}
+
+.rotation-grid tbody .rotation-field-cell,
+.rotation-grid tbody .rotation-assign {
+  background-color: var(--rot-row-bg);
+}
+
+.rotation-grid thead .rotation-field-cell,
+.rotation-grid thead .rotation-assign {
+  z-index: 12;
+}
+
 .rotation-field {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
 }
 
-.rotation-field-name,
+.rotation-field-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.rotation-field-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
 .rotation-field-ha {
   font-weight: 400;
   font-size: var(--fs-xs);
   color: var(--color-ink-faint);
+  white-space: nowrap;
 }
 
-.rotation-assign {
-  white-space: nowrap;
+.rotation-assign-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rotation-assign-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .rotation-assign select {
   display: block;
-  margin: 1px 0;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 6px;
+  font-size: var(--fs-xs);
 }
 
-.rotation-assign select {
-  max-width: 116px;
-  padding: 3px 6px;
+.rotation-assign-step select {
+  flex: 1 1 auto;
+}
+
+.rotation-assign select.is-none {
+  color: var(--color-ink-faint);
+  border-style: dashed;
+}
+
+.rotation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
   font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.rotation-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rotation-legend-cell {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  border-left: 3px solid var(--color-ink-faint);
+  border-radius: 3px;
+  background-color: var(--color-surface-alt);
+}
+
+.rotation-legend-cell.is-current {
+  outline: 2px solid var(--color-ink-soft);
+  outline-offset: 1px;
+}
+
+.rotation-legend-cell.is-projected {
+  border-left-style: dashed;
+  background-color: color-mix(in srgb, var(--color-surface-alt) 50%, var(--color-surface));
+}
+
+.rotation-legend-catch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #9a7fc0;
 }
 
 .rotation-plan-realign {
@@ -7851,6 +8358,8 @@ button.field-open:hover .field-number-chip {
 .rotation-cell.is-empty {
   background-color: transparent;
   color: var(--color-ink-faint);
+  opacity: 0.7;
+  text-align: center;
 }
 
 .rotation-cell.is-projected {
@@ -8148,6 +8657,22 @@ button.field-open:hover .field-number-chip {
 
 .tl-tabs {
   margin-left: auto;
+}
+
+.tl-view-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tl-view-title {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+}
+
+.tl-view-desc {
+  margin: 0;
+  color: var(--color-ink-soft);
 }
 
 .tl-body {
@@ -8632,6 +9157,19 @@ button.field-open:hover .field-number-chip {
 
 .today-group.is-warn .today-chip {
   border-color: var(--color-rust-soft);
+}
+
+.today-group--season .today-group-title .fa-solid {
+  color: var(--color-accent-dark);
+}
+
+.today-group--season .today-chip {
+  border-color: var(--color-accent);
+}
+
+.today-group--season .today-chip-ha {
+  color: var(--color-accent-dark);
+  font-weight: 700;
 }
 
 .today-chip-main {

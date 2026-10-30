@@ -374,10 +374,17 @@ function tlRenderSide() {
     const side = document.getElementById('tl-side');
     if (!side) return;
     tlUpdateCursor();
-    document.querySelectorAll('#tramlines-view .tl-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tltab === tl.tab));
+    document.querySelectorAll('#tramlines-view .tl-tab').forEach(b => {
+        const on = b.dataset.tltab === tl.tab;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
     const save = tlCurrentSave();
     const saveSel = `<label class="settings-field"><span>${t('tlSave')}</span><select id="tl-save">${tl.saves.map(s => `<option value="${escapeHtml(s.dir)}" ${s.dir === tl.saveDir ? 'selected' : ''}>${escapeHtml(s.name)}${s.title ? ' · ' + escapeHtml(s.title) : ''}</option>`).join('')}</select></label>`;
-    let html = tl.tab === 'settings' ? '' : (tl.saves.length ? saveSel : `<p class="settings-hint">${escapeHtml(t('tlNoSaves').replace('{dir}', tlGameDir()))}</p>`);
+    // Which view this is, so the panel itself says where you are.
+    const tabKey = { paste: 'tlTabPaste', cut: 'tlTabCut', editor: 'tlTabEditor', settings: 'tlTabSettings' }[tl.tab];
+    let html = `<div class="tl-view-head"><h2 class="tl-view-title">${t(tabKey)}</h2><p class="tl-view-desc">${escapeHtml(t('tlViewDesc_' + tl.tab))}</p></div>`;
+    html += tl.tab === 'settings' ? '' : (tl.saves.length ? saveSel : `<p class="settings-hint">${escapeHtml(t('tlNoSaves').replace('{dir}', tlGameDir()))}</p>`);
     if (tl.tab === 'paste') html += tlPasteHtml(save);
     else if (tl.tab === 'cut') html += tlCutHtml(save);
     else if (tl.tab === 'editor') html += tlEditorHtml(save);

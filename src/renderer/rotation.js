@@ -37,18 +37,39 @@ function rotationCropColor(crop) {
 // Rules for the warnings (FS25 itself has no rotation bonus — these are the
 // usual farming rules of thumb).
 const ROTATION_CEREALS = ['Wheat', 'Barley', 'Oat', 'Rye', 'Triticale', 'Spelt', 'Sorghum'];
-const ROTATION_BREAK_CROPS = ['Canola', 'Sugarbeet'];   // at most every 3rd season
-const ROTATION_BREAK_GAP = 3;
+// Crops that need a break (soil-borne disease and pests): at most every n-th
+// season. Canola (clubroot, blackleg) and sugar beet (nematodes, Rhizoctonia)
+// 1 in 3; potato (nematodes, scab), sunflower (Sclerotinia) and peas (foot rot)
+// 1 in 4 — the usual advice is 3-4 and 4-6 years.
+const ROTATION_BREAK_CROPS = { Canola: 3, Sugarbeet: 3, Potato: 4, Sunflower: 4, Pea: 4 };
 const cropIn = (list, crop) => !!crop && list.some(c => cropOrderKey(c) === cropOrderKey(crop));
 
 // Templates to start from: copied into the farm, then editable. Crops the
 // map doesn't have are left out (a template with fewer than 2 steps isn't offered).
+// Built on the game's calendars: an autumn crop (wheat, barley Sep-Oct, canola
+// Aug-Sep) follows a crop harvested by then; a spring crop (beet, potato,
+// maize, peas, sunflower) after a cereal gets oilseed radish over the winter
+// gap, which also feeds the next crop when it's worked in. Every template
+// passes the warnings below (no crop twice, at most two cereals in a row,
+// break crops within their gap). sowingMonth only where the default (the
+// window's first month) comes too early: a cereal after a September harvest
+// goes in in October, grass after the barley harvest in August. A map whose
+// calendar doesn't allow it falls back to the default (rotationSowMonth).
 const ROTATION_TEMPLATES = [
-    { key: 'norfolk', steps: [{ crop: 'Wheat' }, { crop: 'Sugarbeet' }, { crop: 'Barley' }, { crop: 'Canola' }] },
+    // Norfolk four-course: cereal, root crop, cereal, legume (clover -> peas).
+    { key: 'norfolk', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Pea' }] },
+    // Canola after barley (harvested in time for an August sowing), wheat after canola.
     { key: 'cerealsCanola', steps: [{ crop: 'Canola' }, { crop: 'Wheat' }, { crop: 'Barley' }] },
-    { key: 'dairy', steps: [{ crop: 'Maize' }, { crop: 'Grass', seasons: 3 }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }] },
-    { key: 'roots', steps: [{ crop: 'Potato' }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley' }] },
-    { key: 'catchCrops', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', catchCrop: 'Oilseedradish' }, { crop: 'Soybean' }] }
+    // Peas leave nitrogen for the wheat after them; canola every fifth season.
+    { key: 'pea', steps: [{ crop: 'Pea' }, { crop: 'Wheat' }, { crop: 'Canola' }, { crop: 'Wheat' }, { crop: 'Barley', catchCrop: 'Oilseedradish' }] },
+    // Silage maize twice (not in a row), grass sown after the barley harvest.
+    { key: 'dairy', steps: [{ crop: 'Maize' }, { crop: 'Wheat', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER' }, { crop: 'Grass', sowingMonth: 'AUGUST', seasons: 3 }] },
+    { key: 'roots', steps: [{ crop: 'Potato' }, { crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Sugarbeet' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }] },
+    { key: 'catchCrops', steps: [{ crop: 'Wheat', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Soybean' }] },
+    // Warm, dry maps: sunflower one season in four, wheat straight after its September harvest.
+    { key: 'sunflower', steps: [{ crop: 'Sunflower' }, { crop: 'Wheat', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }, { crop: 'Maize' }, { crop: 'Barley', sowingMonth: 'OCTOBER', catchCrop: 'Oilseedradish' }] },
+    // Southern maps: cotton with maize and soybeans in between.
+    { key: 'cotton', steps: [{ crop: 'Cotton' }, { crop: 'Maize' }, { crop: 'Soybean' }] }
 ];
 
 // The map's own spelling of a crop, or '' when the map doesn't have it.
@@ -60,7 +81,7 @@ function rotationTemplateSteps(tpl) {
     return tpl.steps.map(s => ({
         crop: rotationMapCrop(s.crop),
         catchCrop: s.catchCrop ? rotationMapCrop(s.catchCrop) : '',
-        sowingMonth: '',
+        sowingMonth: s.sowingMonth || '',
         seasons: s.seasons || (isPerennialCrop(s.crop) ? grasslandSeasonLimit(getCurrentFarm()) : 1)
     })).filter(s => s.crop);
 }
@@ -250,13 +271,14 @@ function rotationSequenceWarnings(seq, fromIdx, grassLimit) {
             break;
         }
     }
-    ROTATION_BREAK_CROPS.forEach(bc => {
+    Object.keys(ROTATION_BREAK_CROPS).forEach(bc => {
+        const minGap = ROTATION_BREAK_CROPS[bc];
         const at = seq.map((e, i) => (e.crops.some(c => cropOrderKey(c) === cropOrderKey(bc)) ? i : -1)).filter(i => i >= 0);
         for (let j = 1; j < at.length; j++) {
             if (at[j] < fromIdx) continue;
             const gap = at[j] - at[j - 1];
-            if (gap > 1 && gap < ROTATION_BREAK_GAP) {
-                warn.push({ level: 'red', text: t('rotWarnBreak').replace('{crop}', translateCropName(bc)).replace('{n}', ROTATION_BREAK_GAP).replace('{a}', label(at[j - 1])).replace('{b}', label(at[j])) });
+            if (gap > 1 && gap < minGap) {
+                warn.push({ level: 'red', text: t('rotWarnBreak').replace('{crop}', translateCropName(bc)).replace('{n}', minGap).replace('{a}', label(at[j - 1])).replace('{b}', label(at[j])) });
                 break;
             }
         }
@@ -304,7 +326,8 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
     const filled = [];
     (farm.fields || []).forEach(field => {
         const info = fieldRotationInfo(farm, field);
-        if (!info) return;
+        // A carried-over crop moves on after its harvest (settleCarriedFields).
+        if (!info || field.carriedFrom) return;
         setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
         if (!fill) return;
         applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1));
@@ -434,10 +457,53 @@ document.addEventListener('change', e => {
     if (!stepSel) return;
     const crop = row.querySelector('.field-crop');
     const number = row.querySelector('.field-number');
-    const probe = { number: number ? number.value : '', crop: crop ? crop.value : '' };
+    // A crop this card filled in from a cycle doesn't count as the field's own.
+    const own = crop && crop.value && crop.value !== row.dataset.rotationCrop ? crop.value : '';
+    const probe = { number: number ? number.value : '', crop: own };
     const idx = rot ? detectRotationSlot(rot, probe, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1) : 0;
     stepSel.innerHTML = rotationStepOptionsHtml(rot, idx);
+    fillEditCardFromRotation(row, rot);
 });
+
+document.addEventListener('change', e => {
+    const sel = e.target;
+    if (!sel.classList || !sel.classList.contains('field-rotation-step')) return;
+    const row = sel.closest('tr');
+    const cycle = row && row.querySelector('.field-rotation');
+    if (cycle) fillEditCardFromRotation(row, rotationById(getCurrentFarm(), cycle.value));
+});
+
+// Edit card: an empty crop (or one this card filled in before) takes the
+// chosen step's crop, sowing month and catch crop, so they show before saving.
+function fillEditCardFromRotation(row, rot) {
+    const crop = row.querySelector('.field-crop');
+    const sow = row.querySelector('.field-sow');
+    const stepSel = row.querySelector('.field-rotation-step');
+    if (!crop || !sow || !stepSel) return;
+    if (crop.value && crop.value !== row.dataset.rotationCrop) return;
+    const slot = rot ? rotationSlotAt(rot, parseInt(stepSel.value, 10) || 0) : null;
+    if (!slot || !slot.crop || !crop.querySelector(`option[value="${CSS.escape(slot.crop)}"]`)) {
+        // Cycle removed or a fallow step: take back what this card filled in.
+        if (row.dataset.rotationCrop) {
+            crop.value = '';
+            onCropChange(crop);
+            delete row.dataset.rotationCrop;
+        }
+        return;
+    }
+    crop.value = slot.crop;
+    onCropChange(crop);
+    const farm = getCurrentFarm();
+    sow.value = rotationSowMonthSoon(slot, farm && farm.month) || rotationSowMonth(slot);
+    row.dataset.rotationCrop = slot.crop;
+    const catchSel = row.querySelector('.field-catch-crop');
+    const catchSow = row.querySelector('.field-catch-sow');
+    if (catchSel && !catchSel.value && slot.catchCrop && catchSel.querySelector(`option[value="${CSS.escape(slot.catchCrop)}"]`)) {
+        catchSel.value = slot.catchCrop;
+        onCatchCropChange(catchSel);
+        if (catchSow) catchSow.value = rotationCatchSowMonth(slot.crop, sow.value, slot.catchCrop);
+    }
+}
 
 // Reads the cycle back from an edit card (keeps `filled` when nothing changed).
 function readRotationInputs(row, farm, previous) {
@@ -477,11 +543,31 @@ function setFieldCycle(farm, field, rotId) {
     const rot = rotationById(farm, rotId);
     if (!rot) { delete field.rotation; return; }
     setFieldRotationSlot(field, rot, detectRotationSlot(rot, field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1));
+    fillEmptyFieldFromRotation(farm, field);
 }
 
 function setFieldCycleStep(farm, field, index) {
     const info = fieldRotationInfo(farm, field);
-    if (info) setFieldRotationSlot(field, info.rot, parseInt(index, 10) || 0);
+    if (!info) return;
+    setFieldRotationSlot(field, info.rot, parseInt(index, 10) || 0);
+    fillEmptyFieldFromRotation(farm, field);
+}
+
+// A field with nothing planned this season takes its step's crop as soon as
+// it gets a cycle (or another step). A planned crop is never replaced, and a
+// fallow step fills nothing. Marked filled, so the month fill leaves it alone;
+// the plan's keys (number + crop) move along, as when the crop is picked by hand.
+function fillEmptyFieldFromRotation(farm, field) {
+    const info = field.crop ? null : fieldRotationInfo(farm, field);
+    if (!info || !info.slot.crop) return false;
+    const before = JSON.parse(JSON.stringify(farm.fields));
+    applyRotationSlot(field, info.slot);
+    // Mid-season, like the month fill: this month or next when the crop allows it.
+    field.sowingMonth = rotationSowMonthSoon(info.slot, farm.month) || field.sowingMonth;
+    field.rotation.filled = farm.currentSeason || 1;
+    migrateFieldKeys(farm, before, farm.fields);
+    showAutoSyncToast(t('rotFieldFilled').replace('{crop}', translateCropName(field.crop)), 4000);
+    return true;
 }
 
 // Changes from the field view section (wired in fields-table.js).
@@ -535,9 +621,10 @@ function renderRotationPanel(titleEl, bodyEl) {
     titleEl.textContent = t('rotTitle');
     const farm = getCurrentFarm();
     if (!farm) { bodyEl.innerHTML = ''; return; }
-    const tabs = ['plan', 'cycles'].map(k => `<button type="button" class="settings-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" data-rtab="${k}">${t(k === 'plan' ? 'rotTabPlan' : 'rotTabCycles')}</button>`).join('');
+    const tabs = [['plan', 'fa-table-cells', 'rotTabPlan'], ['cycles', 'fa-arrows-spin', 'rotTabCycles']].map(([k, icon, key]) =>
+        `<button type="button" class="view-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" role="tab" aria-selected="${k === rotationTab}" data-rtab="${k}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${t(key)}</button>`).join('');
     bodyEl.innerHTML = `<div class="rotation-panel">
-        <div class="settings-tabs rotation-tabs" role="tablist">${tabs}</div>
+        <div class="view-tabs rotation-tabs" role="tablist">${tabs}</div>
         <div class="rotation-body">${rotationTab === 'cycles' ? rotationCyclesHtml(farm) : rotationPlanHtml(farm)}</div>
     </div>`;
 }
@@ -573,12 +660,13 @@ function rotationPlanHtml(farm) {
         }
         const tip = score.warnings.map(w => '• ' + w.text).join('\n') || t(score.level ? 'rotScoreOk' : 'rotScoreNone');
         const name = fieldNameOf(farm, field.number);
+        const colCls = s => s === season ? 'is-current-col' : (s < season ? 'is-past-col' : '');
         return `<tr>
-            <th scope="row" class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><span class="field-number-chip">${escapeHtml(String(field.number))}</span>${name ? `<span class="rotation-field-name">${escapeHtml(name)}</span>` : ''}<span class="rotation-field-ha">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></th>
-            <td class="rotation-assign">${rotationSelectHtml(farm, score.info ? score.info.rot.id : '', 'rotation-plan-cycle', ` data-idx="${idx}"`)}
-                ${score.info ? `<select class="rotation-plan-step" data-idx="${idx}">${rotationStepOptionsHtml(score.info.rot, score.info.index)}</select>` : ''}
-                ${score.offCycle ? `<button type="button" class="rotation-plan-realign" data-idx="${idx}" title="${escapeHtml(t('rotRealignHint'))}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>` : ''}</td>
-            ${cols.map(s => `<td>${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
+            <th scope="row" class="rotation-field-cell"><div class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><span class="field-number-chip">${escapeHtml(String(field.number))}</span>
+                <span class="rotation-field-meta">${name ? `<span class="rotation-field-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>` : ''}<span class="rotation-field-ha">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></span></div></th>
+            <td class="rotation-assign"><div class="rotation-assign-inner">${rotationSelectHtml(farm, score.info ? score.info.rot.id : '', 'rotation-plan-cycle' + (score.info ? '' : ' is-none'), ` data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldCycle'))}"`)}
+                ${score.info ? `<span class="rotation-assign-step"><select class="rotation-plan-step" data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldStep'))}">${rotationStepOptionsHtml(score.info.rot, score.info.index)}</select>${score.offCycle ? `<button type="button" class="rotation-plan-realign" data-idx="${idx}" title="${escapeHtml(t('rotRealignHint'))}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>` : ''}</span>` : ''}</div></td>
+            ${cols.map(s => `<td class="${colCls(s)}">${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
         </tr>`;
     }).join('');
     const areaList = Object.entries(nextArea).sort((a, b) => b[1] - a[1])
@@ -591,9 +679,15 @@ function rotationPlanHtml(farm) {
         </div>
         ${getRotations(farm).length ? '' : `<p class="settings-hint">${t('rotNoCyclesHint')}</p>`}
         <div class="rotation-grid-wrap"><table class="rotation-grid">
-            <thead><tr><th>${t('thFieldNo')}</th><th>${t('rotFieldCycle')}</th>${cols.map(s => `<th class="${s === season ? 'is-current' : (s > season ? 'is-projected' : '')}">${t('season')} ${s}${s === season ? ` <small>(${t('rotNow')})</small>` : ''}</th>`).join('')}</tr></thead>
+            <thead><tr><th class="rotation-field-cell">${t('thFieldNo')}</th><th class="rotation-assign">${t('rotFieldCycle')}</th>${cols.map(s => `<th class="${s === season ? 'is-current is-current-col' : (s > season ? 'is-projected' : 'is-past-col')}">${t('season')} ${s}${s === season ? ` <small>(${t('rotNow')})</small>` : ''}</th>`).join('')}</tr></thead>
             <tbody>${rows}</tbody>
         </table></div>
+        <div class="rotation-legend">
+            <span><span class="rotation-legend-cell is-current"></span>${t('rotLegendCurrent')}</span>
+            <span><span class="rotation-legend-cell is-projected"></span>${t('rotLegendProjected')}</span>
+            <span><span class="rotation-legend-catch"></span>${t('rotLegendCatch')}</span>
+            <span><span class="rotation-dot is-green"></span><span class="rotation-dot is-yellow"></span><span class="rotation-dot is-red"></span>${t('rotLegendScore')}</span>
+        </div>
         ${areaList ? `<div class="rotation-next-area"><strong>${t('rotNextArea').replace('{n}', season + 1)}</strong> ${areaList}</div>` : ''}`;
 }
 
@@ -675,8 +769,6 @@ function addRotation(farm, rot) {
 (function wireRotationView() {
     const body = document.getElementById('hub-panel-body');
     if (!body) return;
-    const btn = document.getElementById('rotation-btn');
-    if (btn) btn.addEventListener('click', () => openRotationView());
     body.addEventListener('click', e => {
         const tab = e.target.closest('.rotation-tab');
         if (tab) { rotationTab = tab.dataset.rtab; renderRotationModal(); }
@@ -700,7 +792,7 @@ function addRotation(farm, rot) {
         }
         if (el.classList.contains('rotation-template') && el.value) {
             const tpl = ROTATION_TEMPLATES.find(x => x.key === el.value);
-            if (tpl) addRotation(farm, { name: t('rotTpl_' + tpl.key).split(' (')[0], steps: rotationTemplateSteps(tpl) });
+            if (tpl) addRotation(farm, { name: t('rotTpl_' + tpl.key).split(/ \(| — /)[0], steps: rotationTemplateSteps(tpl) });
             return;
         }
         if (el.classList.contains('rotation-copy-farm') && el.value) {

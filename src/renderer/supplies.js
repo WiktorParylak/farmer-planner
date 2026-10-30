@@ -241,6 +241,21 @@ window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, a
     openModal(hubPanelModal);
 };
 
+// Saves one figure of a field's plan (existingN / orgN, kg N/ha); empty or 0 clears it.
+// Used by the plan window and the field view.
+function setFertPlanValue(planKey, key, raw) {
+    const r = getSupplyRates();
+    if (!r.fertPlan) r.fertPlan = {};
+    const entry = { ...(r.fertPlan[planKey] || {}) };
+    const v = String(raw == null ? '' : raw).trim();
+    const n = parseFloat(v);
+    if (v === '' || isNaN(n) || n <= 0) delete entry[key];
+    else entry[key] = n;
+    if (Object.keys(entry).length === 0) delete r.fertPlan[planKey];
+    else r.fertPlan[planKey] = entry;
+    saveSupplyRates(r);
+}
+
 function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area) {
     const rates = getSupplyRates();
     const d = computeFieldFertPlan(planKey, soilKey, cropKey, area, rates);
@@ -299,16 +314,7 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
         const el = bodyEl.querySelector(selector);
         if (!el) return;
         el.addEventListener('change', () => {
-            const r = getSupplyRates();
-            if (!r.fertPlan) r.fertPlan = {};
-            const entry = { ...(r.fertPlan[planKey] || {}) };
-            const v = el.value.trim();
-            const n = parseFloat(v);
-            if (v === '' || isNaN(n) || n <= 0) delete entry[key];
-            else entry[key] = n;
-            if (Object.keys(entry).length === 0) delete r.fertPlan[planKey];
-            else r.fertPlan[planKey] = entry;
-            saveSupplyRates(r);
+            setFertPlanValue(planKey, key, el.value);
             renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area);
         });
     };
@@ -326,8 +332,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
             if (!m) return;
             m.field[prop] = el.checked;
             saveFarmData(farm);
-            // Refresh the table underneath so the "Nawożenie" button's white /
-            // brown / green state is already right when this modal closes.
+            // Refresh the table underneath so the N chip's empty /
+            // rust / green state is already right when this modal closes.
             if (typeof renderSeasonView === 'function') renderSeasonView();
         });
     };

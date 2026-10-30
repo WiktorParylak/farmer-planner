@@ -54,8 +54,8 @@ function devFields() {
             work: [{ step: "harvest", done: true }, { step: "plow", done: true }, { step: "lime", done: true },
                 { step: "sow", done: false }, { step: "fertilize", done: false }]
         }),
-        // Sowing month already passed; never limed; weeds to spray.
-        // Off its rotation: the cycle wants wheat after canola.
+        // Sowing month already passed; never limed; weeds marked, but not sown yet,
+        // so "What to do today" doesn't list them. Off its rotation: the cycle wants wheat after canola.
         devField("2", 3.4, "Barley", "SEPTEMBER", "To Plant", null, { weeds: "needed", rotation: { id: "rot_dev_canola", step: 1, stepSeason: 1 } }),
         // Two farmlands in one field; planted, rolled, fertilized.
         devField("3-4", 7.8, "Canola", "AUGUST", "Planted", "noTill", {
@@ -92,9 +92,12 @@ function devFields() {
         }),
         // Low pH from an old liming.
         devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55 }),
-        devField("14", 3.1, "Oat", "MARCH", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true }),
+        // Sown, weeds to spray ("What to do today" lists it).
+        devField("14", 3.1, "Oat", "MARCH", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true, weeds: "needed" }),
         // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
-        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } })
+        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } }),
+        // Nothing planned and no cycle: giving it one fills in the step's crop.
+        devField("16", 0.9, "", "", "To Plant", null, {})
     ];
 }
 

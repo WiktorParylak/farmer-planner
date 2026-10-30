@@ -1992,7 +1992,8 @@ let fieldSoilImportMsg = '';
 // "Load soils from the game": fills rates.fieldSoil for every field whose
 // number(s) exist on the map. A combined field ("168-169", "69-70-71") gets
 // the pixel-weighted mix of its parts. Returns the status line (HTML-safe text).
-function importFieldSoilFromGame(farm) {
+// onlyKey: just that field (the field view's button).
+function importFieldSoilFromGame(farm, onlyKey) {
     const res = readFieldSoilFromSave(farm && farm.saveGamePath);
     if (!res.ok) {
         const reasons = t('fieldSoilImportReasons') || {};
@@ -2014,6 +2015,7 @@ function importFieldSoilFromGame(farm) {
     let filled = 0;
     const missing = [], areaOff = [];
     Object.keys(areaByKey).forEach(key => {
+        if (onlyKey && key !== onlyKey) return;
         const ids = key.split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
         if (!ids.length) return;
         const parts = ids.map(id => res.fields[id]);
@@ -2040,6 +2042,11 @@ function importFieldSoilFromGame(farm) {
     });
     saveSupplyRates(rates);
 
+    if (onlyKey) {
+        if (!filled) return t('fieldViewSoilNotFound').replace('{n}', escapeHtml(onlyKey));
+        return t('fieldViewSoilImported').replace('{map}', escapeHtml(res.mapTitle || res.modName || ''))
+            + (areaOff.length ? ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', '))) : '');
+    }
     let msg = t('fieldSoilImportDone').replace('{n}', filled).replace('{map}', escapeHtml(res.mapTitle || res.modName || ''));
     if (missing.length) msg += ' ' + t('fieldSoilImportMissing').replace('{list}', escapeHtml(missing.join(', ')));
     if (areaOff.length) msg += ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', ')));
@@ -3083,7 +3090,9 @@ function readSaveFields(farm) {
                 growthState,
                 sown: fruitType !== 'UNKNOWN' && fruitType !== '' && fruitType !== 'FALLOW' && growthState > 0,
                 sprayLevel: parseInt(attrOf(tag, 'sprayLevel')) || 0,
+                sprayType: attrOf(tag, 'sprayType'),
                 limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
+                groundType: attrOf(tag, 'groundType'),
                 weedState: parseInt(attrOf(tag, 'weedState')) || 0
             });
         }
@@ -4167,6 +4176,7 @@ window.openPlanner = function (id) {
 
         viewedSeason = farm.currentSeason || 1;
         showPlannerView('plan');   // renders the season table
+        settleCarriedFields(getCurrentFarm());
         maybeSuggestNewSeason(getCurrentFarm());
         maybeFillFromRotation(getCurrentFarm());
 
@@ -4186,13 +4196,16 @@ window.openPlanner = function (id) {
 // A state you set by hand (chip or work planner) wins until the game saves a
 // different weedState for that field: the save may still show live weeds
 // because the game hasn't saved since spraying, or because its per-field
-// value lags behind. Returns true if any field changed.
+// value lags behind. Fields not sown yet are skipped: their weeds belong to
+// whatever grows there now (last crop, grass, stubble), and cultivating or
+// sowing clears them anyway. Returns true if any field changed.
 function syncWeedsFromSave(farm) {
     const save = readSaveFields(farm);
     if (!save.ok) return false;
     const byId = weedStatesById(save);
     let changed = false;
     (farm.fields || []).forEach(field => {
+        if (field.state !== 'Planted') return;
         const ids = gameFieldIds(field);
         if (field.weedsManual !== undefined) {
             if (field.weedsManual === weedStatesKey(ids, byId)) return;
@@ -4205,6 +4218,76 @@ function syncWeedsFromSave(farm) {
         // Dead weeds after hoeing are still "weeded mechanically".
         if (next === 'done' && field.weeds === 'hoed') return;
         if (field.weeds !== next) { field.weeds = next; changed = true; }
+    });
+    return changed;
+}
+
+// Field work done in the game, from fields.xml (read only). The work list
+// (fields-table.js, withSowFromState) shows these steps as done:
+// - sow: the planned crop grows on every game field of the row -> state "Planted";
+// - cultivate / plow: the ground is cultivated (seedbed, stubble tillage) or
+//   ploughed now, or the planned crop is already sown;
+// - roll: the ground shows roller lines / a rolled seedbed;
+// - fertilize / manure / lime: the field's spray or lime level went up since the
+//   last read (levels carry over from earlier seasons, so only a rise counts).
+//   Every game field of a row has to get it before it counts once.
+// One-off steps are flags (workDetected.cultivate = true), repeatable ones
+// counts (workDetected.fertilize = 2). New season clears both.
+const SAVE_GROUND_CULTIVATED = ['CULTIVATED', 'SEEDBED', 'ROLLED_SEEDBED', 'STUBBLE_TILLAGE', 'PLOWED'];
+const SAVE_GROUND_ROLLED = ['ROLLED_SEEDBED', 'ROLLER_LINES'];
+const SAVE_SPRAY_NATURAL = ['LIQUID_MANURE', 'MANURE', 'DIGESTATE'];
+function syncWorkFromSave(farm) {
+    const save = readSaveFields(farm);
+    if (!save.ok) return false;
+    const byId = {};
+    save.fields.forEach(g => { byId[g.id] = g; });
+    let changed = false;
+    (farm.fields || []).forEach((field, idx) => {
+        const ids = gameFieldIds(field);
+        const games = ids.map(id => byId[id]);
+        if (!games.length || games.some(g => !g)) return;
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]);
+        const det = { ...(field.workDetected || {}) };
+        const rise = { ...(field.workRise || {}) };
+        const seen = { ...(field.workSeen || {}) };
+        const grows = !!field.crop && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+        if (grows && field.state !== 'Planted') field.state = 'Planted';
+        if (field.crop && !isCutCrop(field.crop)) {
+            const allGround = list => games.every(g => list.includes(g.groundType));
+            if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
+            if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
+            if (allGround(SAVE_GROUND_ROLLED)) {
+                det.roll = true;
+                if (field.rolling) field.rollingDone = true;
+            }
+        }
+        // Rises of the spray / lime level, per game field.
+        games.forEach(g => {
+            const last = seen[g.id];
+            if (last && field.crop) {
+                if (g.sprayLevel > last.s) {
+                    const step = SAVE_SPRAY_NATURAL.includes(g.sprayType) ? 'manure' : 'fertilize';
+                    rise[step] = [...new Set([...(rise[step] || []), g.id])];
+                }
+                if (g.limeLevel > last.l) rise.lime = [...new Set([...(rise.lime || []), g.id])];
+            }
+            seen[g.id] = { s: g.sprayLevel, l: g.limeLevel };
+        });
+        Object.keys(rise).forEach(step => {
+            if (!ids.every(id => rise[step].includes(id))) return;
+            delete rise[step];
+            if (step === 'manure') field.manure = true;
+            if (step === 'fertilize') field.fertilizer = true;
+            // Manure counts for a Manure step when the list has one left, else for Fertilize.
+            const list = fieldWork(field) || suggestedWork(field, idx, farm);
+            const key = step === 'manure' && !list.some(w => w.step === 'manure') ? 'fertilize' : step;
+            det[key] = (typeof det[key] === 'number' ? det[key] : 0) + 1;
+        });
+        field.workSeen = seen;
+        if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
+        if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
+        syncSowStep(field);
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]) !== before) changed = true;
     });
     return changed;
 }
@@ -4280,6 +4363,7 @@ function applyGameSaveToFarm(farm) {
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
+    if (syncWorkFromSave(farm)) changed = true;
     if (syncWeedsFromSave(farm)) changed = true;
     if (syncLeasesFromSave(farm)) changed = true;
 
@@ -4409,6 +4493,7 @@ function runAutoSyncTick() {
         refreshPlannerHeader(farm);
         renderSeasonView();
         showAutoSyncToast();
+        settleCarriedFields(getCurrentFarm());
         maybeSuggestNewSeason(getCurrentFarm());
         maybeFillFromRotation(getCurrentFarm());
     }
@@ -4483,7 +4568,7 @@ window.renderSeasonView = function () {
         });
     }
 
-    const displayStyle = isPastSeason ? 'none' : 'inline-block';
+    const displayStyle = isPastSeason ? 'none' : '';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
@@ -4684,6 +4769,55 @@ function cropKeepsLime(crop) {
     return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }
 
+// Clears a field for the next season (runNewSeason; a carried-over field once
+// its crop is harvested, settleCarriedFields). seasonNum: the season whose
+// harvest this is, for the lime pH backfill.
+function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
+    // Read before the crop is cleared.
+    const keepsLime = cropKeepsLime(field.crop);
+    if (isPerennialCrop(field.crop)) {
+        // Grassland stays sown for years: keep the crop, sowing
+        // month and tillage; only this season's work is cleared.
+        field.state = "Planted";
+    } else {
+        field.crop = "";
+        field.sowingMonth = "";
+        field.state = "To Plant";
+        field.tillage = null;
+    }
+    field.catchCrop = "";
+    field.catchSowingMonth = "";
+    field.rolling = false;
+    field.rollingDone = false;
+    field.cuts = [];
+    // limeAppliedSeason is intentionally left untouched — it's
+    // display-only metadata now (see limePh below for the actual
+    // decaying value).
+    // One harvest = one "New Season" click: decay this field's pH
+    // by one step (soil-mix-weighted). resolveLimePh backfills a
+    // field that predates this model instead of resetting it.
+    const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
+    const resolvedPh = resolveLimePh(field, seasonNum, soilMix);
+    // consumesLime="false" crops (grassland, oilseed radish, rice)
+    // don't lower pH when harvested; everything else does.
+    const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
+    field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
+    field.manure = false;
+    field.fertilizer = false;
+    field.weeds = null;
+    delete field.weedsManual;
+    delete field.work;
+    delete field.workCleared;
+    // Work found in the save belongs to the season just archived
+    // (workSeen stays: the levels to compare the next read with).
+    delete field.workDetected;
+    delete field.workRise;
+    // Undo only covers the season the liming was made in.
+    delete field.limePrev;
+    delete field.carriedFrom;
+    delete field.carriedCrop;
+}
+
 if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
 
 // New season: archive the current one, clear the fields for the next. Keeps
@@ -4701,11 +4835,16 @@ async function runNewSeason({ intro = '' } = {}) {
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
         // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
         const rotationMode = rotationFillMode(startFarm);
-        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
+        // Fields whose crop is still growing keep it (see clearFieldForNewSeason).
+        const carryIdx = seasonCarryIndexes(startFarm);
+        const carryText = carryIdx.length ? '\n\n' + t('newSeasonCarry').replace('{list}', carryIdx
+            .map(i => startFarm.fields[i].number + ': ' + translateCropName(startFarm.fields[i].crop)).join(', ')) : '';
+        const rotationCount = rotationMode === 'off' ? 0
+            : rotationFieldCount(startFarm) - carryIdx.filter(i => fieldRotationInfo(startFarm, startFarm.fields[i])).length;
         const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
-            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + rotationText,
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + carryText + rotationText,
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
             extraText: rotationCount && rotationMode === 'ask' ? t('rotNewSeasonSkip') : null,
@@ -4756,47 +4895,28 @@ async function runNewSeason({ intro = '' } = {}) {
 
             const supplyRatesForLime = getSupplyRates();
             farm.fields.forEach((field, i) => {
-                // Read before the crop is cleared.
-                const keepsLime = cropKeepsLime(field.crop);
-                if (isPerennialCrop(field.crop)) {
-                    // Grassland stays sown for years: keep the crop, sowing
-                    // month and tillage; only this season's work is cleared.
-                    field.state = "Planted";
-                } else {
-                    field.crop = "";
-                    field.sowingMonth = "";
-                    field.state = "To Plant";
-                    field.tillage = null;
+                // Still growing: it goes over to the new season with its crop.
+                if (carryIdx.includes(i)) {
+                    if (!field.carriedFrom) {
+                        field.carriedFrom = currentSeasonNum;
+                        field.carriedCrop = field.crop;
+                    }
+                    return;
                 }
-                field.catchCrop = "";
-                field.catchSowingMonth = "";
-                field.rolling = false;
-                field.rollingDone = false;
-                field.cuts = [];
-                // limeAppliedSeason is intentionally left untouched — it's
-                // display-only metadata now (see limePh below for the actual
-                // decaying value).
-                // One harvest = one "New Season" click: decay this field's pH
-                // by one step (soil-mix-weighted). resolveLimePh backfills a
-                // field that predates this model instead of resetting it.
-                const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
-                const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                // consumesLime="false" crops (grassland, oilseed radish, rice)
-                // don't lower pH when harvested; everything else does.
-                const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
-                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
-                field.manure = false;
-                field.fertilizer = false;
-                field.weeds = null;
-                delete field.weedsManual;
-                delete field.work;
-                delete field.workCleared;
-                // Undo only covers the season the liming was made in.
-                delete field.limePrev;
+                clearFieldForNewSeason(field, i, currentSeasonNum, supplyRatesForLime);
             });
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
-            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
+            // Carried-over fields keep theirs.
+            if (farm.supplyRates) {
+                const oldPlans = farm.supplyRates.fertPlan || {};
+                const kept = {};
+                carryIdx.forEach(i => {
+                    const key = fertPlanKey(farm.fields[i], i);
+                    if (oldPlans[key]) kept[key] = oldPlans[key];
+                });
+                farm.supplyRates.fertPlan = kept;
+            }
 
             const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
             farm.currentSeason = currentSeasonNum + 1;
@@ -4887,9 +5007,9 @@ async function undoLastNewSeason() {
 const undoSeasonBtn = document.getElementById('undo-season-btn');
 if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeason());
 
-// A year went by in the game since this season started — offer a new season
-// once per in-game year (farm.seasonHintYear). The first sync only notes the
-// year the season is in.
+// Time for a new season (seasonEndInfo, today.js) — offer it,
+// once per season (farm.seasonHintSeason). The first sync only notes the year
+// the season is in.
 function maybeSuggestNewSeason(farm) {
     if (!farm || !farm.saveGamePath || isEditMode) return;
     const year = parseInt(farm.yearNumber, 10);
@@ -4899,11 +5019,46 @@ function maybeSuggestNewSeason(farm) {
         saveFarmData(farm, { touch: false });
         return;
     }
-    if (year <= farm.seasonStartedGameYear || farm.seasonHintYear === year) return;
-    farm.seasonHintYear = year;
+    const season = parseInt(farm.currentSeason, 10) || 1;
+    if (farm.seasonHintSeason === season) return;
+    const info = seasonEndInfo(farm);
+    if (!info.ready) return;
+    farm.seasonHintSeason = season;
     saveFarmData(farm, { touch: false });
-    const intro = t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
+    const intro = t('newSeasonReadyHint').replace('{why}', info.why).replace('{n}', season + 1);
     setTimeout(() => runNewSeason({ intro }), 600);
+}
+
+// A field carried over from the last season clears itself once that crop is
+// harvested, the way a new season clears the others, and moves on in its crop
+// rotation (maybeFillFromRotation then fills it in its month). Replanned by
+// hand — another crop, or no longer sown — it is simply the field's crop now.
+function settleCarriedFields(farm) {
+    if (!farm || !(farm.fields || []).some(f => f.carriedFrom)) return;
+    const ctx = seasonHarvestContext(farm);
+    const rates = getSupplyRates();
+    const freed = [];
+    let changed = false;
+    farm.fields.forEach((field, i) => {
+        if (!field.carriedFrom) return;
+        if (field.state !== 'Planted' || cropOrderKey(field.crop) !== cropOrderKey(field.carriedCrop)) {
+            delete field.carriedFrom;
+            delete field.carriedCrop;
+            changed = true;
+            return;
+        }
+        if (fieldHarvestState(field, ctx.month, ctx.saveById, false) !== 'harvested') return;
+        if (farm.supplyRates && farm.supplyRates.fertPlan) delete farm.supplyRates.fertPlan[fertPlanKey(field, i)];
+        freed.push(field.number + ': ' + translateCropName(field.crop));
+        clearFieldForNewSeason(field, i, field.carriedFrom, rates);
+        const info = fieldRotationInfo(farm, field);
+        if (info) setFieldRotationSlot(field, info.rot, info.index + 1);
+        changed = true;
+    });
+    if (!changed) return;
+    saveFarmData(farm);
+    renderSeasonView();
+    if (freed.length) showAutoSyncToast(t('carriedHarvestedToast').replace('{list}', freed.join(', ')), 4000);
 }
 
 if (resetSeasonsBtn) {
@@ -6153,20 +6308,30 @@ if (checkUpdatesBtn) {
 
 // ---------- what's new after an update ----------
 // The version the app last ran is kept in settings; after an update the
-// CHANGELOG.md sections in between are shown once (in English, as on the
-// website's Versions page).
+// CHANGELOG.md sections in between are shown once. A version that has a
+// section in the app language's own file (CHANGELOG.pl.md) is shown from
+// there; the others in English, as on the website's Versions page.
 const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
 const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
 
-// [{ version, lines }] for every "## X.Y.Z — date" (or "— unreleased") section.
-function readChangelogSections() {
+function changelogFileSections(file) {
     let text = '';
-    try { text = fs.readFileSync(CHANGELOG_PATH, 'utf8'); } catch (e) { return []; }
+    try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
     return text.split(/^## /m).slice(1).map(section => {
         const [heading, ...lines] = section.split(/\r?\n/);
         const m = heading.trim().match(/^(\d+\.\d+\.\d+)\b/);
         return m ? { version: m[1], lines } : null;
     }).filter(Boolean);
+}
+
+// [{ version, lines, english }] for every "## X.Y.Z — date" (or "— unreleased")
+// section of the English changelog, in the app language where translated.
+function readChangelogSections() {
+    const local = currentLang === 'en' ? [] : changelogFileSections(CHANGELOG_PATH.replace(/\.md$/, '.' + currentLang + '.md'));
+    return changelogFileSections(CHANGELOG_PATH).map(s => {
+        const own = local.find(l => l.version === s.version);
+        return own ? { ...own, english: false } : { ...s, english: currentLang !== 'en' };
+    });
 }
 
 // The small Markdown subset CHANGELOG.md uses: "**New**" labels, "- " lists
@@ -6221,7 +6386,7 @@ function showWhatsNew(since) {
 
     document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
     const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
-    document.getElementById('whats-new-lead').textContent = [lead, currentLang === 'en' ? '' : t('whatsNewEnglish')].filter(Boolean).join(' ');
+    document.getElementById('whats-new-lead').textContent = [lead, sections.some(s => s.english) ? t('whatsNewEnglish') : ''].filter(Boolean).join(' ');
     document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
     const body = document.getElementById('whats-new-body');
     body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');

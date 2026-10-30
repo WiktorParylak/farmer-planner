@@ -54,15 +54,16 @@
             <header class="tl-header">
                 <button type="button" id="tl-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
                 <h1 class="tl-title" data-i18n="tlTitle">Tramlines</h1>
-                <div class="settings-tabs tl-tabs" role="tablist">
-                    <button type="button" class="settings-tab tl-tab is-active" data-tltab="paste" data-i18n="tlTabPaste">Paste into a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="cut" data-i18n="tlTabCut">Save from a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="editor" data-i18n="tlTabEditor">Editor</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="settings" data-i18n="tlTabSettings">Settings</button>
+                <div class="view-tabs tl-tabs" role="tablist">
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="cut"><i class="fa-solid fa-scissors" aria-hidden="true"></i> <span data-i18n="tlTabCut">Save from a save</span></button>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="editor"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> <span data-i18n="tlTabEditor">Editor</span></button>
+                    <button type="button" class="view-tab tl-tab is-active" role="tab" aria-selected="true" aria-controls="tl-side" data-tltab="paste"><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="tlTabPaste">Paste into a save</span></button>
+                    <span class="view-tabs-sep" aria-hidden="true"></span>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> <span data-i18n="tlTabSettings">Settings</span></button>
                 </div>
             </header>
             <div class="tl-body">
-                <aside id="tl-side" class="tl-side"></aside>
+                <aside id="tl-side" class="tl-side" role="tabpanel"></aside>
                 <div class="tl-canvas-wrap">
                     <canvas id="tl-canvas"></canvas>
                     <div id="tl-busy" class="tl-busy" hidden></div>
@@ -160,11 +161,10 @@
                                 <span id="fields-search-count" class="fields-search-count" hidden></span>
                             </label>
                             <div class="main-table-header-btns">
-                                <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
-                                <button type="button" id="rotation-btn" class="edit-season-btn" data-i18n="rotBtn" data-i18n-title="rotBtnHint">ROTATION</button>
-                                <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
+                                <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n-title="loadFieldsFromGameHint" hidden><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="loadFieldsFromGame">FIELDS FROM GAME</span></button>
+                                <button type="button" class="new-season-btn"><i class="fa-solid fa-forward" aria-hidden="true"></i> <span data-i18n="newSeason">NEW SEASON</span></button>
                                 <button type="button" id="cancel-edit-btn" class="edit-season-btn cancel-edit-btn" data-i18n="cancelEdit" hidden>CANCEL</button>
-                                <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
+                                <button type="button" id="edit-season-btn" class="edit-season-btn edit-main-btn"><i class="fa-solid fa-pen" aria-hidden="true"></i> <span class="edit-main-label" data-i18n="edit">EDIT</span></button>
                             </div>
                         </div>
                         <div id="bulk-bar" class="bulk-bar" hidden></div>
@@ -179,7 +179,6 @@
                                         <th class="is-sortable" data-sort="state" data-i18n="thState">State</th>
                                         <th data-i18n="thTillage">Tillage</th>
                                         <th data-i18n="thSoil">Soil</th>
-                                        <th data-i18n="thFertPlan">Plan</th>
                                     </tr>
                                 </thead>
                                 <tbody id="fields-body">

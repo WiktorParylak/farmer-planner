@@ -72,11 +72,11 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 
 - **Commituj lokalnie. Nie pushuj, nie twórz PR, tagów ani release'ów, dopóki użytkownik wyraźnie nie powie.** Wyjątek: push gałęzi roboczej na koniec sesji, kiedy użytkownik prosi o synchronizację między komputerami.
 - **Planowanie wersji jest przyrostowe**: użytkownik podaje zmiany jedną po drugiej. Dopisz każdą do planu i zapytaj krótko „co dalej?" zwykłym tekstem. Nie zamykaj planu (ExitPlanMode) ani nie pytaj o zakres menu wyboru, dopóki nie powie, że to wszystko.
-- **CHANGELOG na bieżąco**: każdą zrobioną zmianę dopisz do sekcji `## X.Y.Z — unreleased` w `CHANGELOG.md` w tym samym commicie (data wpisywana przy wydaniu).
+- **CHANGELOG na bieżąco**: każdą zrobioną zmianę dopisz do sekcji `## X.Y.Z — unreleased` w `CHANGELOG.md` w tym samym commicie (data wpisywana przy wydaniu). To samo po polsku w `CHANGELOG.pl.md` (ta sama sekcja wersji, **Nowe / Zmiany / Poprawki**, nazwy jak w polskim UI) — okno „Co nowego” w aplikacji po polsku bierze wersję stąd, a wersji, których tu nie ma, pokazuje po angielsku.
 
 ### Wydanie wersji (krok po kroku)
 1. `package.json` + `package-lock.json` → nowy `version` (to jedyne miejsce z numerem wersji).
-2. `CHANGELOG.md` — nowa sekcja `## X.Y.Z — RRRR-MM-DD` z **New / Changed / Fixed**, w stylu poprzednich wpisów.
+2. `CHANGELOG.md` — nowa sekcja `## X.Y.Z — RRRR-MM-DD` z **New / Changed / Fixed**, w stylu poprzednich wpisów; ta sama data w `CHANGELOG.pl.md`.
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
 4. Commit `Version X.Y.Z: ...` na gałęzi `dev/vX.Y.Z`.
 5. Dopiero na polecenie: push, `npm run build`, `gh release create vX.Y.Z --prerelease ...`, PR do `main`.
