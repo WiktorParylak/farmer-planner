@@ -458,6 +458,7 @@ const UI = {
     catchCropsTitle: "Zwischenfrüchte",
     catchCropNone: "-- Keine --",
     thCatchCrop: "Zwischenfrucht",
+    fieldCardMore: "Mehr: Zwischenfrucht, Fruchtfolge, Pacht",
     thCatchSowingMth: "Saat der Zwischenfrucht",
     catchCropHint: "Eine Feldfrucht, die vor oder nach der Hauptfrucht auf demselben Feld wächst (Grünroggen, Ölrettich…). In der Übersicht getrennt aufgeführt, damit ihre Fläche nicht doppelt zählt.",
     catchCropShort: "Zwischenfrucht",

@@ -850,6 +850,7 @@ function mirrorToSelected(el) {
         } else {
             target.value = el.value;
         }
+        syncCardOptionalCells(row, true);
         flashMirrored(row);
     });
 }
@@ -978,6 +979,7 @@ function applyEditBulk(action, bar) {
             const crop = bar.querySelector('#eb-catch').value;
             row.querySelector('.field-catch-crop').value = crop;
             row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-catch-sow').value || null);
+            syncCardOptionalCells(row, true);
         } else if (action === 'sown' || action === 'unsown') {
             row.querySelector('.field-state').checked = action === 'sown';
         } else {
@@ -1577,6 +1579,13 @@ function buildFieldEditCard(field, opts) {
     const limeCls = limeStatusForCard === 'active' ? 'is-active' : (limeStatusForCard === 'warning' ? 'is-warning' : '');
     const limeColorForCard = limeChipColor(limePhForCard);
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
+    // Catch crop, rotation and lease fold away; what's already set opens them and shows in the summary.
+    const rotInfo = isNew ? null : fieldRotationInfo(farm, field);
+    const moreSet = [
+        field.catchCrop ? `${t('thCatchCrop')}: ${translateCropName(field.catchCrop)}` : '',
+        rotInfo ? `${t('rotFieldCycle')}: ${rotInfo.rot.name} (${rotInfo.slot.step + 1}/${rotInfo.rot.steps.length})` : '',
+        lease ? t('leaseLabel') + (lease.seasons ? ` (${lease.seasons})` : '') : ''
+    ].filter(Boolean);
 
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
@@ -1624,15 +1633,18 @@ function buildFieldEditCard(field, opts) {
                                     <span class="lime-fill"></span>
                                     <span class="lime-letter">${t('limeLetter')}</span>
                                 </button>
+                                <span class="fc-chip-text">${t('work_lime')}</span>
                             </div>
                         </div>
                     </div>
+                    <details class="field-card-more"${moreSet.length ? ' open' : ''}>
+                        <summary class="field-card-more-summary"><span class="field-card-more-label">${t('fieldCardMore')}</span>${moreSet.length ? `<span class="field-card-more-set">${escapeHtml(moreSet.join(' · '))}</span>` : ''}</summary>
                     <div class="field-card-row field-card-row--grid field-card-row--catch">
                         <div class="fc-cell">
                             <span class="fc-label" title="${t('catchCropHint')}">${t('thCatchCrop')}</span>
                             <select class="edit-input field-catch-crop" onchange="onCatchCropChange(this)">${catchCropOptions}</select>
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--catch-sow"${field.catchCrop ? '' : ' hidden'}>
                             <span class="fc-label">${t('thCatchSowingMth')}</span>
                             <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
                         </div>
@@ -1643,11 +1655,11 @@ function buildFieldEditCard(field, opts) {
                             <span class="fc-label">${t('leaseLabel')}</span>
                             <label class="lease-check"><input type="checkbox" class="field-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--lease-detail"${lease ? '' : ' hidden'}>
                             <span class="fc-label">${t('leaseSeasons')}</span>
                             <input type="number" min="1" max="50" step="1" class="edit-input field-lease-seasons" value="${lease ? lease.seasons || '' : ''}" placeholder="–">
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--lease-detail"${lease ? '' : ' hidden'}>
                             <span class="fc-label">${t('leaseThen')}</span>
                             <select class="edit-input field-lease-then">
                                 <option value="return" ${lease && lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
@@ -1655,6 +1667,7 @@ function buildFieldEditCard(field, opts) {
                             </select>
                         </div>
                     </div>
+                    </details>
                     <div class="field-card-foot">
                         <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="${t('fieldSizeHint')}" style="display:none;">
                         <span class="split-hint"></span>
@@ -1704,7 +1717,27 @@ window.onCropChange = function (selectEl) {
 window.onCatchCropChange = function (selectEl) {
     const row = selectEl.closest('tr');
     row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(selectEl.value, null);
+    syncCardOptionalCells(row);
 };
+
+// Edit card: the catch crop's month only with a catch crop, the lease length
+// and "then" only on a leased field. `reveal` opens the folded part when a
+// value lands there from elsewhere (the bulk bar, a mirrored card).
+function syncCardOptionalCells(row, reveal) {
+    const catchSel = row.querySelector('.field-catch-crop');
+    const lease = row.querySelector('.field-lease');
+    const sowCell = row.querySelector('.fc-cell--catch-sow');
+    if (sowCell && catchSel) sowCell.hidden = !catchSel.value;
+    row.querySelectorAll('.fc-cell--lease-detail').forEach(c => { c.hidden = !(lease && lease.checked); });
+    const more = row.querySelector('.field-card-more');
+    if (reveal && more && ((catchSel && catchSel.value) || (lease && lease.checked))) more.open = true;
+}
+
+if (fieldsBody) fieldsBody.addEventListener('change', e => {
+    if (!e.target.classList || !e.target.classList.contains('field-lease')) return;
+    const row = e.target.closest('tr');
+    if (row) syncCardOptionalCells(row);
+});
 
 // Toggles between "Plowed" and "No-till" for a field — mutually exclusive,
 // like a radio pair: selecting one clears the other, clicking the already
