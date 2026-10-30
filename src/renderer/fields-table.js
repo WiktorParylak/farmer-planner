@@ -448,17 +448,33 @@ function renderFieldModal() {
             : `<p class="settings-hint">${t('fieldViewNotesNone')}</p>`);
     }
 
-    // Nitrogen and the fertilization plan.
+    // Nitrogen: a simple fertilization plan (the full one stays in Supplies).
     if (field.crop && area > 0) {
         const d = computeFieldFertPlan(planKey, soilKey, field.crop, area, rates);
-        const rows = [
-            [t('fertPlanColTarget'), fmt(d.targetRate) + ' kg N/ha'],
-            [t('fertPlanColExisting'), fmt(d.existingRate) + ' kg N/ha' + (d.existingFromGame ? ' (' + t('fieldViewFromGame') + ')' : '')],
-            [t('fertPlanColOrg'), fmt(d.orgRate) + ' kg N/ha'],
-            [t('fertPlanColMineralL'), fmt(d.mineralLitres * area) + ' l']
-        ];
-        html += section(t('fieldViewFert'), rows.map(([k, v]) => `<p class="details-category"><span>${k}</span><span class="details-category-value">${v}</span></p>`).join('')
-            + `<button type="button" class="settings-btn field-view-fertplan">${t('fertPlanBtn')}</button>`);
+        const kgN = t('suppliesNRateUnit');
+        const status = d.covered
+            ? `<span class="fertplan-status is-covered">${t('fertPlanCovered')}</span>`
+            : `${fmt(d.mineralRate)} ${kgN} · ${fmt(d.mineralLitres * area * d.buffer)} l`;
+        html += section(t('fieldViewFert'), `
+            <p class="details-category field-view-fert-target"><span>${t('fertPlanColTarget')}</span><span class="details-category-value">${fmt(d.targetRate)} ${kgN}</span></p>
+            <label class="fertplan-field">
+                <span>${t('fertPlanColExisting')}</span>
+                <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="field-view-fert" data-key="existingN" value="${d.existingRate > 0 && !d.existingFromGame ? d.existingRate : ''}" placeholder="${d.existingFromGame ? d.existingRate : 0}"><span class="supply-unit">${kgN}</span></span>
+                ${d.existingFromGame ? `<small class="fertplan-from-game">${t('fertPlanExistingFromGame')}</small>` : ''}
+            </label>
+            <label class="fertplan-field">
+                <span>${t('fertPlanColOrg')}</span>
+                <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="field-view-fert" data-key="orgN" value="${d.orgRate > 0 ? d.orgRate : ''}" placeholder="0"><span class="supply-unit">${kgN}</span></span>
+            </label>
+            <p class="details-category field-view-fert-result"><span>${t('fertPlanColMineralN')}</span><span class="details-category-value">${status}</span></p>
+            <label class="fertplan-field fertplan-checkbox-field">
+                <span>${t('fertPlanManureApplied')}</span>
+                <input type="checkbox" class="field-view-fert-done" data-prop="manure" ${field.manure ? 'checked' : ''}>
+            </label>
+            <label class="fertplan-field fertplan-checkbox-field">
+                <span>${t('fertPlanFertilizerApplied')}</span>
+                <input type="checkbox" class="field-view-fert-done" data-prop="fertilizer" ${field.fertilizer ? 'checked' : ''}>
+            </label>`);
     }
 
     // Feed use (same choices as the Feed planner).
@@ -560,6 +576,13 @@ window.openFieldModal = function (idx) {
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-fert')) {
+            setFertPlanValue(fertPlanKey(field, fieldModalIdx), el.dataset.key, el.value);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-fert-done')) {
+            field[el.dataset.prop] = el.checked;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-use')) {
             const plan = getFeedPlan(farm);
             plan.fieldUse[el.dataset.key] = el.value;
@@ -577,11 +600,7 @@ window.openFieldModal = function (idx) {
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
             return;
         }
-        if (e.target.closest('.field-view-fertplan')) {
-            close();
-            const num = (field.number || '').toString().trim();
-            openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
-        } else if (e.target.closest('.field-view-cuts')) {
+        if (e.target.closest('.field-view-cuts')) {
             close();
             openCutsModal(idx);
         } else if (e.target.closest('.field-view-work')) {
@@ -1381,20 +1400,6 @@ function renderFieldsTable(fields) {
                 : `<span class="field-number-chip">${field.number || '–'}</span>`;
             const numberCellTitle = numberParts.length > 1 ? ` title="${field.number}"` : '';
 
-            let fertPlanCell = '<td class="fertplan-cell"></td>';
-            if (!isPastSeason && field.crop && area > 0) {
-                const numStr = (field.number || '').toString().trim();
-                const soilK = fertPlanSoilKey(field, origIdx);
-                const planK = fertPlanKey(field, origIdx);
-                const dispNum = numStr || ('#' + (origIdx + 1));
-                // White = nothing marked yet; brown = natural fertilizer applied;
-                // green = synthetic applied (wins if both are checked — it's the
-                // "topped up to target" state). Flags live on the field itself,
-                // set from the plan modal's Zabiegi checkboxes.
-                const btnState = field.fertilizer ? ' fertplan-open-btn--synthetic' : (field.manure ? ' fertplan-open-btn--natural' : '');
-                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" ${fertPlanOpenAttrs(planK, soilK, dispNum, field.crop, area)}>${t('fertPlanBtn')}</button></td>`;
-            }
-
             const calloutHere = showOpenCallout && !openCalloutShown;
             if (calloutHere) openCalloutShown = true;
             htmlString += `
@@ -1420,14 +1425,13 @@ function renderFieldsTable(fields) {
                             return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
-                    ${fertPlanCell}
                 </tr>
             `;
         });
     }
     const searching = !!fieldSearchQuery() && fields && fields.length > 0;
     if (searching && !shownCount) {
-        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+        htmlString = `<tr class="fields-search-empty"><td colspan="7">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
     renderBulkBar();
@@ -1589,7 +1593,7 @@ function buildFieldEditCard(field, opts) {
 
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
-            <td colspan="8">
+            <td colspan="7">
                 <div class="field-card">
                     <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -1698,7 +1702,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
+            <td colspan="7" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
