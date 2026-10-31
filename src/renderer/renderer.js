@@ -320,6 +320,8 @@ if (appSettingsBtn && appSettingsModal) {
         if (discordRpcToggle) discordRpcToggle.checked = isDiscordRpcEnabled();
         const updToggle = document.getElementById('update-check-toggle');
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
+        const splashToggle = document.getElementById('splash-toggle');
+        if (splashToggle) splashToggle.checked = getSetting('farmer_planner_splash') !== '0';
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         const devSetting = document.getElementById('dev-farm-setting');
@@ -6600,6 +6602,13 @@ const updateCheckToggle = document.getElementById('update-check-toggle');
 if (updateCheckToggle) {
     updateCheckToggle.addEventListener('change', () => {
         setSetting(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
+    });
+}
+// Start-up animation (splash.js reads the same setting before the app loads).
+const splashToggle = document.getElementById('splash-toggle');
+if (splashToggle) {
+    splashToggle.addEventListener('change', () => {
+        setSetting('farmer_planner_splash', splashToggle.checked ? '1' : '0');
     });
 }
 const checkUpdatesBtn = document.getElementById('check-updates-btn');

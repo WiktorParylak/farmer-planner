@@ -9520,3 +9520,154 @@ button.field-open.has-callout .field-number-chip {
   font-weight: 500;
 }
 .field-view-harvest .yield-loss { margin-left: 4px; }
+
+/* =========================================================
+   Start-up animation (splash.js): the tractor drives in and
+   uncovers FARMER, PLANNER drops in, line, author, glint, fade.
+   ========================================================= */
+.splash {
+  position: fixed;
+  inset: 38px 0 0 0;
+  z-index: 2900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 46%, #22392B 0%, var(--color-canvas) 55%, #0F1A13 100%);
+  cursor: pointer;
+}
+
+.splash:not(.is-playing) { visibility: hidden; }
+
+.splash-field {
+  position: absolute;
+  inset: -40%;
+  background: repeating-linear-gradient(135deg, rgba(201, 122, 43, 0.07) 0 2px, transparent 2px 46px);
+  opacity: 0;
+  animation: splash-field-in 0.9s ease-out forwards, splash-furrows 3.2s linear forwards;
+}
+
+.splash-stage {
+  position: relative;
+  width: min(620px, 72vw);
+  text-align: center;
+}
+
+.splash-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  fill: var(--color-surface);
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+}
+
+.splash-farmer {
+  clip-path: inset(-20% 100% -20% 0);
+  animation: splash-wipe 1.25s cubic-bezier(0.3, 0.6, 0.25, 1) 0.15s forwards;
+}
+
+.splash-tractor {
+  transform: translateX(-340px);
+  animation: splash-drive 1.25s cubic-bezier(0.3, 0.6, 0.25, 1) 0.15s forwards;
+}
+
+.splash-tractor-inner {
+  transform-box: fill-box;
+  transform-origin: 20% 100%;
+  animation: splash-bob 0.16s ease-in-out 0.15s 7 alternate, splash-brake 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.35s;
+}
+
+.splash-tractor-inner > path { fill: var(--color-accent); }
+
+.splash-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: splash-spin 1.25s cubic-bezier(0.3, 0.6, 0.25, 1) 0.15s both;
+}
+
+.splash-dust {
+  fill: rgba(230, 218, 180, 0.55);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: splash-dust 0.45s ease-out calc(0.2s + var(--i) * 0.11s) 3;
+}
+
+.splash-letter {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: splash-drop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) calc(1.05s + var(--i) * 0.065s) both;
+}
+
+.splash-line {
+  display: block;
+  height: 3px;
+  margin: 18px auto 12px;
+  width: 64%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-accent) 20%, #E9A55A 50%, var(--color-accent) 80%, transparent);
+  transform: scaleX(0);
+  animation: splash-line 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 1.55s forwards;
+}
+
+.splash-author {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--fs-base);
+  letter-spacing: 0.6em;
+  color: var(--color-surface-alt);
+  opacity: 0;
+  animation: splash-author 0.7s ease-out 1.75s forwards;
+}
+
+.splash-glint {
+  position: absolute;
+  top: -10%;
+  bottom: 30%;
+  left: 0;
+  width: 18%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+  animation: splash-glint 0.7s ease-in-out 1.95s forwards;
+}
+
+.splash.is-leaving { animation: splash-out 0.5s ease-in forwards; }
+.splash.is-leaving .splash-stage { animation: splash-stage-out 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+.splash.is-skipped { animation: splash-out 0.25s ease-in forwards; }
+
+@keyframes splash-field-in { to { opacity: 1; } }
+@keyframes splash-furrows { from { transform: translateX(-46px); } to { transform: translateX(46px); } }
+@keyframes splash-wipe { to { clip-path: inset(-20% 0 -20% 0); } }
+@keyframes splash-drive { to { transform: translateX(0); } }
+@keyframes splash-bob { from { transform: translateY(0); } to { transform: translateY(-1.6px); } }
+@keyframes splash-brake { 0% { transform: rotate(0); } 35% { transform: rotate(-7deg); } 100% { transform: rotate(0); } }
+@keyframes splash-spin { from { transform: rotate(-1080deg); } to { transform: rotate(0); } }
+@keyframes splash-dust {
+  0% { opacity: 0.8; transform: translate(0, 0) scale(0.4); }
+  100% { opacity: 0; transform: translate(-14px, -6px) scale(1.8); }
+}
+@keyframes splash-drop {
+  0% { opacity: 0; transform: translateY(-26px) scaleY(1.15); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+@keyframes splash-line { to { transform: scaleX(1); } }
+@keyframes splash-author { to { opacity: 1; letter-spacing: 0.14em; } }
+@keyframes splash-glint {
+  0% { opacity: 0; transform: translateX(-20%) skewX(-18deg); }
+  25%, 75% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(520%) skewX(-18deg); }
+}
+@keyframes splash-out { to { opacity: 0; } }
+@keyframes splash-stage-out { to { transform: scale(1.08); filter: blur(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash *, .splash *::before { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
+  .splash-dust, .splash-glint { display: none; }
+}

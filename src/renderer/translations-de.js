@@ -51,6 +51,8 @@ const UI = {
     edit: "BEARBEITEN",
     saveChanges: "ÄNDERUNGEN SPEICHERN",
     updateSettingLabel: "Updates",
+    splashSettingLabel: "Startanimation",
+    splashSettingHint: "Beim Start der App die Logo-Animation abspielen. Ein Klick oder eine beliebige Taste überspringt sie.",
     updateSettingHint: "Beim Start der App nach einer neuen Version suchen. Ein Update wird direkt in der App installiert — sie fragt immer vorher.",
     updateCheckNow: "Jetzt prüfen",
     updateCurrentVersion: "Installiert: {v}",

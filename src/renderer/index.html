@@ -20,6 +20,15 @@
             <button id="titlebar-close" class="titlebar-btn titlebar-btn--close" title="Close" data-i18n-title="titlebarClose"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     </div>
+    <div id="splash" class="splash" aria-hidden="true">
+        <div class="splash-field"></div>
+        <div class="splash-stage">
+            <span class="splash-line"></span>
+            <p class="splash-author">BY WIKTOR PARYLAK</p>
+            <span class="splash-glint"></span>
+        </div>
+    </div>
+    <script src="splash.js"></script>
     <div class="app-container">
         <div id="dashboard-view" class="dashboard-view">
             <section class="brand-section">
@@ -347,6 +356,11 @@
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
                     <input type="checkbox" id="discord-rpc-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="discordSettingHint">Show your current farm on your Discord profile.</span>
+                </label>
+                <p data-i18n="splashSettingLabel" style="margin-bottom:4px;">Start-up animation</p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="splash-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="splashSettingHint">Play the logo animation when the app starts.</span>
                 </label>
                 <p data-i18n="updateSettingLabel" style="margin-bottom:4px;">Updates</p>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
