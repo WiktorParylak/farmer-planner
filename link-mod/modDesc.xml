@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="115">
+    <author>Wiktor Parylak</author>
+    <version>1.0.0.0</version>
+    <title>
+        <en>Farmer Planner Link</en>
+        <de>Farmer Planner Link</de>
+        <pl>Farmer Planner Link</pl>
+    </title>
+    <description>
+        <en><![CDATA[Connects the game with the Farmer Planner desktop app (farmerplanner.pl).
+
+While you play, the mod writes the state of your fields, stones, input prices, the weather and your productions to modSettings/FS25_FarmerPlannerLink every few seconds, so the planner sees field work right away instead of waiting for the next save.
+
+The mod only reads the game. It does not change your savegame, it does not need the app to be running and it has no effect on the game when the app is closed.]]></en>
+        <de><![CDATA[Verbindet das Spiel mit der Desktop-App Farmer Planner (farmerplanner.pl).
+
+Während du spielst, schreibt der Mod alle paar Sekunden den Zustand deiner Felder, Steine, Einkaufspreise, das Wetter und deine Produktionen nach modSettings/FS25_FarmerPlannerLink, damit der Planer Feldarbeiten sofort sieht und nicht auf den nächsten Spielstand warten muss.
+
+Der Mod liest das Spiel nur. Er ändert deinen Spielstand nicht, braucht keine laufende App und hat keinen Einfluss auf das Spiel, wenn die App geschlossen ist.]]></de>
+        <pl><![CDATA[Łączy grę z aplikacją Farmer Planner (farmerplanner.pl).
+
+W trakcie gry mod co kilka sekund zapisuje stan Twoich pól, kamienie, ceny środków, pogodę i produkcje do modSettings/FS25_FarmerPlannerLink, więc planer widzi prace polowe od razu, bez czekania na zapis gry.
+
+Mod tylko czyta grę. Nie zmienia zapisu, nie wymaga uruchomionej aplikacji i nie wpływa na grę, kiedy aplikacja jest zamknięta.]]></pl>
+    </description>
+    <iconFilename>icon_FarmerPlannerLink.dds</iconFilename>
+    <multiplayer supported="true" />
+    <extraSourceFiles>
+        <sourceFile filename="scripts/FarmerPlannerLink.lua" />
+    </extraSourceFiles>
+</modDesc>

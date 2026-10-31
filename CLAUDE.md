@@ -53,6 +53,7 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 |---|---|
 | `npm start` | uruchamia aplikację (`tools/start.js`): z głównego folderu repo odpala worktree z najnowszą gałęzią `dev/vX.Y.Z` z `.claude/worktrees/`, w innym wypadku `electron .` |
 | `npm run build` | electron-builder (NSIS → `dist/payload/`), potem `tools/build-installer.js` → własny instalator `dist/Farmer Planner Setup X.Y.Z.exe` |
+| `node tools/build-link-mod.js` | pakuje `link-mod/` w `build-cache/link-mod/FS25_FarmerPlannerLink.zip` (robi to też `npm run build` i aplikacja przy `npm start`) |
 | `node tools/build-installer.js --payload <setup.exe> --version X.Y.Z --out <dir>` | owija wydany już instalator NSIS w nowe okno (podmiana instalatora w starym release'ie) |
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-agronomy.js "<FS25>\data\foliage"` | regeneruje `data/default-agronomy.json` (dawka wysiewu, plon, słoma z gry podstawowej) |
@@ -96,6 +97,8 @@ src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <sc
 src/renderer/supplies.js       zaopatrzenie, plan nawożenia pola, model stawek (PRZED renderer.js)
 src/renderer/fields-table.js   tabela planu, okno pola, planer prac, tryb edycji (PO renderer.js)
 src/renderer/rotation.js       płodozmian: cykle, przypisanie pól, auto-uzupełnianie, widok w pasku bocznym (PO fields-table.js)
+src/renderer/crop-generator.js generator upraw: zakładka „Generator” płodozmianu, zapotrzebowanie farmy, propozycja, zastosuj/cofnij (PO rotation.js)
+src/renderer/live-link.js      dane na żywo z moda FS25_FarmerPlannerLink: odczyt modSettings, plakietka „Na żywo”, sekcja w ustawieniach (PO today.js)
 src/renderer/tramlines.js      narzędzie ścieżek technologicznych: widok, biblioteka, edytor (PO rotation.js)
 src/renderer/tramlines-worker.js proces potomny (fork, ELECTRON_RUN_AS_NODE): wycinanie, wklejanie, kopie mapy owoców
 src/renderer/tramlines-core.js kodeki GDM / PNG / XCF (wspólne dla workera i renderera)
@@ -115,6 +118,7 @@ src/renderer/tutorial.js       samouczek (drugi <script> po renderer.js)
 src/renderer/settings.js       ustawienia aplikacji (settings.json w folderze danych)
 src/renderer/diagnostics.js    plik diagnostyczny do zgłoszeń (Ustawienia → Pomoc)
 data/                          dane bazowej gry dołączone do aplikacji
+link-mod/                      mod-łącznik FS25_FarmerPlannerLink (modDesc + Lua); zip w paczce aplikacji jako extraResources
 installer/                     własny instalator/deinstalator (Setup.cs + Window.xaml, poza paczką aplikacji)
 tools/                         skrypty deweloperskie (nie są używane w runtime)
 docs/                          logo i screenshoty do README
@@ -123,7 +127,7 @@ docs/                          logo i screenshoty do README
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.
 - Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `renderer.js`, `fields-table.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
 - Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
-- Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje — z jednym wyjątkiem (zgoda użytkownika 2026-10-28): narzędzie ścieżek technologicznych nadpisuje `savegameN\densityMap_fruits.gdm`, tylko przy zamkniętej grze (sprawdza proces), po kopii do `savegameN\farmer_planner_backup\` (5 ostatnich), po zdekodowaniu nowego pliku i porównaniu z oczekiwanymi wartościami (opcjonalnie też grleConverterem), przez plik tymczasowy + rename. Nie rozszerzaj zapisu na inne pliki gry bez pytania. Narzędzie skalowania mapy **nie** pisze do folderu mods: oryginały i przeskalowane pliki trafiają do `Documents\Farmer Planner\maps\<mapa>\`, gracz sam kopiuje wynik do moda. Ścieżki = piksele z wartością 0 (brak uprawy); biblioteka: `Documents\Farmer Planner\tramlines\<mapTitle>\<nazwa>.png` + `.json` (przycięte do bboxa). Testuj tylko na kopiach zapisów.
+- Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje — z jednym wyjątkiem (zgoda użytkownika 2026-10-28): narzędzie ścieżek technologicznych nadpisuje `savegameN\densityMap_fruits.gdm`, tylko przy zamkniętej grze (sprawdza proces), po kopii do `savegameN\farmer_planner_backup\` (5 ostatnich), po zdekodowaniu nowego pliku i porównaniu z oczekiwanymi wartościami (opcjonalnie też grleConverterem), przez plik tymczasowy + rename. Nie rozszerzaj zapisu na inne pliki gry bez pytania. Mod-łącznik (`link-mod/`) pisze tylko własne pliki do `modSettings/FS25_FarmerPlannerLink/savegameN/` (`fields_a|b.xml`, `farmland_a|b.xml` zapisywane funkcjami gry, potem `live.xml` ze wskazaniem kompletnego slotu); gracz sam kopiuje zip moda do folderu mods — aplikacja nic nie zapisuje w folderze gry. Format `live.xml` (atrybut `format`) zmieniaj razem w Lua i w `live-link.js`. Narzędzie skalowania mapy **nie** pisze do folderu mods: oryginały i przeskalowane pliki trafiają do `Documents\Farmer Planner\maps\<mapa>\`, gracz sam kopiuje wynik do moda. Ścieżki = piksele z wartością 0 (brak uprawy); biblioteka: `Documents\Farmer Planner\tramlines\<mapTitle>\<nazwa>.png` + `.json` (przycięte do bboxa). Testuj tylko na kopiach zapisów.
 - Tłumaczenia: `TRANSLATIONS` (`en` / `pl` / `de`) w `translations.js` + `translations-de.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz we **wszystkich trzech** językach (`APP_LANGUAGES` w `renderer.js`); brakujący klucz DE spada na EN. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
 - Skrypty w `tools/` powielają parsery z `renderer.js` (regex zamiast DOMParser) — zmiana schematu parsowania w jednym miejscu wymaga zmiany w drugim.
 

@@ -1183,6 +1183,73 @@ body {
   background: #cfe8c9;
 }
 
+/* Live data from the link mod (live-link.js), right after the farm name:
+   the auto margin keeps it there instead of space-between centring it. */
+.live-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 0 16px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.live-link-badge[hidden] { display: none; }
+
+.live-link-badge.is-live {
+  border-color: rgba(63, 107, 68, 0.4);
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+}
+
+.live-link-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 0 rgba(63, 107, 68, 0.5);
+  animation: live-link-pulse 2s ease-out infinite;
+}
+
+@keyframes live-link-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0.5); }
+  70% { box-shadow: 0 0 0 6px rgba(63, 107, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(63, 107, 68, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-link-dot { animation: none; }
+}
+
+.live-link-info .live-link-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 4px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.live-link-state i { margin-top: 2px; color: var(--color-sky); }
+.live-link-state.is-live i { color: var(--color-primary); }
+.live-link-state.is-old i,
+.live-link-state.is-inactive i { color: var(--color-accent-dark); }
+
+.live-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .planner-header h1,
 .save-name {
   font-family: var(--font-display);

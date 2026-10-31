@@ -765,12 +765,15 @@ function readProductionsFromSave(saveFolder, modsDirs) {
             defCache[filename] = x && !x.querySelector('parsererror') ? x : null;
         }
         const def = defCache[filename];
-        if (!def) return;
-        const recipes = [...def.querySelectorAll('productionPoint productions > production')].map(pr => {
+        // Base game productions live in the game's packed data; the link mod
+        // reports their recipes (SAVE_RECIPE_BOOK, live-link.js).
+        const known = SAVE_RECIPE_BOOK[filename] || null;
+        if (!def && !known) return;
+        const recipes = def ? [...def.querySelectorAll('productionPoint productions > production')].map(pr => {
             const perMonth = parseFloat(pr.getAttribute('cyclesPerMonth')) || (parseFloat(pr.getAttribute('cyclesPerHour')) || 0) * 24;
             const items = sel => [...pr.querySelectorAll(sel)].map(i => ({ fillType: up(i.getAttribute('fillType')), amount: parseFloat(i.getAttribute('amount')) || 0 }));
             return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth };
-        });
+        }) : known.recipes.map(r => Object.assign({}, r, { inputs: r.inputs.slice(), outputs: r.outputs.slice() }));
         if (!recipes.length) return;
 
         const enabled = {};
@@ -783,15 +786,15 @@ function readProductionsFromSave(saveFolder, modsDirs) {
             if (lvl > 0) stock[up(n.getAttribute('fillType'))] = (stock[up(n.getAttribute('fillType'))] || 0) + lvl;
         });
         const capacity = {};
-        const storageDef = def.querySelector('productionPoint > storage');
+        const storageDef = def ? def.querySelector('productionPoint > storage') : null;
         if (storageDef) {
             const all = parseFloat(storageDef.getAttribute('capacity')) || null;
             storageDef.querySelectorAll(':scope > capacity[fillType]').forEach(c => { capacity[up(c.getAttribute('fillType'))] = parseFloat(c.getAttribute('capacity')) || all; });
             capacity._default = all;
         }
 
-        const nameEl = def.querySelector('storeData > name');
-        const rawName = plainModText(nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '');
+        const nameEl = def ? def.querySelector('storeData > name') : null;
+        const rawName = plainModText(nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : (known && known.name) || '');
         const products = [...new Set(recipes.flatMap(r => r.outputs.map(o => o.fillType)))];
 
         // The mod's own translations: its name ("$l10n_shopItem_…") and its

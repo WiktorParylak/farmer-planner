@@ -83,6 +83,7 @@
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
                 <h1 id="planner-farm-name" class="save-name"></h1>
+                <span id="live-link-badge" class="live-link-badge" role="status" hidden></span>
                 <div class="header-info">
                     <div class="balance">
                         <h3 class="balance-label" data-i18n="balance">BALANCE</h3>
@@ -255,6 +256,7 @@
                         <span><span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
                             <small id="auto-sync-hint" data-i18n="autoSyncHint">The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.</small></span>
                     </label>
+                    <div id="live-link-info" class="settings-field live-link-info" hidden></div>
                     <label class="settings-check">
                         <input type="checkbox" id="farmland-area-toggle">
                         <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
@@ -584,6 +586,7 @@
     <script src="rotation.js"></script>
     <script src="crop-generator.js"></script>
     <script src="today.js"></script>
+    <script src="live-link.js"></script>
     <script src="tramlines.js"></script>
     <script src="map-scale.js"></script>
     <script src="tutorial.js"></script>

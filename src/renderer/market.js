@@ -137,13 +137,20 @@ function marketPriceSummary(market, fillType, month) {
     return { now, min, max, bestIdx, best: MARKET_MONTHS[bestIdx], change: now ? max / now - 1 : null };
 }
 
+// Buy price per 1000 l of an input this month: the link mod's (with the
+// economy difficulty) when it reported one, else the save's base curve.
+function marketInputPrice(farm, market, fillType) {
+    const live = typeof liveInputPrice === 'function' ? liveInputPrice(farm, fillType) : null;
+    return live !== null ? live : marketPrice(market, fillType, farm && farm.month);
+}
+
 // Input costs of one crop on one field, per hectare: seed (its seed rate),
 // mineral fertilizer (what the nitrogen plan still needs, at the farm's N per
 // litre) and lime when the field needs liming this season. null parts when
 // the save has no price.
 function fieldInputCostPerHa(farm, field, idx, crop, rates, market, limeLitresByField) {
     const soilMix = getFieldSoilMix(fertPlanSoilKey(field, idx), rates);
-    const price = ft => marketPrice(market, ft, farm && farm.month);
+    const price = ft => marketInputPrice(farm, market, ft);
     const seedPrice = price(MARKET_INPUT_FILLTYPES.seed);
     const fertPrice = price(MARKET_INPUT_FILLTYPES.fertilizer);
     const limePrice = price(MARKET_INPUT_FILLTYPES.lime);
@@ -307,7 +314,7 @@ function marketDemandsCardHtml(farm, market) {
 
 // "≈ 1 234 €" under a Supplies total: litres of a fill type at this month's price.
 function marketCostHtml(farm, fillType, litres) {
-    const price = marketPrice(getFarmMarket(farm), fillType, farm && farm.month);
+    const price = marketInputPrice(farm, getFarmMarket(farm), fillType);
     if (price === null || !(litres > 0)) return '';
     return `<span class="supply-sub supply-cost">≈ ${finMoney(litres * price / 1000)}</span>`;
 }

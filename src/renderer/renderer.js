@@ -3245,13 +3245,16 @@ function saveFruitToCropKey(raw) {
 //   farmland.xml            -> which farmlandIds belong to farm 1
 //   precisionFarming.xml    -> real field area (m², from the <tillage> block)
 //   fields.xml             -> planned crop + current spray/lime level per field
-// Returns { ok, fields:[...], hasArea }; fails quietly (ok:false) when the
+// Returns { ok, fields:[...], hasArea, live }; fails quietly (ok:false) when the
 // save folder or its files are missing. weedState feeds syncWeedsFromSave.
+// While the game runs with the link mod, fields.xml / farmland.xml come from
+// the mod's live copy (same format, see live-link.js) and add stoneShare.
 function readSaveFields(farm) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
-    const fieldsPath = path.join(dir, 'fields.xml');
-    const farmlandPath = path.join(dir, 'farmland.xml');
+    const live = typeof liveLinkSource === 'function' ? liveLinkSource(farm) : null;
+    const fieldsPath = live ? live.fieldsPath : path.join(dir, 'fields.xml');
+    const farmlandPath = live ? live.farmlandPath : path.join(dir, 'farmland.xml');
     if (!fs.existsSync(fieldsPath) || !fs.existsSync(farmlandPath)) return { ok: false, reason: 'nofiles' };
 
     try {
@@ -3296,10 +3299,12 @@ function readSaveFields(farm) {
                 // (when the game asks for it), stubbleShredLevel 1 = stubble mulched.
                 plowLevel: parseInt(attrOf(tag, 'plowLevel')) || 0,
                 stubbleShredLevel: parseInt(attrOf(tag, 'stubbleShredLevel')) || 0,
-                rollerLevel: parseInt(attrOf(tag, 'rollerLevel')) || 0
+                rollerLevel: parseInt(attrOf(tag, 'rollerLevel')) || 0,
+                // Share of the field still under stones (0..1), only from the link mod.
+                stoneShare: live && live.stones && live.stones[id] !== undefined ? live.stones[id] : null
             });
         }
-        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0 };
+        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!live };
     } catch (e) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
@@ -4001,6 +4006,7 @@ const SUPPORTED_MODS = [
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
 let SAVE_DISABLED_MODS = new Set();    // app mod ids switched off for the farm
 let SAVE_LINKED = false;
+let SAVE_RECIPE_BOOK = {};             // production recipes by placeable file, from the link mod
 
 function activeModsInSave(saveGamePath) {
     try {
@@ -4045,6 +4051,7 @@ function useSaveFarm(farm) {
     SAVE_LINKED = (farm && farm.saveGamePath) || false;
     SAVE_ACTIVE_MODS = SAVE_LINKED ? activeModsInSave(farm.saveGamePath) : new Set();
     SAVE_DISABLED_MODS = disabledModsOf(farm);
+    SAVE_RECIPE_BOOK = (farm && farm.productionRecipes) || {};
 }
 
 // Farms in a savegame's farms.xml: [{ id, name, money }]. [] if unreadable.
@@ -4681,6 +4688,7 @@ function computeSaveSignature(saveFilePath) {
 }
 
 function stopAutoSync() {
+    if (typeof stopLiveLink === 'function') stopLiveLink();
     if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
     autoSyncFarmId = null;
     autoSyncSavePath = null;
@@ -4697,6 +4705,7 @@ function startAutoSync(farmId) {
     autoSyncSavePath = farm.saveGamePath;
     autoSyncSeenSig = computeSaveSignature(farm.saveGamePath); // current state = already imported
     autoSyncTimer = setInterval(runAutoSyncTick, AUTO_SYNC_INTERVAL_MS);
+    if (typeof startLiveLink === 'function') startLiveLink(farmId);
 }
 
 function runAutoSyncTick() {
@@ -5523,6 +5532,7 @@ if (settingsBtn) {
             modsDirInfo.title = dirs.join('\n');
         }
         renderAnimalModsInfo(farm);
+        renderLiveLinkSettings(farm);
         renderGameFarmChoice(farm);
         refreshUndoSeasonButton(farm);
         showSettingsTab('save');
