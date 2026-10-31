@@ -4410,7 +4410,7 @@ function refreshPlannerHeader(farm) {
 // the moment the game writes a new (auto)save, without the user reopening the farm.
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
-    'careerSavegame.xml', 'environment.xml', 'farms.xml',
+    'careerSavegame.xml', 'environment.xml', 'farms.xml', 'fields.xml', 'farmland.xml', 'economy.xml',
     'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml', 'fieldLeasingAgreements.xml'
 ];
 

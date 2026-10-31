@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.11.0 — unreleased
+
+**Fixed**
+- **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.
+
 ## 0.10.1 — 2026-10-30
 
 **New**

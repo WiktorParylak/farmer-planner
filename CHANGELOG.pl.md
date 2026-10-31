@@ -2,6 +2,11 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
+## 0.11.0 — unreleased
+
+**Poprawki**
+- **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
+
 ## 0.10.1 — 2026-10-30
 
 **Nowe**
