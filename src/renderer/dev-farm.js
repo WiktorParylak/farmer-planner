@@ -5,7 +5,8 @@
 //              crops with hectares left unassigned, a catch crop, grassland
 //              with cuts, two leases (return / buy), a field with an empty work
 //              list, every lime state (limed this season with an undo history,
-//              limed earlier, low pH, never limed, a crop that takes no lime);
+//              limed earlier, low pH, never limed, a crop that takes no lime),
+//              a no-till field the game wants ploughed (ploughing required);
 //   animals  — five barns: cows (lactating, pregnant, heifers, calves), pigs
 //              short of grain, an empty chicken coop, sheep and goats with low
 //              health, horses; troughs with and without a capacity entered;
@@ -91,7 +92,7 @@ function devFields() {
             limeAppliedSeason: 2, limePh: 0.95, manure: true, work: []
         }),
         // Low pH from an old liming.
-        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55 }),
+        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55, plowRequired: true }),
         // Sown, weeds to spray ("What to do today" lists it).
         devField("14", 3.1, "Oat", "MARCH", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true, weeds: "needed" }),
         // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
@@ -258,6 +259,8 @@ function buildDevFarm({ pl }) {
         month: DEV_MONTHS[DEV_MONTH_INDEX],
         dayInPeriod: 2,
         daysPerPeriod: 3,
+        // Ploughing required, so field 13 (no-till) has to be ploughed first.
+        gameRules: { plowingRequired: true, stones: true, weeds: true, lime: true },
         yearNumber: DEV_YEAR,
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,

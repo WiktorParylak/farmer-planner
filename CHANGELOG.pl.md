@@ -4,6 +4,11 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 ## 0.11.0 — unreleased
 
+**Nowe**
+- **Orka, której wymaga gra**: gdy w ustawieniach gry orka jest obowiązkowa, a licznik orki pola się skończył, pole dostaje *Orkę* na początku listy prac — także przy planie bez orki — z dopiskiem *wymaga gra*, a krok odhacza się sam, gdy zapis pokaże pole zaorane.
+- **Mulczowanie ścierniska**: *Mulczowanie ścierniska* można dodać do listy prac pola; odhacza się samo, gdy zapis pokaże zmulczowane ściernisko.
+- **Lista prac według ustawień gry**: przy wyłączonych w grze chwastach albo wapnowaniu proponowana lista prac nie zawiera już *Chwastów* ani *Wapnowania*.
+
 **Poprawki**
 - **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
 

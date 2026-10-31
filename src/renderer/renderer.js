@@ -3093,7 +3093,12 @@ function readSaveFields(farm) {
                 sprayType: attrOf(tag, 'sprayType'),
                 limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
                 groundType: attrOf(tag, 'groundType'),
-                weedState: parseInt(attrOf(tag, 'weedState')) || 0
+                weedState: parseInt(attrOf(tag, 'weedState')) || 0,
+                // One sample of the field (FieldState): plowLevel 0 = needs ploughing
+                // (when the game asks for it), stubbleShredLevel 1 = stubble mulched.
+                plowLevel: parseInt(attrOf(tag, 'plowLevel')) || 0,
+                stubbleShredLevel: parseInt(attrOf(tag, 'stubbleShredLevel')) || 0,
+                rollerLevel: parseInt(attrOf(tag, 'rollerLevel')) || 0
             });
         }
         return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0 };
@@ -3873,7 +3878,7 @@ function resolveGameFarmId(farm) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -3886,6 +3891,14 @@ function readGameSave(pathToFile) {
 
     try {
         const careerText = fs.readFileSync(pathToFile, 'utf-8');
+        // Game settings that switch whole mechanics on or off (null = not in the save).
+        const rule = tag => { const v = findValueInRawText(careerText, tag); return v === null ? null : v === 'true'; };
+        result.gameRules = {
+            plowingRequired: rule('plowingRequiredEnabled'),
+            stones: rule('stonesEnabled'),
+            weeds: rule('weedsEnabled'),
+            lime: rule('limeRequired')
+        };
         let envText = "";
         const envPath = path.join(saveFolder, 'environment.xml');
         if (fs.existsSync(envPath)) {
@@ -4246,7 +4259,7 @@ function syncWorkFromSave(farm) {
         const ids = gameFieldIds(field);
         const games = ids.map(id => byId[id]);
         if (!games.length || games.some(g => !g)) return;
-        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]);
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired]);
         const det = { ...(field.workDetected || {}) };
         const rise = { ...(field.workRise || {}) };
         const seen = { ...(field.workSeen || {}) };
@@ -4256,6 +4269,11 @@ function syncWorkFromSave(farm) {
             const allGround = list => games.every(g => list.includes(g.groundType));
             if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
             if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
+            // With ploughing required in the game settings, a field whose plough
+            // counter ran out has to be ploughed before sowing, even no-till.
+            const mustPlow = !grows && field.state !== 'Planted' && !!(farm.gameRules && farm.gameRules.plowingRequired)
+                && games.some(g => g.plowLevel === 0);
+            if (mustPlow) field.plowRequired = true; else delete field.plowRequired;
             if (allGround(SAVE_GROUND_ROLLED)) {
                 det.roll = true;
                 if (field.rolling) field.rollingDone = true;
@@ -4270,8 +4288,10 @@ function syncWorkFromSave(farm) {
                     rise[step] = [...new Set([...(rise[step] || []), g.id])];
                 }
                 if (g.limeLevel > last.l) rise.lime = [...new Set([...(rise.lime || []), g.id])];
+                if (last.p === 0 && g.plowLevel > 0) rise.plow = [...new Set([...(rise.plow || []), g.id])];
+                if (last.m === 0 && g.stubbleShredLevel > 0) rise.mulch = [...new Set([...(rise.mulch || []), g.id])];
             }
-            seen[g.id] = { s: g.sprayLevel, l: g.limeLevel };
+            seen[g.id] = { s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel };
         });
         Object.keys(rise).forEach(step => {
             if (!ids.every(id => rise[step].includes(id))) return;
@@ -4281,13 +4301,13 @@ function syncWorkFromSave(farm) {
             // Manure counts for a Manure step when the list has one left, else for Fertilize.
             const list = fieldWork(field) || suggestedWork(field, idx, farm);
             const key = step === 'manure' && !list.some(w => w.step === 'manure') ? 'fertilize' : step;
-            det[key] = (typeof det[key] === 'number' ? det[key] : 0) + 1;
+            if (det[key] !== true) det[key] = (typeof det[key] === 'number' ? det[key] : 0) + 1;
         });
         field.workSeen = seen;
         if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
         if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
         syncSowStep(field);
-        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise]) !== before) changed = true;
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired]) !== before) changed = true;
     });
     return changed;
 }
@@ -4357,7 +4377,7 @@ function applyGameSaveToFarm(farm) {
         farm[key] = gameData[key];
         changed = true;
     };
-    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons'].forEach(setIfMoved);
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }

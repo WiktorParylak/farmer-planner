@@ -519,7 +519,7 @@ function renderFieldModal() {
         // The work list itself, ticked off right here; reorder / add / remove in the work window.
         const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
         work.push((list.length
-            ? `<ul class="field-view-work-list">${list.map((w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label></li>`).join('')}</ul>`
+            ? `<ul class="field-view-work-list">${list.map((w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label></li>`).join('')}</ul>`
             : `<p class="settings-hint">${t('workEmpty')}</p>`)
             + `<p class="settings-hint">${t(fieldWork(field) ? 'workIntro' : 'workIntroSuggested')}</p>
             <button type="button" class="settings-btn field-view-work"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${t('workEditList')}</button>`);
@@ -653,7 +653,7 @@ window.openFieldModal = function (idx) {
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
 // Lime only while the pH needs it (the game's pH with Precision Farming) and
 // the crop uses lime up; no weeds step on a ploughed field.
-const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
 
 // A row joining several game fields ("10-11") has to be worked as one first:
 // the strip between them cultivated or ploughed over. Once ticked off it's
@@ -691,16 +691,20 @@ function suggestedWork(field, idx, farm) {
     const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
     const sown = field.state === 'Planted';
     const plowed = field.tillage === 'plowed';
+    // Mechanics switched off in the game settings get no steps (null = unknown, keep them).
+    const rules = (farm && farm.gameRules) || {};
     if (!sown) {
         if (needsMerging(field, farm)) steps.push('merge');
+        // The game asks for ploughing (see syncWorkFromSave): plough first, then the seedbed.
+        if (!plowed && field.plowRequired) steps.push('plow');
         steps.push(plowed ? 'plow' : 'cultivate');
-        if (until > 0 && !cropKeepsLime(field.crop)
+        if (until > 0 && rules.lime !== false && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
         if (field.rolling && cropNeedsRolling(field.crop)) steps.push('roll');
     }
     steps.push('fertilize');
-    if (!plowed) steps.push('weeds');
+    if (!plowed && rules.weeds !== false) steps.push('weeds');
     if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
     return steps.map(step => ({ step, done: false }));
 }
@@ -779,6 +783,12 @@ function workCellHtml(field, idx, farm, badgeCls, stateLabel, urgent) {
     return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${label}${count}</span></button>`;
 }
 
+// A small tag after a step the game itself asks for (ploughing required).
+function workStepTagHtml(field, w) {
+    if (w.step !== 'plow' || !field.plowRequired || w.done) return '';
+    return ` <span class="work-tag work-tag--required" title="${escapeHtml(t('workRequiredByGameHint'))}">${escapeHtml(t('workRequiredByGame'))}</span>`;
+}
+
 let workFieldIdx = null;
 // Opened from the field view: closing the work window goes back there.
 let workReturnToField = null;
@@ -795,7 +805,7 @@ function renderWorkModal() {
     const listEl = document.getElementById('work-list');
     listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
     listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
-        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
+        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label>
         <span class="work-item-btns">
             <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>

@@ -7524,6 +7524,25 @@ button.tillage-switch-option {
   color: var(--color-ink-faint);
 }
 
+/* A step the game itself asks for (ploughing required). */
+.work-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.work-tag--required {
+  background: var(--color-rust-soft);
+  color: var(--color-rust);
+}
+
 .work-item input[type="checkbox"] {
   width: auto;
   margin: 0;
