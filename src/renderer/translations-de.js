@@ -717,6 +717,7 @@ const UI = {
     yieldCostPartialFlag: "Für einen Teil der Betriebsmittel fehlt Preis oder Menge, die Kosten fallen also niedriger aus.",
     yieldMarginNote: "Preis jetzt: die Preiskurve des Spiels in diesem Monat (Preisbildschirm), je 1000 l. Betriebsmittel: Saatgut, der Mineraldünger, den der Stickstoffplan noch braucht, und der in dieser Saison fällige Kalk, gleich bepreist. Marge: Erlös des erwarteten Ertrags minus Betriebsmittel — ohne Maschinen, Diesel und Löhne. Verkaufsstellen schwanken selbst und der Wirtschaftsschwierigkeitsgrad hat seinen Faktor, der Preis im Spiel kann also abweichen.",
     yieldNoPricesNote: "Keine Preise: Der Spielstand hat noch keine economy.xml (sie entsteht beim ersten Speichern im Spiel).",
+    yieldNoSaveNote: "Keine Preise: Der Spielstand aus den Einstellungen ist auf diesem Computer nicht vorhanden — wähle ihn in den Einstellungen erneut aus.",
     suppliesCostNote: "Kosten (≈): Preis dieses Monats aus der Preiskurve des Spiels, ohne Faktor des Wirtschaftsschwierigkeitsgrads und Schwankungen der Läden.",
     marketPricesTitle: "Preise im Jahr",
     marketColProduct: "Produkt",

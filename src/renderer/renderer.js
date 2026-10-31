@@ -2308,7 +2308,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
             <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
     if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
-    else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t('yieldNoPricesNote')}</p>`;
+    else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t(fs.existsSync(farm.saveGamePath) ? 'yieldNoPricesNote' : 'yieldNoSaveNote')}</p>`;
     if (margin) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
 
     if (data.missingCount > 0) {
@@ -3407,6 +3407,7 @@ function getAllFarms() {
                         if (data.id && data.folderName !== data.id) {
                             data = migrateFarmFolderToId(folder, data);
                         }
+                        localizeSavePath(data);
                         farms.push(data);
                     }
                 }
@@ -3416,6 +3417,27 @@ function getAllFarms() {
         }
     });
     return farms;
+}
+
+// A farm folder copied or synced from another computer keeps that computer's
+// save path (Documents\My Games\... on one, OneDrive\Dokumenty\My Games\... on the other).
+// When it doesn't exist here, the same path from "My Games" on is tried in this
+// computer's Documents (the folder holding the farms); it works both ways.
+const SAVE_PATH_LOCAL_CACHE = new Map();
+function localizeSavePath(farm) {
+    const p = farm && farm.saveGamePath;
+    if (!p) return;
+    if (!SAVE_PATH_LOCAL_CACHE.has(p)) {
+        let local = p;
+        if (!fs.existsSync(p)) {
+            const parts = p.split(/[\\/]+/);
+            const i = parts.findIndex(s => s.toLowerCase() === 'my games');
+            const candidate = i >= 0 ? path.join(path.dirname(appDataDir), ...parts.slice(i)) : null;
+            if (candidate && fs.existsSync(candidate)) local = candidate;
+        }
+        SAVE_PATH_LOCAL_CACHE.set(p, local);
+    }
+    farm.saveGamePath = SAVE_PATH_LOCAL_CACHE.get(p);
 }
 
 // touch: false for writes that aren't the user's own edits (savegame sync,

@@ -21,6 +21,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Jeden przewidywany plon wszędzie**: planer pasz, okno pokosów i *Plony i ceny* liczą zbiór pola tak samo — z FS25_MoistureSystem dzisiejsza wilgotność pola obniża też paszę z pola zbieranego w tym miesiącu.
 
 **Poprawki**
+- **Farma z drugiego komputera traciła zapis gry**: folder farmy skopiowany albo zsynchronizowany z innego komputera miał ścieżkę zapisu tamtego komputera (`Dokumenty\My Games\…` tam, `OneDrive\Dokumenty\My Games\…` tu), więc nic nie było czytane z gry. Gdy ścieżki nie ma, używany jest ten sam zapis w Dokumentach tego komputera. Bez żadnego zapisu *Plony i ceny* mówią o tym, zamiast zrzucać winę na brak `economy.xml`.
 - **Ustawienia generatora zwijały się przy każdej zmianie**: wybór profilu, uprawy albo limitu w ustawieniach generatora nie zwija już rozwiniętych ustawień, potrzeb ani problemów.
 - **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
 
