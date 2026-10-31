@@ -21,6 +21,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **One expected yield everywhere**: the feed planner, the cuts window and *Yields and prices* now count a field's harvest the same way — with FS25_MoistureSystem, today's field moisture also lowers the feed a field harvested this month gives.
 
 **Fixed**
+- **Crop generator settings closed on every change**: picking a profile, a crop or a limit in the generator's settings no longer folds the settings, the needs or the problems you had opened.
 - **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.
 
 ## 0.10.1 — 2026-10-30

@@ -467,7 +467,7 @@ function cropGeneratorHtml(farm) {
             const done = list.filter(x => !open.includes(x));
             html += `<section class="gen-group"><h5 class="gen-group-title"><i class="fa-solid ${GEN_GROUP_ICONS[g]}" aria-hidden="true"></i> ${t('genGroup_' + g)}</h5>
                 ${open.map(x => genNeedRowHtml(plan, x.n, x.state, num)).join('')}
-                ${done.length ? `<details class="gen-covered"><summary>${t('genCoveredMore').replace('{n}', done.length)}</summary>${done.map(x => genNeedRowHtml(plan, x.n, x.state, num)).join('')}</details>` : ''}
+                ${done.length ? `<details class="gen-covered" data-gen-details="covered:${g}"><summary>${t('genCoveredMore').replace('{n}', done.length)}</summary>${done.map(x => genNeedRowHtml(plan, x.n, x.state, num)).join('')}</details>` : ''}
             </section>`;
         });
         html += '</div>';
@@ -475,7 +475,7 @@ function cropGeneratorHtml(farm) {
 
     // Problems.
     if (plan.problems.length) {
-        html += `<details class="gen-problems"${plan.problems.some(p => p.kind !== 'warn') ? ' open' : ''}><summary><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('genProblems').replace('{n}', plan.problems.length)}</summary><ul>`
+        html += `<details class="gen-problems" data-gen-details="problems"${plan.problems.some(p => p.kind !== 'warn') ? ' open' : ''}><summary><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('genProblems').replace('{n}', plan.problems.length)}</summary><ul>`
             + plan.problems.map(p => {
                 const res = p.res ? escapeHtml(genResourceLabel(p.res)) : '';
                 if (p.kind === 'limit') return `<li>${t('genProbLimit').replace('{res}', res).replace('{l}', num(p.litres)).replace('{pct}', s.limitPct)} <button type="button" class="settings-btn gen-fix" data-gen-limit="${p.to}">${t('genProbRaise').replace('{pct}', p.to)}</button></li>`;
@@ -528,7 +528,7 @@ function genNeedRowHtml(plan, n, state, num) {
         const used = plan.proposals.some(p => p.res === n.res && cropOrderKey(p.to) === cropOrderKey(c));
         return `<span class="rotation-area-chip gen-chip${used ? '' : ' is-unused'}" style="--crop-color:${rotationCropColor(c)}">${escapeHtml(translateCropName(c))}</span>`;
     }).join('');
-    return `<details class="gen-need gen-need--${state}">
+    return `<details class="gen-need gen-need--${state}" data-gen-details="need:${escapeHtml(n.res)}">
         <summary>
             <span class="gen-need-icon"><i class="fa-solid ${genResourceIcon(n.res)}" aria-hidden="true"></i></span>
             <span class="gen-need-name">${escapeHtml(genResourceLabel(n.res))}<span class="gen-need-for">${consumers}</span></span>
@@ -619,7 +619,7 @@ function genSettingsHtml(farm, plan) {
         const on = !s.excluded.includes(c);
         return `<button type="button" class="rotation-area-chip gen-crop-toggle${on ? '' : ' is-unused'}" style="--crop-color:${rotationCropColor(c)}" data-gen-crop="${escapeHtml(c)}" aria-pressed="${on}">${on ? '<i class="fa-solid fa-check" aria-hidden="true"></i> ' : ''}${escapeHtml(translateCropName(c))}</button>`;
     }).join('');
-    return `<details class="feed-settings gen-settings"${farm.cropGenerator && farm.cropGenerator.settingsOpen ? ' open' : ''}>
+    return `<details class="feed-settings gen-settings" data-gen-details="settings"${genSettingsOpen ? ' open' : ''}>
         <summary><i class="fa-solid fa-sliders" aria-hidden="true"></i> ${t('genSettings')}</summary>
         <div class="gen-settings-body">
             <div class="settings-field"><span>${t('genProfile')}</span><div class="gen-profiles">${tiles}</div></div>
@@ -746,8 +746,19 @@ async function undoCropGenerator(farm) {
 }
 
 // --- Events -------------------------------------------------------------------------
+// Opened or closed by hand, the tab's <details> (needs, covered, problems,
+// settings) stay that way when a change redraws it.
+let genSettingsOpen = false;
 function genRerender() {
-    rerenderKeepingFocus(() => renderRotationModal());
+    rerenderKeepingFocus(() => {
+        const state = {};
+        document.querySelectorAll('.cropgen details[data-gen-details]').forEach(d => { state[d.dataset.genDetails] = d.open; });
+        renderRotationModal();
+        document.querySelectorAll('.cropgen details[data-gen-details]').forEach(d => {
+            const k = d.dataset.genDetails;
+            if (k in state) d.open = state[k];
+        });
+    });
 }
 
 (function wireCropGenerator() {
@@ -833,7 +844,6 @@ function genRerender() {
 
     body.addEventListener('toggle', e => {
         if (!e.target.classList || !e.target.classList.contains('gen-settings')) return;
-        const farm = getCurrentFarm();
-        if (farm && farm.cropGenerator) farm.cropGenerator.settingsOpen = e.target.open;
+        genSettingsOpen = e.target.open;
     }, true);
 })();
