@@ -731,12 +731,13 @@ function isFeedFillType(fillType) {
     return !!(FEED_FILLTYPE_CATEGORY[fillType] || FEED_MIXTURE_SPLIT[fillType]);
 }
 
-// Feed mixers the player owns: placeables (farmId 1) with a productionPoint
-// whose recipes output a feed (FEED_PRODUCT_FILLTYPES) — e.g. FoodMixerSilo,
-// SmallFoodMixer, Lizard Mixed Food. Recipes, throughput and capacity come
-// from the placeable's own XML in its mod; which recipes are switched on and
-// what's in storage from placeables.xml. Base-game placeables live in the
-// game's archives and can't be read, so only mod mixers are found.
+// Productions the player owns: placeables (farmId 1) with a productionPoint —
+// mills, bakeries, biogas plants, feed mixers (FoodMixerSilo, SmallFoodMixer,
+// Lizard Mixed Food…). Recipes, throughput and capacity come from the
+// placeable's own XML in its mod; which recipes are switched on and what's in
+// storage from placeables.xml. Base-game placeables live in the game's
+// archives and can't be read, so only mod and map productions are found.
+// kind: 'mixer' (makes a feed, FEED_PRODUCT_FILLTYPES), 'biogas' or 'production'.
 // Production rates: cyclesPerMonth, or legacy cyclesPerHour x 24 (the game
 // converts it the same way), so output per in-game month.
 // Text read from a mod's XML (shop names) goes into the UI's HTML — drop
@@ -745,7 +746,7 @@ function plainModText(s) {
     return String(s || '').replace(/[<>"'`]/g, '');
 }
 
-function readFeedMixersFromSave(saveFolder, modsDirs) {
+function readProductionsFromSave(saveFolder, modsDirs) {
     const p = path.join(saveFolder, 'placeables.xml');
     if (!fs.existsSync(p)) return [];
     const doc = new DOMParser().parseFromString(fs.readFileSync(p, 'utf-8'), 'text/xml');
@@ -753,7 +754,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
     const up = s => String(s || '').toUpperCase();
     const defCache = {};
     const l10nCache = {};
-    const mixers = [];
+    const productions = [];
     doc.querySelectorAll(`placeable[farmId="${SAVE_FARM_ID}"]`).forEach(pl => {
         const saved = pl.querySelector(':scope > productionPoint');
         if (!saved) return;
@@ -770,12 +771,11 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
             const items = sel => [...pr.querySelectorAll(sel)].map(i => ({ fillType: up(i.getAttribute('fillType')), amount: parseFloat(i.getAttribute('amount')) || 0 }));
             return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth };
         });
-        const feedRecipes = recipes.filter(r => r.outputs.some(o => FEED_PRODUCT_FILLTYPES.includes(o.fillType)));
-        if (!feedRecipes.length) return;
+        if (!recipes.length) return;
 
         const enabled = {};
         saved.querySelectorAll(':scope > production').forEach(pr => { enabled[pr.getAttribute('id')] = pr.getAttribute('isEnabled') === 'true'; });
-        feedRecipes.forEach(r => { r.enabled = enabled[r.id] !== undefined ? enabled[r.id] : false; });
+        recipes.forEach(r => { r.enabled = enabled[r.id] !== undefined ? enabled[r.id] : false; });
 
         const stock = {};
         saved.querySelectorAll(':scope > storage > node[fillType]').forEach(n => {
@@ -792,7 +792,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
 
         const nameEl = def.querySelector('storeData > name');
         const rawName = plainModText(nameEl ? (nameEl.querySelector('en') || nameEl).textContent.trim() : '');
-        const products = [...new Set(feedRecipes.flatMap(r => r.outputs.map(o => o.fillType)).filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)))];
+        const products = [...new Set(recipes.flatMap(r => r.outputs.map(o => o.fillType)))];
 
         // The mod's own translations: its name ("$l10n_shopItem_…") and its
         // fill types ("HARINAPIENSOS" -> "Feed Flour").
@@ -805,7 +805,7 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
         Object.entries(l10n).forEach(([k, v]) => { index[norm(k)] = v; });
         const titleOf = key => index[norm(key)] || null;
         const fillTypeTitles = {};
-        feedRecipes.forEach(r => [...r.inputs, ...r.outputs].forEach(({ fillType }) => {
+        recipes.forEach(r => [...r.inputs, ...r.outputs].forEach(({ fillType }) => {
             // Else drop trailing "_PART"s: DRYTEFFGRASS_WINDROW -> dryTeffGrass,
             // CEREALPROTEICO_TRITURADO -> cerealProteico.
             let name = fillType, t2 = null;
@@ -813,20 +813,39 @@ function readFeedMixersFromSave(saveFolder, modsDirs) {
             if (t2) fillTypeTitles[fillType] = t2;
         }));
         const l10nName = rawName.startsWith('$l10n_') ? titleOf(rawName.slice(6)) : null;
-        mixers.push({
+        productions.push({
             id: pl.getAttribute('uniqueId') || filename,
+            kind: productionKind(products),
             name: rawName && !rawName.startsWith('$') ? rawName
                 : (l10nName && (l10nName.en || Object.values(l10nName)[0])) || filename.replace(/\\/g, '/').split('/').pop().replace(/\.xml$/i, ''),
             nameTitles: l10nName || null,
             fillTypeTitles,
             mod: pl.getAttribute('modName') || '',
             products,
-            recipes: feedRecipes,
+            recipes,
             stock,
             capacity
         });
     });
-    return mixers;
+    return productions;
+}
+
+// Biogas plants turn silage and manure into methane / digestate.
+const PRODUCTION_BIOGAS_OUTPUTS = ['METHANE', 'DIGESTATE', 'ELECTRICCHARGE'];
+function productionKind(products) {
+    if (products.some(ft => FEED_PRODUCT_FILLTYPES.includes(ft))) return 'mixer';
+    if (products.some(ft => PRODUCTION_BIOGAS_OUTPUTS.includes(ft))) return 'biogas';
+    return 'production';
+}
+
+// The feed mixers among the productions, with only their feed recipes.
+function feedMixersFromProductions(productions) {
+    return (productions || []).map(p => {
+        const recipes = p.recipes.filter(r => r.outputs.some(o => FEED_PRODUCT_FILLTYPES.includes(o.fillType)));
+        if (!recipes.length) return null;
+        const { kind, ...mixer } = p;
+        return { ...mixer, recipes, products: p.products.filter(ft => FEED_PRODUCT_FILLTYPES.includes(ft)) };
+    }).filter(Boolean);
 }
 
 // Translations of the mod a mixer comes from (see map-crops.js readModL10n).
@@ -1118,7 +1137,8 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
     } else {
         state = 'short';
         const ha = row.perHa > 0 ? `<span class="feed-ing-extra">≈ ${(-diff / row.perHa).toFixed(1)} ha</span>` : '';
-        status = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMissing')} ${num(-diff)} l ${ha}`;
+        status = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${t('feedMissing')} ${num(-diff)} l ${ha}`
+            + ` <button type="button" class="gen-link-btn feed-to-generator">${t('genFeedLink')}</button>`;
     }
     status += allBarns;
     const haveParts = [];

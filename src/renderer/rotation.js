@@ -243,11 +243,15 @@ function rotationTimeline(farm, field, history, back, ahead) {
         out.push({ season: s, crops: past[s] || [], catchCrop: rows.map(f => f.catchCrop).filter(Boolean)[0] || '', projected: false });
     }
     out.push({ season, crops: field.crop ? [field.crop] : [], catchCrop: field.catchCrop || '', projected: false, current: true, slot: info ? info.slot : null });
+    const next = field.nextCrop;
     if (info) {
         for (let k = 1; k <= ahead; k++) {
             const slot = rotationSlotAt(info.rot, info.index + k);
-            out.push({ season: season + k, crops: slot.crop ? [slot.crop] : [], catchCrop: slot.catchCrop, projected: true, slot });
+            if (k === 1 && next) out.push({ season: season + 1, crops: next.crop ? [next.crop] : [], catchCrop: '', projected: true, generated: true });
+            else out.push({ season: season + k, crops: slot.crop ? [slot.crop] : [], catchCrop: slot.catchCrop, projected: true, slot });
         }
+    } else if (next && ahead > 0) {
+        out.push({ season: season + 1, crops: next.crop ? [next.crop] : [], catchCrop: '', projected: true, generated: true });
     }
     return out;
 }
@@ -327,7 +331,16 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
     (farm.fields || []).forEach(field => {
         const info = fieldRotationInfo(farm, field);
         // A carried-over crop moves on after its harvest (settleCarriedFields).
-        if (!info || field.carriedFrom) return;
+        if (field.carriedFrom) return;
+        // Planned by the crop generator for this season: it wins over the cycle.
+        if (field.nextCrop) {
+            applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '' });
+            delete field.nextCrop;
+            if (info) setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
+            filled.push(field);
+            return;
+        }
+        if (!info) return;
         setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
         if (!fill) return;
         applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1));
@@ -606,9 +619,9 @@ let rotationSelectedId = null;
 function rotationCellHtml(e) {
     const crop = e.crops[0] || '';
     const text = e.crops.length ? e.crops.map(translateCropName).join(' / ') : (e.projected ? t('rotFallow') : '–');
-    const cls = ['rotation-cell', e.projected ? 'is-projected' : '', e.current ? 'is-current' : '', crop ? '' : 'is-empty'].filter(Boolean).join(' ');
-    const tip = `${t('season')} ${e.season}${e.projected ? ' · ' + t('rotProjected') : ''}${e.catchCrop ? ' · ' + t('catchCropShort') + ': ' + translateCropName(e.catchCrop) : ''}`;
-    return `<span class="${cls}" style="--crop-color:${rotationCropColor(crop)}" title="${escapeHtml(tip)}">${escapeHtml(text)}${e.catchCrop ? '<span class="rotation-catch" aria-hidden="true"></span>' : ''}</span>`;
+    const cls = ['rotation-cell', e.projected ? 'is-projected' : '', e.generated ? 'is-generated' : '', e.current ? 'is-current' : '', crop ? '' : 'is-empty'].filter(Boolean).join(' ');
+    const tip = `${t('season')} ${e.season}${e.generated ? ' · ' + t('rotByGenerator') : (e.projected ? ' · ' + t('rotProjected') : '')}${e.catchCrop ? ' · ' + t('catchCropShort') + ': ' + translateCropName(e.catchCrop) : ''}`;
+    return `<span class="${cls}" style="--crop-color:${rotationCropColor(crop)}" title="${escapeHtml(tip)}">${e.generated ? '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> ' : ''}${escapeHtml(text)}${e.catchCrop ? '<span class="rotation-catch" aria-hidden="true"></span>' : ''}</span>`;
 }
 
 // The Crop rotation view in the planner sidebar (rendered by openHubPanel).
@@ -621,11 +634,11 @@ function renderRotationPanel(titleEl, bodyEl) {
     titleEl.textContent = t('rotTitle');
     const farm = getCurrentFarm();
     if (!farm) { bodyEl.innerHTML = ''; return; }
-    const tabs = [['plan', 'fa-table-cells', 'rotTabPlan'], ['cycles', 'fa-arrows-spin', 'rotTabCycles']].map(([k, icon, key]) =>
+    const tabs = [['plan', 'fa-table-cells', 'rotTabPlan'], ['cycles', 'fa-arrows-spin', 'rotTabCycles'], ['generator', 'fa-wand-magic-sparkles', 'rotTabGenerator']].map(([k, icon, key]) =>
         `<button type="button" class="view-tab rotation-tab${k === rotationTab ? ' is-active' : ''}" role="tab" aria-selected="${k === rotationTab}" data-rtab="${k}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${t(key)}</button>`).join('');
     bodyEl.innerHTML = `<div class="rotation-panel">
         <div class="view-tabs rotation-tabs" role="tablist">${tabs}</div>
-        <div class="rotation-body">${rotationTab === 'cycles' ? rotationCyclesHtml(farm) : rotationPlanHtml(farm)}</div>
+        <div class="rotation-body">${rotationTab === 'cycles' ? rotationCyclesHtml(farm) : (rotationTab === 'generator' ? cropGeneratorHtml(farm) : rotationPlanHtml(farm))}</div>
     </div>`;
 }
 
@@ -654,8 +667,8 @@ function rotationPlanHtml(farm) {
         const seq = rotationTimeline(farm, field, history, season - first, ROTATION_AHEAD);
         const bySeason = {};
         seq.forEach(e => { bySeason[e.season] = e; });
-        if (score.info) {
-            const next = rotationSlotAt(score.info.rot, score.info.index + 1).crop || '';
+        if (field.nextCrop || score.info) {
+            const next = field.nextCrop ? field.nextCrop.crop || '' : rotationSlotAt(score.info.rot, score.info.index + 1).crop || '';
             nextArea[next] = (nextArea[next] || 0) + (parseFloat(field.area) || 0);
         }
         const tip = score.warnings.map(w => '• ' + w.text).join('\n') || t(score.level ? 'rotScoreOk' : 'rotScoreNone');

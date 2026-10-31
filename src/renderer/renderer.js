@@ -4344,7 +4344,8 @@ function readGameSave(pathToFile) {
         try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
         catch (e) { console.error('Could not read mixer wagons from savegame', e); }
         try {
-            result.feedMixers = readFeedMixersFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            result.productions = readProductionsFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            result.feedMixers = feedMixersFromProductions(result.productions);
             // What sits in a mixer (finished feed and the crops waiting to be
             // mixed) is feed on the farm too.
             if (result.feedStock) {
@@ -4588,6 +4589,7 @@ function applyGameSaveToFarm(farm) {
     };
     ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules', 'forecast'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
+    if (gameData.productions !== undefined && JSON.stringify(gameData.productions) !== JSON.stringify(farm.productions || [])) { farm.productions = gameData.productions; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
     // Day count and time of day, for what is due in hours (great demands, weather).
@@ -4917,7 +4919,8 @@ document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
 // Resolves true on the main button, 'extra' on the optional third button
 // (left, e.g. "Undo liming"), false on Cancel, a click on the backdrop or
 // Escape. Without cancelText it's a one-button notice.
-function showDialog({ title, body, confirmText, cancelText = null, extraText = null, danger = false, icon = 'fa-seedling' }) {
+// bodyHtml: markup built by the app (escaped) in place of the plain text body.
+function showDialog({ title, body, bodyHtml = null, confirmText, cancelText = null, extraText = null, danger = false, icon = 'fa-seedling' }) {
     const modal = document.getElementById('app-dialog');
     if (!modal) return Promise.resolve(window.confirm(body));
     const content = modal.querySelector('.app-dialog-content');
@@ -4928,6 +4931,11 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
 
     document.getElementById('app-dialog-title').textContent = title;
     document.getElementById('app-dialog-body').textContent = body || '';
+    document.getElementById('app-dialog-body').hidden = !body && !!bodyHtml;
+    const htmlEl = document.getElementById('app-dialog-html');
+    htmlEl.innerHTML = bodyHtml || '';
+    htmlEl.hidden = !bodyHtml;
+    content.classList.toggle('is-wide', !!bodyHtml);
     iconEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
     iconEl.classList.toggle('is-danger', danger);
     content.classList.toggle('is-danger', danger);

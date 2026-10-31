@@ -16,6 +16,8 @@
 //   notes    — this month, several months, checklist, no checklist;
 //   weather  — rain later today;
 //   market   — price curves for its crops and inputs, three great demands;
+//   productions — a grain mill running, a biogas plant on silage and slurry,
+//              an oil mill switched off (the crop generator plans for the two);
 //   rotation — three cycles, a field on its cycle, one off it, grassland in
 //              its last season, an empty field the cycle fills in.
 // No savegame path, so nothing is ever synced over it.
@@ -253,6 +255,27 @@ function devFinanceDays(period, k) {
     return out;
 }
 
+// Productions as readProductionsFromSave returns them (feed.js).
+function devProductions() {
+    const recipe = (id, inputs, outputs, cyclesPerMonth, enabled) => ({
+        id, cyclesPerMonth, enabled,
+        inputs: inputs.map(([fillType, amount]) => ({ fillType, amount })),
+        outputs: outputs.map(([fillType, amount]) => ({ fillType, amount }))
+    });
+    const prod = (id, kind, name, recipes, stock) => ({
+        id, kind, name, nameTitles: null, fillTypeTitles: {}, mod: '',
+        products: [...new Set(recipes.flatMap(r => r.outputs.map(o => o.fillType)))],
+        recipes, stock, capacity: { _default: 200000 }
+    });
+    return [
+        prod('dev-grainmill', 'production', 'Grain Mill', [recipe('flour', [['WHEAT', 1000]], [['FLOUR', 800]], 8, true)], { WHEAT: 6000 }),
+        prod('dev-biogas', 'biogas', 'Biogas Plant', [
+            recipe('silage', [['SILAGE', 2000], ['LIQUIDMANURE', 1000]], [['METHANE', 1200], ['DIGESTATE', 1500]], 4, true)
+        ], { SILAGE: 10000 }),
+        prod('dev-oilmill', 'production', 'Oil Mill', [recipe('canola', [['CANOLA', 1000]], [['OIL_CANOLA', 450]], 6, false)], {})
+    ];
+}
+
 // Prices for "Yields and prices" (shape of readSaveMarket in market.js): a
 // seasonal curve per crop and input, high after harvest, and three great
 // demands — one running, one for a crop of the farm, one for something else.
@@ -381,6 +404,7 @@ function buildDevFarm({ pl }) {
             { id: "save:dev-mixer1", name: "Siloking TruckLine Premium 2.0", capacity: 24000, source: "save" },
             { id: "save:dev-mixer2", name: "Kuhn Profile 1880", capacity: null, source: "save" }
         ],
+        productions: devProductions(),
         supplyRates: {
             defaultOverridesCleaned: true,
             fieldSoil: {
