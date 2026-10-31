@@ -132,7 +132,8 @@ function formatFillType(fillType) {
     if (!fillType) return fillType;
     const dict = PRODUCTION_FILLTYPE_TRANSLATIONS[currentLang];
     if (dict && dict[fillType]) return dict[fillType];
-    return fillType.charAt(0) + fillType.slice(1).toLowerCase();
+    const words = fillType.replace(/_/g, ' ').toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function t(key) {
@@ -2088,20 +2089,43 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    html += `<table class="data-table supply-table"><thead><tr>
+    // Prices and margin: this season only, from the save's price curve.
+    const margin = isPast ? null : buildCropMarginRows(farm, loadSeasonFields(farm, season), rates, data.rows);
+    const money = v => v === null || v === undefined ? '–' : finMoney(v);
+    html += `<table class="data-table supply-table yield-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
+        ${margin ? `<th>${t('yieldColPrice')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
+    let revenueTotal = 0, costTotal = 0, revenueKnown = false;
     data.rows.forEach(r => {
         const flag = r.known ? '' : ` <span class="supply-flag" title="${t('yieldForecastUnknownFlag')}">?</span>`;
         const m = r.moisture;
         const moistureCell = !showMoisture ? ''
             : `<td class="moisture-cell">${m ? moistureCellHtml(m.sum / m.area, m.def, m.nowArea ? m.nowFactor / m.nowArea : 1, m.nowArea > 0) : '–'}</td>`;
+        let marginCells = '';
+        if (margin) {
+            const c = margin.byCrop[r.crop] || {};
+            if (c.revenue !== null && c.revenue !== undefined) { revenueTotal += c.revenue; revenueKnown = true; }
+            if (c.costPerHa !== null && c.costPerHa !== undefined) costTotal += c.costPerHa * r.area;
+            const costFlag = c.costPerHa !== null && c.costPerHa !== undefined && !c.costKnown ? ` <span class="supply-flag" title="${t('yieldCostPartialFlag')}">?</span>` : '';
+            const mCls = c.marginPerHa === null || c.marginPerHa === undefined ? '' : c.marginPerHa < 0 ? ' yield-margin--loss' : ' yield-margin--gain';
+            marginCells = `<td>${money(c.price)}</td>
+                <td>${money(c.revenue)}</td>
+                <td>${money(c.costPerHa)}${costFlag}</td>
+                <td class="yield-margin${mCls}">${money(c.marginPerHa)}</td>`;
+        }
         html += `<tr><td>${translateCropName(r.crop)}${flag}</td>
             <td>${r.area.toFixed(2)} ha</td>${moistureCell}
-            <td>${num(r.litres)} l</td></tr>`;
+            <td>${num(r.litres)} l</td>${marginCells}</tr>`;
     });
+    const area = data.rows.reduce((sum, r) => sum + r.area, 0);
     html += `</tbody><tfoot><tr class="supply-total-row">
-        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
+        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
+        ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
+            <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
+    if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
+    else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t('yieldNoPricesNote')}</p>`;
+    if (margin) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
@@ -3878,7 +3902,7 @@ function resolveGameFarmId(farm) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -4027,6 +4051,8 @@ function readGameSave(pathToFile) {
             // so it's the natural gap-free x-axis for the monthly history.
             const gamePeriod = Math.floor((currentDay - 1) / daysPerPeriod);
             result.gameDay = currentDay;
+            const dayTime = parseFloat(findValueInRawText(envText, 'dayTime'));
+            if (isFinite(dayTime)) result.dayMinutes = Math.round(dayTime);
             result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;
@@ -4381,6 +4407,9 @@ function applyGameSaveToFarm(farm) {
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
+    // Day count and time of day, for what is due in hours (great demands, weather).
+    if (gameData.gameDay !== null && gameData.gameDay !== farm.gameDay) { farm.gameDay = gameData.gameDay; changed = true; }
+    if (gameData.dayMinutes !== null && gameData.dayMinutes !== farm.dayMinutes) { farm.dayMinutes = gameData.dayMinutes; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
     if (syncWorkFromSave(farm)) changed = true;

@@ -5,6 +5,8 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 ## 0.11.0 — unreleased
 
 **Nowe**
+- **Plony i ceny** (wcześniej *Przewidywane plony*): przy przewidywanym zbiorze każdej uprawy jest jej cena w tym miesiącu z krzywej cen gry, przychód, koszt środków na hektar (nasiona, nawóz mineralny, którego wymaga jeszcze plan azotu, wapno należne w tym sezonie) i marża na hektar — zielona albo czerwona. Niżej *Ceny w roku* rysują cenę każdej uprawy od marca do lutego z tym miesiącem i najlepszym miesiącem sprzedaży (i o ile więcej daje), a także ceny nasion, nawozu i wapna; *Podwyższony popyt* pokazuje skupy, które płacą więcej teraz albo wkrótce — najpierw Twoje uprawy — z tym, kiedy się zaczyna i jak długo trwa. Ceny pochodzą z `economy.xml` zapisu, więc zgadzają się z mapą i jej modami.
+- **Ile kosztuje zaopatrzenie**: sumy nasion, nawozu i wapna w *Zaopatrzeniu na sezon* pokazują koszt po cenie z tego miesiąca.
 - **Orka, której wymaga gra**: gdy w ustawieniach gry orka jest obowiązkowa, a licznik orki pola się skończył, pole dostaje *Orkę* na początku listy prac — także przy planie bez orki — z dopiskiem *wymaga gra*, a krok odhacza się sam, gdy zapis pokaże pole zaorane.
 - **Mulczowanie ścierniska**: *Mulczowanie ścierniska* można dodać do listy prac pola; odhacza się samo, gdy zapis pokaże zmulczowane ściernisko.
 - **Lista prac według ustawień gry**: przy wyłączonych w grze chwastach albo wapnowaniu proponowana lista prac nie zawiera już *Chwastów* ani *Wapnowania*.

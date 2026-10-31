@@ -59,7 +59,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 <td>${fmtL(r.buffered)}</td></tr>`;
         });
         html += `</tbody><tfoot><tr class="supply-total-row">
-            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(seed.total)}</td></tr></tfoot></table>`;
+            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(seed.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.seed, seed.total)}</td></tr></tfoot></table>`;
     } else {
         html += `<p class="hub-panel-note">${t('suppliesAllSown')}</p>`;
     }
@@ -104,7 +104,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
             <td>${fmtKg(fert.totals.targetAbs)} N</td>
             <td>${fmtKg(fert.totals.existingAbs)} N</td>
             <td>${fmtKg(fert.totals.orgAbs)} N<span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(fert.totals.orgVolAbs.manure)}</span><span class="supply-sub">${t('suppliesOrgSlurry')} ${fmtL(fert.totals.orgVolAbs.slurry)}</span><span class="supply-sub">${t('suppliesOrgDigestate')} ${fmtL(fert.totals.orgVolAbs.digestate)}</span></td>
-            <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span></td>
+            <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span>${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.fertilizer, fert.totals.mineralLAbs)}</td>
             </tr></tfoot></table>`;
         if (fert.missingPlanCount > 0) {
             html += `<p class="hub-panel-note">${t('suppliesNoPlanNote').replace('{n}', fert.missingPlanCount)}</p>`;
@@ -131,12 +131,13 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
                 <td>${fmtL(r.buffered)}</td></tr>`;
         });
-        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}</td></tr></tfoot></table>`;
+        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.lime, lime.total)}</td></tr></tfoot></table>`;
     } else {
         html += `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
     }
 
     html += `<p class="hub-panel-note">${t('suppliesBufferNote').replace('{p}', rates.bufferPct)}</p>`;
+    if (getFarmMarket(farm)) html += `<p class="hub-panel-note">${t('suppliesCostNote')}</p>`;
 
     bodyEl.innerHTML = html;
 }

@@ -14,6 +14,7 @@
 //              capacity);
 //   history  — two archived seasons and 32 in-game months for the charts;
 //   notes    — this month, several months, checklist, no checklist;
+//   market   — price curves for its crops and inputs, three great demands;
 //   rotation — three cycles, a field on its cycle, one off it, grassland in
 //              its last season, an empty field the cycle fills in.
 // No savegame path, so nothing is ever synced over it.
@@ -217,6 +218,29 @@ function devMonthlyHistory() {
     return rows;
 }
 
+// Prices for "Yields and prices" (shape of readSaveMarket in market.js): a
+// seasonal curve per crop and input, high after harvest, and three great
+// demands — one running, one for a crop of the farm, one for something else.
+function devMarket() {
+    const base = { WHEAT: 330, BARLEY: 300, CANOLA: 640, MAIZE: 290, SOYBEAN: 720, POTATO: 260, SUGARBEET: 180,
+        SUNFLOWER: 600, OAT: 380, GRASS: 45, RICE: 1100, OILSEEDRADISH: 250, SEEDS: 900, FERTILIZER: 1600, LIME: 230 };
+    // Harvest month of each curve (period index from March): the price is lowest there.
+    const low = { WHEAT: 4, BARLEY: 3, CANOLA: 4, MAIZE: 7, SOYBEAN: 6, POTATO: 6, SUGARBEET: 7, SUNFLOWER: 6, OAT: 4, RICE: 6 };
+    const prices = {};
+    Object.keys(base).forEach(ft => {
+        const swing = ft in low ? 0.18 : 0.04;
+        prices[ft] = DEV_MONTHS.map((m, i) => Math.round(base[ft] * (1 + swing * -Math.cos((i - (low[ft] || 0)) / 12 * 2 * Math.PI))));
+    });
+    return {
+        prices,
+        demands: [
+            { fillType: "CANOLA", multiplier: 1.3, startDay: 23, startHour: 6, hours: 12, running: true, station: "Grain elevator" },
+            { fillType: "WHEAT", multiplier: 1.2, startDay: 24, startHour: 18, hours: 18, running: false, station: "Mill" },
+            { fillType: "STRAW_PELLETS", multiplier: 1.3, startDay: 26, startHour: 8, hours: 12, running: false, station: "Bale shop" }
+        ]
+    };
+}
+
 function devNotes(pl) {
     const now = new Date().toISOString();
     const note = (id, title, body, months, tags, checklist, fields) => ({
@@ -259,6 +283,9 @@ function buildDevFarm({ pl }) {
         month: DEV_MONTHS[DEV_MONTH_INDEX],
         dayInPeriod: 2,
         daysPerPeriod: 3,
+        gameDay: 23,
+        dayMinutes: 600,
+        devMarket: devMarket(),
         // Ploughing required, so field 13 (no-till) has to be ploughed first.
         gameRules: { plowingRequired: true, stones: true, weeds: true, lime: true },
         yearNumber: DEV_YEAR,

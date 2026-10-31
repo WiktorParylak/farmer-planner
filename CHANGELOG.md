@@ -5,6 +5,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 ## 0.11.0 — unreleased
 
 **New**
+- **Yields and prices** (was *Predicted yields*): next to each crop's predicted harvest, its price this month from the game's price curve, the revenue, the inputs per hectare (seed, the mineral fertilizer the nitrogen plan still needs, lime due this season) and the gross margin per hectare, green or red. Below, *Prices this year* draws each crop's price from March to February with this month and the best month to sell (and how much more it pays), and the seed, fertilizer and lime prices; *Great demand* lists the selling points paying more right now or soon, your crops first, with when it starts and how long it lasts. Prices come from the save's `economy.xml`, so they follow the map and its mods.
+- **What the supplies cost**: the seed, fertilizer and lime totals in *Season supplies* show what they cost at this month's price.
 - **Ploughing the game asks for**: with *Ploughing required* on in the game settings, a field whose plough counter ran out gets *Plough* at the top of its work list — even when it is planned no-till — tagged *required by the game*, and the step ticks itself off once the save shows it ploughed.
 - **Mulching the stubble**: *Mulch the stubble* can be added to a field's work list and ticks itself off when the save shows the stubble mulched.
 - **Work list follows the game settings**: with weeds or lime switched off in the game, the suggested work list no longer offers *Weeds* or *Lime*.

@@ -634,8 +634,8 @@ const UI = {
     fertPlanTreatmentsNote: "Sobald Mineraldünger ausgebracht ist, fällt das Feld von der Einkaufsliste. Diese Häkchen ändern die Stickstoffwerte oben nicht.",
     hubNotes: "Notizen",
     notesTitle: "Notizen",
-    hubYieldForecast: "Erwartete Erträge",
-    yieldForecastTitle: "Erwartete Erträge",
+    hubYieldForecast: "Erträge und Preise",
+    yieldForecastTitle: "Erträge und Preise",
     yieldForecastPastIntro: "Saison {n}, wie sie beim Archivieren geplant war: erwartete Ernte jeder Feldfrucht auf ihren Feldern, bei idealem Stickstoff, idealem Boden-pH und ohne Unkraut.",
     yieldForecastIntro: "Erwartete Ernte jeder in dieser Saison geplanten Feldfrucht — gesät oder noch „Zu säen“ — bei idealem Stickstoff, idealem Boden-pH und ohne Unkraut: die Obergrenze, die der Boden deiner Felder erlaubt, eine Zeile pro Feldfrucht über alle passenden Felder.",
     yieldForecastColCrop: "Feldfrucht",
@@ -651,6 +651,31 @@ const UI = {
     yieldForecastEmpty: "Noch keinem Feld ist eine Feldfrucht zugewiesen.",
     yieldForecastUnknownFlag: "Keine Ertragsdaten für diese Feldfrucht — der Beitrag dieses Feldes fehlt in der Summe.",
     yieldForecastUnknownNote: "{n} Feldfrucht/-früchte ohne bekannten Ertrag — ihre Summen sind zu niedrig.",
+    yieldColPrice: "Preis jetzt",
+    yieldPriceUnit: "je 1000 l",
+    yieldColRevenue: "Erlös",
+    yieldColCostHa: "Betriebsmittel / ha",
+    yieldColMarginHa: "Marge / ha",
+    yieldCostPartialFlag: "Für einen Teil der Betriebsmittel fehlt Preis oder Menge, die Kosten fallen also niedriger aus.",
+    yieldMarginNote: "Preis jetzt: die Preiskurve des Spiels in diesem Monat (Preisbildschirm), je 1000 l. Betriebsmittel: Saatgut, der Mineraldünger, den der Stickstoffplan noch braucht, und der in dieser Saison fällige Kalk, gleich bepreist. Marge: Erlös des erwarteten Ertrags minus Betriebsmittel — ohne Maschinen, Diesel und Löhne. Verkaufsstellen schwanken selbst und der Wirtschaftsschwierigkeitsgrad hat seinen Faktor, der Preis im Spiel kann also abweichen.",
+    yieldNoPricesNote: "Keine Preise: Der Spielstand hat noch keine economy.xml (sie entsteht beim ersten Speichern im Spiel).",
+    suppliesCostNote: "Kosten (≈): Preis dieses Monats aus der Preiskurve des Spiels, ohne Faktor des Wirtschaftsschwierigkeitsgrads und Schwankungen der Läden.",
+    marketPricesTitle: "Preise im Jahr",
+    marketColProduct: "Produkt",
+    marketColYear: "März – Februar",
+    marketColNow: "Jetzt",
+    marketColRange: "Niedrigster – höchster",
+    marketColBest: "Bester Monat",
+    marketBestNow: "jetzt",
+    marketKeyNow: "dieser Monat",
+    marketKeyBest: "bester Monat",
+    marketInputsGroup: "Was du kaufst",
+    marketPricesNote: "Je 1000 l, aus der Preiskurve des Spiels. Die Kurve wiederholt sich jedes Jahr, der beste Monat ist also die Zeit, Lagerbares zu verkaufen.",
+    marketHours: "{h} Std.",
+    marketDaysHours: "{d} T {h} Std.",
+    marketDemandsTitle: "Hohe Nachfrage",
+    marketDemandRunning: "läuft · noch {t}",
+    marketDemandStarts: "in {t} · für {h} Std.",
     yieldForecastNote: "Eine Obergrenze, keine Prognose: Der echte Ertrag ist niedriger, sobald Stickstoff, pH oder Unkraut nicht perfekt sind.",
     notesAdd: "+ Notiz hinzufügen",
     notesEmpty: "Noch keine Notizen. Füge eine hinzu, um im passenden Monat erinnert zu werden.",
@@ -1478,7 +1503,9 @@ const ANIMAL_SPECIES = {
 
 const PRODUCTION_FILLTYPES = {
     MILK: "Milch", EGG: "Eier", WOOL: "Wolle", LIQUIDMANURE: "Gülle", MANURE: "Mist", STRAW: "Stroh",
-    FOOD: "Futter", WATER: "Wasser"
+    FOOD: "Futter", WATER: "Wasser",
+    SEEDS: "Saatgut", FERTILIZER: "Dünger", LIQUIDFERTILIZER: "Flüssigdünger", LIME: "Kalk", HERBICIDE: "Herbizid",
+    STRAW_PELLETS: "Strohpellets", HAY_PELLETS: "Heupellets", DIGESTATE: "Gärrest", SILAGE: "Silage", CHAFF: "Häckselgut"
 };
 
 module.exports = { UI, MONTHS, CROP_NAMES, ANIMAL_SPECIES, PRODUCTION_FILLTYPES };
