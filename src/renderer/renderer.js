@@ -3156,13 +3156,12 @@ function buildYieldForecastRows(fields, rates, farm = null) {
     fields.forEach((f, i) => {
         const area = parseFloat(f.area) || 0;
         if (area <= 0) return;
-        const soilMix = getFieldSoilMix(fertPlanSoilKey(f, i), rates);
         // Main crop and catch crop are two harvests off the same hectares.
         [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
-            const rate = getCropYieldRate(crop);
-            const known = rate !== null;
-            const moist = farm ? fieldMoistureInfo(f, crop, crop === f.crop ? f.sowingMonth : f.catchSowingMonth, farm) : null;
-            const litres = known ? area * rate * fieldYieldFactor(soilMix) * (moist && moist.now ? moist.factor : 1) : 0;
+            const y = fieldExpectedYield(f, i, crop, rates, farm);
+            const known = y.base !== null;
+            const moist = y.moist;
+            const litres = y.litres;
 
             const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null };
             entry.area += area;

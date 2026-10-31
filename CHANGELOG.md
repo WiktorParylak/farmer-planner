@@ -13,6 +13,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Rain in *What to do today***: with the save connected, the panel shows the next rain, snow or hail from the game's forecast that falls now or within 24 hours — when it starts and how long it lasts — marked as a warning when fields are to be sown, harvested or sprayed this month.
 - **Income and costs in Finance**: the Finance panel draws income, costs and operating profit month by month and lists the latest month and the game year so far by category — crops and products, animals, contracts, seeds and fertilizer, fuel, machines, workers, interest and the rest, as on the game's Finances screen. Buying and selling machines, buildings, land and animals is shown apart as investments, and loans and money codes stay outside the profit. The month table gets *Income*, *Costs* and *Operating profit* columns. The save keeps only the last few in-game days, so every sync files them under their month; months before this version show –.
 
+**Changed**
+- **One expected yield everywhere**: the feed planner, the cuts window and *Yields and prices* now count a field's harvest the same way — with FS25_MoistureSystem, today's field moisture also lowers the feed a field harvested this month gives.
+
 **Fixed**
 - **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.
 

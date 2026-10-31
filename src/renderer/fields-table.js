@@ -273,8 +273,7 @@ function renderCutsModal() {
     if (!field || !body) return;
     const label = [(field.number || '').toString().trim(), translateCropName(field.crop)].filter(Boolean).join(' · ');
     document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
-    const area = parseFloat(field.area) || 0;
-    const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
+    const perCut = fieldExpectedYield(field, cutsFieldIdx, field.crop, getSupplyRates(), farm).litres;
     const ageN = grasslandSeasonCount(field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1);
     document.getElementById('cuts-intro').textContent = (perCut > 0
         ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))

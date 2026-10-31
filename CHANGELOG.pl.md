@@ -13,6 +13,9 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Deszcz w *Co dziś robić***: przy podłączonym zapisie panel pokazuje najbliższy deszcz, śnieg albo grad z prognozy gry, który pada teraz albo zacznie się w ciągu 24 godzin — kiedy się zaczyna i jak długo potrwa — jako ostrzeżenie, gdy w tym miesiącu są pola do siewu, zbioru albo oprysku.
 - **Przychody i koszty w Finansach**: panel Finanse rysuje przychody, koszty i zysk operacyjny w kolejnych miesiącach i rozpisuje ostatni miesiąc oraz dotychczasowy rok gry na kategorie — plony i produkty, zwierzęta, zlecenia, nasiona i nawozy, paliwo, maszyny, pracowników, odsetki i resztę, jak na ekranie Finanse w grze. Zakup i sprzedaż maszyn, budynków, ziemi i zwierząt są osobno jako inwestycje, a kredyty i kody na pieniądze nie wchodzą do zysku. Tabela miesięcy dostaje kolumny *Przychody*, *Koszty* i *Zysk operacyjny*. Zapis gry pamięta tylko kilka ostatnich dni, więc każdy odczyt dopisuje je do ich miesiąca; miesiące sprzed tej wersji mają –.
 
+**Zmiany**
+- **Jeden przewidywany plon wszędzie**: planer pasz, okno pokosów i *Plony i ceny* liczą zbiór pola tak samo — z FS25_MoistureSystem dzisiejsza wilgotność pola obniża też paszę z pola zbieranego w tym miesiącu.
+
 **Poprawki**
 - **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
 

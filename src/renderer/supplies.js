@@ -582,6 +582,23 @@ function fieldYieldFactor(soilMix) {
     return entries.reduce((s, [id, p]) => s + (p / total) * pctOf(id), 0);
 }
 
+// The one expected yield of a field's crop, shared by Yields and prices, the
+// feed planner, the cuts window and the margins: the crop's litres/ha at full
+// potential × the soil mix's yield potential × today's field moisture when the
+// crop is harvested this month (FS25_MoistureSystem; needs farm). `base` is
+// null for a crop with no known yield — callers show "unknown", litres stay 0.
+// `rate` replaces the crop's own litres/ha (chaff for silage, grass × cuts).
+function fieldExpectedYield(field, idx, crop, rates, farm, rate) {
+    const area = parseFloat(field && field.area) || 0;
+    const base = rate !== undefined ? rate : getCropYieldRate(crop);
+    const soil = fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, idx), rates));
+    const sowing = crop === field.crop ? field.sowingMonth : field.catchSowingMonth;
+    const moist = farm && typeof fieldMoistureInfo === 'function' ? fieldMoistureInfo(field, crop, sowing, farm) : null;
+    const factor = soil * (moist && moist.now ? moist.factor : 1);
+    const perHa = base === null || base === undefined ? null : base * factor;
+    return { base, soil, moist, factor, perHa, litres: perHa === null ? 0 : area * perHa };
+}
+
 // --- Lime by soil type (Precision Farming) --------------------------------
 // FS25 PrecisionFarming.xml <pHMap>: soil pH decays a FIXED amount per harvest
 // per soil type (it does NOT depend on the crop), and <limeUsage

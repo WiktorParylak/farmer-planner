@@ -648,7 +648,7 @@ function buildFeedSupply(farm, plan, rates) {
         // use — fresh grass, hay or silage — instead of the global cuts/year.
         const cuts = !isCatch && Array.isArray(f.cuts) ? f.cuts : [];
         if (cuts.length && uses.feed === 'ROUGHAGE') {
-            const perCut = area * (getCropYieldRate(crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(f, i), rates));
+            const perCut = fieldExpectedYield(f, i, crop, rates, farm).litres;
             let litres = 0;
             cuts.forEach(c => {
                 const cat = CUT_USE_CATEGORY[c.use];
@@ -663,7 +663,7 @@ function buildFeedSupply(farm, plan, rates) {
         // A catch crop grown for forage (green rye) defaults to silage.
         let use = plan.fieldUse[key] || (isCatch && uses.silage ? 'silage' : defaultFieldUse(crop));
         if (use !== 'sale' && !uses[use]) use = Object.keys(uses)[0];
-        const factor = fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(f, i), rates));
+        const factor = fieldExpectedYield(f, i, crop, rates, farm, 0).factor;
 
         let litres = 0;
         const category = use === 'sale' ? null : uses[use];
