@@ -394,6 +394,20 @@ function fieldMoistureLineHtml(field, farm) {
     }).join('');
 }
 
+// The game's yield multiplier for the crop in the ground now (link mod data):
+// "Expected yield 7 600 l/ha (-12 %: fertilizer -8 %, lime -4 %)".
+function fieldHarvestLineHtml(field, idx, farm) {
+    if (!field.crop) return '';
+    const y = fieldExpectedYield(field, idx, field.crop, getSupplyRates(), farm);
+    if (!y.state || y.perHa === null) return '';
+    const txt = harvestLossText(y.state);
+    const perHa = Math.round(y.perHa).toLocaleString(FIN_LOCALE());
+    const tail = txt.loss > 0
+        ? ` <span class="yield-loss is-loss">(${txt.short}${txt.parts ? ': ' + escapeHtml(txt.parts) : ''})</span>`
+        : ` <span class="yield-loss is-ok">${escapeHtml(t('harvestNoLoss'))}</span>`;
+    return `<p class="settings-hint field-view-harvest">${escapeHtml(t('harvestExpected').replace('{l}', perHa))}${tail}</p>`;
+}
+
 function renderFieldModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[fieldModalIdx];
@@ -434,7 +448,7 @@ function renderFieldModal() {
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}`);
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}`);
 
     // Crop rotation: cycle, this season's step, the next seasons.
     html += section(t('rotTitle'), rotationFieldViewHtml(farm, field));
@@ -652,7 +666,7 @@ window.openFieldModal = function (idx) {
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
 // Lime only while the pH needs it (the game's pH with Precision Farming) and
 // the crop uses lime up; no weeds step on a ploughed field.
-const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'stones', 'sow', 'roll', 'weeds'];
 
 // A row joining several game fields ("10-11") has to be worked as one first:
 // the strip between them cultivated or ploughed over. Once ticked off it's
@@ -697,6 +711,8 @@ function suggestedWork(field, idx, farm) {
         // The game asks for ploughing (see syncWorkFromSave): plough first, then the seedbed.
         if (!plowed && field.plowRequired) steps.push('plow');
         steps.push(plowed ? 'plow' : 'cultivate');
+        // Stones the link mod found (see syncWorkFromSave): collect them before sowing.
+        if (field.stones !== undefined && rules.stones !== false) steps.push('stones');
         if (until > 0 && rules.lime !== false && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
@@ -782,9 +798,15 @@ function workCellHtml(field, idx, farm, badgeCls, stateLabel, urgent) {
     return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${label}${count}</span></button>`;
 }
 
-// A small tag after a step the game itself asks for (ploughing required).
+// A small tag after a step the game itself asks for (ploughing required), or
+// how much of the field is still under stones.
 function workStepTagHtml(field, w) {
-    if (w.step !== 'plow' || !field.plowRequired || w.done) return '';
+    if (w.done) return '';
+    if (w.step === 'stones' && field.stones > 0) {
+        const pct = Math.max(1, Math.round(field.stones * 100));
+        return ` <span class="work-tag" title="${escapeHtml(t('workStonesHint'))}">${escapeHtml(t('workStonesShare').replace('{pct}', pct))}</span>`;
+    }
+    if (w.step !== 'plow' || !field.plowRequired) return '';
     return ` <span class="work-tag work-tag--required" title="${escapeHtml(t('workRequiredByGameHint'))}">${escapeHtml(t('workRequiredByGame'))}</span>`;
 }
 

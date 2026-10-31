@@ -9508,3 +9508,15 @@ button.field-open.has-callout .field-number-chip {
 .gen-pv-cell { white-space: nowrap; }
 .gen-pv-bar { flex: 0 0 auto; }
 .gen-lock.fp-check { margin: 0 auto; }
+
+/* Yield loss from the field's state (link mod, supplies.js fieldYieldState). */
+.yield-loss.is-loss { color: var(--color-rust); font-weight: 700; }
+.yield-loss.is-ok { color: var(--color-primary); font-weight: 600; }
+.yield-loss-parts {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.field-view-harvest .yield-loss { margin-left: 4px; }

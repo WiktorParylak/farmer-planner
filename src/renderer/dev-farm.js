@@ -96,7 +96,7 @@ function devFields() {
             limeAppliedSeason: 2, limePh: 0.95, manure: true, work: []
         }),
         // Low pH from an old liming.
-        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55, plowRequired: true }),
+        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55, plowRequired: true, stones: 0.08 }),
         // Sown, weeds to spray ("What to do today" lists it).
         devField("14", 3.1, "Oat", "MARCH", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true, weeds: "needed" }),
         // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
@@ -276,6 +276,31 @@ function devProductions() {
     ];
 }
 
+// The game's yield multiplier as the link mod measures it (base game values
+// differ per fruit only for grass, which ignores ploughing and rolling).
+function devHarvestScale() {
+    const probe = { full: 1, spray0: 0.55, spray05: 0.775, plow0: 0.85, lime0: 0.85, weed0: 0.8, stubble0: 0.975, roller0: 0.975 };
+    const out = {};
+    ['WHEAT', 'BARLEY', 'OAT', 'CANOLA', 'MAIZE', 'SUNFLOWER', 'SOYBEAN', 'SUGARBEET', 'POTATO'].forEach(f => { out[f] = Object.assign({}, probe); });
+    out.GRASS = Object.assign({}, probe, { plow0: 1, roller0: 1 });
+    return out;
+}
+
+// Game fields as readSaveFields returns them, for the crops in the ground:
+// 3 is fully worked, 4 lacks lime and half its fertilizer, 14 was not mulched.
+function devSaveFields() {
+    const g = (id, fruitType, areaHa, levels) => Object.assign({
+        id, areaHa, fruitType, plannedFruit: fruitType, growthState: 4, sown: true, sprayType: 'FERTILIZER', groundType: 'SOWN',
+        weedState: 0, sprayLevel: 2, limeLevel: 1, plowLevel: 1, stubbleShredLevel: 1, rollerLevel: 1, stoneShare: 0
+    }, levels);
+    return [
+        g('3', 'CANOLA', 4.1, {}),
+        g('4', 'CANOLA', 3.7, { sprayLevel: 1, limeLevel: 0 }),
+        g('6', 'GRASS', 4.0, { sprayLevel: 1, plowLevel: 0, rollerLevel: 0 }),
+        g('14', 'OAT', 3.1, { stubbleShredLevel: 0 })
+    ];
+}
+
 // Prices for "Yields and prices" (shape of readSaveMarket in market.js): a
 // seasonal curve per crop and input, high after harvest, and three great
 // demands — one running, one for a crop of the farm, one for something else.
@@ -351,6 +376,11 @@ function buildDevFarm({ pl }) {
             { type: "CLOUDY", startDay: 23, startMin: 1140, minutes: 300 }
         ],
         devMarket: devMarket(),
+        // What the link mod would report: the game's yield multiplier per fruit
+        // and the state of the game fields growing a crop now (losses in
+        // "Yields and prices" and the field view).
+        harvestScale: devHarvestScale(),
+        devSaveFields: devSaveFields(),
         // Ploughing required, so field 13 (no-till) has to be ploughed first.
         gameRules: { plowingRequired: true, stones: true, weeds: true, lime: true },
         yearNumber: DEV_YEAR,

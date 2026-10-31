@@ -594,9 +594,94 @@ function fieldExpectedYield(field, idx, crop, rates, farm, rate) {
     const soil = fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, idx), rates));
     const sowing = crop === field.crop ? field.sowingMonth : field.catchSowingMonth;
     const moist = farm && typeof fieldMoistureInfo === 'function' ? fieldMoistureInfo(field, crop, sowing, farm) : null;
-    const factor = soil * (moist && moist.now ? moist.factor : 1);
+    const state = farm ? fieldYieldState(farm, field, crop) : null;
+    const factor = soil * (moist && moist.now ? moist.factor : 1) * (state ? state.factor : 1);
     const perHa = base === null || base === undefined ? null : base * factor;
-    return { base, soil, moist, factor, perHa, litres: perHa === null ? 0 : area * perHa };
+    return { base, soil, moist, state, factor, perHa, litres: perHa === null ? 0 : area * perHa };
+}
+
+// --- The game's yield multiplier from the field's state --------------------
+// FS25 scales a harvest by fertilizer, ploughing, lime, mulched stubble and
+// rolling (Cutter -> getHarvestScaleMultiplier). The link mod measures that
+// multiplier for every fruit - all factors at 1, then one factor at a time at 0
+// (fertilizer also at 0.5) - into farm.harvestScale. A growing crop's levels
+// in fields.xml become the same factors; each missing part costs what the game
+// measured. Without the mod's numbers there is no state factor. Weeds are left
+// out: their factor per weed state isn't in the save.
+const HARVEST_MAX_SPRAY_LEVEL = 2;
+const HARVEST_STATE_PARTS = ['spray', 'plow', 'lime', 'stubble', 'roller'];
+
+// The game's multiplier for one game field (levels from readSaveFields):
+// { factor (0..1 of the full yield), parts: { part: loss 0..1 } }, or null.
+function harvestStateOfGameField(scale, g) {
+    if (!scale || !(scale.full > 0)) return null;
+    const full = scale.full;
+    const at = (v, fallback) => (typeof v === 'number' ? v : fallback);
+    const f = Math.max(0, Math.min(1, (g.sprayLevel || 0) / HARVEST_MAX_SPRAY_LEVEL));
+    const s0 = at(scale.spray0, full), s05 = at(scale.spray05, (s0 + full) / 2);
+    const spray = f >= 0.5 ? s05 + (full - s05) * (f - 0.5) / 0.5 : s0 + (s05 - s0) * f / 0.5;
+    const deficit = {
+        spray: full - spray,
+        plow: g.plowLevel > 0 ? 0 : full - at(scale.plow0, full),
+        lime: g.limeLevel > 0 ? 0 : full - at(scale.lime0, full),
+        stubble: g.stubbleShredLevel > 0 ? 0 : full - at(scale.stubble0, full),
+        roller: g.rollerLevel > 0 ? 0 : full - at(scale.roller0, full)
+    };
+    const parts = {};
+    let total = 0;
+    HARVEST_STATE_PARTS.forEach(p => {
+        const loss = Math.max(0, deficit[p]) / full;
+        if (loss > 0.0005) { parts[p] = loss; total += loss; }
+    });
+    return { factor: Math.max(0, 1 - total), parts };
+}
+
+// The save's fields, read once per render burst (every row of a panel asks).
+let harvestSaveCache = { key: null, at: 0, data: null };
+function harvestSaveFields(farm) {
+    // The developer test farm has no save; it brings its own game fields (dev-farm.js).
+    if (farm.devSaveFields) return farm.devSaveFields;
+    const key = farm.id + ':' + farm.saveGamePath;
+    if (harvestSaveCache.key !== key || Date.now() - harvestSaveCache.at > 2000) {
+        const save = typeof readSaveFields === 'function' ? readSaveFields(farm) : null;
+        harvestSaveCache = { key, at: Date.now(), data: save && save.ok ? save.fields : null };
+    }
+    return harvestSaveCache.data;
+}
+
+// The state factor of a planner field whose game fields grow `crop` now
+// (area-weighted over a row joining several), or null.
+function fieldYieldState(farm, field, crop) {
+    if (!farm || !farm.harvestScale || !(farm.saveGamePath || farm.devSaveFields) || !crop || !field) return null;
+    const scale = farm.harvestScale[String(crop).replace(/[_\s]+/g, '').toUpperCase()];
+    if (!scale) return null;
+    const save = harvestSaveFields(farm);
+    if (!save) return null;
+    const ids = new Set(gameFieldIds(field));
+    let area = 0, sum = 0;
+    const parts = {};
+    save.forEach(g => {
+        if (!ids.has(g.id) || !g.sown || saveFruitToCropKey(g.fruitType) !== crop) return;
+        const st = harvestStateOfGameField(scale, g);
+        if (!st) return;
+        const w = g.areaHa > 0 ? g.areaHa : 1;
+        area += w;
+        sum += w * st.factor;
+        Object.entries(st.parts).forEach(([p, loss]) => { parts[p] = (parts[p] || 0) + w * loss; });
+    });
+    if (!area) return null;
+    Object.keys(parts).forEach(p => { parts[p] /= area; });
+    return { factor: sum / area, parts };
+}
+
+// { loss (whole %), short ("-12 %"), parts ("fertilizer -8 %, lime -4 %") } of a state factor.
+function harvestLossText(state) {
+    const pct = v => Math.round(v * 100);
+    const loss = pct(1 - state.factor);
+    const parts = Object.entries(state.parts).sort((a, b) => b[1] - a[1])
+        .filter(([, v]) => pct(v) > 0)
+        .map(([p, v]) => `${t('harvestPart_' + p)} −${pct(v)} %`);
+    return { loss, short: loss > 0 ? `−${loss} %` : '0 %', parts: parts.join(', ') };
 }
 
 // --- Lime by soil type (Precision Farming) --------------------------------

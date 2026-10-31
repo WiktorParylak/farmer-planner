@@ -2246,6 +2246,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const rates = getSupplyRates();
     const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates, isPast ? null : farm);
     const showMoisture = !isPast && !!MOISTURE_DATA;
+    const showLoss = !isPast && data.rows.some(r => r.state);
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
@@ -2268,7 +2269,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const margin = isPast ? null : buildCropMarginRows(farm, loadSeasonFields(farm, season), rates, data.rows);
     const money = v => v === null || v === undefined ? '–' : finMoney(v);
     html += `<table class="data-table supply-table yield-table"><thead><tr>
-        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
+        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
         ${margin ? `<th>${t('yieldColPrice')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
     let revenueTotal = 0, costTotal = 0, revenueKnown = false;
@@ -2277,6 +2278,14 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         const m = r.moisture;
         const moistureCell = !showMoisture ? ''
             : `<td class="moisture-cell">${m ? moistureCellHtml(m.sum / m.area, m.def, m.nowArea ? m.nowFactor / m.nowArea : 1, m.nowArea > 0) : '–'}</td>`;
+        let lossCell = '';
+        if (showLoss) {
+            const s = r.state;
+            const st = s ? { factor: s.sum / s.area, parts: Object.fromEntries(Object.entries(s.parts).map(([p, v]) => [p, v / s.area])) } : null;
+            const txt = st ? harvestLossText(st) : null;
+            lossCell = !txt ? '<td>–</td>'
+                : `<td class="yield-loss${txt.loss > 0 ? ' is-loss' : ' is-ok'}">${txt.short}${txt.parts ? `<small class="yield-loss-parts">${escapeHtml(txt.parts)}</small>` : ''}</td>`;
+        }
         let marginCells = '';
         if (margin) {
             const c = margin.byCrop[r.crop] || {};
@@ -2290,12 +2299,12 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
                 <td class="yield-margin${mCls}">${money(c.marginPerHa)}</td>`;
         }
         html += `<tr><td>${translateCropName(r.crop)}${flag}</td>
-            <td>${r.area.toFixed(2)} ha</td>${moistureCell}
+            <td>${r.area.toFixed(2)} ha</td>${moistureCell}${lossCell}
             <td>${num(r.litres)} l</td>${marginCells}</tr>`;
     });
     const area = data.rows.reduce((sum, r) => sum + r.area, 0);
     html += `</tbody><tfoot><tr class="supply-total-row">
-        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
+        <td colspan="${2 + (showMoisture ? 1 : 0) + (showLoss ? 1 : 0)}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
         ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
             <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
     if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
@@ -2307,6 +2316,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     }
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
     if (showMoisture) html += `<p class="hub-panel-note">${t('yieldMoistureNote')}</p>`;
+    if (showLoss) html += `<p class="hub-panel-note">${t('yieldLossNote')}</p>`;
 
     bodyEl.innerHTML = html;
     wireArrows();
@@ -3163,9 +3173,16 @@ function buildYieldForecastRows(fields, rates, farm = null) {
             const moist = y.moist;
             const litres = y.litres;
 
-            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null };
+            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null, state: null };
             entry.area += area;
             entry.litres += litres;
+            if (y.state) {
+                // Area-weighted loss of the fields that grow it now (the link mod's numbers).
+                const s = entry.state || (entry.state = { area: 0, sum: 0, parts: {} });
+                s.area += area;
+                s.sum += area * y.state.factor;
+                Object.entries(y.state.parts).forEach(([p, v]) => { s.parts[p] = (s.parts[p] || 0) + area * v; });
+            }
             if (moist) {
                 // Area-weighted: moisture of all its fields, factor of those harvested now.
                 const m = entry.moisture || (entry.moisture = { def: moist.def, area: 0, sum: 0, nowArea: 0, nowFactor: 0 });
@@ -4466,6 +4483,7 @@ function syncWeedsFromSave(farm) {
 const SAVE_GROUND_CULTIVATED = ['CULTIVATED', 'SEEDBED', 'ROLLED_SEEDBED', 'STUBBLE_TILLAGE', 'PLOWED'];
 const SAVE_GROUND_ROLLED = ['ROLLED_SEEDBED', 'ROLLER_LINES'];
 const SAVE_SPRAY_NATURAL = ['LIQUID_MANURE', 'MANURE', 'DIGESTATE'];
+const SAVE_STONES_MIN_SHARE = 0.005;   // below half a percent of the field: no stones to collect
 function syncWorkFromSave(farm) {
     const save = readSaveFields(farm);
     if (!save.ok) return false;
@@ -4476,7 +4494,7 @@ function syncWorkFromSave(farm) {
         const ids = gameFieldIds(field);
         const games = ids.map(id => byId[id]);
         if (!games.length || games.some(g => !g)) return;
-        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired]);
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones]);
         const det = { ...(field.workDetected || {}) };
         const rise = { ...(field.workRise || {}) };
         const seen = { ...(field.workSeen || {}) };
@@ -4494,6 +4512,21 @@ function syncWorkFromSave(farm) {
             if (allGround(SAVE_GROUND_ROLLED)) {
                 det.roll = true;
                 if (field.rolling) field.rollingDone = true;
+            }
+            // Stones (only the link mod measures them): a field not sown yet with
+            // stones on it gets a Collect stones step (field.stones = the share),
+            // which ticks itself off once they are gone.
+            const shares = games.map(g => g.stoneShare);
+            if (!grows && field.state !== 'Planted' && shares.every(v => typeof v === 'number')
+                && !(farm.gameRules && farm.gameRules.stones === false)) {
+                const share = Math.max(...shares);
+                if (share >= SAVE_STONES_MIN_SHARE) {
+                    field.stones = Math.round(share * 1000) / 1000;
+                    delete det.stones;
+                } else if (field.stones !== undefined) {
+                    field.stones = 0;
+                    det.stones = true;
+                }
             }
         }
         // Rises of the spray / lime level, per game field.
@@ -4524,7 +4557,7 @@ function syncWorkFromSave(farm) {
         if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
         if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
         syncSowStep(field);
-        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired]) !== before) changed = true;
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones]) !== before) changed = true;
     });
     return changed;
 }
