@@ -3902,7 +3902,7 @@ function resolveGameFarmId(farm) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, forecast: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -4053,6 +4053,14 @@ function readGameSave(pathToFile) {
             result.gameDay = currentDay;
             const dayTime = parseFloat(findValueInRawText(envText, 'dayTime'));
             if (isFinite(dayTime)) result.dayMinutes = Math.round(dayTime);
+            // The weather forecast: <forecast><instance typeName="RAIN" startDay
+            // startDayTime (ms) duration (ms)>, in order. Same day count as currentDay.
+            const fc = (envText.match(/<forecast>([\s\S]*?)<\/forecast>/) || [])[1] || '';
+            result.forecast = [...fc.matchAll(/<instance\s[^>]*>/g)].map(m => {
+                const a = name => (m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1];
+                return { type: String(a('typeName') || '').toUpperCase(), startDay: parseInt(a('startDay'), 10),
+                    startMin: Math.round((parseFloat(a('startDayTime')) || 0) / 60000), minutes: Math.round((parseFloat(a('duration')) || 0) / 60000) };
+            }).filter(f => f.type && isFinite(f.startDay));
             result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;
@@ -4403,7 +4411,7 @@ function applyGameSaveToFarm(farm) {
         farm[key] = gameData[key];
         changed = true;
     };
-    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules'].forEach(setIfMoved);
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules', 'forecast'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }

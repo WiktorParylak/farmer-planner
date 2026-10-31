@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Ploughing the game asks for**: with *Ploughing required* on in the game settings, a field whose plough counter ran out gets *Plough* at the top of its work list — even when it is planned no-till — tagged *required by the game*, and the step ticks itself off once the save shows it ploughed.
 - **Mulching the stubble**: *Mulch the stubble* can be added to a field's work list and ticks itself off when the save shows the stubble mulched.
 - **Work list follows the game settings**: with weeds or lime switched off in the game, the suggested work list no longer offers *Weeds* or *Lime*.
+- **Rain in *What to do today***: with the save connected, the panel shows the next rain, snow or hail from the game's forecast that falls now or within 24 hours — when it starts and how long it lasts — marked as a warning when fields are to be sown, harvested or sprayed this month.
 
 **Fixed**
 - **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.

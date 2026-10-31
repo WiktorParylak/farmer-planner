@@ -9297,3 +9297,7 @@ button.field-open.has-callout .field-number-chip {
 }
 
 .supply-cost { color: var(--color-accent-dark); font-weight: 600; }
+
+/* A chip that only informs (weather): no hover, no pointer. */
+.today-chip--static { cursor: default; }
+.today-chip--static:hover { border-color: var(--color-border); background-color: var(--color-surface); }

@@ -181,6 +181,35 @@ function todayLowFeedBarns(farm) {
     return out;
 }
 
+// Wet weather in the save's forecast (farm.forecast, from environment.xml):
+// the first rain, snow or hail that is falling now or starts within
+// TODAY_WEATHER_HOURS, with back-to-back wet entries joined into one spell.
+// { type, inHours (0 = now), hours } or null.
+const TODAY_WEATHER_HOURS = 24;
+const TODAY_WET_WEATHER = ['RAIN', 'SNOW', 'HAIL', 'THUNDER', 'STORM'];
+function todayWetWeather(farm) {
+    const list = farm && farm.forecast;
+    if (!Array.isArray(list) || !list.length || !farm.gameDay) return null;
+    const now = farm.gameDay * 1440 + (farm.dayMinutes || 0);
+    const spells = [];
+    list.forEach(f => {
+        if (!TODAY_WET_WEATHER.some(w => f.type.includes(w))) return;
+        const start = f.startDay * 1440 + f.startMin, end = start + f.minutes;
+        const last = spells[spells.length - 1];
+        if (last && start <= last.end + 1) { last.end = Math.max(last.end, end); return; }
+        spells.push({ type: f.type, start, end });
+    });
+    const spell = spells.find(sp => sp.end > now && sp.start < now + TODAY_WEATHER_HOURS * 60);
+    if (!spell) return null;
+    return { type: spell.type, inHours: Math.max(0, (spell.start - now) / 60), hours: (spell.end - Math.max(spell.start, now)) / 60 };
+}
+
+function todayWeatherIcon(type) {
+    if (type.includes('SNOW')) return 'fa-snowflake';
+    if (type.includes('HAIL') || type.includes('THUNDER') || type.includes('STORM')) return 'fa-cloud-bolt';
+    return 'fa-cloud-rain';
+}
+
 function todayFieldChipHtml(item, farm) {
     const f = item.field;
     const num = (f.number || '').toString().trim();
@@ -218,8 +247,9 @@ function renderTodayPanel() {
     const groups = todayFieldGroups(farm);
     const barns = todayLowFeedBarns(farm);
     const notes = loadNotes(farm).filter(n => (n.months || []).includes(month)).length;
+    const weather = todayWetWeather(farm);
     const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0)
-        + (seasonEnd.ready ? 1 : 0);
+        + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0);
     const open = todayPanelOpen();
 
     let body = '';
@@ -232,6 +262,24 @@ function renderTodayPanel() {
                 <span class="today-chip-main">${escapeHtml(why)}</span>
                 <span class="today-chip-ha">${escapeHtml(t('newSeasonStart').replace('{n}', next))}</span>
             </button></div>
+        </div>`;
+    }
+    if (weather) {
+        // A warning when there is field work this month that rain gets in the way of.
+        const fieldWork = ['sow', 'late', 'harvest', 'weeds'].some(k => groups[k].length);
+        const kind = t('todayWeather_' + (weather.type.includes('SNOW') ? 'snow' : weather.type.includes('HAIL') ? 'hail' : 'rain'));
+        const hours = h => Math.max(1, Math.round(h));
+        const when = weather.inHours < 0.5
+            ? t('todayWeatherNow').replace('{w}', kind)
+            : t('todayWeatherIn').replace('{w}', kind).replace('{in}', hours(weather.inHours));
+        const length = t('todayWeatherFor').replace('{h}', hours(weather.hours));
+        const tip = when + ' · ' + length + (fieldWork ? ' · ' + t('todayWeatherWork') : '');
+        body += `<div class="today-group${fieldWork ? ' is-warn' : ''}">
+            <h3 class="today-group-title"><i class="fa-solid ${todayWeatherIcon(weather.type)}" aria-hidden="true"></i> ${t('today_weather')}</h3>
+            <div class="today-chips"><span class="today-chip today-chip--static" title="${escapeHtml(tip)}">
+                <span class="today-chip-main">${escapeHtml(when)}</span>
+                <span class="today-chip-ha">${escapeHtml(length)}</span>
+            </span></div>
         </div>`;
     }
     TODAY_GROUPS.forEach(g => {

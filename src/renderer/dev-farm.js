@@ -14,6 +14,7 @@
 //              capacity);
 //   history  — two archived seasons and 32 in-game months for the charts;
 //   notes    — this month, several months, checklist, no checklist;
+//   weather  — rain later today;
 //   market   — price curves for its crops and inputs, three great demands;
 //   rotation — three cycles, a field on its cycle, one off it, grassland in
 //              its last season, an empty field the cycle fills in.
@@ -285,6 +286,13 @@ function buildDevFarm({ pl }) {
         daysPerPeriod: 3,
         gameDay: 23,
         dayMinutes: 600,
+        // Rain from 16:00 for 3 hours (two entries in a row), then sun.
+        forecast: [
+            { type: "SUN", startDay: 23, startMin: 360, minutes: 600 },
+            { type: "RAIN", startDay: 23, startMin: 960, minutes: 120 },
+            { type: "RAIN", startDay: 23, startMin: 1080, minutes: 60 },
+            { type: "CLOUDY", startDay: 23, startMin: 1140, minutes: 300 }
+        ],
         devMarket: devMarket(),
         // Ploughing required, so field 13 (no-till) has to be ploughed first.
         gameRules: { plowingRequired: true, stones: true, weeds: true, lime: true },
