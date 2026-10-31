@@ -71,5 +71,5 @@
     const skip = () => finish(true);
     splash.addEventListener('click', skip);
     window.addEventListener('keydown', skip, true);
-    setTimeout(() => finish(false), reduced ? 700 : 2700);
+    setTimeout(() => finish(false), reduced ? 700 : 3550);
 })();
