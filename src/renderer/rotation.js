@@ -615,6 +615,8 @@ function rotationRealignIndex(info, field) {
 // ---------- rotation window ----------
 let rotationTab = 'plan';
 let rotationSelectedId = null;
+// Cycles ticked in the list for a bulk colour change or delete.
+const rotationChecked = new Set();
 
 function rotationCellHtml(e) {
     const crop = e.crops[0] || '';
@@ -711,12 +713,27 @@ function rotationCyclesHtml(farm) {
     const used = id => (farm.fields || []).filter(f => f.rotation && f.rotation.id === id).length;
     const templates = ROTATION_TEMPLATES.filter(tpl => rotationTemplateSteps(tpl).length >= 2);
     const others = getAllFarms().filter(f => f.id !== farm.id && Array.isArray(f.rotations) && f.rotations.length);
-    const list = rots.map(r => `<button type="button" class="rotation-cycle-item${r.id === rotationSelectedId ? ' is-active' : ''}" data-id="${escapeHtml(r.id)}">
+    Array.from(rotationChecked).forEach(id => { if (!rots.some(r => r.id === id)) rotationChecked.delete(id); });
+    const list = rots.map(r => `<div class="rotation-cycle-row${rotationChecked.has(r.id) ? ' is-checked' : ''}">
+        <input type="checkbox" class="rotation-cycle-check" data-id="${escapeHtml(r.id)}" ${rotationChecked.has(r.id) ? 'checked' : ''} aria-label="${escapeHtml(t('rotSelectCycle').replace('{name}', r.name))}">
+        <button type="button" class="rotation-cycle-item${r.id === rotationSelectedId ? ' is-active' : ''}" data-id="${escapeHtml(r.id)}">
             <span class="rotation-swatch" style="background:${rotationColor(r)}"></span>
             <span class="rotation-cycle-name">${escapeHtml(r.name)}</span>
             <span class="rotation-cycle-meta">${escapeHtml(r.steps.map(s => s.crop ? translateCropName(s.crop) : t('rotFallow')).join(' → '))}</span>
             <span class="rotation-cycle-count" title="${escapeHtml(t('rotFieldsUsing'))}">${used(r.id)}</span>
-        </button>`).join('');
+        </button>
+    </div>`).join('');
+    const checkedRots = rots.filter(r => rotationChecked.has(r.id));
+    const firstColor = checkedRots.length ? rotationColor(checkedRots[0]) : ROTATION_COLORS[0];
+    const bulk = rots.length > 1 || checkedRots.length ? `<div class="rotation-bulk${checkedRots.length ? ' is-active' : ''}">
+            <label class="rotation-bulk-all"><input type="checkbox" class="rotation-check-all" ${checkedRots.length === rots.length ? 'checked' : ''}> ${checkedRots.length ? t('rotSelectedCount').replace('{n}', checkedRots.length) : t('rotSelectAll')}</label>
+            ${checkedRots.length ? `<div class="rotation-bulk-tools">
+                <span class="rotation-bulk-colors">${ROTATION_COLORS.map(c => `<button type="button" class="rotation-bulk-color" data-color="${c}" style="background:${c}" title="${escapeHtml(t('rotColorSelected'))}" aria-label="${escapeHtml(t('rotColorSelected'))} ${c}"></button>`).join('')}
+                <input type="color" class="rotation-bulk-custom" value="${firstColor}" title="${escapeHtml(t('rotColorSelected'))}"></span>
+                <button type="button" class="settings-btn reset-btn rotation-bulk-delete">${t('rotDeleteSelected')}</button>
+                <button type="button" class="settings-btn rotation-bulk-clear">${t('rotClearSelection')}</button>
+            </div>` : ''}
+        </div>` : '';
     const rot = rotationById(farm, rotationSelectedId);
     let editor = `<p class="settings-hint">${t('rotNoCyclesHint')}</p>`;
     if (rot) {
@@ -747,6 +764,7 @@ function rotationCyclesHtml(farm) {
     }
     return `<div class="rotation-cycles">
         <div class="rotation-cycle-list">
+            ${bulk}
             ${list || `<p class="settings-hint">${t('rotNoCycles')}</p>`}
             <button type="button" class="settings-btn rotation-new">+ ${t('rotNew')}</button>
             <select class="rotation-template"><option value="">${t('rotFromTemplate')}</option>${templates.map(tpl => `<option value="${tpl.key}">${escapeHtml(t('rotTpl_' + tpl.key))}</option>`).join('')}</select>
@@ -795,6 +813,22 @@ function addRotation(farm, rot) {
         const farm = getCurrentFarm();
         if (!farm || !el.closest('.rotation-panel')) return;
         if (el.id === 'rotation-fill-mode') { farm.rotationAutoFill = el.value; saveFarmData(farm); return; }
+        if (el.classList.contains('rotation-cycle-check')) {
+            if (el.checked) rotationChecked.add(el.dataset.id); else rotationChecked.delete(el.dataset.id);
+            renderRotationModal();
+            return;
+        }
+        if (el.classList.contains('rotation-check-all')) {
+            rotationChecked.clear();
+            if (el.checked) getRotations(farm).forEach(r => rotationChecked.add(r.id));
+            renderRotationModal();
+            return;
+        }
+        if (el.classList.contains('rotation-bulk-custom')) {
+            if (/^#[0-9a-f]{6}$/i.test(el.value)) getRotations(farm).forEach(r => { if (rotationChecked.has(r.id)) r.color = el.value; });
+            saveRotations(farm);
+            return;
+        }
         if (el.classList.contains('rotation-plan-cycle') || el.classList.contains('rotation-plan-step')) {
             const field = farm.fields[+el.dataset.idx];
             if (!field) return;
@@ -839,7 +873,39 @@ function addRotation(farm, rot) {
         const farm = getCurrentFarm();
         if (!farm || !e.target.closest('.rotation-panel')) return;
         const item = e.target.closest('.rotation-cycle-item');
-        if (item) { rotationSelectedId = item.dataset.id; renderRotationModal(); return; }
+        if (item) {
+            // Ctrl/Shift-click ticks the cycle instead of opening it.
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                if (rotationChecked.has(item.dataset.id)) rotationChecked.delete(item.dataset.id); else rotationChecked.add(item.dataset.id);
+            } else rotationSelectedId = item.dataset.id;
+            renderRotationModal();
+            return;
+        }
+        const bulkColor = e.target.closest('.rotation-bulk-color');
+        if (bulkColor) {
+            getRotations(farm).forEach(r => { if (rotationChecked.has(r.id)) r.color = bulkColor.dataset.color; });
+            saveRotations(farm);
+            return;
+        }
+        if (e.target.closest('.rotation-bulk-clear')) { rotationChecked.clear(); renderRotationModal(); return; }
+        if (e.target.closest('.rotation-bulk-delete')) {
+            const doomed = getRotations(farm).filter(r => rotationChecked.has(r.id));
+            if (!doomed.length) return;
+            const ids = new Set(doomed.map(r => r.id));
+            const users = (farm.fields || []).filter(f => f.rotation && ids.has(f.rotation.id));
+            const ok = await showConfirm({
+                title: t('rotDeleteManyTitle').replace('{n}', doomed.length),
+                body: doomed.map(r => r.name).join(', ') + '. ' + (users.length ? t('rotDeleteManyUsed').replace('{n}', users.length) : t('rotDeleteManyBody')),
+                confirmText: t('delete'), danger: true
+            });
+            if (ok !== true) return;
+            users.forEach(f => { delete f.rotation; });
+            farm.rotations = getRotations(farm).filter(r => !ids.has(r.id));
+            if (ids.has(rotationSelectedId)) rotationSelectedId = null;
+            rotationChecked.clear();
+            saveRotations(farm);
+            return;
+        }
         if (e.target.closest('.rotation-new')) {
             addRotation(farm, { name: t('rotNewName').replace('{n}', getRotations(farm).length + 1), steps: [{ crop: '', catchCrop: '', sowingMonth: '', seasons: 1 }] });
             const name = body.querySelector('.rotation-name');
