@@ -870,10 +870,13 @@ body {
   display: none;
 }
 
+/* Stuck to the modal's bottom edge, over its 34px padding, so the scrolled
+   settings never show below the buttons. */
 #settings-modal .modal-buttons {
   position: sticky;
-  bottom: -1px;
-  padding: 10px 0 2px;
+  bottom: -34px;
+  margin-bottom: -34px;
+  padding: 10px 0 34px;
   background: var(--color-surface);
 }
 
