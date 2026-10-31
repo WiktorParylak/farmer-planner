@@ -32,20 +32,22 @@
 - Międzyplony na tym samym polu, przed albo po głównej uprawie.
 - Historia sezonów: wrócisz do poprzednich i porównasz.
 - Cykle płodozmianu (z szablonów, np. norfolskiego, albo własne): następna uprawa wpisuje się sama, gdy zaczyna się nowy sezon, a widok płodozmianu ocenia każde pole.
+- Generator upraw, który planuje pola pod to, czego farma potrzebuje w roku — paszę i słomę dla zwierząt, surowce dla produkcji i biogazowni — w zgodzie z płodozmianem i w ustawionym limicie powierzchni.
 - Sezony, które na siebie zachodzą: rosnące uprawy przechodzą do nowego sezonu, a planer podpowiada, kiedy go zacząć.
-- Panel *Co dziś robić* pod planem: siew, zbiór, chwasty, wałowanie, kroki prac, kończąca się pasza i notatki z bieżącego miesiąca.
+- Panel *Co dziś robić* pod planem: siew, zbiór, chwasty, wałowanie, kroki prac, kończąca się pasza, deszcz z prognozy gry i notatki z bieżącego miesiąca.
 - Podsumowanie hektarów każdej uprawy.
 
 **Zsynchronizowany z grą**
 - Saldo, kredyty, czas gry, maszyny i zwierzęta prosto z zapisu gry.
 - Odświeża się sam przy każdym zapisie gry, także automatycznym.
+- Na żywo w trakcie gry z opcjonalnym modem **Farmer Planner Link** (dołączonym do aplikacji): prace polowe, chwasty i kamienie pojawiają się po kilku sekundach, a do tego strata plonu za stan pola.
 - Uprawy i kalendarz siewu czytane z moda mapy.
 - Gleby pól z Precision Farming, prosto z zapisu.
 
 **Narzędzia**
-- Finanse miesiąc po miesiącu i sezon po sezonie.
-- Zaopatrzenie: ile nasion i nawozu kupić na sezon.
-- Przewidywane plony, z dzisiejszą wilgotnością pól z moda Moisture System.
+- Finanse miesiąc po miesiącu i sezon po sezonie, z przychodami i kosztami według kategorii.
+- Zaopatrzenie: ile nasion i nawozu kupić na sezon i ile to kosztuje.
+- Plony i ceny: przewidywany zbiór, cena w tym miesiącu, przychód i marża na hektar, krzywa cen w roku i podwyższony popyt; z dzisiejszą wilgotnością pól z moda Moisture System.
 - Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
 - Ścieżki technologiczne: zapisz ścieżki z pól jednego zapisu i wklej je do innego zapisu tej samej mapy.
 
@@ -65,6 +67,7 @@ Działa z AnimalFoodCalculator i EnhancedAnimalSystem i pokazuje obrazki ras z T
    `Dokumenty\My Games\FarmingSimulator2025\savegame1\careerSavegame.xml`.
 4. Włącz automatyczną synchronizację i kliknij **Zapisz i importuj**.
 5. Planuj pola. Planer nadąża za Tobą, kiedy grasz.
+6. Opcjonalnie: w **Ustawienia → Zapis gry** przycisk *Pokaż plik moda* wskazuje `FS25_FarmerPlannerLink.zip`. Skopiuj go do folderu mods i włącz przy wczytywaniu zapisu, a planer będzie nadążał za grą po kilku sekundach zamiast przy każdym zapisie.
 
 Gdy wyjdzie nowa wersja, aplikacja powie o tym przy starcie i może zaktualizować się sama: **Aktualizuj teraz** pobiera instalator i podmienia wersję, a jeśli coś pójdzie nie tak, przywraca poprzednią. Twoje farmy zostają nietknięte.
 
@@ -73,7 +76,7 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 ## Pytania
 
 **Czy zmienia mój zapis gry?**
-Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu. Robi to tylko przy zamkniętej grze, najpierw kopiuje plik do `farmer_planner_backup`, sprawdza nowy plik, zanim podmieni stary, i potrafi przywrócić ostatnią kopię.
+Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu. Robi to tylko przy zamkniętej grze, najpierw kopiuje plik do `farmer_planner_backup`, sprawdza nowy plik, zanim podmieni stary, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej.
 
 **Jakie mapy i mody obsługuje?**
 Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit i Enhanced Loan System.
@@ -90,7 +93,8 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 **Plan sezonu**
 - Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, następna praca w kolorze stanu pola (do obsiania / siej teraz / po terminie / obsiane; kliknij, gdy praca jest zrobiona, prawy klik cofa), orka lub bezorka, chipy wapna i azotu. Kliknięcie nagłówka kolumny sortuje tabelę.
 - Okno pola (klik w numer pola): uprawa, międzyplon, płodozmian, gleby z przyciskiem *Wczytaj z gry*, pH i wapno, notatki, plan azotu (zapotrzebowanie, azot w glebie i z nawozów naturalnych, ile musi pokryć nawóz mineralny) i lista prac do odhaczania.
-- Prace zrobione w grze odhaczają się same: z podłączonym zapisem uprawa, orka, siew, nawożenie, wapnowanie i wałowanie odhaczają pasujące kroki.
+- Prace zrobione w grze odhaczają się same: z podłączonym zapisem uprawa, orka, mulczowanie, siew, nawożenie, wapnowanie i wałowanie odhaczają pasujące kroki. Gdy w grze orka jest obowiązkowa, pole ze skończonym licznikiem orki dostaje *Orkę* z dopiskiem *wymaga gra*.
+- Z modem Farmer Planner Link: pola z kamieniami dostają *Zbieranie kamieni* z częścią pola, która jest jeszcze pokryta, a okno pola pokazuje oczekiwany plon z tym, co gra odejmie za nawożenie, orkę, wapno, mulczowanie i wałowanie.
 - Własne nazwy pól (*Za stodołą*), zachowane między sezonami, i wyszukiwarka (**Ctrl+F**), która filtruje pola po numerze, nazwie albo uprawie — przydatna na dużych farmach.
 - Połączone pola same sumują hektary: wpisanie `10-11-12` uzupełnia areał ze znanych wielkości pól albo z zapisu gry.
 - Międzyplony (zielone żyto, poplon…) na tym samym polu, przed lub po uprawie głównej.
@@ -98,24 +102,26 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 - Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
 - Opcjonalnie areał całej działki (farmland) obok areału pola.
 - Płodozmian: cykle na farmie (szablony, np. norfolski, zboża + rzepak, pasza dla bydła, albo własne; kroki wielosezonowe dla traw i odłogu), przypisane do pól. Nowy sezon (albo nowy miesiąc w grze, gdy otwiera się okno siewu) wpisuje każdemu polu następną uprawę. Widok płodozmianu pokazuje minione i planowane sezony z oceną zieloną / żółtą / czerwoną i ostrzeżeniami (ta sama uprawa dwa razy, za dużo zbóż, rzepak lub burak za często, trawa ponad limit).
-- Panel *Co dziś robić* pod planem sezonu: pola do siewu i zbioru w tym miesiącu, spóźnione siewy, chwasty, wałowanie, następny krok z list prac, obory z małym zapasem paszy i notatki na ten miesiąc.
+- Panel *Co dziś robić* pod planem sezonu: pola do siewu i zbioru w tym miesiącu, spóźnione siewy, chwasty, wałowanie, następny krok z list prac, obory z małym zapasem paszy, deszcz, śnieg albo grad z prognozy gry w ciągu 24 godzin i notatki na ten miesiąc.
+- Generator upraw (*Płodozmian → Generator*): proponuje uprawę na każde pole, które można jeszcze zmienić, w tym albo następnym sezonie, według potrzeb z planera pasz oraz produkcji i biogazowni z zapisu. Każda potrzeba pokazuje zapas, ile doda plan i ile jeszcze brakuje; każde pole mówi dlaczego i podsuwa inne uprawy. Profile, limit powierzchni, rezerwa i dozwolone uprawy są w ustawieniach; *Zastosuj…* pokazuje podgląd zmian, robi kopię pól i można go cofnąć.
 - Kilka pól naraz w Edycji: zaznacz karty (albo kliknij je z **Shiftem**), a zmiana w jednej zaznaczonej karcie trafi do wszystkich; można je też połączyć w jedno pole.
 - Z modem Crop Dependent Rolling wałowanie jest planowane tylko dla upraw, które go potrzebują.
 
 **Synchronizacja z grą**
 - Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` — łącznie z kredytami z modów Enhanced Loan System i Bank And Credit.
 - Automatyczna synchronizacja w trakcie gry — planer odświeża się przy każdym zapisie gry (ręcznym lub autozapisie).
+- Mod **Farmer Planner Link** (opcjonalny, dołączony do aplikacji): co kilka sekund zapisuje pliki pól i działek gry oraz krótki plik stanu, więc planer nadąża za uruchomioną grą; przekazuje też ceny zakupu nasion, nawozu i wapna z poziomem trudności ekonomii, mnożnik plonu gry i receptury produkcji z gry podstawowej. *Na żywo* obok nazwy farmy pokazuje, że działa.
 - Uprawy mapy, ich kolejność i kalendarz siewu odczytywane automatycznie z moda mapy, której używa zapis gry — bez importu folderu (folder mapy można nadal wskazać dla map, których aplikacja nie odczyta).
 - Wykrywanie modów zwierząt zmieniających zużycie paszy: **AnimalFoodCalculator** (tryb, mnożnik, dni w miesiącu, krzywe referencyjne) i **EnhancedAnimalSystem** (współczynnik paszy w laktacji).
 - Typy gleby pól z Precision Farming, odczytywane bezpośrednio z zapisu gry.
 
 **Narzędzia (pasek po lewej)**
-- **Finanse** — saldo i kredyt miesiąc po miesiącu i sezon po sezonie.
+- **Finanse** — saldo i kredyt miesiąc po miesiącu i sezon po sezonie; przychody, koszty i zysk operacyjny według kategorii jak na ekranie Finanse w grze, z inwestycjami osobno.
 - **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja i reprodukcja (postęp ciąży, miesiące do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można zmieniać nazwy. **Normy rasy** pokazują, ile jedna sztuka albo stado danej rasy zjada i daje na miesiąc w danym wieku.
-- **Zaopatrzenie** — ile nasion i nawozów kupić na sezon.
+- **Zaopatrzenie** — ile nasion i nawozów kupić na sezon i ile to kosztuje po cenie z tego miesiąca.
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
 - **Notatki** — przypięte do miesięcy i pól, z tagami i listą zadań, która co rok w grze zaczyna się od nowa.
-- **Przewidywane plony** — z modem Moisture System także dzisiejsza wilgotność pól, jej idealny zakres i jak zmienia plon zbiorów w tym miesiącu.
+- **Plony i ceny** — przewidywany zbiór każdej uprawy, cena w tym miesiącu z krzywej cen zapisu, przychód, środki i marża na hektar; ceny w roku z najlepszym miesiącem sprzedaży i podwyższony popyt w skupach. Z modem Moisture System także dzisiejsza wilgotność pól, jej idealny zakres i jak zmienia plon zbiorów w tym miesiącu; z modem-łącznikiem strata za stan każdego pola.
 - **Planer pasz** — co masz, czego brakuje i ile hektarów obsiać, żeby wykarmić stado, oraz kalkulator **paszowozu**: załaduj go belami z farmy i sprawdź mieszankę z recepturą TMR z gry. Wykrywa też mieszalniki pasz (pasza dla świń, TMR, pasza mineralna) z zapasami, recepturami i wydajnością miesięczną.
 
 **Inne**
