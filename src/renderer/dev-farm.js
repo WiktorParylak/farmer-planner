@@ -213,10 +213,44 @@ function devMonthlyHistory() {
                 EGG: Math.round(3600 * k),
                 WOOL: Math.round(900 * k),
                 GOATMILK: period > 12 ? Math.round(1200 * k) : 0
-            }
+            },
+            // Income and costs of the last ten months only, as when the farm
+            // started collecting them with 0.11.0 (three days per month).
+            financeDays: period > last - 10 ? devFinanceDays(period, k) : undefined
         });
     }
     return rows;
+}
+
+// The days of one month as farms.xml <finances> files them: costs negative,
+// harvest money in summer and autumn, a tractor bought and an old one sold.
+function devFinanceDays(period, k) {
+    const m = period % 12;                       // 0 = March
+    const harvest = [0, 0, 0.3, 1, 1.2, 0.6, 0.8, 0.2, 0, 0, 0, 0][m];
+    const sowing = [1, 0.8, 0.2, 0, 0.4, 0.9, 0.3, 0, 0, 0, 0, 0.5][m];
+    const out = {};
+    for (let d = 0; d < 3; d++) {
+        const day = period * 3 + 1 + d;
+        const cats = {
+            harvestIncome: Math.round(38000 * harvest * (1 + 0.3 * Math.sin(day))),
+            soldMilk: Math.round((2600 + 3400 * k) * (1 + 0.1 * Math.cos(day))),
+            soldProducts: Math.round(1800 + 900 * Math.sin(day * 0.7)),
+            missionIncome: d === 1 ? Math.round(4200 + 1500 * Math.sin(period)) : 0,
+            purchaseSeeds: -Math.round(9000 * sowing),
+            purchaseFertilizer: -Math.round(5200 * sowing + 600),
+            purchaseFuel: -Math.round(1400 + 1800 * harvest),
+            vehicleRunningCost: -Math.round(900 + 700 * k),
+            propertyMaintenance: -Math.round(350 + 250 * k),
+            wagePayment: -Math.round(600 + 2400 * harvest),
+            loanInterest: -Math.round(180 - 60 * k),
+            productionCosts: -260
+        };
+        if (m === 1 && d === 0) cats.newVehiclesCost = -185000;
+        if (m === 5 && d === 2) cats.soldVehicles = 42000;
+        Object.keys(cats).forEach(c => { if (!cats[c]) delete cats[c]; });
+        out[day] = cats;
+    }
+    return out;
 }
 
 // Prices for "Yields and prices" (shape of readSaveMarket in market.js): a

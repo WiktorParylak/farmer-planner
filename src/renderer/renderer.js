@@ -613,6 +613,109 @@ function monthlyRowFingerprint(row) {
     });
 }
 
+// --- Income and costs by category (farms.xml <finances>) ---------------------
+// The game keeps the money flows of its Finances screen per in-game day:
+// <farm farmId><finances><stats day="0"> is today, day="1" yesterday … up to
+// four days back, each with one element per category (costs negative). Every
+// sync files those days under their month (row.financeDays in monthly.json),
+// so the months add up even though the save only remembers the last few days.
+// Groups for the Finance panel; anything else a mod adds counts as "other".
+const FIN_GROUPS = [
+    { id: 'crops', keys: ['harvestIncome', 'soldProducts', 'soldBales', 'soldWood'] },
+    { id: 'animals', keys: ['soldMilk', 'soldWool', 'soldAnimals'] },
+    { id: 'biogas', keys: ['incomeBga'] },
+    { id: 'missions', keys: ['missionIncome'] },
+    { id: 'property', keys: ['propertyIncome'] },
+    { id: 'seeds', keys: ['purchaseSeeds', 'purchaseFertilizer', 'purchaseSaplings'] },
+    { id: 'fuel', keys: ['purchaseFuel'] },
+    { id: 'machines', keys: ['vehicleRunningCost', 'vehicleLeasingCost'] },
+    { id: 'buildings', keys: ['propertyMaintenance'] },
+    { id: 'production', keys: ['productionCosts'] },
+    { id: 'wages', keys: ['wagePayment'] },
+    { id: 'interest', keys: ['loanInterest'] },
+    { id: 'lease', keys: ['statisticFieldLease'] },
+    { id: 'drying', keys: ['dryingCharge'] },
+    { id: 'purchases', keys: ['purchaseWater', 'purchaseBales', 'purchasePallets'] }
+];
+// Buying and selling machines, buildings, land and animals: shown apart, not
+// part of the month's operating profit.
+const FIN_INVEST_KEYS = ['newVehiclesCost', 'soldVehicles', 'newHandtoolsCost', 'soldHandtools', 'constructionCost',
+    'soldBuildings', 'fieldPurchase', 'fieldSelling', 'newAnimalsCost'];
+// Taking or paying back a loan, and "other" (money codes, cheats): outside the profit.
+const FIN_OUTSIDE_KEYS = ['loan', 'other'];
+
+// { gameDay: { category: amount } } of the farm's last days, non-zero only.
+function readSaveFinanceDays(saveFolder, currentDay) {
+    const out = {};
+    if (!currentDay) return out;
+    const p = path.join(saveFolder, 'farms.xml');
+    if (!fs.existsSync(p)) return out;
+    try {
+        const text = fs.readFileSync(p, 'utf-8');
+        const farm = [...text.matchAll(/<farm\s[^>]*farmId="(\d+)"[^>]*>([\s\S]*?)<\/farm>/g)].find(m => m[1] === SAVE_FARM_ID);
+        const fin = farm && (farm[2].match(/<finances>([\s\S]*?)<\/finances>/) || [])[1];
+        if (!fin) return out;
+        for (const m of fin.matchAll(/<stats\s+day="(\d+)">([\s\S]*?)<\/stats>/g)) {
+            const day = currentDay - parseInt(m[1], 10);
+            if (day < 1) continue;
+            const cats = {};
+            for (const c of m[2].matchAll(/<([A-Za-z0-9_]+)>\s*(-?[\d.]+(?:e[+-]?\d+)?)\s*<\/\1>/g)) {
+                const v = parseFloat(c[2]);
+                if (isFinite(v) && Math.abs(v) >= 0.5) cats[c[1]] = Math.round(v);
+            }
+            out[day] = cats;
+        }
+    } catch (e) {
+        console.error('readSaveFinanceDays failed', e);
+    }
+    return out;
+}
+
+// One month's (or a year's) categories -> income, costs, operating profit,
+// investments and what stays outside, plus the net of each group.
+function finSummary(cats) {
+    const groups = {};
+    let income = 0, cost = 0, invest = 0, outside = 0;
+    const groupOf = {};
+    FIN_GROUPS.forEach(g => g.keys.forEach(k => { groupOf[k] = g.id; }));
+    Object.keys(cats || {}).forEach(k => {
+        const v = cats[k] || 0;
+        if (FIN_OUTSIDE_KEYS.includes(k)) { outside += v; return; }
+        if (FIN_INVEST_KEYS.includes(k)) { invest += v; return; }
+        const id = groupOf[k] || 'other';
+        groups[id] = (groups[id] || 0) + v;
+        if (v > 0) income += v; else cost -= v;
+    });
+    return { income, cost, profit: income - cost, invest, outside, groups };
+}
+
+// Adds category maps together.
+function finAddCats(into, cats) {
+    Object.keys(cats || {}).forEach(k => { into[k] = (into[k] || 0) + cats[k]; });
+    return into;
+}
+
+// Files the save's last days under their months (rows by period). Returns
+// true when a row changed. A day before the first month logged is dropped.
+function mergeFinanceDays(rows, farm, gameData) {
+    const days = gameData.financeDays;
+    const perPeriod = parseInt(gameData.daysPerPeriod, 10) || 1;
+    if (!days || !Object.keys(days).length) return false;
+    const offset = parseInt(farm.monthlyPeriodOffset, 10) || 0;
+    let changed = false;
+    Object.keys(days).forEach(d => {
+        const day = parseInt(d, 10);
+        const period = Math.floor((day - 1) / perPeriod) + offset;
+        const row = rows.find(r => r.period === period);
+        if (!row) return;
+        const fd = row.financeDays || (row.financeDays = {});
+        if (JSON.stringify(fd[day] || null) === JSON.stringify(days[d])) return;
+        fd[day] = days[d];
+        changed = true;
+    });
+    return changed;
+}
+
 // Builds the row for the current in-game month from freshly-read save data
 // (gameData) merged onto `farm`.
 function buildMonthlyRow(farm, gameData) {
@@ -666,18 +769,22 @@ function recordMonthlySnapshot(farm, gameData) {
         saveFarmData(farm, { touch: false });
     }
 
+    let dirty = false;
     if (!last || row.period > last.period) {
         rows.push(row);
-        saveMonthlyHistory(farm, rows);
+        dirty = true;
     } else if (row.period === last.period) {
         if (monthlyRowFingerprint(row) !== monthlyRowFingerprint(last)) {
             // keep the original recordedAt so it still marks when the month began
             row.recordedAt = last.recordedAt;
             row.updatedAt = new Date().toISOString();
+            if (last.financeDays) row.financeDays = last.financeDays;
             rows[rows.length - 1] = row;
-            saveMonthlyHistory(farm, rows);
+            dirty = true;
         }
     }
+    if (mergeFinanceDays(rows, farm, gameData)) dirty = true;
+    if (dirty) saveMonthlyHistory(farm, rows);
 }
 
 // New career (or another savegame) behind a farm with a monthly history:
@@ -743,6 +850,19 @@ function getMonthlyHistory(farm) {
         rows[i].productionEstTotal = est
             ? Object.entries(est).filter(([ft]) => !FEED_UNSCALED_OUTPUT.includes(ft)).reduce((a, [, v]) => a + v, 0)
             : null;
+        // Income and costs of the month, from the days filed under it (null = none recorded).
+        const fd = rows[i].financeDays;
+        if (fd && Object.keys(fd).length) {
+            rows[i].finance = Object.values(fd).reduce((acc, c) => finAddCats(acc, c), {});
+            const sum = finSummary(rows[i].finance);
+            rows[i].income = sum.income;
+            rows[i].cost = sum.cost;
+            rows[i].profit = sum.profit;
+            rows[i].invest = sum.invest;
+        } else {
+            rows[i].finance = null;
+            rows[i].income = rows[i].cost = rows[i].profit = rows[i].invest = null;
+        }
     }
     return rows;
 }
@@ -1394,18 +1514,73 @@ function renderFinancePanel(bodyEl, farm) {
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
+    html += finFlowsHtml(monthly, width);
 
     if (monthly.length) {
         const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
             const prev = arr[idx + 1];
-            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+            const flow = v => v === null || v === undefined ? '–' : finMoney(v);
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td>`
+                + `<td class="num">${flow(r.income)}</td><td class="num">${flow(r.cost)}</td><td class="num">${r.profit === null || r.profit === undefined ? '–' : finSigned(r.profit)}</td></tr>`;
         }).join('');
         html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
-            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th><th class="num">${t('finIncome')}</th><th class="num">${t('finCosts')}</th><th class="num">${t('finProfit')}</th></tr></thead>
             <tbody>${rowsHtml}</tbody></table></details>`;
     }
     bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
     activateTrendCharts(bodyEl);
+}
+
+// --- Income and costs: chart of the months + the latest month by group ------
+const FIN_INCOME_GROUPS = ['crops', 'animals', 'biogas', 'missions', 'property'];
+
+function finFlowsHtml(monthly, width) {
+    const withFlows = monthly.filter(r => r.finance);
+    if (!withFlows.length) {
+        return `<section class="fin-card fin-flows"><div class="fin-card-head"><h4>${t('finFlowsTitle')}</h4></div>
+            <p class="hub-panel-note">${t('finFlowsNone')}</p></section>`;
+    }
+    let html = '';
+    if (withFlows.length > 1) {
+        const first = monthly.indexOf(withFlows[0]);
+        const rows = monthly.slice(first);
+        const series = [
+            { key: 'income', label: t('finIncome'), cls: 'balance' },
+            { key: 'cost', label: t('finCosts'), cls: 'loan' },
+            { key: 'profit', label: t('finProfit'), cls: 'animals', dashed: true }
+        ];
+        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, ariaLabel: t('finFlowsChart') };
+        html += trendCardHtml('fin-flows', t('finFlowsChart'), trendLegendHtml(series), '', w => buildTrendChart(rows, w, series, opts), width);
+    }
+
+    // The latest month with flows, next to its game year so far.
+    const last = withFlows[withFlows.length - 1];
+    const yearCats = withFlows.filter(r => r.gameYear === last.gameYear).reduce((acc, r) => finAddCats(acc, r.finance), {});
+    const month = finSummary(last.finance), year = finSummary(yearCats);
+    const ids = [...new Set([...Object.keys(month.groups), ...Object.keys(year.groups)])];
+    const isIncome = id => FIN_INCOME_GROUPS.includes(id) || (id === 'other' && (year.groups.other || 0) > 0);
+    const order = list => list.sort((a, b) => Math.abs(year.groups[b] || 0) - Math.abs(year.groups[a] || 0));
+    const cell = v => `<td class="num">${v ? finMoney(Math.abs(v)) : '–'}</td>`;
+    const groupRows = list => list.map(id => `<tr><td>${t('finGroup_' + id)}</td>${cell(month.groups[id])}${cell(year.groups[id])}</tr>`).join('');
+    const sumRow = (label, a, b, cls) => `<tr class="fin-flows-sum${cls ? ' ' + cls : ''}"><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`;
+    const signed = v => v ? finSigned(v) : '–';
+    let body = groupRows(order(ids.filter(isIncome)))
+        + sumRow(t('finIncomeTotal'), finMoney(month.income), finMoney(year.income))
+        + groupRows(order(ids.filter(id => !isIncome(id))))
+        + sumRow(t('finCostsTotal'), finMoney(month.cost), finMoney(year.cost))
+        + sumRow(t('finProfit'), finSigned(month.profit), finSigned(year.profit), month.profit < 0 ? 'is-loss' : 'is-gain');
+    body += `<tr class="fin-flows-apart"><td>${t('finInvest')}<span class="supply-sub">${t('finInvestHint')}</span></td><td class="num">${signed(month.invest)}</td><td class="num">${signed(year.invest)}</td></tr>`;
+    if (month.outside || year.outside) {
+        body += `<tr class="fin-flows-apart"><td>${t('finOutside')}<span class="supply-sub">${t('finOutsideHint')}</span></td><td class="num">${signed(month.outside)}</td><td class="num">${signed(year.outside)}</td></tr>`;
+    }
+    html += `<section class="fin-card fin-flows">
+        <div class="fin-card-head"><h4>${t('finFlowsTitle')}</h4></div>
+        <table class="data-table fin-table fin-flows-table"><thead><tr><th>${t('finColGroup')}</th>
+            <th class="num">${escapeHtml(translateMonth(last.month))}</th><th class="num">${t('finYear').replace('{y}', last.gameYear)}</th></tr></thead>
+            <tbody>${body}</tbody></table>
+        <p class="hub-panel-note">${t('finFlowsNote')}</p>
+    </section>`;
+    return html;
 }
 
 // --- Animals overview: KPI tiles + trend charts ---------------------------
@@ -3902,7 +4077,7 @@ function resolveGameFarmId(farm) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, forecast: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, forecast: null, financeDays: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -4061,6 +4236,7 @@ function readGameSave(pathToFile) {
                 return { type: String(a('typeName') || '').toUpperCase(), startDay: parseInt(a('startDay'), 10),
                     startMin: Math.round((parseFloat(a('startDayTime')) || 0) / 60000), minutes: Math.round((parseFloat(a('duration')) || 0) / 60000) };
             }).filter(f => f.type && isFinite(f.startDay));
+            result.financeDays = readSaveFinanceDays(saveFolder, currentDay);
             result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;

@@ -9301,3 +9301,12 @@ button.field-open.has-callout .field-number-chip {
 /* A chip that only informs (weather): no hover, no pointer. */
 .today-chip--static { cursor: default; }
 .today-chip--static:hover { border-color: var(--color-border); background-color: var(--color-surface); }
+
+/* Finance: income and costs by category */
+.fin-flows-table td:first-child { white-space: normal; font-family: var(--font-body); font-size: var(--fs-base); }
+.fin-flows-table td:first-child .supply-sub { display: block; font-size: var(--fs-xs); }
+.fin-flows-sum td { font-weight: 600; border-top: 1px solid var(--color-border-strong); }
+.fin-flows-sum.is-gain td:not(:first-child) { color: var(--fin-balance); }
+.fin-flows-sum.is-loss td:not(:first-child) { color: var(--color-rust); }
+.fin-flows-apart td { color: var(--color-ink-soft); }
+.fin-flows-apart:first-of-type td, .fin-flows-sum + .fin-flows-apart td { border-top: 2px solid var(--color-border); }
