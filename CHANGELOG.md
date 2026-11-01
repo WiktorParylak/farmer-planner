@@ -20,6 +20,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Several crop rotation cycles at once**: tick cycles in the *Cycles* tab (or Ctrl-click them) to give them all one colour or delete them together; *Select all cycles* ticks the whole list.
 
 **Changed**
+- **Cuts ask only for what the grassland needs**: each cut in the cuts window shows only the checks the field really lacks. The next cut follows the field in the save — *fertilized* while the fertilizer isn't full, *rolled* while it isn't rolled — and later cuts expect each cut to take the fertilizer and the rolling. Cutting grass doesn't lower pH, so *limed* shows only while the field isn't limed and the game requires lime. A step the link mod measured as costing no yield is left out, and a ticked check always stays.
 - **One expected yield everywhere**: the feed planner, the cuts window and *Yields and prices* now count a field's harvest the same way — with FS25_MoistureSystem, today's field moisture also lowers the feed a field harvested this month gives.
 
 **Fixed**

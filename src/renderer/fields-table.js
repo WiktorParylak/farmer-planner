@@ -266,6 +266,46 @@ function cutsMonthOptions(selected) {
     return html;
 }
 
+// The lowest fertilizer / lime / roller level over the game fields a planner
+// field covers that grow its crop now, or null without a save.
+function cutFieldGameState(farm, field) {
+    const save = (farm.saveGamePath || farm.devSaveFields) ? harvestSaveFields(farm) : null;
+    if (!save) return null;
+    const ids = new Set(gameFieldIds(field));
+    const rows = save.filter(g => ids.has(g.id) && g.sown && saveFruitToCropKey(g.fruitType) === field.crop);
+    if (!rows.length) return null;
+    const low = key => Math.min(...rows.map(g => g[key] || 0));
+    return { sprayLevel: low('sprayLevel'), limeLevel: low('limeLevel'), rollerLevel: low('rollerLevel') };
+}
+
+// Which done-checks a cut asks for — only what the grassland really lacks.
+// The next open cut follows the field's state in the save; later cuts expect
+// the cut to take the fertilizer and the rolling. Cut crops don't lower pH
+// (consumesLime="false"), so lime is asked once, while the field isn't limed
+// and the game requires lime. A part the link mod measured as costing no
+// yield is never asked; a ticked check always stays.
+function cutChecksNeeded(farm, field, idx, cutIdx) {
+    const cuts = field.cuts || [];
+    const scale = farm.harvestScale ? farm.harvestScale[String(field.crop || '').replace(/[_\s]+/g, '').toUpperCase()] : null;
+    const matters = part => !scale || !(scale.full > 0) || typeof scale[part + '0'] !== 'number' || scale[part + '0'] < scale.full;
+    const need = {
+        harvested: true,
+        fertilized: matters('spray'),
+        limed: !(farm.gameRules && farm.gameRules.lime === false) && matters('lime'),
+        rolled: cropNeedsRolling(field.crop) && matters('roller')
+    };
+    const game = cutFieldGameState(farm, field);
+    if (game && cutIdx === cuts.findIndex(c => !c.harvested)) {
+        need.fertilized = need.fertilized && game.sprayLevel < HARVEST_MAX_SPRAY_LEVEL;
+        need.rolled = need.rolled && game.rollerLevel === 0;
+    }
+    if (need.limed && cropKeepsLime(field.crop)) {
+        const limed = game ? game.limeLevel > 0 : getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates()).status === 'active';
+        if (limed || cuts.slice(0, cutIdx).some(c => c.limed)) need.limed = false;
+    }
+    return need;
+}
+
 function renderCutsModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[cutsFieldIdx];
@@ -280,10 +320,11 @@ function renderCutsModal() {
         : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
-    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']]
-        .filter(([key]) => key !== 'rolled' || cropNeedsRolling(field.crop));
+    const allChecks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
     let html = '';
     cuts.forEach((c, i) => {
+        const need = cutChecksNeeded(farm, field, cutsFieldIdx, i);
+        const checks = allChecks.filter(([k]) => need[k] || c[k]);
         html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <div class="cuts-node${c.harvested ? ' is-done' : ''}">
             <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
