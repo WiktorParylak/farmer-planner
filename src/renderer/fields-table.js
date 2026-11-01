@@ -1763,7 +1763,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'carriedFrom', 'carriedCrop'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'carriedFrom', 'carriedCrop'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

@@ -4526,14 +4526,26 @@ function syncWorkFromSave(farm) {
         const ids = gameFieldIds(field);
         const games = ids.map(id => byId[id]);
         if (!games.length || games.some(g => !g)) return;
-        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones]);
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]);
+        // Ground worked before New season belongs to the season archived: the
+        // first read after it remembers each game field's ground, and only a
+        // ground that changed since then counts as this season's work.
+        if (field.groundBaseline) {
+            field.groundSeen = Object.fromEntries(games.map(g => [g.id, g.groundType]));
+            delete field.groundBaseline;
+        }
+        if (field.groundSeen) {
+            games.forEach(g => { if (g.id in field.groundSeen && field.groundSeen[g.id] !== g.groundType) delete field.groundSeen[g.id]; });
+            if (!Object.keys(field.groundSeen).length) delete field.groundSeen;
+        }
+        const groundIsNew = !field.groundSeen || games.every(g => !(g.id in field.groundSeen));
         const det = { ...(field.workDetected || {}) };
         const rise = { ...(field.workRise || {}) };
         const seen = { ...(field.workSeen || {}) };
         const grows = !!field.crop && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
         if (grows && field.state !== 'Planted') field.state = 'Planted';
         if (field.crop && !isCutCrop(field.crop)) {
-            const allGround = list => games.every(g => list.includes(g.groundType));
+            const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
             if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
             if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
             // With ploughing required in the game settings, a field whose plough
@@ -4589,7 +4601,7 @@ function syncWorkFromSave(farm) {
         if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
         if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
         syncSowStep(field);
-        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones]) !== before) changed = true;
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
     });
     return changed;
 }
@@ -5126,6 +5138,9 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     // (workSeen stays: the levels to compare the next read with).
     delete field.workDetected;
     delete field.workRise;
+    // ...and so does the ground as it is now (see syncWorkFromSave).
+    delete field.groundSeen;
+    field.groundBaseline = true;
     // Undo only covers the season the liming was made in.
     delete field.limePrev;
     delete field.carriedFrom;
