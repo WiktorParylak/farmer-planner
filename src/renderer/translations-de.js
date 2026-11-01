@@ -109,6 +109,7 @@ const UI = {
     importAnimalsDone: "{n} Tierrasse(n) mit Futter-/Wasser-/Strohbedarf",
     importAnimalsSaveError: "die Tierbedarf-Konfiguration konnte nicht gespeichert werden ({e})",
     importReadErrors: "{n} Datei(en) konnten nicht gelesen werden (Details in der Konsole)",
+    importAnimalsBrokenXml: "{file} enthält Tierdefinitionen, ist aber kein gültiges XML (Zeile {line}) — auch das Spiel kann sie nicht laden, daher werden ihre Kurven nicht verwendet (AnimalFoodCalculator greift dann auf Animal Package oder das Grundspiel zurück)",
     importSummary: "Importiert: {parts} (von {n} durchsuchten XML-Dateien).",
     importNothingFound: "Unter {n} durchsuchten XML-Datei(en) sind keine Feldfrucht- oder Tierdefinitionen. Prüfe, ob du die richtigen Ordner gewählt hast.",
     filesSelected: "{n} Datei(en) ausgewählt",

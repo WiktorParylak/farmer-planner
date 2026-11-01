@@ -3985,6 +3985,7 @@ function buildCropsCalendarFromFiles(fileList) {
     // XML files in a map folder that just aren't crop/animal definitions at
     // all (vehicles, placeables, etc.), which is normal and not logged.
     const readErrors = [];
+    const brokenAnimalFiles = [];
 
     Array.from(fileList).forEach(file => {
         if (!/\.xml$/i.test(file.name)) return;
@@ -4013,6 +4014,13 @@ function buildCropsCalendarFromFiles(fileList) {
                 Object.assign(animalNeeds, parsedAnimals);
                 animalDefsFound++;
                 animalFiles.push(absPath);
+            } else if (/<animals?[\s>]/.test(text) && /<subType\s/.test(text)) {
+                // Looks like animal definitions but isn't valid XML — the
+                // game rejects such a file too (and AFC falls back to other
+                // curves), so it's reported instead of silently skipped.
+                const err = new DOMParser().parseFromString(text, 'text/xml').querySelector('parsererror');
+                const line = err ? (err.textContent.match(/line (\d+)/) || [])[1] : null;
+                brokenAnimalFiles.push({ name: file.name, line: line || '?' });
             }
         } catch (err) {
             readErrors.push({ name: file.name, reason: err.message || String(err) });
@@ -4020,7 +4028,7 @@ function buildCropsCalendarFromFiles(fileList) {
         }
     });
 
-    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors };
+    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors, brokenAnimalFiles };
 }
 
 // The player's farm inside the savegame. Single player is always farmId 1;
@@ -5723,6 +5731,7 @@ if (saveSettingsBtn) {
             let animalDefsFound = 0;
             let animalFiles = [];
             let readErrors = [];
+            let brokenAnimalFiles = [];
 
             if (pendingCropFiles && pendingCropFiles.length > 0) {
                 const r = buildCropsCalendarFromFiles(pendingCropFiles);
@@ -5733,6 +5742,7 @@ if (saveSettingsBtn) {
                 animalDefsFound += r.animalDefsFound;
                 animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
+                brokenAnimalFiles = brokenAnimalFiles.concat(r.brokenAnimalFiles);
             }
             if (pendingAnimalDefFiles && pendingAnimalDefFiles.length > 0) {
                 const r = buildCropsCalendarFromFiles(pendingAnimalDefFiles);
@@ -5743,6 +5753,7 @@ if (saveSettingsBtn) {
                 animalDefsFound += r.animalDefsFound;
                 animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
+                brokenAnimalFiles = brokenAnimalFiles.concat(r.brokenAnimalFiles);
             }
 
             const cropCount = Object.keys(combined).length;
@@ -5810,6 +5821,9 @@ if (saveSettingsBtn) {
                 }
             }
 
+            brokenAnimalFiles.forEach(f => {
+                summaryParts.push(t('importAnimalsBrokenXml').replace('{file}', f.name).replace('{line}', f.line));
+            });
             if (readErrors.length > 0) {
                 summaryParts.push(t('importReadErrors').replace('{n}', readErrors.length));
             }
