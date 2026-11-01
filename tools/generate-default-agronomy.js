@@ -13,6 +13,8 @@
 //   <windrow fillType="straw" litersPerSqm> -> straw
 //   <seeding needsRolling>              -> needsRolling (only when the file sets it;
 //                                          FS25_CropDependentRolling rolls by it)
+//   <foliageState isCut="true">         -> cutStates (1-based positions = fields.xml
+//                                          growthState of a harvested crop)
 
 const fs = require('fs');
 const path = require('path');
@@ -49,6 +51,9 @@ function agronomy(xml) {
     if (windrow && /straw/i.test(attr(windrow, 'fillType') || '') && perHa(windrow)) out.straw = perHa(windrow);
     const rolling = attr(seeding, 'needsRolling');
     if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
+    const cutStates = [];
+    [...xml.matchAll(/<foliageState\b[^>]*>/g)].forEach((m, i) => { if (attr(m[0], 'isCut') === 'true') cutStates.push(i + 1); });
+    if (cutStates.length) out.cutStates = cutStates;
     return Object.keys(out).length ? { name: formatCropName(name).replace(/\s+/g, ''), data: out } : null;
 }
 

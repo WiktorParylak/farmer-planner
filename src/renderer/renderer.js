@@ -3025,7 +3025,20 @@ function cropAgronomyFromDoc(doc) {
     const seeding = doc.querySelector('seeding');
     const rolling = seeding ? seeding.getAttribute('needsRolling') : null;
     if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
+    // Growth states (fields.xml growthState = the foliageState's 1-based
+    // position) that mean the crop has been harvested.
+    const cutStates = [];
+    doc.querySelectorAll('foliageState').forEach((el, i) => { if (el.getAttribute('isCut') === 'true') cutStates.push(i + 1); });
+    if (cutStates.length) out.cutStates = cutStates;
     return Object.keys(out).length ? out : null;
+}
+
+// Whether a crop in fields.xml is harvested (true), still standing (false),
+// or unknown — its fruit file wasn't read (null).
+function saveCropHarvested(fruitType, growthState) {
+    const a = CROP_AGRONOMY[cropOrderKey(saveFruitToCropKey(fruitType))];
+    if (!a || !Array.isArray(a.cutStates)) return null;
+    return a.cutStates.includes(growthState);
 }
 
 // Base game agronomy (data/default-agronomy.json, from the game's own crop
@@ -4543,6 +4556,19 @@ function syncWorkFromSave(farm) {
         const rise = { ...(field.workRise || {}) };
         const seen = { ...(field.workSeen || {}) };
         const grows = !!field.crop && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+        const levelsOf = g => ({ s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel });
+        // Another crop still stands in the game (last season's, not harvested
+        // yet): nothing on the field is this plan's work. Only the levels are
+        // remembered, so fertilizing the old crop never counts for the new one.
+        const otherCropStanding = !!field.crop && !grows && games.some(g => g.sown
+            && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.crop)
+            && saveCropHarvested(g.fruitType, g.growthState) === false);
+        if (otherCropStanding) {
+            games.forEach(g => { seen[g.id] = levelsOf(g); });
+            field.workSeen = seen;
+            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+            return;
+        }
         if (grows && field.state !== 'Planted') field.state = 'Planted';
         if (field.crop && !isCutCrop(field.crop)) {
             const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
@@ -4585,7 +4611,7 @@ function syncWorkFromSave(farm) {
                 if (last.p === 0 && g.plowLevel > 0) rise.plow = [...new Set([...(rise.plow || []), g.id])];
                 if (last.m === 0 && g.stubbleShredLevel > 0) rise.mulch = [...new Set([...(rise.mulch || []), g.id])];
             }
-            seen[g.id] = { s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel };
+            seen[g.id] = levelsOf(g);
         });
         Object.keys(rise).forEach(step => {
             if (!ids.every(id => rise[step].includes(id))) return;
