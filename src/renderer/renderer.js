@@ -4559,13 +4559,16 @@ function syncWorkFromSave(farm) {
         const levelsOf = g => ({ s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel });
         // Another crop still stands in the game (last season's, not harvested
         // yet): nothing on the field is this plan's work. Only the levels are
-        // remembered, so fertilizing the old crop never counts for the new one.
+        // remembered, so fertilizing the old crop never counts for the new one,
+        // and work read from the game before is dropped (manual ticks stay).
         const otherCropStanding = !!field.crop && !grows && games.some(g => g.sown
             && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.crop)
             && saveCropHarvested(g.fruitType, g.growthState) === false);
         if (otherCropStanding) {
             games.forEach(g => { seen[g.id] = levelsOf(g); });
             field.workSeen = seen;
+            delete field.workDetected;
+            delete field.workRise;
             if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
             return;
         }
