@@ -18,10 +18,19 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Collect stones**: with the link mod, a field not sown yet with stones on it gets *Collect stones* in its work list after the tillage, with the share of the field still covered; the step ticks itself off once the stones are gone. Fields with stones switched off in the game settings never get it.
 - **Start-up animation**: the app opens with the logo coming together — the tractor drives in and uncovers FARMER, PLANNER drops in letter by letter — and then fades into the start screen. A click or any key skips it, it is shorter with reduced motion in Windows, and *Start-up animation* in the app settings turns it off.
 - **Several crop rotation cycles at once**: tick cycles in the *Cycles* tab (or Ctrl-click them) to give them all one colour or delete them together; *Select all cycles* ticks the whole list.
+- **Scale a savegame too**: *Map scaling* has a *Savegame* option next to *Map*. It doubles the density maps and info layers a save keeps, so a save made before scaling fits the scaled map. The save is only read: originals and scaled files go to `Documents\Farmer Planner\maps\<map>\`, and you copy them into the save with the game closed. Precision Farming's maps and the height map start unticked.
+- **No weeds on pasted tramlines**: pasting tramlines also clears the weeds under them in `densityMap_weed.gdm`. Both maps are backed up, checked and replaced together, and *Restore last backup* puts both back.
+- **Rename tramlines**: a pencil on each library entry renames its PNG and JSON. A name that's taken or has characters Windows doesn't allow gets a clear message instead of overwriting anything.
+- **Lasso help and undo**: while the lasso is on, the panel explains the keys. Backspace, Ctrl+Z or *Undo last point* take back the last point (or, with none left, the last shape).
 
 **Changed**
 - **Cuts ask only for what the grassland needs**: each cut in the cuts window shows only the checks the field really lacks. The next cut follows the field in the save — *fertilized* while the fertilizer isn't full, *rolled* while it isn't rolled — and later cuts expect each cut to take the fertilizer and the rolling. Cutting grass doesn't lower pH, so *limed* shows only while the field isn't limed and the game requires lime. A step the link mod measured as costing no yield is left out, and a ticked check always stays.
 - **One expected yield everywhere**: the feed planner, the cuts window and *Yields and prices* now count a field's harvest the same way — with FS25_MoistureSystem, today's field moisture also lowers the feed a field harvested this month gives.
+- **Tramlines are told apart by what they are, not by how far they are from the edge**: a tramline pixel is one with no crop on worked soil, in a narrow line. The band along the field edge is no longer left out, so tramlines reach their real ends, and a loose lasso no longer picks up the bare ground around a field. On a field with no crop at all, tramlines can't be told from the bare ground. *Field edge* in the settings is now *Field separation*: it only helps *Fields from the soil* tell neighbours apart.
+- ***Fields from the map* covers the real field**: a field's outline now grows over the worked soil connected to it on its farmland, so a field merged in the game or worked past the map author's outline is saved whole, while a neighbour behind unworked ground stays out.
+- **Room to draw in library images**: saved tramline PNGs keep a clear 64 px margin around the tramlines, so they can be touched up in an image editor. Clear pixels are never pasted.
+- **One way of picking at a time**: *Fields from the map*, *Fields from the soil* and *Lasso* now exclude each other, the highlighted button is the one that works, and clicking it again turns it off without leaving the tool.
+- ***Merge into one set*** only appears when two or more fields or shapes are picked, with a tooltip saying what it does.
 
 **Fixed**
 - **New season ticked off last season's work**: right after *New season*, fields whose ground in the game was still cultivated, ploughed or rolled from the season before got *Cultivate*, *Plough* or *Roll* ticked off in the new one. The first read after *New season* now remembers the ground of each game field, and only ground that has changed since then (or a crop already sown) counts as this season's work.
@@ -32,6 +41,11 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Crop generator settings closed on every change**: picking a profile, a crop or a limit in the generator's settings no longer folds the settings, the needs or the problems you had opened.
 - **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.
 
+- **The game running wasn't detected**: the tramlines tool looked for `FarmingSimulator2025.exe`, but the game runs as `FarmingSimulator2025Game.exe`, so pasting or restoring could go ahead with the game open, and the game would then overwrite the result when saving. Both are now refused while the game runs.
+- **Lasso lost corners and left holes**: a click where the mouse moved slightly was dropped, cutting a corner off the shape; a shape that crossed itself, and overlapping outlines in one set, left holes.
+- **Error when leaving the tramlines tool**: going back while it was still working (for example finding fields from the soil) showed "The background task stopped". It now just stops.
+- **Tilting the mouse wheel sideways zoomed out** in the tramlines tool.
+- **Typed set name was lost**: the name and the merge tick in *Save from a save* no longer reset when you pick another field.
 ## 0.10.1 — 2026-10-30
 
 **New**

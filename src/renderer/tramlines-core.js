@@ -166,6 +166,20 @@ function pngChunk(type, data) {
 }
 
 // RGBA (Uint8Array w*h*4) -> PNG bytes.
+// Library images keep this many clear pixels around the tramlines, so there's
+// room to draw in them. Clear pixels are never pasted.
+const ENTRY_MARGIN = 64;
+
+// A cropped image at (x, y) on a dim² map -> the same with the margin, not past the map's edges.
+function padRgba(rgba, w, h, x, y, dim, margin = ENTRY_MARGIN) {
+    const left = Math.max(0, Math.min(margin, x)), top = Math.max(0, Math.min(margin, y));
+    const right = Math.max(0, Math.min(margin, dim - (x + w))), bottom = Math.max(0, Math.min(margin, dim - (y + h)));
+    const W = w + left + right, H = h + top + bottom;
+    const out = new Uint8Array(W * H * 4);
+    for (let row = 0; row < h; row++) out.set(rgba.subarray(row * w * 4, (row + 1) * w * 4), ((row + top) * W + left) * 4);
+    return { rgba: out, w: W, h: H, x: x - left, y: y - top };
+}
+
 function encodePngRgba(rgba, w, h) {
     const ihdr = Buffer.alloc(13);
     ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
@@ -336,4 +350,4 @@ function xcfLayerRgba(d, layer) {
     return { w, h, rgba };
 }
 
-module.exports = { gdmHeader, gdmDecode, gdmEncode, encodePngRgba, decodePng, packRgb, xcfOpen, xcfLayerRgba };
+module.exports = { gdmHeader, gdmDecode, gdmEncode, padRgba, encodePngRgba, decodePng, packRgb, xcfOpen, xcfLayerRgba };

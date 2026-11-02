@@ -981,6 +981,20 @@ const UI = {
     msTitle: "Karte skalieren",
     msHint: "Verdoppelt die Auflösung der Kartenebenen. Jedes Pixel einer Density Map oder eines Info Layers wird zu 2 × 2, die Höhenkarte bekommt neue Punkte dazwischen. Größe und Objekte der Karte bleiben gleich. Die App rührt deinen Mods-Ordner nicht an: Sie kopiert die Originale in einen Sicherungsordner und legt die skalierten Dateien in einen eigenen Ordner, fertig zum Kopieren in den Mod.",
     msMap: "Karte",
+
+    msSourceMap: "Karte",
+
+    msSourceSave: "Spielstand",
+
+    msSave: "Spielstand",
+
+    msHintSave: "Verdoppelt die Auflösung der Ebenen im Spielstand, damit ein Spielstand von vor der Skalierung zur skalierten Karte passt. Die App liest den Spielstand nur: Sie kopiert die Originale und schreibt die skalierten Dateien in ihren eigenen Ordner, in den Spielstand kopierst du sie selbst.",
+
+    msSaveDemNote: "Skaliere die Höhenkarte des Spielstands nur, wenn auch die Höhenkarte der Karte skaliert wurde.",
+
+    msDoneSave: "Kopiere bei geschlossenem Spiel den Inhalt des Ordners {name} aus den skalierten Dateien nach {dir}. Behalte die Sicherung, bis der Spielstand auf der skalierten Karte fehlerfrei lädt.",
+
+    msGameRunning: "Schließe zuerst das Spiel: Es überschreibt diese Dateien beim Speichern.",
     msSearching: "Suche Karten in deinen Mods-Ordnern…",
     msReading: "Lese die Karte…",
     msNoMaps: "In deinen Mods-Ordnern wurden keine Karten-Mods gefunden. Das Werkzeug sucht im Mods-Ordner des Spiels, im in den Spieleinstellungen gesetzten Ordner und in den Ordnern von FSG Mod Assistant.",
@@ -989,6 +1003,8 @@ const UI = {
     msGroup_dem: "Höhenkarte",
     msGroup_gdm: "Density Maps (.gdm)",
     msGroup_grle: "Info Layer (.grle)",
+
+    msGroup_pf: "Precision Farming (.grle) — eigene Auflösung, meist unverändert",
     msGroup_png: "Bilder (.png)",
     msReason_max: "Über 32768 px nach dem Skalieren",
     msReason_dem: "Keine Höhenkarte mit 2ⁿ + 1 Punkten",
@@ -1006,7 +1022,7 @@ const UI = {
     msDoneHint: "Kopiere den Inhalt des Ordners mit den skalierten Dateien in den Mod-Ordner {mod} und behalte die Unterordner bei.",
     msDoneZip: "Kopiere den Inhalt des Ordners mit den skalierten Dateien in das Mod-Archiv {mod} und behalte die Unterordner bei.",
     msDoneI3d: "{i3d} liegt bei, mit unitsPerPixel {from} → {to}.",
-    msNewSave: "Starte auf der skalierten Karte einen neuen Spielstand: Bestehende Spielstände behalten ihre Ebenen in der alten Auflösung.",
+    msNewSave: "Bestehende Spielstände behalten ihre Ebenen in der alten Auflösung: Skaliere sie unter Spielstand oder starte einen neuen Spielstand auf der skalierten Karte.",
     msOpenScaled: "Skalierte öffnen",
     msOpenBackup: "Sicherung öffnen",
     msErr_MS_CANCELLED: "Skalieren abgebrochen. Es wurde nichts behalten.",
@@ -1036,7 +1052,7 @@ const UI = {
     tlRestoring: "Wiederherstellen…",
     tlImporting: "Import…",
     tlExporting: "Export…",
-    tlPasteHint: "Hake Fahrgassen aus der Bibliothek an und füge sie in diesen Spielstand ein. Das Spiel muss geschlossen sein; die Kartendatei wird vorher gesichert und erst ersetzt, wenn die neue genau richtig zurückgelesen wird.",
+    tlPasteHint: "Hake Fahrgassen aus der Bibliothek an und füge sie ohne Unkraut in diesen Spielstand ein. Das Spiel muss geschlossen sein; die Kartendateien werden zuerst gesichert und erst ersetzt, wenn die neuen genau wie vorgesehen gelesen werden.",
     tlLibrary: "Bibliothek · {map}",
     tlLibraryEmpty: "Noch keine Fahrgassen für diese Karte — sichere welche unter „Aus Spielstand sichern“ oder importiere eine PNG- / GIMP-Datei.",
     tlSelectAll: "alle",
@@ -1050,20 +1066,36 @@ const UI = {
     tlWrongSize: "andere Kartengröße",
     tlPasteTitle: "Fahrgassen einfügen",
     tlPasteYes: "Einfügen",
-    tlPasteConfirm: "{n} Fahrgassen-Satz/Sätze in {save} ({map}) einfügen?\n{list}\n\nDie aktuelle densityMap_fruits.gdm wird vorher gesichert (farmer_planner_backup im Spielstandordner).",
-    tlPasteDone: "Fahrgassen in {save} eingefügt:\n{list}\n\nSicherung: {backup}",
+    tlPasteConfirm: "Fahrgassen-Sätze ({n}) in {save} ({map}) einfügen?\n{list}\n\nUnkraut unter den Fahrgassen wird entfernt. Die aktuellen densityMap_fruits.gdm und densityMap_weed.gdm werden zuerst gesichert (farmer_planner_backup im Spielstand-Ordner).",
+    tlPasteDone: "Fahrgassen in {save} eingefügt:\n{list}\n\nEntferntes Unkraut darunter: {weed} px\n\nSicherung: {backup}",
     tlGameRunning: "Farming Simulator 25 läuft. Schließ zuerst das Spiel — beim Speichern würde es die Datei überschreiben.",
-    tlRestoreConfirm: "Die letzte Sicherung von densityMap_fruits.gdm in {save} zurückholen? Seitdem eingefügte Fahrgassen gehen verloren.",
+    tlRestoreConfirm: "Die letzte Sicherung von densityMap_fruits.gdm und densityMap_weed.gdm in {save} zurückholen? Seitdem eingefügte Fahrgassen gehen verloren.",
     tlRestored: "{file} zurückgeholt.",
     tlImported: "{n} Fahrgassen-Satz/Sätze in die Bibliothek {map} importiert.",
     tlImportedNone: "Nichts zu importieren — die Dateien hatten keine transparente Fahrgassen-Ebene.",
     tlDeleteConfirm: "„{name}“ aus der Bibliothek löschen?",
+
+    tlRename: "Umbenennen",
+
+    tlRenameBad: "Ein Name darf bis zu 60 Zeichen haben, darf < > : \" / \\ | ? * nicht enthalten und nicht mit einem Punkt oder Leerzeichen beginnen oder enden.",
+
+    tlRenameTaken: "„{name}“ ist schon in der Bibliothek. Wähle einen anderen Namen.",
+
+    tlRenameFail: "Umbenennen fehlgeschlagen: {msg}",
     tlDetectMap: "Felder aus der Karte",
-    tlDetectMapHint: "Die Feldumrisse der Karte selbst (braucht den Karten-Mod) — der beste Weg",
+    tlDetectMapHint: "Die Feldumrisse der Karte (braucht den Karten-Mod), erweitert auf den bearbeiteten Boden ihres Grundstücks, damit ein zusammengelegtes Feld ganz gespeichert wird. Zum Ausschalten erneut klicken.",
     tlDetectGround: "Felder aus dem Boden",
     tlDetectGroundHint: "Bearbeitete Bodenflächen (densityMap_ground) — für Karten ohne Mod",
     tlLasso: "Lasso",
-    tlLassoHint: "Punkte um ein Feld klicken, Doppelklick oder Enter schließt, Esc bricht ab",
+
+    tlLassoGuide: "Klicke Punkte um die Fläche. Enter oder Doppelklick schließt die Form, Rücktaste oder Strg+Z nimmt den letzten Punkt zurück, Esc bricht ab.",
+
+    tlLassoUndo: "Letzten Punkt zurück",
+
+    tlLassoUndoShape: "Letzte Form zurück",
+
+    tlModeOff: "Klicke die hervorgehobene Schaltfläche erneut, um sie auszuschalten.",
+    tlLassoHint: "Punkte um die Fläche klicken, dann schließt Enter oder Doppelklick. Zum Ausschalten erneut klicken.",
     tlDetectMapFail_nomod: "Der Karten-Mod {mod} wurde nicht gefunden — nimm „Felder aus dem Boden“ oder das Lasso.",
     tlDetectMapFail_nomap: "Die Karte in {mod} konnte nicht gelesen werden.",
     tlDetectMapFail_nofields: "Die Karte hat keine Feldumrisse.",
@@ -1082,6 +1114,8 @@ const UI = {
     tlName: "Name (optional)",
     tlNamePlaceholder: "z. B. Feld 12 — Weizen",
     tlMerge: "Zu einem Satz zusammenfassen",
+
+    tlMergeHint: "Speichert alles Gewählte als einen Satz in der Bibliothek statt je einen Satz pro Feld oder Form.",
     tlCutBtn: "{n} in die Bibliothek sichern",
     tlCutAnyway: "Alle Pixel sichern",
     tlNoColorsAsk: "Keine Fahrgassen-Werte gewählt — alle Pixel in den Feldern sichern, nicht nur die Fahrgassen?",
@@ -1089,7 +1123,7 @@ const UI = {
     tlOverwrite: "Diese gibt es schon in der Bibliothek:\n{list}\n\nÜberschreiben?",
     tlOverwriteYes: "Überschreiben",
     tlCutDone: "In die Bibliothek gesichert:\n{list}",
-    tlCutEmpty: "Keine Fahrgassen-Pixel in: {list}",
+    tlCutEmpty: "Keine Fahrgassen-Pixel in: {list}. Auf einem Feld ohne Frucht lassen sich Fahrgassen nicht vom blanken Boden unterscheiden.",
     tlEditorEntry: "Fahrgassen",
     tlEditorPick: "Wähle Fahrgassen aus der Bibliothek, um sie zu bearbeiten.",
     tlPaint: "Malen",
@@ -1104,8 +1138,8 @@ const UI = {
     tlGameDir: "Spielordner (Spielstände)",
     tlThreshold: "Alpha-Schwelle",
     tlThresholdHint: "Pixel einer importierten PNG mit mindestens dieser Deckkraft werden eingefügt (0–255).",
-    tlEdge: "Feldrand (px)",
-    tlEdgeHint: "Ein so breiter Streifen am Feldrand wird beim Ausschneiden weggelassen, damit das Vorgewende nicht mitkommt.",
+    tlEdge: "Feldtrennung (px)",
+    tlEdgeHint: "Wird von Felder aus dem Boden genutzt, um benachbarte Felder zu trennen, die ein schmaler Streifen verbindet. Beim Speichern wird am Feldrand nichts weggelassen.",
     tlMinPx: "Kleinste Fläche (px)",
     tlMinPxHint: "Kleinere Bodenflächen werden ignoriert.",
     tlConverter: "grleConverter (optional)",

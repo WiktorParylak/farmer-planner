@@ -1,9 +1,9 @@
 // Map scaling tool — the heavy work, in its own Node process (forked by
 // map-scale.js with ELECTRON_RUN_AS_NODE). Answers { id, op, args } with
 // { id, ok, result | error } and sends { progress } while a run goes.
-// Never writes into the mods folder: originals are copied to
-// <out>/backup/<stamp>/ and the scaled files go to <out>/scaled/<stamp>/,
-// both keeping the mod's own paths (map/data/...).
+// Never writes into the mods folder or a save: originals are copied to
+// <out>/backup/<stamp>/ and the scaled files go to <out>/scaled/<stamp>/, both
+// keeping the mod's own paths (map/data/...) or, for a save, <save name>/<file>.
 
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,8 @@ const { openMod } = require('./savegame-soil');
 
 const MAX_DIM = 32768;               // GDM / GRLE / PNG layers above this aren't offered
 const LAYER_RE = /^(densitymap_[^/]*|infolayer_[^/]*)\.(gdm|grle|png)$/i;
+const SAVE_LAYER_RE = /^(densitymap_[^/]*\.gdm|infolayer_[^/]*\.grle|precisionfarming_[^/]*\.grle)$/i;
+const SAVE_HEIGHT = 'terrain.heightmap.png';
 
 let cancelled = false;
 
@@ -127,6 +129,27 @@ const ops = {
         } finally { mod.close(); }
     },
 
+    // A save's layers: the game keeps its own copy of them there, at the map's
+    // resolution when the save was made.
+    inspectSave({ saveDir }) {
+        const save = path.basename(saveDir), files = [];
+        let names = [];
+        try { names = fs.readdirSync(saveDir, { withFileTypes: true }); } catch (e) { fail('MS_NO_SAVE'); }
+        names.filter(e => e.isFile()).map(e => e.name).sort().forEach(name => {
+            const low = name.toLowerCase(), dem = low === SAVE_HEIGHT;
+            if (!dem && !SAVE_LAYER_RE.test(low)) return;
+            const b = fs.readFileSync(path.join(saveDir, name));
+            const out = save + '/' + name, kind = core.kindOf(name), pf = low.startsWith('precisionfarming_');
+            let inf;
+            try { inf = core.info(name, b); } catch (e) { files.push({ rel: name, out, name, kind, pf, bytes: b.length, reason: 'format' }); return; }
+            const grid = dem && inf.grid;
+            const w2 = grid ? (inf.w - 1) * 2 + 1 : inf.w * 2, h2 = grid ? (inf.h - 1) * 2 + 1 : inf.h * 2;
+            const reason = Math.max(grid ? w2 - 1 : w2, grid ? h2 - 1 : h2) > MAX_DIM ? 'max' : (dem && !grid ? 'dem' : '');
+            files.push({ rel: name, out, name, kind, pf, dem, w: inf.w, h: inf.h, w2, h2, bytes: b.length, reason });
+        });
+        return { files };
+    },
+
     cancel() { cancelled = true; return true; },
 
     // Copies the picked files to backup/<stamp>, scales them into scaled/<stamp>
@@ -188,6 +211,47 @@ const ops = {
             [backupDir, scaledDir].forEach(p => { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) { /* gone */ } });
             throw e;
         } finally { mod.close(); }
+    },
+
+    // The same for a save's layers. The save itself is only read.
+    async runSave({ saveDir, files, outRoot }) {
+        cancelled = false;
+        const info = ops.inspectSave({ saveDir });
+        const d = new Date(), p2 = n => String(n).padStart(2, '0');
+        const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+        const backupDir = path.join(outRoot, 'backup', stamp), scaledDir = path.join(outRoot, 'scaled', stamp);
+        const picked = info.files.filter(f => files.includes(f.rel) && !f.reason);
+        if (!picked.length) fail('MS_NOTHING');
+        const need = picked.reduce((s, f) => s + f.bytes * 5, 0);
+        try {
+            fs.mkdirSync(outRoot, { recursive: true });
+            const st = fs.statfsSync(outRoot);
+            if (st.bavail * st.bsize < need) fail('MS_DISK', { need: Math.ceil(need / 1e6) });
+        } catch (e) { if (e.code === 'MS_DISK') throw e; }
+        const done = [];
+        try {
+            for (let i = 0; i < picked.length; i++) {
+                const f = picked[i];
+                const send = frac => {
+                    if (cancelled) fail('MS_CANCELLED');
+                    process.send({ progress: { i, n: picked.length, name: f.name, frac } });
+                };
+                send(0);
+                const src = fs.readFileSync(path.join(saveDir, f.rel));
+                const bak = inside(backupDir, f.out), out = inside(scaledDir, f.out);
+                fs.mkdirSync(path.dirname(bak), { recursive: true });
+                fs.mkdirSync(path.dirname(out), { recursive: true });
+                fs.writeFileSync(bak, src);
+                const h = await core.scale(f.name, src, out, 2, send);
+                send(1);
+                if (await core.hashFile(f.name, fs.readFileSync(out)) !== h) fail('MS_VERIFY', { name: f.name });
+                done.push({ name: f.name, out: f.out, w: f.w2, h: f.h2, bytes: fs.statSync(out).size });
+            }
+            return { stamp, backupDir, scaledDir, files: done, i3d: null, save: path.basename(saveDir) };
+        } catch (e) {
+            [backupDir, scaledDir].forEach(p => { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) { /* gone */ } });
+            throw e;
+        }
     }
 };
 

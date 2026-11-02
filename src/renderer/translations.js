@@ -984,6 +984,20 @@ const TRANSLATIONS = {
         msTitle: "Map scaling",
         msHint: "Doubles the resolution of a map's layers. Every pixel of a density map or info layer becomes 2 × 2, and the height map gets new points in between. The map's size and objects stay as they are. The app doesn't touch your mods folder: it copies the originals to a backup folder and puts the scaled files in their own folder, ready for you to copy into the mod.",
         msMap: "Map",
+
+        msSourceMap: "Map",
+
+        msSourceSave: "Savegame",
+
+        msSave: "Savegame",
+
+        msHintSave: "Doubles the resolution of the layers kept in a savegame, so a save made before scaling fits the scaled map. The app only reads the save: it copies the originals and writes the scaled files to its own folder, and you copy them into the save yourself.",
+
+        msSaveDemNote: "Scale the save's height map only if you also scaled the map's height map.",
+
+        msDoneSave: "With the game closed, copy the contents of the {name} folder from the scaled files into {dir}. Keep the backup until the save has loaded fine on the scaled map.",
+
+        msGameRunning: "Close the game first: it rewrites these files while it saves.",
         msSearching: "Looking for maps in your mods folders…",
         msReading: "Reading the map…",
         msNoMaps: "No map mods found in your mods folders. The tool looks in the game's mods folder, the folder set in the game settings and FSG Mod Assistant's folders.",
@@ -992,6 +1006,8 @@ const TRANSLATIONS = {
         msGroup_dem: "Height map",
         msGroup_gdm: "Density maps (.gdm)",
         msGroup_grle: "Info layers (.grle)",
+
+        msGroup_pf: "Precision Farming (.grle) — own resolution, usually left as they are",
         msGroup_png: "Images (.png)",
         msReason_max: "Over 32768 px after scaling",
         msReason_dem: "Not a 2ⁿ + 1 height map",
@@ -1009,7 +1025,7 @@ const TRANSLATIONS = {
         msDoneHint: "Copy the contents of the scaled folder into the mod folder {mod}, keeping its folders.",
         msDoneZip: "Copy the contents of the scaled folder into the mod archive {mod}, keeping its folders.",
         msDoneI3d: "{i3d} is included with unitsPerPixel {from} → {to}.",
-        msNewSave: "Start a new savegame on the scaled map: existing saves keep their layers at the old resolution.",
+        msNewSave: "Existing saves keep their layers at the old resolution: scale them under Savegame, or start a new save on the scaled map.",
         msOpenScaled: "Open scaled folder",
         msOpenBackup: "Open backup folder",
         msErr_MS_CANCELLED: "Scaling cancelled. Nothing was kept.",
@@ -1039,7 +1055,7 @@ const TRANSLATIONS = {
         tlRestoring: "Restoring…",
         tlImporting: "Importing…",
         tlExporting: "Exporting…",
-        tlPasteHint: "Tick tramlines from the library and paste them into this save. The game must be closed; the map file is backed up first and only replaced when the new one reads back exactly as intended.",
+        tlPasteHint: "Tick tramlines from the library and paste them into this save, with no weeds on them. The game must be closed; the map files are backed up first and only replaced when the new ones read back exactly as intended.",
         tlLibrary: "Library · {map}",
         tlLibraryEmpty: "No tramlines for this map yet — save some in \"Save from a save\" or import a PNG / GIMP file.",
         tlSelectAll: "all",
@@ -1053,20 +1069,36 @@ const TRANSLATIONS = {
         tlWrongSize: "other map size",
         tlPasteTitle: "Paste tramlines",
         tlPasteYes: "Paste",
-        tlPasteConfirm: "Paste {n} tramline set(s) into {save} ({map})?\n{list}\n\nThe current densityMap_fruits.gdm is backed up first (farmer_planner_backup in the save folder).",
-        tlPasteDone: "Tramlines pasted into {save}:\n{list}\n\nBackup: {backup}",
+        tlPasteConfirm: "Paste {n} tramline set(s) into {save} ({map})?\n{list}\n\nWeeds under the tramlines are cleared. The current densityMap_fruits.gdm and densityMap_weed.gdm are backed up first (farmer_planner_backup in the save folder).",
+        tlPasteDone: "Tramlines pasted into {save}:\n{list}\n\nWeeds cleared under them: {weed} px\n\nBackup: {backup}",
         tlGameRunning: "Farming Simulator 25 is running. Close the game first — it would overwrite the save when it saves.",
-        tlRestoreConfirm: "Put the last backup of densityMap_fruits.gdm back into {save}? Tramlines pasted since then are lost.",
+        tlRestoreConfirm: "Put the last backup of densityMap_fruits.gdm and densityMap_weed.gdm back into {save}? Tramlines pasted since then are lost.",
         tlRestored: "Restored {file}.",
         tlImported: "{n} tramline set(s) imported into the {map} library.",
         tlImportedNone: "Nothing to import — the files had no transparent tramline layer.",
         tlDeleteConfirm: "Delete \"{name}\" from the library?",
+
+        tlRename: "Rename",
+
+        tlRenameBad: "A name can have up to 60 characters, can't contain < > : \" / \\ | ? * and can't start or end with a dot or a space.",
+
+        tlRenameTaken: "\"{name}\" is already in the library. Pick another name.",
+
+        tlRenameFail: "Couldn't rename: {msg}",
         tlDetectMap: "Fields from the map",
-        tlDetectMapHint: "The map's own field outlines (needs the map mod) — the best way",
+        tlDetectMapHint: "The map's field outlines (needs the map mod), grown over the worked soil of their farmland, so a merged field is saved whole. Click again to turn off.",
         tlDetectGround: "Fields from the soil",
-        tlDetectGroundHint: "Areas of worked soil (densityMap_ground) — for maps without the mod",
+        tlDetectGroundHint: "Areas of worked soil (densityMap_ground), for maps without the mod. Click again to turn off.",
         tlLasso: "Lasso",
-        tlLassoHint: "Click points around a field, double-click or Enter to close, Esc to cancel",
+
+        tlLassoGuide: "Click points around the area. Enter or a double-click closes the shape, Backspace or Ctrl+Z takes back the last point, Esc cancels.",
+
+        tlLassoUndo: "Undo last point",
+
+        tlLassoUndoShape: "Undo last shape",
+
+        tlModeOff: "Click the highlighted button again to turn it off.",
+        tlLassoHint: "Click points around the area, then Enter or a double-click to close. Click again to turn off.",
         tlDetectMapFail_nomod: "The map mod {mod} wasn't found — use \"Fields from the soil\" or the lasso.",
         tlDetectMapFail_nomap: "Couldn't read the map in {mod}.",
         tlDetectMapFail_nofields: "The map has no field outlines.",
@@ -1085,6 +1117,8 @@ const TRANSLATIONS = {
         tlName: "Name (optional)",
         tlNamePlaceholder: "e.g. Field 12 — wheat",
         tlMerge: "Merge into one set",
+
+        tlMergeHint: "Keeps everything you picked as one set in the library, instead of one set for each field or shape.",
         tlCutBtn: "Save {n} to the library",
         tlCutAnyway: "Save all pixels",
         tlNoColorsAsk: "No tramline values are picked — save every pixel inside the fields, not only the tramlines?",
@@ -1092,7 +1126,7 @@ const TRANSLATIONS = {
         tlOverwrite: "These already exist in the library:\n{list}\n\nOverwrite them?",
         tlOverwriteYes: "Overwrite",
         tlCutDone: "Saved to the library:\n{list}",
-        tlCutEmpty: "No tramline pixels in: {list}",
+        tlCutEmpty: "No tramline pixels in: {list}. On a field with no crop, tramlines can't be told from the bare ground.",
         tlEditorEntry: "Tramlines",
         tlEditorPick: "Pick tramlines from the library to edit them.",
         tlPaint: "Paint",
@@ -1107,8 +1141,8 @@ const TRANSLATIONS = {
         tlGameDir: "Game folder (savegames)",
         tlThreshold: "Alpha threshold",
         tlThresholdHint: "Pixels of an imported PNG with at least this opacity are pasted (0–255).",
-        tlEdge: "Field edge (px)",
-        tlEdgeHint: "A band this wide along the field edge is left out when cutting, so the headland isn't taken.",
+        tlEdge: "Field separation (px)",
+        tlEdgeHint: "Used by Fields from the soil to tell neighbouring fields apart where a thin strip joins them. Nothing along the field edge is left out when saving.",
         tlMinPx: "Smallest area (px)",
         tlMinPxHint: "Soil areas smaller than this are ignored.",
         tlConverter: "grleConverter (optional)",
@@ -2346,6 +2380,20 @@ const TRANSLATIONS = {
         msTitle: "Skalowanie mapy",
         msHint: "Podwaja rozdzielczość warstw mapy. Każdy piksel density mapy i info layera staje się blokiem 2 × 2, a mapa wysokości dostaje nowe punkty pośrodku. Rozmiar mapy i obiekty zostają bez zmian. Aplikacja nie rusza folderu mods: kopiuje oryginały do folderu kopii zapasowej, a przeskalowane pliki zapisuje w osobnym folderze, gotowe do skopiowania do moda.",
         msMap: "Mapa",
+
+        msSourceMap: "Mapa",
+
+        msSourceSave: "Zapis gry",
+
+        msSave: "Zapis gry",
+
+        msHintSave: "Podwaja rozdzielczość warstw trzymanych w zapisie gry, żeby zapis sprzed skalowania pasował do przeskalowanej mapy. Aplikacja tylko czyta zapis: kopiuje oryginały i zapisuje przeskalowane pliki w swoim folderze, a do zapisu kopiuje się je ręcznie.",
+
+        msSaveDemNote: "Mapę wysokości zapisu skaluj tylko wtedy, gdy przeskalowano też mapę wysokości mapy.",
+
+        msDoneSave: "Przy zamkniętej grze skopiuj zawartość folderu {name} z przeskalowanych plików do {dir}. Zachowaj kopię zapasową, dopóki zapis nie wczyta się poprawnie na przeskalowanej mapie.",
+
+        msGameRunning: "Najpierw zamknij grę: nadpisuje te pliki podczas zapisywania.",
         msSearching: "Szukam map w folderach modów…",
         msReading: "Czytam mapę…",
         msNoMaps: "Nie znaleziono modów map w folderach modów. Narzędzie szuka w folderze mods gry, w folderze ustawionym w grze i w folderach FSG Mod Assistanta.",
@@ -2354,6 +2402,8 @@ const TRANSLATIONS = {
         msGroup_dem: "Mapa wysokości",
         msGroup_gdm: "Density mapy (.gdm)",
         msGroup_grle: "Info layery (.grle)",
+
+        msGroup_pf: "Precision Farming (.grle) — własna rozdzielczość, zwykle bez zmian",
         msGroup_png: "Obrazy (.png)",
         msReason_max: "Ponad 32768 px po przeskalowaniu",
         msReason_dem: "Mapa wysokości nie ma rozmiaru 2ⁿ + 1",
@@ -2371,7 +2421,7 @@ const TRANSLATIONS = {
         msDoneHint: "Skopiuj zawartość folderu z przeskalowanymi plikami do folderu moda {mod}, zachowując podfoldery.",
         msDoneZip: "Skopiuj zawartość folderu z przeskalowanymi plikami do archiwum moda {mod}, zachowując podfoldery.",
         msDoneI3d: "Dołączony jest {i3d} z unitsPerPixel {from} → {to}.",
-        msNewSave: "Na przeskalowanej mapie zacznij nowy zapis gry: istniejące zapisy mają warstwy w starej rozdzielczości.",
+        msNewSave: "Istniejące zapisy mają warstwy w starej rozdzielczości: przeskaluj je w opcji Zapis gry albo zacznij nowy zapis na przeskalowanej mapie.",
         msOpenScaled: "Otwórz przeskalowane",
         msOpenBackup: "Otwórz kopię zapasową",
         msErr_MS_CANCELLED: "Skalowanie anulowane. Nic nie zostało zapisane.",
@@ -2401,7 +2451,7 @@ const TRANSLATIONS = {
         tlRestoring: "Przywracanie…",
         tlImporting: "Import…",
         tlExporting: "Eksport…",
-        tlPasteHint: "Zaznacz ścieżki z biblioteki i wklej je do tego zapisu. Gra musi być zamknięta; plik mapy jest najpierw kopiowany, a podmieniany dopiero, gdy nowy odczytuje się dokładnie tak, jak trzeba.",
+        tlPasteHint: "Zaznacz ścieżki z biblioteki i wklej je do tego zapisu, bez chwastów na nich. Gra musi być zamknięta; pliki mapy są najpierw kopiowane, a podmieniane dopiero, gdy nowe odczytują się dokładnie tak, jak trzeba.",
         tlLibrary: "Biblioteka · {map}",
         tlLibraryEmpty: "Brak ścieżek dla tej mapy — zapisz je w „Zapisz z zapisu” albo zaimportuj PNG / plik GIMP-a.",
         tlSelectAll: "wszystkie",
@@ -2415,20 +2465,36 @@ const TRANSLATIONS = {
         tlWrongSize: "inny rozmiar mapy",
         tlPasteTitle: "Wklej ścieżki",
         tlPasteYes: "Wklej",
-        tlPasteConfirm: "Wkleić zestawy ścieżek ({n}) do {save} ({map})?\n{list}\n\nObecny densityMap_fruits.gdm zostanie najpierw skopiowany (farmer_planner_backup w folderze zapisu).",
-        tlPasteDone: "Ścieżki wklejone do {save}:\n{list}\n\nKopia: {backup}",
+        tlPasteConfirm: "Wkleić zestawy ścieżek ({n}) do {save} ({map})?\n{list}\n\nChwasty pod ścieżkami zostaną usunięte. Obecne densityMap_fruits.gdm i densityMap_weed.gdm zostaną najpierw skopiowane (farmer_planner_backup w folderze zapisu).",
+        tlPasteDone: "Ścieżki wklejone do {save}:\n{list}\n\nUsunięte chwasty pod ścieżkami: {weed} px\n\nKopia: {backup}",
         tlGameRunning: "Farming Simulator 25 jest uruchomiony. Najpierw zamknij grę — przy zapisie nadpisałaby plik.",
-        tlRestoreConfirm: "Przywrócić ostatnią kopię densityMap_fruits.gdm do {save}? Ścieżki wklejone od tamtej pory znikną.",
+        tlRestoreConfirm: "Przywrócić ostatnią kopię densityMap_fruits.gdm i densityMap_weed.gdm do {save}? Ścieżki wklejone od tamtej pory znikną.",
         tlRestored: "Przywrócono {file}.",
         tlImported: "Zaimportowano zestawy ścieżek do biblioteki {map}: {n}.",
         tlImportedNone: "Nic do zaimportowania — pliki nie miały przezroczystej warstwy ze ścieżkami.",
         tlDeleteConfirm: "Usunąć „{name}” z biblioteki?",
+
+        tlRename: "Zmień nazwę",
+
+        tlRenameBad: "Nazwa może mieć do 60 znaków, nie może zawierać < > : \" / \\ | ? * ani zaczynać się lub kończyć kropką albo spacją.",
+
+        tlRenameTaken: "„{name}” jest już w bibliotece. Wybierz inną nazwę.",
+
+        tlRenameFail: "Nie udało się zmienić nazwy: {msg}",
         tlDetectMap: "Pola z mapy",
-        tlDetectMapHint: "Obrysy pól z samej mapy (potrzebny mod mapy) — najlepszy sposób",
+        tlDetectMapHint: "Obrysy pól z mapy (potrzebny mod mapy), rozszerzone na uprawioną glebę ich działki, więc połączone pole zapisuje się w całości. Kliknij ponownie, aby wyłączyć.",
         tlDetectGround: "Pola z gleby",
-        tlDetectGroundHint: "Obszary uprawionej gleby (densityMap_ground) — dla map bez moda",
+        tlDetectGroundHint: "Obszary uprawionej gleby (densityMap_ground), dla map bez moda. Kliknij ponownie, aby wyłączyć.",
         tlLasso: "Lasso",
-        tlLassoHint: "Klikaj punkty wokół pola, dwuklik albo Enter zamyka, Esc anuluje",
+
+        tlLassoGuide: "Klikaj punkty wokół obszaru. Enter lub dwuklik zamyka kształt, Backspace lub Ctrl+Z cofa ostatni punkt, Esc anuluje.",
+
+        tlLassoUndo: "Cofnij punkt",
+
+        tlLassoUndoShape: "Cofnij kształt",
+
+        tlModeOff: "Kliknij podświetlony przycisk ponownie, aby go wyłączyć.",
+        tlLassoHint: "Klikaj punkty wokół obszaru, potem Enter lub dwuklik zamyka. Kliknij ponownie, aby wyłączyć.",
         tlDetectMapFail_nomod: "Nie znaleziono moda mapy {mod} — użyj „Pola z gleby” albo lassa.",
         tlDetectMapFail_nomap: "Nie udało się odczytać mapy w {mod}.",
         tlDetectMapFail_nofields: "Mapa nie ma obrysów pól.",
@@ -2447,6 +2513,8 @@ const TRANSLATIONS = {
         tlName: "Nazwa (opcjonalnie)",
         tlNamePlaceholder: "np. Pole 12 — pszenica",
         tlMerge: "Połącz w jeden zestaw",
+
+        tlMergeHint: "Zapisuje wszystko, co wybrano, jako jeden zestaw w bibliotece zamiast osobnego zestawu dla każdego pola lub kształtu.",
         tlCutBtn: "Zapisz do biblioteki ({n})",
         tlCutAnyway: "Zapisz wszystkie piksele",
         tlNoColorsAsk: "Nie wybrano wartości ścieżek — zapisać wszystkie piksele w obrębie pól, nie tylko ścieżki?",
@@ -2454,7 +2522,7 @@ const TRANSLATIONS = {
         tlOverwrite: "Te już są w bibliotece:\n{list}\n\nNadpisać?",
         tlOverwriteYes: "Nadpisz",
         tlCutDone: "Zapisano do biblioteki:\n{list}",
-        tlCutEmpty: "Brak pikseli ścieżek w: {list}",
+        tlCutEmpty: "Brak pikseli ścieżek w: {list}. Na polu bez uprawy ścieżek nie da się odróżnić od gołej ziemi.",
         tlEditorEntry: "Ścieżki",
         tlEditorPick: "Wybierz ścieżki z biblioteki, żeby je edytować.",
         tlPaint: "Maluj",
@@ -2469,8 +2537,8 @@ const TRANSLATIONS = {
         tlGameDir: "Folder gry (zapisy)",
         tlThreshold: "Próg przezroczystości",
         tlThresholdHint: "Wklejane są piksele importowanego PNG o co najmniej takim kryciu (0–255).",
-        tlEdge: "Brzeg pola (px)",
-        tlEdgeHint: "Pas tej szerokości przy krawędzi pola jest pomijany przy wycinaniu, żeby nie łapać uwrocia.",
+        tlEdge: "Rozdzielanie pól (px)",
+        tlEdgeHint: "Używane przez Pola z gleby do rozdzielania sąsiednich pól połączonych cienkim pasem. Przy zapisie nic przy krawędzi pola nie jest pomijane.",
         tlMinPx: "Najmniejszy obszar (px)",
         tlMinPxHint: "Mniejsze obszary gleby są pomijane.",
         tlConverter: "grleConverter (opcjonalnie)",

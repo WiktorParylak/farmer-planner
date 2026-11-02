@@ -18,9 +18,18 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Zbieranie kamieni**: z modem-łącznikiem nieobsiane pole z kamieniami dostaje na liście prac *Zbieranie kamieni* po uprawie gleby, z częścią pola, która jest jeszcze pokryta kamieniami; krok odhacza się sam, gdy kamieni już nie ma. Przy kamieniach wyłączonych w ustawieniach gry pole go nie dostaje.
 - **Animacja startowa**: aplikacja otwiera się animacją logo — traktor wjeżdża i odsłania FARMER, PLANNER spada litera po literze — a potem przechodzi w ekran startowy. Kliknięcie albo dowolny klawisz ją pomija, przy ograniczonych animacjach w Windows jest krótsza, a *Animacja startowa* w ustawieniach aplikacji ją wyłącza.
 - **Kilka cykli płodozmianu naraz**: zaznacz cykle w zakładce *Cykle* (albo kliknij je z Ctrl), żeby nadać im jeden kolor albo usunąć je razem; *Zaznacz wszystkie cykle* zaznacza całą listę.
+- **Skalowanie także zapisu gry**: *Skalowanie mapy* ma opcję *Zapis gry* obok *Mapy*. Podwaja density mapy i info layery trzymane w zapisie, żeby zapis sprzed skalowania pasował do przeskalowanej mapy. Zapis jest tylko czytany: oryginały i przeskalowane pliki trafiają do `Documents\Farmer Planner\maps\<mapa>\`, a do zapisu kopiuje się je przy zamkniętej grze. Mapy Precision Farming i mapa wysokości są na starcie odznaczone.
+- **Ścieżki bez chwastów**: wklejanie ścieżek usuwa też chwasty pod nimi w `densityMap_weed.gdm`. Obie mapy są kopiowane, sprawdzane i podmieniane razem, a *Przywróć ostatnią kopię* przywraca obie.
+- **Zmiana nazwy ścieżek**: ołówek przy pozycji biblioteki zmienia nazwę jej plików PNG i JSON. Nazwa zajęta albo ze znakami niedozwolonymi w Windows daje czytelny komunikat i niczego nie nadpisuje.
+- **Podpowiedź i cofanie w lassie**: przy włączonym lassie panel objaśnia klawisze. Backspace, Ctrl+Z albo *Cofnij punkt* cofają ostatni punkt (a gdy punktów nie ma, ostatni kształt).
 
 **Zmiany**
 - **Jeden przewidywany plon wszędzie**: planer pasz, okno pokosów i *Plony i ceny* liczą zbiór pola tak samo — z FS25_MoistureSystem dzisiejsza wilgotność pola obniża też paszę z pola zbieranego w tym miesiącu.
+- **Ścieżki rozpoznawane po tym, czym są, a nie po odległości od krawędzi**: piksel ścieżki to brak uprawy na uprawionej glebie, w wąskiej linii. Pas przy krawędzi pola nie jest już pomijany, więc ścieżki dochodzą do swoich prawdziwych końców, a luźne lasso nie łapie gołej ziemi wokół pola. Na polu całkiem bez uprawy ścieżek nie da się odróżnić od gołej ziemi. *Brzeg pola* w ustawieniach to teraz *Rozdzielanie pól*: pomaga tylko *Polom z gleby* rozdzielać sąsiadów.
+- ***Pola z mapy* obejmują prawdziwe pole**: obrys pola rozszerza się na połączoną z nim uprawioną glebę na tej samej działce, więc pole połączone w grze albo uprawiane poza obrysem autora mapy zapisuje się w całości, a sąsiad za nieuprawionym pasem zostaje poza nim.
+- **Miejsce na poprawki w obrazach biblioteki**: zapisane PNG ścieżek mają przezroczysty margines 64 px, więc można je poprawić w edytorze grafiki. Przezroczyste piksele nigdy się nie wklejają.
+- **Jeden sposób zaznaczania naraz**: *Pola z mapy*, *Pola z gleby* i *Lasso* się wykluczają, podświetlony przycisk to ten, który działa, a ponowne kliknięcie wyłącza go bez wychodzenia z narzędzia.
+- ***Połącz w jeden zestaw*** pojawia się dopiero przy dwóch lub więcej polach albo kształtach, z podpowiedzią, co robi.
 
 **Poprawki**
 - **Ustawienia farmy prześwitywały pod przyciskami**: przewijana długa zakładka ustawień nie pokazuje już opcji w pasku pod *Anuluj* i *Zapisz i importuj*.
@@ -28,6 +37,11 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Ustawienia generatora zwijały się przy każdej zmianie**: wybór profilu, uprawy albo limitu w ustawieniach generatora nie zwija już rozwiniętych ustawień, potrzeb ani problemów.
 - **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
 
+- **Nie wykrywano działającej gry**: narzędzie ścieżek szukało `FarmingSimulator2025.exe`, a gra działa jako `FarmingSimulator2025Game.exe`, więc wklejanie i przywracanie mogły ruszyć przy otwartej grze, która potem nadpisałaby wynik przy zapisie. Teraz przy działającej grze obie operacje są odrzucane.
+- **Lasso gubiło narożniki i zostawiało dziury**: kliknięcie z lekkim ruchem myszy przepadało i ucinało róg kształtu, a kształt przecinający sam siebie i nakładające się obrysy w jednym zestawie zostawiały dziury.
+- **Błąd przy wyjściu z narzędzia ścieżek**: wyjście w trakcie pracy (np. szukania pól z gleby) pokazywało „Zadanie w tle się przerwało”. Teraz zadanie po prostu się zatrzymuje.
+- **Przechylenie kółka myszy w bok oddalało widok** w narzędziu ścieżek.
+- **Znikała wpisana nazwa zestawu**: nazwa i zaznaczenie łączenia w *Zapisz z zapisu* nie kasują się już po wybraniu kolejnego pola.
 ## 0.10.1 — 2026-10-30
 
 **Nowe**

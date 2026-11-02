@@ -4,8 +4,9 @@
 // (<data>/tramlines/<map title>/) and pastes them into another save.
 // A classic <script> after renderer.js; the heavy work runs in
 // tramlines-worker.js (own process). This is the only part of the app that
-// writes a game file — only with the game closed, after a backup, and only
-// when the new file reads back exactly as intended.
+// writes game files (the fruits map, and the weed map under pasted tramlines) —
+// only with the game closed, after a backup, and only when the new files read
+// back exactly as intended.
 
 const tlCore = require('./tramlines-core');
 const { readMapFieldPolygons } = require('./savegame-soil');
@@ -25,9 +26,12 @@ const tl = {
     mapFields: null,         // [{ key, id, poly: [[x,y]] }] in map pixels
     groundFields: null,      // [{ key, label, bbox, px }]
     selected: new Set(),
+    mode: null,              // what a click on the map does: 'map' | 'ground' | 'lasso' | null
     lasso: [],               // closed polygons
-    lassoOn: false,
     lassoPts: [],
+    cutName: '',
+    merge: false,
+    renaming: null,          // library entry whose name is being edited
     entries: [],             // library of the selected save's map
     pasteSel: new Set(),
     overlays: {},            // entry name -> canvas
@@ -86,19 +90,25 @@ const tlPending = {};
 function tlStartWorker() {
     if (tlWorker) return tlWorker;
     const { fork } = require('child_process');
-    tlWorker = fork(path.join(__dirname, 'tramlines-worker.js'), [], {
+    const w = fork(path.join(__dirname, 'tramlines-worker.js'), [], {
         execPath: process.execPath,
         env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
         serialization: 'advanced',
         stdio: ['ignore', 'inherit', 'inherit', 'ipc']
     });
-    tlWorker.on('message', m => { const p = tlPending[m.id]; if (p) { delete tlPending[m.id]; p(m); } });
-    tlWorker.on('exit', () => {
+    tlWorker = w;
+    w.on('message', m => { const p = tlPending[m.id]; if (p) { delete tlPending[m.id]; p(m); } });
+    w.on('exit', () => {
+        if (tlWorker !== w) return;   // stopped on purpose, its calls are already answered
         tlWorker = null;
         tl.loaded = null;
-        Object.keys(tlPending).forEach(k => { tlPending[k]({ ok: false, error: 'TL_WORKER_EXIT' }); delete tlPending[k]; });
+        tlAnswerPending('TL_WORKER_EXIT');
     });
-    return tlWorker;
+    return w;
+}
+
+function tlAnswerPending(error) {
+    Object.keys(tlPending).forEach(k => { const p = tlPending[k]; delete tlPending[k]; p({ ok: false, error }); });
 }
 
 function tlCall(op, args) {
@@ -111,8 +121,11 @@ function tlCall(op, args) {
 }
 
 function tlStopWorker() {
-    if (tlWorker) { tlWorker.kill(); tlWorker = null; }
+    const w = tlWorker;
+    tlWorker = null;
     tl.loaded = null;
+    tlAnswerPending('TL_STOPPED');
+    if (w) w.kill();
 }
 
 function tlErrorText(e) {
@@ -128,7 +141,11 @@ async function tlBusy(text, fn) {
     const el = document.getElementById('tl-busy');
     if (el) { el.textContent = text; el.hidden = false; }
     try { return await fn(); }
-    catch (e) { console.error(e); await showNotice(t('tlTitle'), tlErrorText(e), true); return null; }
+    catch (e) {
+        // Leaving the tool stops the task it was running: not an error.
+        if (e.code !== 'TL_STOPPED') { console.error(e); await showNotice(t('tlTitle'), tlErrorText(e), true); }
+        return null;
+    }
     finally {
         tl.busy = false;
         if (el) el.hidden = true;
@@ -137,8 +154,9 @@ async function tlBusy(text, fn) {
 
 function tlGameRunning() {
     return new Promise(resolve => {
-        require('child_process').execFile('tasklist', ['/FI', 'IMAGENAME eq FarmingSimulator2025.exe', '/NH'], { windowsHide: true }, (err, out) => {
-            resolve(!err && /FarmingSimulator2025\.exe/i.test(out || ''));
+        // The game itself runs as FarmingSimulator2025Game.exe, started by FarmingSimulator2025.exe.
+        require('child_process').execFile('tasklist', ['/FI', 'IMAGENAME eq FarmingSimulator2025*', '/NH'], { windowsHide: true }, (err, out) => {
+            resolve(!err && /FarmingSimulator2025/i.test(out || ''));
         });
     });
 }
@@ -210,6 +228,8 @@ async function tlClose() {
     if (dashboardView) dashboardView.style.display = 'flex';
     tlStopWorker();
     tl.image = null;
+    tl.mode = null; tl.mapFields = null; tl.groundFields = null;
+    tl.selected.clear(); tl.lasso = []; tl.lassoPts = []; tl.cutName = ''; tl.merge = false; tl.renaming = null;
 }
 
 async function tlEnsureLoaded() {
@@ -219,7 +239,7 @@ async function tlEnsureLoaded() {
     await tlBusy(t('tlLoading').replace('{save}', save.name), async () => {
         const r = await tlCall('load', { saveDir: save.dir });
         tl.loaded = { saveDir: save.dir, dim: r.dim, title: save.title };
-        tl.mapFields = null; tl.groundFields = null; tl.selected.clear(); tl.lasso = []; tl.lassoPts = [];
+        tl.mode = null; tl.mapFields = null; tl.groundFields = null; tl.selected.clear(); tl.lasso = []; tl.lassoPts = [];
         tlFit();
     });
     tlRenderSide();
@@ -397,10 +417,13 @@ function tlEntryRowHtml(e, withCheck) {
     const wrong = tl.loaded && e.mapSize !== tl.loaded.dim;
     return `<li class="tl-entry${wrong ? ' is-wrong' : ''}" data-name="${escapeHtml(e.name)}">
         ${withCheck ? `<input type="checkbox" class="fp-check tl-entry-check" ${tl.pasteSel.has(e.name) ? 'checked' : ''} ${wrong ? 'disabled' : ''}>` : ''}
-        <span class="tl-entry-name">${escapeHtml(e.name)}</span>
+        ${tl.renaming === e.name
+            ? `<input type="text" class="tl-rename-input" maxlength="60" value="${escapeHtml(e.name)}" aria-label="${escapeHtml(t('tlRename'))}">`
+            : `<span class="tl-entry-name">${escapeHtml(e.name)}</span>`}
         <span class="tl-entry-meta">${(e.px || 0).toLocaleString(FIN_LOCALE())} px${date ? ' · ' + date : ''}${wrong ? ' · ' + escapeHtml(t('tlWrongSize')) : ''}</span>
         <span class="tl-entry-tools">
             <button type="button" class="feed-ration-tool tl-entry-zoom" title="${escapeHtml(t('tlZoom'))}"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>
+            <button type="button" class="feed-ration-tool tl-entry-rename" title="${escapeHtml(t('tlRename'))}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
             <button type="button" class="feed-ration-tool tl-entry-export" title="${escapeHtml(t('tlExport'))}"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>
             <button type="button" class="feed-ration-tool feed-ration-tool--danger tl-entry-delete" title="${escapeHtml(t('delete'))}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
         </span>
@@ -428,19 +451,25 @@ function tlCutHtml(save) {
     const fields = [...(tl.mapFields || []).map(f => ({ key: f.key, label: t('tlFieldName').replace('{n}', f.id), bbox: f.bbox })),
         ...(tl.groundFields || []).map((f, i) => ({ key: f.key, label: t('tlAreaName').replace('{n}', i + 1), bbox: f.bbox }))];
     const sel = tl.selected.size + tl.lasso.length;
+    const modeBtn = (mode, cls, label, hint) => `<button type="button" class="settings-btn ${cls}${tl.mode === mode ? ' is-active' : ''}" aria-pressed="${tl.mode === mode}" title="${escapeHtml(t(hint))}">${t(label)}</button>`;
     return `<div class="tl-row">
-            <button type="button" class="settings-btn tl-detect-map" title="${escapeHtml(t('tlDetectMapHint'))}">${t('tlDetectMap')}</button>
-            <button type="button" class="settings-btn tl-detect-ground" title="${escapeHtml(t('tlDetectGroundHint'))}">${t('tlDetectGround')}</button>
-            <button type="button" class="settings-btn tl-lasso${tl.lassoOn ? ' is-active' : ''}" title="${escapeHtml(t('tlLassoHint'))}">${t('tlLasso')}</button>
+            ${modeBtn('map', 'tl-detect-map', 'tlDetectMap', 'tlDetectMapHint')}
+            ${modeBtn('ground', 'tl-detect-ground', 'tlDetectGround', 'tlDetectGroundHint')}
+            ${modeBtn('lasso', 'tl-lasso', 'tlLasso', 'tlLassoHint')}
         </div>
+        ${tl.mode === 'lasso' ? `<div class="tl-guide">
+                <p>${escapeHtml(t('tlLassoGuide'))}</p>
+                <button type="button" class="settings-btn tl-lasso-undo" ${tl.lassoPts.length || tl.lasso.length ? '' : 'disabled'}><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> ${escapeHtml(t(tl.lassoPts.length || !tl.lasso.length ? 'tlLassoUndo' : 'tlLassoUndoShape'))}</button>
+            </div>` : ''}
+        ${tl.mode ? `<p class="settings-hint">${escapeHtml(t('tlModeOff'))}</p>` : ''}
         <div class="tl-colors"><strong>${t('tlColors')}</strong> ${chips || `<span class="settings-hint">${t('tlColorsNone')}</span>`}</div>
         <p class="settings-hint">${escapeHtml(t('tlColorsHint'))}</p>
         <label class="tl-check"><input type="checkbox" class="fp-check" id="tl-highlight" ${tl.highlight ? 'checked' : ''}> ${t('tlHighlight')}</label>
         ${fields.length ? `<div class="tl-row"><strong>${t('tlFields')}</strong><button type="button" class="tl-link tl-fields-all">${t('tlSelectAll')}</button><button type="button" class="tl-link tl-fields-none">${t('tlSelectNone')}</button></div>
             <ul class="tl-entries tl-fields">${fields.map(f => `<li class="tl-entry" data-key="${escapeHtml(f.key)}"><input type="checkbox" class="fp-check tl-field-check" ${tl.selected.has(f.key) ? 'checked' : ''}><span class="tl-entry-name">${escapeHtml(f.label)}</span><span class="tl-entry-tools"><button type="button" class="feed-ration-tool tl-field-zoom" title="${escapeHtml(t('tlZoom'))}"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button></span></li>`).join('')}</ul>` : ''}
         ${tl.lasso.length ? `<p class="settings-hint">${t('tlLassoCount').replace('{n}', tl.lasso.length)} <button type="button" class="tl-link tl-lasso-clear">${t('tlLassoClear')}</button></p>` : ''}
-        <label class="settings-field"><span>${t('tlName')}</span><input type="text" id="tl-name" maxlength="60" placeholder="${escapeHtml(t('tlNamePlaceholder'))}"></label>
-        <label class="tl-check"><input type="checkbox" class="fp-check" id="tl-merge"> ${t('tlMerge')}</label>
+        <label class="settings-field"><span>${t('tlName')}</span><input type="text" id="tl-name" maxlength="60" value="${escapeHtml(tl.cutName)}" placeholder="${escapeHtml(t('tlNamePlaceholder'))}"></label>
+        ${sel >= 2 ? `<label class="tl-check" title="${escapeHtml(t('tlMergeHint'))}"><input type="checkbox" class="fp-check" id="tl-merge" ${tl.merge ? 'checked' : ''}> ${t('tlMerge')}</label>` : ''}
         <button type="button" class="settings-btn tl-cut" ${sel ? '' : 'disabled'}>${escapeHtml(t('tlCutBtn').replace('{n}', sel))}</button>`;
 }
 
@@ -474,7 +503,22 @@ function tlSettingsHtml() {
 }
 
 // ---------- actions ----------
+// One way of picking at a time: the field outlines of the other ways go away,
+// and turning a way off takes its selection with it. Lasso shapes already
+// closed stay, listed in the panel with their own Clear.
+function tlSetMode(mode) {
+    tl.mode = mode;
+    tl.lassoPts = [];
+    if (mode !== 'map') tl.mapFields = null;
+    if (mode !== 'ground') tl.groundFields = null;
+    const prefix = { map: 'm:', ground: 'g:' }[mode];
+    [...tl.selected].forEach(k => { if (!prefix || !k.startsWith(prefix)) tl.selected.delete(k); });
+    tlRenderSide();
+    tlDraw();
+}
+
 async function tlDetectMap() {
+    if (tl.mode === 'map') { tlSetMode(null); return; }
     const save = tlCurrentSave();
     if (!save || !tl.loaded) return;
     const r = readMapFieldPolygons(path.join(save.dir, 'careerSavegame.xml'));
@@ -485,20 +529,31 @@ async function tlDetectMap() {
         const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
         return { key: 'm:' + f.id, id: f.id, poly, bbox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
     }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-    tl.groundFields = null;
-    [...tl.selected].forEach(k2 => { if (!k2.startsWith('m:')) tl.selected.delete(k2); });
-    tlRenderSide();
-    tlDraw();
+    tlSetMode('map');
 }
 
 async function tlDetectGround() {
+    if (tl.mode === 'ground') { tlSetMode(null); return; }
     if (!tl.loaded) return;
     const s = tlSettings();
     const fields = await tlBusy(t('tlDetecting'), () => tlCall('groundFields', { minPx: s.minPx, edge: s.edge }));
     if (!fields) return;
     tl.groundFields = fields.map(f => ({ ...f, key: 'g:' + f.label }));
-    tl.mapFields = null;
-    [...tl.selected].forEach(k => { if (!k.startsWith('g:')) tl.selected.delete(k); });
+    tlSetMode('ground');
+}
+
+// Backspace / Ctrl+Z / the panel's button: the last point, or with none left the last shape.
+function tlLassoUndo() {
+    if (tl.lassoPts.length) tl.lassoPts.pop();
+    else if (tl.lasso.length) tl.lasso.pop();
+    else return;
+    tlRenderSide();
+    tlDraw();
+}
+
+function tlLassoClose(pts) {
+    tl.lasso.push(pts);
+    tl.lassoPts = [];
     tlRenderSide();
     tlDraw();
 }
@@ -506,12 +561,10 @@ async function tlDetectGround() {
 async function tlCut() {
     const save = tlCurrentSave();
     if (!save || !tl.loaded) return;
-    const s = tlSettings();
-    const nameIn = (document.getElementById('tl-name') || {}).value || '';
-    const merge = (document.getElementById('tl-merge') || {}).checked;
+    const nameIn = tl.cutName;
     const outDir = tlLibraryDir(save.title);
     const items = [];
-    (tl.mapFields || []).filter(f => tl.selected.has(f.key)).forEach(f => items.push({ label: t('tlFieldName').replace('{n}', f.id), area: { polys: [f.poly] } }));
+    (tl.mapFields || []).filter(f => tl.selected.has(f.key)).forEach(f => items.push({ label: t('tlFieldName').replace('{n}', f.id), area: { growPolys: [f.poly] } }));
     (tl.groundFields || []).forEach((f, i) => { if (tl.selected.has(f.key)) items.push({ label: t('tlAreaName').replace('{n}', i + 1), area: { labels: [f.label] } }); });
     tl.lasso.forEach((p, i) => items.push({ label: t('tlLassoName').replace('{n}', i + 1), area: { polys: [p] } }));
     if (!items.length) return;
@@ -520,10 +573,11 @@ async function tlCut() {
         if (ok !== true) return;
     }
     let jobs;
-    if (merge || items.length === 1) {
-        const polys = items.filter(i => i.area.polys).flatMap(i => i.area.polys), labels = items.filter(i => i.area.labels).flatMap(i => i.area.labels);
-        if (polys.length && labels.length) { await showNotice(t('tlTitle'), t('tlMergeMixed'), true); return; }
-        jobs = [{ name: tlSafeName(nameIn.trim() || items[0].label), area: polys.length ? { polys } : { labels } }];
+    if (tl.merge || items.length === 1) {
+        const pick = key => items.flatMap(i => i.area[key] || []);
+        const polys = pick('polys'), growPolys = pick('growPolys'), labels = pick('labels');
+        if ((polys.length || growPolys.length) && labels.length) { await showNotice(t('tlTitle'), t('tlMergeMixed'), true); return; }
+        jobs = [{ name: tlSafeName(nameIn.trim() || items[0].label), area: labels.length ? { labels } : { polys, growPolys } }];
     } else {
         jobs = items.map(i => ({ name: tlSafeName(nameIn.trim() ? `${nameIn.trim()} ${i.label}` : i.label), area: i.area }));
     }
@@ -536,14 +590,14 @@ async function tlCut() {
     await tlBusy(t('tlCutting'), async () => {
         for (const j of jobs) {
             try {
-                const meta = await tlCall('cut', { area: j.area, colors: tl.colors, edge: s.edge, outDir, name: j.name });
+                const meta = await tlCall('cut', { area: j.area, colors: tl.colors, outDir, name: j.name });
                 done.push(`${j.name} (${meta.px.toLocaleString(FIN_LOCALE())} px)`);
             } catch (e) {
                 if (e.code === 'TL_EMPTY') empty.push(j.name); else throw e;
             }
         }
     });
-    tl.selected.clear(); tl.lasso = [];
+    tl.selected.clear(); tl.lasso = []; tl.cutName = '';
     tlRefreshLibrary();
     tlRenderSide();
     tlDraw();
@@ -567,7 +621,7 @@ async function tlPaste() {
     const r = await tlBusy(t('tlPasting'), () => tlCall('paste', { saveDir: save.dir, entries: entries.map(e => e.file), threshold: s.threshold, converter: s.converter.trim() }));
     if (!r) return;
     tlRequestView();   // the worker already holds the pasted map
-    await showNotice(t('tlTitle'), t('tlPasteDone').replace('{save}', save.name).replace('{list}', r.counts.map(c => `${c.name}: ${c.px.toLocaleString(FIN_LOCALE())} px`).join('\n')).replace('{backup}', r.backup));
+    await showNotice(t('tlTitle'), t('tlPasteDone').replace('{save}', save.name).replace('{list}', r.counts.map(c => `${c.name}: ${c.px.toLocaleString(FIN_LOCALE())} px`).join('\n')).replace('{weed}', (r.weedCleared || 0).toLocaleString(FIN_LOCALE())).replace('{backup}', r.backup));
 }
 
 async function tlRestore() {
@@ -618,6 +672,36 @@ async function tlDeleteEntry(entry) {
     [entry.file, entry.file.replace(/\.json$/i, '.png')].forEach(f => { try { fs.unlinkSync(f); } catch (e) { /* already gone */ } });
     if (tl.editor && tl.editor.name === entry.name) tl.editor = null;
     tlRefreshLibrary();
+    tlRenderSide();
+    tlDraw();
+}
+
+// The entry's two files get the new name, or neither does.
+async function tlRenameEntry(entry, raw) {
+    const name = String(raw).trim();
+    if (!name || name === entry.name) return;
+    if (tlSafeName(name) !== name || name.length > 60) { await showNotice(t('tlTitle'), t('tlRenameBad'), true); return; }
+    const dir = path.dirname(entry.file);
+    const png = f => f.replace(/\.json$/i, '.png');
+    const newJson = path.join(dir, name + '.json');
+    // Only the letter case changing is the same file on Windows.
+    const sameFile = name.toLowerCase() === entry.name.toLowerCase();
+    if (!sameFile && (fs.existsSync(newJson) || fs.existsSync(png(newJson)))) { await showNotice(t('tlTitle'), t('tlRenameTaken').replace('{name}', name), true); return; }
+    try {
+        fs.renameSync(png(entry.file), png(newJson));
+        try { fs.renameSync(entry.file, newJson); }
+        catch (e) { fs.renameSync(png(newJson), png(entry.file)); throw e; }
+    } catch (e) {
+        console.error(e);
+        await showNotice(t('tlTitle'), t('tlRenameFail').replace('{msg}', e.message), true);
+        return;
+    }
+    if (tl.pasteSel.delete(entry.name)) tl.pasteSel.add(name);
+    tlRefreshLibrary();
+    if (tl.editor && tl.editor.name === entry.name) {
+        tl.editor.name = name;
+        tl.editor.entry = tl.entries.find(x => x.name === name) || tl.editor.entry;
+    }
     tlRenderSide();
     tlDraw();
 }
@@ -708,9 +792,10 @@ async function tlEditorSave() {
         out[o] = ed.rgba[s]; out[o + 1] = ed.rgba[s + 1]; out[o + 2] = ed.rgba[s + 2]; out[o + 3] = ed.rgba[s + 3];
         if (out[o + 3]) px++;
     }
-    const meta = { ...ed.entry, x: ed.x + x0, y: ed.y + y0, w, h, px, editedAt: new Date().toISOString() };
+    const img = tlCore.padRgba(out, w, h, ed.x + x0, ed.y + y0, ed.entry.mapSize);
+    const meta = { ...ed.entry, x: img.x, y: img.y, w: img.w, h: img.h, px, editedAt: new Date().toISOString() };
     delete meta.name; delete meta.file;
-    fs.writeFileSync(ed.entry.file.replace(/\.json$/i, '.png'), tlCore.encodePngRgba(out, w, h));
+    fs.writeFileSync(ed.entry.file.replace(/\.json$/i, '.png'), tlCore.encodePngRgba(img.rgba, img.w, img.h));
     fs.writeFileSync(ed.entry.file, JSON.stringify(meta, null, 2));
     const name = ed.name;
     tlRefreshLibrary();
@@ -736,7 +821,8 @@ function tlEditorOpenKeepView(name) {
     document.getElementById('tl-back').addEventListener('click', tlClose);
     view.querySelectorAll('.tl-tab').forEach(b => b.addEventListener('click', () => {
         tl.tab = b.dataset.tltab;
-        tl.lassoOn = false; tl.lassoPts = [];
+        if (tl.mode === 'lasso') tl.mode = null;
+        tl.lassoPts = [];
         tlRenderSide();
         tlRequestView();
     }));
@@ -756,6 +842,8 @@ function tlEditorOpenKeepView(name) {
             const key = el.closest('.tl-entry').dataset.key;
             if (el.checked) tl.selected.add(key); else tl.selected.delete(key);
             tlRenderSide(); tlDraw();
+        } else if (el.id === 'tl-merge') {
+            tl.merge = el.checked;
         } else if (el.id === 'tl-highlight') {
             tl.highlight = el.checked; tlRequestView();
         } else if (el.id === 'tl-editor-entry') {
@@ -772,6 +860,28 @@ function tlEditorOpenKeepView(name) {
         }
     });
 
+    // Typed text isn't kept by the panel's redraws.
+    side.addEventListener('input', e => {
+        if (e.target.id === 'tl-name') tl.cutName = e.target.value;
+    });
+    side.addEventListener('keydown', e => {
+        if (!e.target.classList.contains('tl-rename-input')) return;
+        e.stopPropagation();
+        if (e.key === 'Enter') e.target.blur();
+        else if (e.key === 'Escape') { tl.renaming = null; tlRenderSide(); }
+    });
+    side.addEventListener('focusout', e => {
+        if (!e.target.classList.contains('tl-rename-input') || !tl.renaming) return;
+        const entry = tl.entries.find(x => x.name === tl.renaming);
+        const value = e.target.value;
+        tl.renaming = null;
+        // After this event: the panel can't be redrawn while it's taking the focus away.
+        setTimeout(async () => {
+            if (entry) await tlRenameEntry(entry, value);
+            tlRenderSide();
+        }, 0);
+    });
+
     side.addEventListener('click', e => {
         const tg = e.target;
         const entryEl = tg.closest('.tl-entry[data-name]');
@@ -783,12 +893,19 @@ function tlEditorOpenKeepView(name) {
         else if (tg.closest('.tl-select-all')) { tl.entries.forEach(x => { if (!tl.loaded || x.mapSize === tl.loaded.dim) tl.pasteSel.add(x.name); }); tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-select-none')) { tl.pasteSel.clear(); tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-entry-zoom') && entry) { if (tl.tab === 'paste') tl.pasteSel.add(entry.name); tlRenderSide(); tlZoomTo([entry.x, entry.y, entry.x + entry.w, entry.y + entry.h]); }
+        else if (tg.closest('.tl-entry-rename') && entry) {
+            tl.renaming = entry.name;
+            tlRenderSide();
+            const input = side.querySelector('.tl-rename-input');
+            if (input) { input.focus(); input.select(); }
+        }
         else if (tg.closest('.tl-entry-export') && entry) tlExport(entry);
         else if (tg.closest('.tl-entry-delete') && entry) tlDeleteEntry(entry);
         else if (tg.closest('.tl-detect-map')) tlDetectMap();
         else if (tg.closest('.tl-detect-ground')) tlDetectGround();
-        else if (tg.closest('.tl-lasso')) { tl.lassoOn = !tl.lassoOn; tl.lassoPts = []; tlRenderSide(); tlDraw(); }
+        else if (tg.closest('.tl-lasso-undo')) tlLassoUndo();
         else if (tg.closest('.tl-lasso-clear')) { tl.lasso = []; tlRenderSide(); tlDraw(); }
+        else if (tg.closest('.tl-lasso')) tlSetMode(tl.mode === 'lasso' ? null : 'lasso');
         else if (tg.closest('.tl-color-remove')) { tl.colors.splice(+tg.closest('.tl-color-remove').dataset.i, 1); tlRenderSide(); tlRequestView(); }
         else if (tg.closest('.tl-fields-all')) { [...(tl.mapFields || []), ...(tl.groundFields || [])].forEach(f => tl.selected.add(f.key)); tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-fields-none')) { tl.selected.clear(); tlRenderSide(); tlDraw(); }
@@ -811,6 +928,8 @@ function tlEditorOpenKeepView(name) {
     c.addEventListener('wheel', e => {
         if (!tl.view) return;
         e.preventDefault();
+        // Tilting the wheel sideways scrolls along x, with deltaY 0: not a zoom.
+        if (!e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
         const [sx, sy] = pos(e), [mx, my] = tlToMap(sx, sy);
         const k = e.deltaY < 0 ? 1.25 : 0.8;
         const minS = Math.min(c.width, c.height) / (tl.loaded ? tl.loaded.dim : 1) / 2;
@@ -832,7 +951,7 @@ function tlEditorOpenKeepView(name) {
         const [sx, sy] = pos(e);
         if (Math.abs(sx - drag.sx) + Math.abs(sy - drag.sy) > 4) drag.moved = true;
         if (drag.paint) { const [mx, my] = tlToMap(sx, sy); tlEditorLine(mx, my, drag.paint); tlDraw(); return; }
-        if (!drag.moved || (drag.button === 0 && tl.lassoOn)) return;
+        if (!drag.moved || (drag.button === 0 && tl.tab === 'cut' && tl.mode === 'lasso')) return;
         tl.view = { ...tl.view, x0: drag.x0 - (sx - drag.sx) / tl.view.scale, y0: drag.y0 - (sy - drag.sy) / tl.view.scale };
         tlDraw();
         tlRequestView();
@@ -847,7 +966,11 @@ function tlEditorOpenKeepView(name) {
             tlRenderSide();
             return;
         }
-        if (d.moved || d.button !== 0 || !tl.view) return;
+        if (d.button !== 0 || !tl.view) return;
+        // A lasso click still counts if the mouse slipped a little: losing that
+        // point would cut a corner off the shape. The left button doesn't pan here.
+        const lassoClick = tl.tab === 'cut' && tl.mode === 'lasso' && !e.ctrlKey;
+        if (d.moved && !lassoClick) return;
         const [mx, my] = tlToMap(...pos(e));
         if (e.ctrlKey && (tl.tab === 'cut' || tl.tab === 'editor')) {
             const v = await tlCall('pick', { x: mx, y: my }).catch(() => null);
@@ -859,7 +982,7 @@ function tlEditorOpenKeepView(name) {
             return;
         }
         if (tl.tab !== 'cut') return;
-        if (tl.lassoOn) { tl.lassoPts.push([mx, my]); tlDraw(); return; }
+        if (lassoClick) { tl.lassoPts.push([mx, my]); tlRenderSide(); tlDraw(); return; }
         const inPoly = (P, x, y) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) ins = !ins; } return ins; };
         const hit = (tl.mapFields || []).find(f => inPoly(f.poly, mx, my))
             || (tl.groundFields || []).filter(f => mx >= f.bbox[0] && mx < f.bbox[2] && my >= f.bbox[1] && my < f.bbox[3]).sort((a, b) => a.px - b.px)[0];
@@ -869,20 +992,22 @@ function tlEditorOpenKeepView(name) {
         tlDraw();
     });
     c.addEventListener('dblclick', () => {
-        if (!tl.lassoOn || tl.lassoPts.length < 3) return;
-        tl.lasso.push(tl.lassoPts.slice(0, -1).length >= 3 ? tl.lassoPts.slice(0, -1) : tl.lassoPts);
-        tl.lassoPts = [];
-        tlRenderSide();
-        tlDraw();
+        if (tl.mode !== 'lasso' || tl.lassoPts.length < 3) return;
+        tlLassoClose(tl.lassoPts.slice(0, -1).length >= 3 ? tl.lassoPts.slice(0, -1) : tl.lassoPts);
     });
     document.addEventListener('keydown', e => {
         if (view.hidden) return;
+        const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+        const undoKeys = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z';
+        const lasso = tl.mode === 'lasso' && tl.tab === 'cut';
         if (e.key === 'Escape') {
-            if (tl.lassoPts.length) { tl.lassoPts = []; tlDraw(); e.stopPropagation(); }
-            else if (tl.lassoOn) { tl.lassoOn = false; tlRenderSide(); }
-        } else if (e.key === 'Enter' && tl.lassoOn && tl.lassoPts.length >= 3) {
-            tl.lasso.push(tl.lassoPts); tl.lassoPts = []; tlRenderSide(); tlDraw();
-        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && tl.tab === 'editor' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) {
+            if (tl.lassoPts.length) { tl.lassoPts = []; tlRenderSide(); tlDraw(); e.stopPropagation(); }
+            else if (lasso) tlSetMode(null);
+        } else if (e.key === 'Enter' && lasso && !typing && tl.lassoPts.length >= 3) {
+            e.preventDefault(); tlLassoClose(tl.lassoPts);
+        } else if ((e.key === 'Backspace' || undoKeys) && lasso && !typing) {
+            e.preventDefault(); tlLassoUndo();
+        } else if (undoKeys && tl.tab === 'editor' && !typing) {
             e.preventDefault(); tlEditorUndo();
         }
         if (e.key === 'Control') tlUpdateCursor(true);

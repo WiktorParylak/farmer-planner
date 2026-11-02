@@ -3,7 +3,7 @@
 // freezes the window. Keeps the loaded save in memory and answers
 // { id, op, args } messages with { id, ok, result | error }.
 //
-// Library entry = <name>.png (RGBA, cropped to the tramlines) + <name>.json
+// Library entry = <name>.png (RGBA, the tramlines plus a clear margin to draw in) + <name>.json
 // { x, y, w, h, mapSize, px, source, createdAt }. A tramline pixel's RGB is
 // the fruits value packed like a grleConverter PNG (R = bits 0-7, ...).
 
@@ -11,17 +11,23 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const core = require('./tramlines-core');
+const { readMapFarmlands } = require('./savegame-soil');
 
 const FRUITS = 'densityMap_fruits.gdm';
 const GROUND = 'densityMap_ground.gdm';
+const WEED = 'densityMap_weed.gdm';
 const BACKUP_DIR = 'farmer_planner_backup';
 const KEEP_BACKUPS = 5;
+const THICK_RADIUS = 6;     // no-crop areas (2r+1)² and wider aren't tramlines, at 8192²
+const MIN_SPECK_PX = 10;    // smaller separate bits are noise along the field edge
+const LAND_SHARE = 0.1;     // a farmland counts for a field from this share of its outline
 
-function backupList(dir) {
-    return fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^densityMap_fruits_\d{8}_\d{6}\.gdm$/.test(f)).sort() : [];
+function backupList(dir, kind = 'fruits') {
+    const re = new RegExp('^densityMap_' + kind + '_\\d{8}_\\d{6}\\.gdm$');
+    return fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => re.test(f)).sort() : [];
 }
 
-let state = null;   // { saveDir, dim, channels, values, ground: { labels, fields } }
+let state = null;   // { saveDir, dim, channels, values, soil, ground: { labels, fields } }
 
 function fail(code, extra) {
     const e = new Error(code);
@@ -41,8 +47,9 @@ function writeEntry(outDir, name, rgba, w, h, x, y, mapSize, source) {
     for (let i = 3; i < rgba.length; i += 4) if (rgba[i]) px++;
     fs.mkdirSync(outDir, { recursive: true });
     const base = path.join(outDir, name);
-    fs.writeFileSync(base + '.png', core.encodePngRgba(rgba, w, h));
-    const meta = { x, y, w, h, mapSize, px, source: source || '', createdAt: new Date().toISOString() };
+    const img = core.padRgba(rgba, w, h, x, y, mapSize);
+    fs.writeFileSync(base + '.png', core.encodePngRgba(img.rgba, img.w, img.h));
+    const meta = { x: img.x, y: img.y, w: img.w, h: img.h, mapSize, px, source: source || '', createdAt: new Date().toISOString() };
     fs.writeFileSync(base + '.json', JSON.stringify(meta, null, 2));
     return meta;
 }
@@ -72,24 +79,27 @@ function cropRgba(rgba, w, h) {
 }
 
 // ---------- masks ----------
-// Fills polygons (pixel coords) into a mask over the bbox (even-odd, pixel centres).
-function polygonMask(polys, bx, by, bw, bh) {
-    const mask = new Uint8Array(bw * bh);
-    for (let y = 0; y < bh; y++) {
-        const yc = by + y + 0.5, xs = [];
-        polys.forEach(P => {
-            for (let i = 0; i < P.length; i++) {
-                const [ax, ay] = P[i], [cx, cy] = P[(i + 1) % P.length];
-                if ((ay <= yc) !== (cy <= yc)) xs.push(ax + (yc - ay) * (cx - ax) / (cy - ay));
-            }
-        });
-        xs.sort((a, b) => a - b);
-        for (let k = 0; k + 1 < xs.length; k += 2) {
-            const from = Math.max(0, Math.ceil(xs[k] - 0.5 - bx)), to = Math.min(bw - 1, Math.floor(xs[k + 1] - 0.5 - bx));
-            for (let x = from; x <= to; x++) mask[y * bw + x] = 1;
+// Fills a polygon (pixel coords) into a dim² mask, pixel centres, non-zero
+// winding: a lasso that crosses itself leaves no hole, and polygons filled one
+// after another add up where they overlap.
+function fillPolygon(mask, dim, P) {
+    const ys = P.map(p => p[1]);
+    const y0 = Math.max(0, Math.floor(Math.min(...ys))), y1 = Math.min(dim - 1, Math.ceil(Math.max(...ys)));
+    for (let y = y0; y <= y1; y++) {
+        const yc = y + 0.5, xs = [];
+        for (let i = 0; i < P.length; i++) {
+            const [ax, ay] = P[i], [cx, cy] = P[(i + 1) % P.length];
+            if ((ay <= yc) !== (cy <= yc)) xs.push([ax + (yc - ay) * (cx - ax) / (cy - ay), cy > ay ? 1 : -1]);
+        }
+        xs.sort((a, b) => a[0] - b[0]);
+        let wind = 0;
+        for (let k = 0; k + 1 < xs.length; k++) {
+            wind += xs[k][1];
+            if (!wind) continue;
+            const from = Math.max(0, Math.ceil(xs[k][0] - 0.5)), to = Math.min(dim - 1, Math.floor(xs[k + 1][0] - 0.5));
+            for (let x = from; x <= to; x++) mask[y * dim + x] = 1;
         }
     }
-    return mask;
 }
 
 // Shrinks a mask by r px (square): keeps a pixel only if the whole
@@ -121,13 +131,115 @@ function erode(mask, w, h, r) {
     return out;
 }
 
+// Grows a mask by r px (square), the opposite of erode.
+function dilate(mask, w, h, r) {
+    const tmp = new Uint8Array(w * h), out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+        const row = y * w;
+        let until = -1;
+        for (let x = 0; x < w; x++) {
+            if (mask[row + x]) {
+                for (let k = Math.max(until + 1, x - r); k < x; k++) tmp[row + k] = 1;
+                until = x + r;
+            }
+            if (x <= until) tmp[row + x] = 1;
+        }
+    }
+    for (let x = 0; x < w; x++) {
+        let until = -1;
+        for (let y = 0; y < h; y++) {
+            if (tmp[y * w + x]) {
+                for (let k = Math.max(until + 1, y - r); k < y; k++) out[k * w + x] = 1;
+                until = y + r;
+            }
+            if (y <= until) out[y * w + x] = 1;
+        }
+    }
+    return out;
+}
+
+// Clears separate bits (8-neighbours) smaller than min px from a keep mask.
+function dropSpecks(keep, w, h, min) {
+    const seen = new Uint8Array(w * h);
+    for (let i = 0; i < keep.length; i++) {
+        if (!keep[i] || seen[i]) continue;
+        const stack = [i], part = [i];
+        seen[i] = 1;
+        while (stack.length) {
+            const p = stack.pop(), x = p % w, y = (p / w) | 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                const n = ny * w + nx;
+                if (keep[n] && !seen[n]) {
+                    seen[n] = 1;
+                    stack.push(n);
+                    if (part.length < min) part.push(n);
+                }
+            }
+        }
+        if (part.length < min) part.forEach(n => { keep[n] = 0; });
+    }
+}
+
+// The save's worked soil: { dim, cell, nz } (nz = 1 where densityMap_ground
+// isn't 0), or null when the file can't be used. Tramlines lie on worked soil.
+function soilOf() {
+    if (state.soil !== undefined) return state.soil;
+    state.soil = null;
+    try {
+        const g = core.gdmDecode(fs.readFileSync(path.join(state.saveDir, GROUND)));
+        const cell = state.dim / g.dim;
+        if (cell >= 1 && cell === Math.floor(cell)) {
+            const nz = new Uint8Array(g.dim * g.dim);
+            for (let i = 0; i < nz.length; i++) nz[i] = g.values[i] ? 1 : 0;
+            state.soil = { dim: g.dim, cell, nz };
+        }
+    } catch (e) { /* no soil map: the no-crop pixels aren't narrowed down by it */ }
+    return state.soil;
+}
+
+// Adds to `mask` the soil the seed outlines really stand on: flooded from the
+// worked soil inside them, along worked soil, within their farmlands. A field
+// merged in the game or worked past its outline is covered as a whole, while a
+// neighbour behind unworked ground stays out.
+function growOverLand(mask, dim, seed) {
+    const soil = soilOf();
+    let fl = null;
+    try { fl = readMapFarmlands(path.join(state.saveDir, 'careerSavegame.xml')); } catch (e) { /* outline only */ }
+    if (!soil || !fl || !fl.ok) return;
+    const fw = fl.w / dim, fh = fl.h / dim;
+    const landAt = i => fl.data[Math.floor(((i / dim) | 0) * fh) * fl.w + Math.floor((i % dim) * fw)];
+    const soilAt = i => soil.nz[Math.floor(((i / dim) | 0) / soil.cell) * soil.dim + Math.floor((i % dim) / soil.cell)];
+    const counts = new Map();
+    let total = 0;
+    for (let i = 0; i < seed.length; i++) {
+        if (!seed[i]) continue;
+        const id = landAt(i);
+        total++;
+        if (id) counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    const lands = new Set([...counts].filter(([, n]) => n >= total * LAND_SHARE).map(([id]) => id));
+    if (!lands.size) return;
+    const seen = new Uint8Array(dim * dim), stack = [];
+    const take = i => { if (!seen[i] && soilAt(i) && lands.has(landAt(i))) { seen[i] = 1; mask[i] = 1; stack.push(i); } };
+    for (let i = 0; i < seed.length; i++) if (seed[i]) take(i);
+    while (stack.length) {
+        const i = stack.pop(), x = i % dim;
+        if (x) take(i - 1);
+        if (x < dim - 1) take(i + 1);
+        if (i >= dim) take(i - dim);
+        if (i < dim * (dim - 1)) take(i + dim);
+    }
+}
+
 // ---------- ops ----------
 const ops = {
     load({ saveDir }) {
         state = null;
         const d = fs.readFileSync(path.join(saveDir, FRUITS));
         const r = core.gdmDecode(d);
-        state = { saveDir, dim: r.dim, channels: r.channels, values: r.values, ground: null };
+        state = { saveDir, dim: r.dim, channels: r.channels, values: r.values, ground: null, soil: undefined };
         return { dim: r.dim, channels: r.channels };
     },
 
@@ -171,16 +283,15 @@ const ops = {
     // Fields from densityMap_ground: a field = a 4-connected area of non-zero
     // pixels (black = no soil; neighbouring fields are split by a black line).
     // The ground map may be coarser than fruits (whole multiple): labels stay
-    // at its resolution. An edge band of `edge` fruits px is left out.
+    // at its resolution. The soil is shrunk by `edge` fruits px only to tell
+    // fields apart where a thin strip joins them; each then grows back over all
+    // its soil, so nothing along its edge is lost.
     groundFields({ minPx, edge }) {
         if (!state) fail('TL_NOT_LOADED');
-        const g = core.gdmDecode(fs.readFileSync(path.join(state.saveDir, GROUND)));
-        const gd = g.dim, cell = state.dim / gd;
-        if (cell !== Math.floor(cell) || cell < 1) fail('TL_GROUND_SIZE');
-        let mask = new Uint8Array(gd * gd);
-        for (let i = 0; i < mask.length; i++) mask[i] = g.values[i] ? 1 : 0;
-        g.values = null;
-        mask = erode(mask, gd, gd, Math.ceil((edge || 0) / cell));
+        const soil = soilOf();
+        if (!soil) fail('TL_GROUND_SIZE');
+        const gd = soil.dim, cell = soil.cell, nz = soil.nz;
+        let mask = erode(nz, gd, gd, Math.ceil((edge || 0) / cell));
         // Two-pass labelling with union-find (4-neighbours).
         const lab = new Int32Array(gd * gd);
         const parent = [0];
@@ -197,11 +308,27 @@ const ops = {
             } else lab[i] = up || left;
         }
         mask = null;
+        for (let i = 0; i < lab.length; i++) if (lab[i]) lab[i] = find(lab[i]);
+        // Grow back, one pixel ring at a time, over the soil the shrinking took.
+        let ring = [];
+        const spread = (i, l) => { if (nz[i] && !lab[i]) { lab[i] = l; ring.push(i); } };
+        const around = (i, l) => {
+            const x = i % gd;
+            if (x) spread(i - 1, l);
+            if (x < gd - 1) spread(i + 1, l);
+            if (i >= gd) spread(i - gd, l);
+            if (i < gd * (gd - 1)) spread(i + gd, l);
+        };
+        for (let i = 0; i < lab.length; i++) if (lab[i]) around(i, lab[i]);
+        while (ring.length) {
+            const now = ring;
+            ring = [];
+            for (let k = 0; k < now.length; k++) around(now[k], lab[now[k]]);
+        }
         const area = new Map(), box = new Map();
         for (let i = 0; i < lab.length; i++) {
             if (!lab[i]) continue;
-            const l = find(lab[i]);
-            lab[i] = l;
+            const l = lab[i];
             area.set(l, (area.get(l) || 0) + 1);
             const x = i % gd, y = (i / gd) | 0, b = box.get(l);
             if (!b) box.set(l, [x, y, x, y]);
@@ -222,49 +349,90 @@ const ops = {
         return fields.slice().sort((a, b) => Math.floor(a.bbox[1] / 256) - Math.floor(b.bbox[1] / 256) || a.bbox[0] - b.bbox[0]);
     },
 
-    // Cuts tramlines into a library entry. area: { polys: [[[x,y],...],...] }
-    // (map pixels) or { labels: [..] } (from groundFields). colors: values that
-    // count as tramlines (empty = every pixel in the area).
-    cut({ area, colors, edge, outDir, name }) {
+    // Cuts tramlines into a library entry. area (map pixels): { polys: [...] }
+    // exactly as drawn, { growPolys: [...] } grown over the farmland's worked
+    // soil, or { labels: [..] } from groundFields. colors: values that count as
+    // tramlines (empty = every pixel in the area). The no-crop value also needs
+    // worked soil and a narrow shape: the same value covers everything outside
+    // fields and unsown ground, which aren't tramlines.
+    cut({ area, colors, outDir, name }) {
         if (!state) fail('TL_NOT_LOADED');
         const { dim, values } = state;
-        let bx, by, bw, bh, inArea;
-        if (area.polys) {
-            const xs = area.polys.flat().map(p => p[0]), ys = area.polys.flat().map(p => p[1]);
-            bx = Math.max(0, Math.floor(Math.min(...xs))); by = Math.max(0, Math.floor(Math.min(...ys)));
-            bw = Math.min(dim, Math.ceil(Math.max(...xs)) + 1) - bx; bh = Math.min(dim, Math.ceil(Math.max(...ys)) + 1) - by;
-            if (bw <= 0 || bh <= 0) fail('TL_OUTSIDE');
-            const m = erode(polygonMask(area.polys, bx, by, bw, bh), bw, bh, edge || 0);
-            inArea = (x, y) => m[(y - by) * bw + (x - bx)];
-        } else {
+        const inArea = new Uint8Array(dim * dim);
+        if (area.labels) {
             const g = state.ground;
             if (!g) fail('TL_NOT_LOADED');
             const ids = new Set(area.labels);
-            const boxes = g.fields.filter(f => ids.has(f.label)).map(f => f.bbox);
-            if (!boxes.length) fail('TL_EMPTY');
-            bx = Math.min(...boxes.map(b => b[0])); by = Math.min(...boxes.map(b => b[1]));
-            bw = Math.max(...boxes.map(b => b[2])) - bx; bh = Math.max(...boxes.map(b => b[3])) - by;
-            inArea = (x, y) => ids.has(g.labels[Math.floor(y / g.cell) * g.dim + Math.floor(x / g.cell)]);
+            if (!g.fields.some(f => ids.has(f.label))) fail('TL_EMPTY');
+            for (let i = 0; i < inArea.length; i++) {
+                if (ids.has(g.labels[Math.floor(((i / dim) | 0) / g.cell) * g.dim + Math.floor((i % dim) / g.cell)])) inArea[i] = 1;
+            }
         }
-        const set = new Set(colors || []);
-        const rgba = new Uint8Array(bw * bh * 4);
-        for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) {
-            if (!inArea(x, y)) continue;
-            const v = values[y * dim + x];
-            if (set.size && !set.has(v)) continue;
-            const o = ((y - by) * bw + (x - bx)) * 4;
-            rgba[o] = v & 255; rgba[o + 1] = (v >> 8) & 255; rgba[o + 2] = (v >> 16) & 255; rgba[o + 3] = 255;
+        (area.polys || []).forEach(P => fillPolygon(inArea, dim, P));
+        if (area.growPolys && area.growPolys.length) {
+            const seed = new Uint8Array(dim * dim);
+            area.growPolys.forEach(P => fillPolygon(seed, dim, P));
+            for (let i = 0; i < seed.length; i++) if (seed[i]) inArea[i] = 1;
+            growOverLand(inArea, dim, seed);
         }
-        const c = cropRgba(rgba, bw, bh);
+        let x0 = dim, y0 = dim, x1 = -1, y1 = -1;
+        for (let y = 0; y < dim; y++) {
+            const row = y * dim;
+            for (let x = 0; x < dim; x++) {
+                if (!inArea[row + x]) continue;
+                if (x < x0) x0 = x;
+                if (x > x1) x1 = x;
+                if (y < y0) y0 = y;
+                y1 = y;
+            }
+        }
+        if (x1 < 0) fail('TL_OUTSIDE');
+        const set = new Set(colors || []), anyPixel = !set.size;
+        // Over a region wider than the area, so the area's own edge doesn't
+        // make a wide no-crop stretch look narrow.
+        const r = Math.max(THICK_RADIUS, Math.round(THICK_RADIUS * dim / 8192));
+        const rx = Math.max(0, x0 - r), ry = Math.max(0, y0 - r);
+        const rw = Math.min(dim, x1 + r + 1) - rx, rh = Math.min(dim, y1 + r + 1) - ry;
+        const keep = new Uint8Array(rw * rh);
+        if (anyPixel) {
+            for (let i = 0; i < keep.length; i++) keep[i] = inArea[(ry + ((i / rw) | 0)) * dim + rx + i % rw];
+        } else {
+            const soil = soilOf(), noCrop = new Uint8Array(rw * rh);
+            if (set.has(0)) {
+                for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+                    const mx = rx + x, my = ry + y;
+                    if (values[my * dim + mx] !== 0) continue;
+                    if (soil && !soil.nz[Math.floor(my / soil.cell) * soil.dim + Math.floor(mx / soil.cell)]) continue;
+                    noCrop[y * rw + x] = 1;
+                }
+            }
+            const wide = dilate(erode(noCrop, rw, rh, r), rw, rh, r);
+            for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+                const i = (ry + y) * dim + rx + x, o = y * rw + x;
+                if (!inArea[i]) continue;
+                const v = values[i];
+                if (v === 0 ? noCrop[o] && !wide[o] : set.has(v)) keep[o] = 1;
+            }
+            dropSpecks(keep, rw, rh, MIN_SPECK_PX);
+        }
+        const rgba = new Uint8Array(rw * rh * 4);
+        for (let o = 0; o < keep.length; o++) {
+            if (!keep[o]) continue;
+            const v = values[(ry + ((o / rw) | 0)) * dim + rx + o % rw];
+            rgba[o * 4] = v & 255; rgba[o * 4 + 1] = (v >> 8) & 255; rgba[o * 4 + 2] = (v >> 16) & 255; rgba[o * 4 + 3] = 255;
+        }
+        const c = cropRgba(rgba, rw, rh);
         if (!c) fail('TL_EMPTY');
-        return writeEntry(outDir, name, c.rgba, c.w, c.h, bx + c.x, by + c.y, dim, path.basename(state.saveDir));
+        return writeEntry(outDir, name, c.rgba, c.w, c.h, rx + c.x, ry + c.y, dim, path.basename(state.saveDir));
     },
 
-    // Pastes entries into a save's fruits map: backup, decode, overwrite the
-    // pixels with alpha >= threshold, encode, verify, then replace the file.
+    // Pastes entries into a save: backup, decode, overwrite the fruits pixels
+    // with alpha >= threshold and clear the weeds under them, encode, verify,
+    // then replace the files. Both maps change together or not at all.
     paste({ saveDir, entries, threshold, converter }) {
-        const target = path.join(saveDir, FRUITS);
+        const target = path.join(saveDir, FRUITS), weedTarget = path.join(saveDir, WEED);
         const orig = fs.readFileSync(target);
+        const weedOrig = fs.existsSync(weedTarget) ? fs.readFileSync(weedTarget) : null;
         const backupDir = path.join(saveDir, BACKUP_DIR);
         fs.mkdirSync(backupDir, { recursive: true });
         const d = new Date(), p2 = n => String(n).padStart(2, '0');
@@ -272,9 +440,16 @@ const ops = {
         const backup = path.join(backupDir, `densityMap_fruits_${stamp}.gdm`);
         fs.writeFileSync(backup, orig);
         if (!fs.readFileSync(backup).equals(orig)) fail('TL_BACKUP');
+        if (weedOrig) {
+            const weedBackup = path.join(backupDir, `densityMap_weed_${stamp}.gdm`);
+            fs.writeFileSync(weedBackup, weedOrig);
+            if (!fs.readFileSync(weedBackup).equals(weedOrig)) fail('TL_BACKUP');
+        }
 
         const { dim, values } = core.gdmDecode(orig);
+        const weed = weedOrig ? core.gdmDecode(weedOrig) : null;
         const counts = [];
+        let weedCleared = 0;
         entries.forEach(file => {
             const { meta, png } = readEntry(file);
             if (meta.mapSize !== dim) fail('TL_SIZE', { name: path.basename(file, '.json'), size: meta.mapSize, dim });
@@ -287,31 +462,54 @@ const ops = {
                     if (mx < 0 || mx >= dim || png.rgba[o + 3] < threshold) continue;
                     values[my * dim + mx] = core.packRgb(png.rgba[o], png.rgba[o + 1], png.rgba[o + 2]);
                     n++;
+                    if (weed) {
+                        // The weed map can have another resolution: every pixel touching this one.
+                        const wd = weed.dim, wx1 = Math.ceil((mx + 1) * wd / dim), wy1 = Math.ceil((my + 1) * wd / dim);
+                        for (let wy = Math.floor(my * wd / dim); wy < wy1; wy++) for (let wx = Math.floor(mx * wd / dim); wx < wx1; wx++) {
+                            if (weed.values[wy * wd + wx]) { weed.values[wy * wd + wx] = 0; weedCleared++; }
+                        }
+                    }
                 }
             }
             counts.push({ name: path.basename(file, '.json'), px: n });
         });
 
-        const out = core.gdmEncode(values, orig);
+        const tmp = target + '.farmer_planner_tmp', weedTmp = weedTarget + '.farmer_planner_tmp';
         // Verify before anything in the save changes.
-        const check = core.gdmDecode(out).values;
-        for (let i = 0; i < values.length; i++) if (check[i] !== values[i]) fail('TL_VERIFY');
-        const tmp = target + '.farmer_planner_tmp';
-        fs.writeFileSync(tmp, out);
-        if (converter) verifyWithConverter(converter, tmp, values, backupDir);
-        fs.renameSync(tmp, target);
-        if (state && path.resolve(state.saveDir) === path.resolve(saveDir)) { state.values = values; state.ground = null; }
+        const encodeChecked = (vals, template, file) => {
+            const out = core.gdmEncode(vals, template);
+            const check = core.gdmDecode(out).values;
+            for (let i = 0; i < vals.length; i++) if (check[i] !== vals[i]) fail('TL_VERIFY');
+            fs.writeFileSync(file, out);
+            if (converter) verifyWithConverter(converter, file, vals, backupDir);
+        };
+        try {
+            encodeChecked(values, orig, tmp);
+            if (weedCleared) encodeChecked(weed.values, weedOrig, weedTmp);
+            fs.renameSync(tmp, target);
+            if (weedCleared) {
+                try { fs.renameSync(weedTmp, weedTarget); }
+                catch (e) { fs.writeFileSync(target, orig); throw e; }
+            }
+        } finally {
+            [tmp, weedTmp].forEach(f => { try { fs.unlinkSync(f); } catch (e) { /* replaced or never written */ } });
+        }
+        if (state && path.resolve(state.saveDir) === path.resolve(saveDir)) state.values = values;
         // Each backup is the whole map (tens of MB): keep the newest few.
+        const kept = backupList(backupDir).slice(-KEEP_BACKUPS);
         backupList(backupDir).slice(0, -KEEP_BACKUPS).forEach(f => fs.rmSync(path.join(backupDir, f), { force: true }));
-        return { backup, counts };
+        backupList(backupDir, 'weed').filter(f => !kept.includes(f.replace('_weed_', '_fruits_'))).forEach(f => fs.rmSync(path.join(backupDir, f), { force: true }));
+        return { backup, counts, weedCleared };
     },
 
-    // Puts the newest backup back.
+    // Puts the newest backup back: the fruits map and the weed map saved with it.
     restore({ saveDir }) {
         const dir = path.join(saveDir, BACKUP_DIR);
         const list = backupList(dir);
         if (!list.length) fail('TL_NO_BACKUP');
         const last = path.join(dir, list[list.length - 1]);
+        const lastWeed = last.replace('densityMap_fruits_', 'densityMap_weed_');
+        if (fs.existsSync(lastWeed)) fs.copyFileSync(lastWeed, path.join(saveDir, WEED));
         fs.copyFileSync(last, path.join(saveDir, FRUITS));
         if (state && path.resolve(state.saveDir) === path.resolve(saveDir)) state = null;
         return last;

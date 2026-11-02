@@ -76,7 +76,7 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 ## Pytania
 
 **Czy zmienia mój zapis gry?**
-Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu. Robi to tylko przy zamkniętej grze, najpierw kopiuje plik do `farmer_planner_backup`, sprawdza nowy plik, zanim podmieni stary, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej.
+Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu i usuwa chwasty pod nimi w `densityMap_weed.gdm`. Robi to tylko przy zamkniętej grze, najpierw kopiuje pliki do `farmer_planner_backup`, sprawdza nowe pliki, zanim podmieni stare, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej.
 
 **Jakie mapy i mody obsługuje?**
 Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit i Enhanced Loan System.
