@@ -563,7 +563,18 @@ function rotationFieldViewHtml(farm, field) {
 }
 
 // A cycle picked for a field starts at the step its history suggests.
+// Picking a cycle or a step by hand wins over the crop generator's plan for the
+// field: the plan would otherwise keep the seasons it covers looking unchanged.
+// Undo the generator goes back to how the fields were before the plan.
+function dropGeneratorPlan(field) {
+    if (!field.nextCrop && !field.planAhead) return;
+    delete field.nextCrop;
+    delete field.planAhead;
+    showAutoSyncToast(t('rotPlanDropped').replace('{n}', field.number), 4000);
+}
+
 function setFieldCycle(farm, field, rotId) {
+    dropGeneratorPlan(field);
     const rot = rotationById(farm, rotId);
     if (!rot) { delete field.rotation; return; }
     setFieldRotationSlot(field, rot, detectRotationSlot(rot, field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1));
@@ -573,6 +584,7 @@ function setFieldCycle(farm, field, rotId) {
 function setFieldCycleStep(farm, field, index) {
     const info = fieldRotationInfo(farm, field);
     if (!info) return;
+    dropGeneratorPlan(field);
     setFieldRotationSlot(field, info.rot, parseInt(index, 10) || 0);
     fillEmptyFieldFromRotation(farm, field);
 }

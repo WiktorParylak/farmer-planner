@@ -900,6 +900,7 @@ const UI = {
     genMode_this: "Saison {n}: noch nicht gesäte Felder",
     genMode_next: "Saison {n}: die nächste",
     genMode_years: "Die nächsten 5 Saisons",
+    rotPlanDropped: "Feld {n} folgt jetzt seiner Fruchtfolge: Der Plan des Generators dafür ist entfernt.",
     genYearsIntro: "Ein Plan für die nächsten fünf Saisons. Jede deckt den Bedarf des Hofs neu und baut auf den Früchten der Saison davor auf, damit die Fruchtfolge stimmt. Vorräte zählen nur in der ersten; Erträge und Preise sind die von heute, die späteren Saisons sind also ein Richtwert.",
     genYearsCovered: "Gedeckter Bedarf",
     genYearsCoveredValue: "{ok} von {all}",

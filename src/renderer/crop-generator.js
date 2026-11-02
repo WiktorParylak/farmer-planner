@@ -371,7 +371,7 @@ function buildCropGeneratorPlan(farm, ahead) {
             res: a && a.res, litres: a && a.litres, straw: a && a.straw, margin: a && a.margin !== undefined ? a.margin : (to ? marginOf(x, to) : null),
             perHa: a && a.res ? perHa(x, to, a.res) : null,
             warnings: to ? c.warnings : [],
-            changed: (x.status === 'free' || x.status === 'manual' || (k > 1 && x.status === 'perennial')) && cropOrderKey(to || '') !== cropOrderKey(x.current || ''),
+            changed: (x.status === 'free' || x.status === 'manual' || (ahead && x.status === 'perennial')) && cropOrderKey(to || '') !== cropOrderKey(x.current || ''),
             alts
         };
     });
