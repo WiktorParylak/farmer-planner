@@ -181,6 +181,16 @@ function todayLowFeedBarns(farm) {
     return out;
 }
 
+// Barns short of straw or water, or with poor health or productivity.
+function todayBarnCare(farm) {
+    return (farm.animalBuildings || []).map(building => ({ building, issues: barnCareInfo(building).issues })).filter(x => x.issues.length);
+}
+
+function todayBarnIssueText(issue) {
+    if (issue.key === 'health' || issue.key === 'productivity') return t('todayBarn_' + issue.key).replace('{n}', Math.round(issue.pct));
+    return t('todayBarn_' + issue.key).replace('{n}', Math.max(0, Math.floor(issue.days)));
+}
+
 // Wet weather in the save's forecast (farm.forecast, from environment.xml):
 // the first rain, snow or hail that is falling now or starts within
 // TODAY_WEATHER_HOURS, with back-to-back wet entries joined into one spell.
@@ -249,8 +259,9 @@ function renderTodayPanel() {
     const notes = loadNotes(farm).filter(n => (n.months || []).includes(month)).length;
     const weather = todayWetWeather(farm);
     const summaryYear = fieldLogSummaryDue(farm);
+    const barnCare = todayBarnCare(farm);
     const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0)
-        + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0) + (summaryYear ? 1 : 0);
+        + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0) + (summaryYear ? 1 : 0) + barnCare.length;
     const open = todayPanelOpen();
 
     let body = '';
@@ -309,6 +320,19 @@ function renderTodayPanel() {
                 <span class="today-chip-main">${escapeHtml(buildingDisplayName(farm, b.building))}</span>
                 <span class="today-chip-ha">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(b.days)))}</span>
             </button>`).join('')}</div>
+        </div>`;
+    }
+    if (barnCare.length) {
+        body += `<div class="today-group is-warn">
+            <h3 class="today-group-title"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i> ${t('today_barnCare')}</h3>
+            <div class="today-chips">${barnCare.map(x => {
+                const name = escapeHtml(buildingDisplayName(farm, x.building));
+                const text = escapeHtml(x.issues.map(todayBarnIssueText).join(' · '));
+                return `<button type="button" class="today-chip today-view" data-view="animals" title="${name}: ${text}">
+                    <span class="today-chip-main">${name}</span>
+                    <span class="today-chip-ha">${text}</span>
+                </button>`;
+            }).join('')}</div>
         </div>`;
     }
     if (notes) {

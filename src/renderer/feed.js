@@ -530,6 +530,36 @@ function clusterDailyNeed(c, needType) {
     return getDailyAnimalNeed(c.subType, c.age, needType) * c.numAnimals;
 }
 
+// How a barn is doing, from what the save keeps about it: straw in its storage
+// and how long that lasts, its animals' health and the game's productivity.
+// Water: the save has no level for a barn that gets it automatically, only a
+// mod's own storage shows one, so level stays null otherwise. Nothing the game
+// doesn't tell is guessed: a barn without a known need has no days.
+const BARN_LOW_DAYS = 3, BARN_LOW_HEALTH = 75, BARN_LOW_PRODUCTIVITY = 0.75;
+function barnCareInfo(building) {
+    const clusters = building.clusters || [];
+    const known = clusters.length > 0 && clusters.every(c => ANIMAL_NEEDS_DATA[c.subType]);
+    const stored = fillType => (building.production || []).find(p => p.fillType === fillType);
+    const supply = fillType => {
+        const needKey = fillType === 'STRAW' ? 'straw' : 'water';
+        const daily = known ? clusters.reduce((s, c) => s + clusterDailyNeed(c, needKey), 0) : 0;
+        const node = stored(fillType);
+        // An empty storage isn't saved: a barn that needs straw and shows none has none.
+        const level = node ? node.level : (fillType === 'STRAW' ? 0 : null);
+        return { daily, level, days: daily > 0 && level !== null ? level / daily : null };
+    };
+    const heads = clusters.reduce((s, c) => s + c.numAnimals, 0);
+    const health = heads ? clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : null;
+    const productivity = typeof building.productivity === 'number' ? building.productivity : null;
+    const straw = supply('STRAW'), water = supply('WATER');
+    const issues = [];
+    if (straw.days !== null && straw.days < BARN_LOW_DAYS) issues.push({ key: 'straw', days: straw.days });
+    if (water.days !== null && water.days < BARN_LOW_DAYS) issues.push({ key: 'water', days: water.days });
+    if (health !== null && health < BARN_LOW_HEALTH) issues.push({ key: 'health', pct: health });
+    if (productivity !== null && heads && productivity < BARN_LOW_PRODUCTIVITY) issues.push({ key: 'productivity', pct: productivity * 100 });
+    return { straw, water, health, productivity, issues };
+}
+
 // The cluster month by month over the coming in-game year (m = 0 is today),
 // the way AnimalFoodCalculator projects it (afcGetProjectedClusterState):
 // one month older each month; an inseminated animal old enough to breed

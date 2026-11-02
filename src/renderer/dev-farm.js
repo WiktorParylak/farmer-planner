@@ -383,6 +383,11 @@ function devNotes(pl) {
 
 function buildDevFarm({ pl }) {
     const buildings = devAnimalBuildings();
+    // One barn short of straw and working below par, the others fine.
+    buildings.forEach((b, i) => {
+        b.productivity = i === 0 ? 0.62 : 1;
+        b.production.push({ fillType: 'STRAW', level: i === 0 ? 400 : 90000 });
+    });
     const totals = devTotals(buildings);
     const farm = {
         id: DEV_FARM_ID,

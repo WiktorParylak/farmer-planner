@@ -1906,6 +1906,26 @@ window.openHubPanel = function (type) {
                 });
                 card += `</section>`;
 
+                // --- How the barn is doing: productivity, straw, water ---
+                const care = barnCareInfo(building);
+                const careClass = v => (v < 3 ? 'feed-days--critical' : (v < 7 ? 'feed-days--warning' : 'feed-days--ok'));
+                const careDays = v => (v === null ? '' : ` · <span class="${careClass(v)}">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(v)))}</span>`);
+                card += `<section class="barn-panel barn-panel--care">
+                    <h4 class="barn-section-title">${t('barnCareTitle')}</h4>
+                    <div class="barn-stat-list">`;
+                if (care.productivity !== null) {
+                    card += `<div class="barn-stat">
+                        <span class="barn-stat-icon barn-stat-icon--product" aria-hidden="true"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span>
+                        <span class="barn-stat-label">${t('barnProductivity')}</span>
+                        <span class="barn-stat-value">${Math.round(care.productivity * 100)}%</span>
+                    </div>`;
+                }
+                if (care.straw.daily > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(care.straw.level)} l${careDays(care.straw.days)}`);
+                if (care.water.level !== null) card += statRow('WATER', formatFillType('WATER'), `${num(care.water.level)} l${careDays(care.water.days)}`);
+                card += `</div>`;
+                if (care.water.level === null && care.water.daily > 0) card += `<p class="barn-empty">${t('barnWaterNotSaved')}</p>`;
+                card += `</section>`;
+
                 // --- Daily need ---
                 card += `<section class="barn-panel barn-panel--need">
                     <h4 class="barn-section-title">${t('hubDailyNeed')}</h4>`;
@@ -1962,11 +1982,12 @@ window.openHubPanel = function (type) {
                 }
 
                 // --- Stored in the building right now ---
-                if (building.production.length > 0) {
+                const storedHere = building.production.filter(p => p.fillType !== 'STRAW' && p.fillType !== 'WATER');
+                if (storedHere.length > 0) {
                     card += `<section class="barn-panel barn-panel--stored">
                         <h4 class="barn-section-title">${t('hubStoredProduction')}</h4>
                         <div class="barn-stat-list">`;
-                    building.production.forEach(p => {
+                    storedHere.forEach(p => {
                         card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} l`);
                     });
                     card += `</div></section>`;
@@ -4371,6 +4392,9 @@ function readGameSave(pathToFile) {
                     name: placeable.getAttribute('filename') || '',
                     clusters: [], food: [], production: []
                 };
+                const husbandryEl = placeable.querySelector('husbandry');
+                const productivity = husbandryEl ? parseFloat(husbandryEl.getAttribute('globalProductionFactor')) : NaN;
+                if (isFinite(productivity)) building.productivity = productivity;
                 let buildingHasAnimals = false;
 
                 placeable.querySelectorAll('animal').forEach(animal => {
