@@ -195,7 +195,6 @@ function buildCropGeneratorPlan(farm, ahead) {
     const season = farm.currentSeason || 1;
     const history = loadSeasonHistory(farm, season);
     const grassLimit = grasslandSeasonLimit(farm);
-    const carry = new Set(seasonCarryIndexes(farm));
     const pool = genCropPool(settings);
     const needs = buildFarmDemand(farm, settings);
     const needByRes = {};
@@ -219,8 +218,7 @@ function buildCropGeneratorPlan(farm, ahead) {
         let grassRun = 0;
         for (let i = earlier.length - 1; i >= 0 && cropOrderKey(earlier[i]) === cropOrderKey(prevCrop); i--) grassRun++;
         if (grassRun === earlier.length && cropOrderKey(f.crop) === cropOrderKey(prevCrop)) grassRun += grasslandSeasonCount(f, history, season);
-        if (mode === 'this' && (f.state === 'Planted' || f.carriedFrom)) { status = 'growing'; keepCrop = f.crop; }
-        else if (mode === 'next' && k === 1 && carry.has(idx)) { status = 'growing'; keepCrop = f.crop; }
+        if (mode === 'this' && f.state === 'Planted') { status = 'growing'; keepCrop = f.crop; }
         else if (mode === 'next' && isPerennialCrop(prevCrop) && grassRun < grassLimit && !settings.excluded.includes(prevCrop)) { status = 'perennial'; keepCrop = prevCrop; }
         else if (k === 1 && settings.manual[key] !== undefined) { status = 'manual'; keepCrop = settings.manual[key]; }
         else if (settings.locks[key]) { status = 'locked'; keepCrop = mode === 'next' ? genCycleCrop(info, mode, k) ?? current : current; }
@@ -395,7 +393,7 @@ function buildCropGeneratorPlan(farm, ahead) {
 
 // The season to plan by default: this one while fields are still to be sown.
 function genDefaultMode(farm) {
-    return (farm.fields || []).some(f => f.state !== 'Planted' && !f.carriedFrom && (parseFloat(f.area) || 0) > 0
+    return (farm.fields || []).some(f => f.state !== 'Planted' && (parseFloat(f.area) || 0) > 0
         && genSowThisSeason(f.crop || 'Wheat', farm.month)) ? 'this' : 'next';
 }
 

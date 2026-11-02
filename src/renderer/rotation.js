@@ -339,8 +339,6 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
             field.planAhead = field.planAhead.filter(e => e.season > newSeason + 1);
             if (!field.planAhead.length) delete field.planAhead;
         };
-        // A carried-over crop moves on after its harvest (settleCarriedFields).
-        if (field.carriedFrom) { movePlanUp(); return; }
         // Planned by the crop generator for this season: it wins over the cycle.
         if (field.nextCrop) {
             applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '' });

@@ -4521,7 +4521,7 @@ window.openPlanner = function (id) {
 
         viewedSeason = farm.currentSeason || 1;
         showPlannerView('plan');   // renders the season table
-        settleCarriedFields(getCurrentFarm());
+        dropCarriedMarks(getCurrentFarm());
         maybeSuggestNewSeason(getCurrentFarm());
         maybeFillFromRotation(getCurrentFarm());
 
@@ -4896,7 +4896,6 @@ function runAutoSyncTick() {
         refreshPlannerHeader(farm);
         renderSeasonView();
         showAutoSyncToast();
-        settleCarriedFields(getCurrentFarm());
         maybeSuggestNewSeason(getCurrentFarm());
         maybeFillFromRotation(getCurrentFarm());
     }
@@ -5178,8 +5177,7 @@ function cropKeepsLime(crop) {
     return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }
 
-// Clears a field for the next season (runNewSeason; a carried-over field once
-// its crop is harvested, settleCarriedFields). seasonNum: the season whose
+// Clears a field for the next season (runNewSeason). seasonNum: the season whose
 // harvest this is, for the lime pH backfill.
 function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     // Read before the crop is cleared.
@@ -5226,8 +5224,6 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     field.groundBaseline = true;
     // Undo only covers the season the liming was made in.
     delete field.limePrev;
-    delete field.carriedFrom;
-    delete field.carriedCrop;
 }
 
 if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
@@ -5247,16 +5243,15 @@ async function runNewSeason({ intro = '' } = {}) {
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
         // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
         const rotationMode = rotationFillMode(startFarm);
-        // Fields whose crop is still growing keep it (see clearFieldForNewSeason).
-        const carryIdx = seasonCarryIndexes(startFarm);
-        const carryText = carryIdx.length ? '\n\n' + t('newSeasonCarry').replace('{list}', carryIdx
+        // A new season clears every field: say so when a crop is still in the ground.
+        const growing = seasonGrowingIndexes(startFarm);
+        const growingText = growing.length ? '\n\n' + t('newSeasonGrowing').replace('{list}', growing
             .map(i => startFarm.fields[i].number + ': ' + translateCropName(startFarm.fields[i].crop)).join(', ')) : '';
-        const rotationCount = rotationMode === 'off' ? 0
-            : rotationFieldCount(startFarm) - carryIdx.filter(i => fieldRotationInfo(startFarm, startFarm.fields[i])).length;
+        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
         const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
-            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + carryText + rotationText,
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + growingText + rotationText,
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
             extraText: rotationCount && rotationMode === 'ask' ? t('rotNewSeasonSkip') : null,
@@ -5306,29 +5301,10 @@ async function runNewSeason({ intro = '' } = {}) {
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
             const supplyRatesForLime = getSupplyRates();
-            farm.fields.forEach((field, i) => {
-                // Still growing: it goes over to the new season with its crop.
-                if (carryIdx.includes(i)) {
-                    if (!field.carriedFrom) {
-                        field.carriedFrom = currentSeasonNum;
-                        field.carriedCrop = field.crop;
-                    }
-                    return;
-                }
-                clearFieldForNewSeason(field, i, currentSeasonNum, supplyRatesForLime);
-            });
+            farm.fields.forEach((field, i) => clearFieldForNewSeason(field, i, currentSeasonNum, supplyRatesForLime));
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
-            // Carried-over fields keep theirs.
-            if (farm.supplyRates) {
-                const oldPlans = farm.supplyRates.fertPlan || {};
-                const kept = {};
-                carryIdx.forEach(i => {
-                    const key = fertPlanKey(farm.fields[i], i);
-                    if (oldPlans[key]) kept[key] = oldPlans[key];
-                });
-                farm.supplyRates.fertPlan = kept;
-            }
+            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
             const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
             farm.currentSeason = currentSeasonNum + 1;
@@ -5441,36 +5417,15 @@ function maybeSuggestNewSeason(farm) {
     setTimeout(() => runNewSeason({ intro }), 600);
 }
 
-// A field carried over from the last season clears itself once that crop is
-// harvested, the way a new season clears the others, and moves on in its crop
-// rotation (maybeFillFromRotation then fills it in its month). Replanned by
-// hand — another crop, or no longer sown — it is simply the field's crop now.
-function settleCarriedFields(farm) {
-    if (!farm || !(farm.fields || []).some(f => f.carriedFrom)) return;
-    const ctx = seasonHarvestContext(farm);
-    const rates = getSupplyRates();
-    const freed = [];
-    let changed = false;
-    farm.fields.forEach((field, i) => {
-        if (!field.carriedFrom) return;
-        if (field.state !== 'Planted' || cropOrderKey(field.crop) !== cropOrderKey(field.carriedCrop)) {
-            delete field.carriedFrom;
-            delete field.carriedCrop;
-            changed = true;
-            return;
-        }
-        if (fieldHarvestState(field, ctx.month, ctx.saveById, false) !== 'harvested') return;
-        if (farm.supplyRates && farm.supplyRates.fertPlan) delete farm.supplyRates.fertPlan[fertPlanKey(field, i)];
-        freed.push(field.number + ': ' + translateCropName(field.crop));
-        clearFieldForNewSeason(field, i, field.carriedFrom, rates);
-        const info = fieldRotationInfo(farm, field);
-        if (info) setFieldRotationSlot(field, info.rot, info.index + 1);
-        changed = true;
-    });
-    if (!changed) return;
-    saveFarmData(farm);
+// Farms from before crops stopped carrying over to the next season may still
+// have the marks: the crop stays on the field as an ordinary crop of this season.
+function dropCarriedMarks(farm) {
+    if (!farm) return;
+    const marked = (farm.fields || []).filter(f => f.carriedFrom || f.carriedCrop);
+    if (!marked.length) return;
+    marked.forEach(f => { delete f.carriedFrom; delete f.carriedCrop; });
+    saveFarmData(farm, { touch: false });
     renderSeasonView();
-    if (freed.length) showAutoSyncToast(t('carriedHarvestedToast').replace('{list}', freed.join(', ')), 4000);
 }
 
 if (resetSeasonsBtn) {

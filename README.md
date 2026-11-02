@@ -35,7 +35,7 @@
 - Past seasons kept, so you can step back and compare.
 - Crop rotation cycles (from templates like Norfolk or your own): the next crop is filled in when a new season starts, and a rotation view scores each field.
 - A crop generator that plans the fields for what the farm needs over a year — feed and straw for the animals, inputs for productions and biogas — within the rotation and an area limit you set.
-- Seasons that overlap: crops still growing carry over to the new season, and the planner tells you when to start it.
+- Knows when to start a new season: it tells you once every crop is in.
 - A *What to do today* panel under the plan: this month's sowing, harvest, weeds, rolling, work steps, low feed, rain from the game's forecast and notes.
 - A summary of hectares per crop.
 
@@ -102,7 +102,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - Your own field names (*Behind the barn*), kept across seasons, and a search box (**Ctrl+F**) that filters the fields by number, name or crop — handy on big farms.
 - Combined fields add up their hectares: typing `10-11-12` fills in the area from the fields' known sizes or the save.
 - Catch crops (green rye, oilseed radish…) on the same field, before or after the main crop.
-- Seasons with history — step back to previous seasons and compare. A new season keeps fields whose crop is still growing (maize harvested in October while canola goes in in August); they clear themselves after the harvest. *New season* lights up when it's time.
+- Seasons with history — step back to previous seasons and compare.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
 - Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. A new season (or a new in-game month, once a sowing window opens) fills in each field's next crop. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).

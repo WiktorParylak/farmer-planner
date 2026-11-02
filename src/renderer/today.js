@@ -105,8 +105,8 @@ function seasonHarvestContext(farm) {
     };
 }
 
-// Fields a new season would carry over: their crop is still in the ground.
-function seasonCarryIndexes(farm) {
+// Fields whose crop is still in the ground, which a new season would clear.
+function seasonGrowingIndexes(farm) {
     const ctx = seasonHarvestContext(farm);
     const out = [];
     (farm.fields || []).forEach((field, i) => {
@@ -115,36 +115,20 @@ function seasonCarryIndexes(farm) {
     return out;
 }
 
-// When to start a new season. Fields still growing go over to the new season
-// with their crop (runNewSeason), so it needn't wait for the last harvest —
-// it's time once a harvested field's next crop (its rotation step) is to be
-// sown this month or next, once most of the area is harvested, or once every
-// crop is in. A farm with no field crops to go by falls back to a year gone
-// by in the game. why: the reason to show.
+// When to start a new season. It clears every field, so it's time once every
+// crop is in. A farm with no field crops to go by falls back to a year gone by
+// in the game. why: the reason to show.
 function seasonEndInfo(farm) {
     const ctx = seasonHarvestContext(farm);
-    let total = 0, harvested = 0, area = 0, harvestedArea = 0, sowSoon = null;
+    let total = 0, harvested = 0;
     (farm.fields || []).forEach(field => {
         const state = fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed);
-        if (!state || field.carriedFrom) return;
-        const ha = parseFloat(field.area) || 0;
+        if (!state) return;
         total++;
-        area += ha;
-        if (state !== 'harvested') return;
-        harvested++;
-        harvestedArea += ha;
-        const info = !sowSoon && typeof fieldRotationInfo === 'function' ? fieldRotationInfo(farm, field) : null;
-        if (!info) return;
-        const next = rotationSlotAt(info.rot, info.index + 1);
-        const when = next.crop ? rotationSowMonthSoon(next, ctx.month) : '';
-        if (when) sowSoon = { field, crop: next.crop, month: when };
+        if (state === 'harvested') harvested++;
     });
     let why = '';
     if (total && harvested === total) why = t('seasonEndHarvested').replace('{n}', total);
-    else if (sowSoon) {
-        why = t('seasonEndSowSoon').replace('{n}', sowSoon.field.number)
-            .replace('{crop}', translateCropName(sowSoon.crop)).replace('{m}', translateMonth(sowSoon.month));
-    } else if (area > 0 && harvestedArea * 2 >= area) why = t('seasonEndMost').replace('{h}', harvested).replace('{n}', total);
     else if (!total && ctx.yearPassed) why = t('seasonEndYear');
     return { total, harvested, yearPassed: ctx.yearPassed, ready: !!why, why };
 }

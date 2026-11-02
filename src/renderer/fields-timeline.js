@@ -72,8 +72,6 @@ function timelineCropBar(crop, sowingMonth, from) {
 // Where this season's main crop starts. A crop sown earlier may lie before the
 // axis, and one not sown yet whose month has gone by this year comes next year.
 function timelineStart(field, sowPos, nowPos, currentMonth) {
-    const harvest = timelineMonthPos((CROP_CALENDAR[field.crop] || {})[String(field.sowingMonth || '').toUpperCase()]);
-    if (field.carriedFrom) return harvest >= 0 && harvest < sowPos ? sowPos - 12 : sowPos;
     if (nowPos < 0) return sowPos;
     if (field.state === 'Planted') return sowPos > nowPos ? sowPos - 12 : sowPos;
     if (sowPos < nowPos && !isSowingOverdue(field, currentMonth)) return sowPos + 12;

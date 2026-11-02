@@ -35,7 +35,7 @@
 - Historia sezonów: wrócisz do poprzednich i porównasz.
 - Cykle płodozmianu (z szablonów, np. norfolskiego, albo własne): następna uprawa wpisuje się sama, gdy zaczyna się nowy sezon, a widok płodozmianu ocenia każde pole.
 - Generator upraw, który planuje pola pod to, czego farma potrzebuje w roku — paszę i słomę dla zwierząt, surowce dla produkcji i biogazowni — w zgodzie z płodozmianem i w ustawionym limicie powierzchni.
-- Sezony, które na siebie zachodzą: rosnące uprawy przechodzą do nowego sezonu, a planer podpowiada, kiedy go zacząć.
+- Podpowiedź, kiedy zacząć nowy sezon: gdy wszystko jest zebrane.
 - Panel *Co dziś robić* pod planem: siew, zbiór, chwasty, wałowanie, kroki prac, kończąca się pasza, deszcz z prognozy gry i notatki z bieżącego miesiąca.
 - Podsumowanie hektarów każdej uprawy.
 
@@ -101,7 +101,7 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 - Własne nazwy pól (*Za stodołą*), zachowane między sezonami, i wyszukiwarka (**Ctrl+F**), która filtruje pola po numerze, nazwie albo uprawie — przydatna na dużych farmach.
 - Połączone pola same sumują hektary: wpisanie `10-11-12` uzupełnia areał ze znanych wielkości pól albo z zapisu gry.
 - Międzyplony (zielone żyto, poplon…) na tym samym polu, przed lub po uprawie głównej.
-- Sezony z historią — możesz wrócić do poprzednich sezonów i je porównać. Nowy sezon zostawia pola, na których uprawa jeszcze rośnie (kukurydza zbierana w październiku, gdy rzepak sieje się w sierpniu); po zbiorze czyszczą się same. Przycisk *Nowy sezon* podświetla się, gdy to już pora.
+- Sezony z historią — możesz wrócić do poprzednich sezonów i je porównać.
 - Podsumowanie upraw: łączne hektary każdej zasianej uprawy, liczone z pól, w kolejności upraw z gry (lub według nazwy / areału); międzyplony osobno.
 - Opcjonalnie areał całej działki (farmland) obok areału pola.
 - Płodozmian: cykle na farmie (szablony, np. norfolski, zboża + rzepak, pasza dla bydła, albo własne; kroki wielosezonowe dla traw i odłogu), przypisane do pól. Nowy sezon (albo nowy miesiąc w grze, gdy otwiera się okno siewu) wpisuje każdemu polu następną uprawę. Widok płodozmianu pokazuje minione i planowane sezony z oceną zieloną / żółtą / czerwoną i ostrzeżeniami (ta sama uprawa dwa razy, za dużo zbóż, rzepak lub burak za często, trawa ponad limit).
