@@ -813,25 +813,18 @@ function nextWorkStep(field, idx, farm) {
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-// State column of a field with a crop (current season): one badge with the
-// next job, in the colour of the field's state (badgeCls: planted / plant now /
-// overdue / to plant; stateLabel in the tooltip). Click ticks the job off,
-// right-click steps back; the list itself is edited in the field view.
-// With every job done it shows the state itself. urgent (sowing month / late
-// sowing): the badge leads with that, with an icon — "Plant now · Cultivate",
-// or just "Plant now" when sowing is the next job.
-function workCellHtml(field, idx, farm, badgeCls, stateLabel, urgent) {
+// State column of a field with a crop (current season): two pills. The state,
+// sown or to sow (click toggles it), coloured by how urgent the sowing is
+// (badgeCls: planted / plant now / overdue / to plant; stateLabel in the
+// tooltip), and the job at hand: click ticks it off, right-click steps back,
+// the list itself is edited in the field view. All jobs done: no second pill.
+function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
     const { next, done, total } = nextWorkStep(field, idx, farm);
-    const job = next ? t('work_' + next.step) : '';
-    const count = next && done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    const title = stateLabel + ' · ' + t('workBadgeHint');
-    let label = escapeHtml(job || stateLabel);
-    if (urgent) {
-        const icon = urgent.overdue ? 'fa-clock' : 'fa-seedling';
-        label = `<i class="fa-solid ${icon}" aria-hidden="true"></i> ${escapeHtml(urgent.label)}`
-            + (next && next.step !== 'sow' ? `<span class="badge-work-job"> · ${escapeHtml(job)}</span>` : '');
-    }
-    return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(title)}"><span class="badge ${badgeCls} badge--work">${label}${count}</span></button>`;
+    const label = t(field.state === 'Planted' ? 'planted' : 'toPlant');
+    const state = `<button type="button" class="state-toggle" data-idx="${idx}" title="${escapeHtml(stateLabel + ' · ' + t('stateToggleHint'))}"><span class="badge ${badgeCls}">${escapeHtml(label)}</span></button>`;
+    if (!next) return `<div class="state-pills">${state}</div>`;
+    const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(t('workBadgeHint'))}"><span class="badge badge--job">${escapeHtml(t('work_' + next.step))}${count}</span></button></div>`;
 }
 
 // A small tag after a step the game itself asks for (ploughing required), or
@@ -1622,8 +1615,8 @@ function renderFieldsTable(fields) {
             areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
-            // A field with a crop shows its next job in a badge of its state's colour.
-            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant'), stateUrgent = null;
+            // A field with a crop: its state pill takes this colour (workCellHtml).
+            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant');
 
             if (field.state === 'Planted') {
                 stateDisplay = `<span class="badge badge--planted">${t('planted')}</span>`;
@@ -1633,11 +1626,9 @@ function renderFieldsTable(fields) {
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
                     stateBadge = 'badge--plant-now'; stateLabel = t('plantNow');
-                    stateUrgent = { label: t('plantNow') };
                 } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
                     stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
                     stateBadge = 'badge--overdue'; stateLabel = t('overdue') + ' — ' + t('overdueHint');
-                    stateUrgent = { label: t('overdue'), overdue: true };
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
                 }
@@ -1676,7 +1667,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel, stateUrgent) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
+                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
