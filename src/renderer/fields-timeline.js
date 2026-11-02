@@ -288,19 +288,45 @@ if (fieldsTimelineEl) fieldsTimelineEl.addEventListener('click', e => {
     if (btn && !isEditMode) openFieldModal(parseInt(btn.dataset.idx, 10));
 });
 
+// Switching what the fields area shows slides the old view out and the new one
+// in. Only on these clicks: a sync redrawing the plan stays still. `back` turns
+// the direction round. The name goes on the two views for the switch alone, since
+// it would make each of them a stacking context the rest of the time.
+let fieldsViewSwitches = 0;
+function switchFieldsView(update, back) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!document.startViewTransition || reduced) { update(); return; }
+    const root = document.documentElement;
+    root.classList.add('is-fields-switching');
+    root.dataset.viewDir = back ? 'back' : 'forward';
+    fieldsViewSwitches++;
+    const transition = document.startViewTransition(update);
+    transition.ready.catch(() => { /* cut short by the next click */ });
+    transition.finished.catch(() => {}).then(() => {
+        fieldsViewSwitches--;
+        if (!fieldsViewSwitches) root.classList.remove('is-fields-switching');
+    });
+}
+
 const timelineAheadSwitchEl = document.getElementById('timeline-ahead-switch');
 if (timelineAheadSwitchEl) timelineAheadSwitchEl.addEventListener('click', e => {
     const btn = e.target.closest('button[data-ahead]');
     if (!btn) return;
-    try { setSetting('timelineAhead', btn.dataset.ahead); } catch (err) { /* ignore */ }
-    renderSeasonView();
+    const ahead = parseInt(btn.dataset.ahead, 10);
+    if (ahead === timelineAheadYears()) return;
+    switchFieldsView(() => {
+        try { setSetting('timelineAhead', btn.dataset.ahead); } catch (err) { /* ignore */ }
+        renderSeasonView();
+    }, ahead < timelineAheadYears());
 });
 
 const fieldsViewSwitchEl = document.getElementById('fields-view-switch');
 if (fieldsViewSwitchEl) fieldsViewSwitchEl.addEventListener('click', e => {
     const btn = e.target.closest('button[data-view]');
     if (!btn || btn.dataset.view === getFieldsViewMode()) return;
-    fieldsViewMode = btn.dataset.view;
-    try { setSetting('fieldsView', fieldsViewMode); } catch (err) { /* ignore */ }
-    renderSeasonView();
+    switchFieldsView(() => {
+        fieldsViewMode = btn.dataset.view;
+        try { setSetting('fieldsView', fieldsViewMode); } catch (err) { /* ignore */ }
+        renderSeasonView();
+    }, btn.dataset.view === 'table');
 });

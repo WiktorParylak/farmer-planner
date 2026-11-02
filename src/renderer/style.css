@@ -9836,6 +9836,41 @@ button.field-open.has-callout .field-number-chip {
   outline-offset: 1px;
 }
 
+/* Switching the fields view (switchFieldsView in fields-timeline.js) */
+.is-fields-switching #fields-table-wrap,
+.is-fields-switching #fields-timeline {
+  view-transition-name: fields-view;
+}
+
+:root { --view-shift: 18px; }
+:root[data-view-dir="back"] { --view-shift: -18px; }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion);
+}
+
+::view-transition-group(fields-view) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(fields-view) {
+  animation: fields-view-out var(--motion) var(--ease-out) both;
+}
+
+::view-transition-new(fields-view) {
+  animation: fields-view-in var(--motion-slow) var(--ease-out) both;
+}
+
+@keyframes fields-view-out {
+  to { opacity: 0; transform: translateX(calc(var(--view-shift) * -1)); }
+}
+
+@keyframes fields-view-in {
+  from { opacity: 0; transform: translateX(var(--view-shift)); }
+}
+
 .fields-timeline {
   display: flex;
   flex-direction: column;
