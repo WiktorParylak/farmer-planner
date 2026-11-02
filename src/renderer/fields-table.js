@@ -1705,6 +1705,7 @@ function renderFieldsTable(fields) {
         htmlString = `<tr class="fields-search-empty"><td colspan="7">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
+    renderFieldsTimeline(fields);
     renderBulkBar();
     const countEl = document.getElementById('fields-search-count');
     if (countEl) {
@@ -2571,6 +2572,8 @@ function setEditModeUi(on) {
     const searchWrap = document.getElementById('fields-search-wrap');
     if (searchWrap) searchWrap.hidden = on;
     if (!on) editSnapshot = null;
+    // Edit cards live in the table, whichever view was open.
+    updateFieldsViewUi();
     // The Today panel stays out of the way while editing.
     if (typeof renderTodayPanel === 'function') renderTodayPanel();
     document.querySelectorAll('.season-nav-btn').forEach(b => {

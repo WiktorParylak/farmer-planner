@@ -96,6 +96,7 @@ src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem
 src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
 src/renderer/supplies.js       zaopatrzenie, plan nawożenia pola, model stawek (PRZED renderer.js)
 src/renderer/fields-table.js   tabela planu, okno pola, planer prac, tryb edycji (PO renderer.js)
+src/renderer/fields-timeline.js drugi widok planu: oś czasu, tylko do odczytu (PO fields-table.js)
 src/renderer/rotation.js       płodozmian: cykle, przypisanie pól, auto-uzupełnianie, widok w pasku bocznym (PO fields-table.js)
 src/renderer/crop-generator.js generator upraw: zakładka „Generator” płodozmianu, zapotrzebowanie farmy, propozycja, zastosuj/cofnij (PO rotation.js)
 src/renderer/live-link.js      dane na żywo z moda FS25_FarmerPlannerLink: odczyt modSettings, plakietka „Na żywo”, sekcja w ustawieniach (PO today.js)

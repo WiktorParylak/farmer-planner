@@ -1013,6 +1013,7 @@ function startTutorial() {
     tutCloseModals();
     tutGoToDashboard();
     tut.active = true;
+    updateFieldsViewUi();    // the tutorial points at the table
     if (tutorialOverlay) tutorialOverlay.style.display = 'block';
     clearInterval(tut.timer);
     // Keeps the spotlight glued to its target through fade-ins, re-renders
@@ -1025,6 +1026,7 @@ function endTutorial() {
     if (!tut.active) return;
     tutLeaveStep();
     tut.active = false;
+    renderSeasonView();
     tut.mode = null;
     clearInterval(tut.timer);
     if (tutorialOverlay) tutorialOverlay.style.display = 'none';

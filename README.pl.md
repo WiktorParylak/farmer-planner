@@ -91,6 +91,7 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 <summary><b>Pełna lista funkcji</b></summary>
 
 **Plan sezonu**
+- Widok osi czasu: jeden wiersz na pole od marca do lutego, z paskiem od siewu do zbioru, poplonami i pokosami.
 - Tabela pól: numer pola (kilka pól można połączyć w jeden wiersz, np. `69-70-71`), hektary, uprawa, miesiąc siewu, następna praca w kolorze stanu pola (do obsiania / siej teraz / po terminie / obsiane; kliknij, gdy praca jest zrobiona, prawy klik cofa), orka lub bezorka, chipy wapna i azotu. Kliknięcie nagłówka kolumny sortuje tabelę.
 - Okno pola (klik w numer pola): uprawa, międzyplon, płodozmian, gleby z przyciskiem *Wczytaj z gry*, pH i wapno, notatki, plan azotu (zapotrzebowanie, azot w glebie i z nawozów naturalnych, ile musi pokryć nawóz mineralny) i lista prac do odhaczania.
 - Prace zrobione w grze odhaczają się same: z podłączonym zapisem uprawa, orka, mulczowanie, siew, nawożenie, wapnowanie i wałowanie odhaczają pasujące kroki. Gdy w grze orka jest obowiązkowa, pole ze skończonym licznikiem orki dostaje *Orkę* z dopiskiem *wymaga gra*.

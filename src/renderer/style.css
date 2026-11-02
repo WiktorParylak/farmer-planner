@@ -9787,3 +9787,295 @@ button.field-open.has-callout .field-number-chip {
   .splash *, .splash *::before { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
   .splash-dust, .splash-glint { display: none; }
 }
+
+/* Plan as a timeline (fields-timeline.js) */
+.fields-view-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-soft);
+}
+
+.fields-view-switch[hidden] {
+  display: none;
+}
+
+.fields-view-switch button {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--color-ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fields-view-switch button:hover {
+  color: var(--color-ink);
+}
+
+.fields-view-switch button[aria-pressed="true"] {
+  background-color: var(--color-primary);
+  color: var(--color-surface-soft);
+}
+
+.fields-view-switch button:focus-visible,
+.timeline-bar:focus-visible,
+.timeline-field-open:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.fields-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.fields-timeline[hidden] {
+  display: none;
+}
+
+.timeline-table {
+  table-layout: fixed;
+  min-width: 760px;
+}
+
+.timeline-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 8px 0;
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.timeline-table th.timeline-field {
+  width: 132px;
+  padding: 6px 10px;
+  font-weight: 400;
+  text-align: left;
+  text-transform: none;
+}
+
+.timeline-table thead th.timeline-field {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.timeline-table thead th.is-now {
+  background-color: var(--color-accent);
+  color: var(--color-surface-soft);
+}
+
+.timeline-table tbody tr {
+  border-top: 1px solid var(--color-border);
+}
+
+.timeline-field-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-field .ha-caption {
+  display: block;
+}
+
+.timeline-track {
+  position: relative;
+  height: 46px;
+  padding: 0;
+  background-image: repeating-linear-gradient(to right, var(--color-border) 0, var(--color-border) 1px, transparent 1px, transparent calc(100% / 12));
+}
+
+.timeline-track.has-catch {
+  height: 62px;
+}
+
+.timeline-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: var(--color-accent-soft);
+  pointer-events: none;
+}
+
+.timeline-track .timeline-bar {
+  position: absolute;
+  top: calc(50% - 13px);
+  height: 26px;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+}
+
+button.timeline-bar {
+  cursor: pointer;
+}
+
+button.timeline-bar:hover {
+  filter: brightness(0.94);
+}
+
+.timeline-track.has-catch .timeline-bar--lane0 {
+  top: calc(50% - 25px);
+}
+
+.timeline-track.has-catch .timeline-bar--lane1 {
+  top: calc(50% + 5px);
+  height: 20px;
+  font-size: var(--fs-xs);
+}
+
+.timeline-bar-label {
+  display: block;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.timeline-track .timeline-bar.cont-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-style: dashed;
+}
+
+.timeline-track .timeline-bar.cont-left {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-style: dashed;
+}
+
+.timeline-track .timeline-bar.is-next-year,
+.timeline-swatch.is-next-year {
+  opacity: 0.55;
+}
+
+.timeline-bar.is-planned,
+.timeline-swatch.is-planned {
+  background-color: var(--color-surface-alt);
+  border-color: var(--color-border-strong);
+  color: var(--color-ink);
+}
+
+.timeline-bar.is-now,
+.timeline-swatch.is-now {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent-dark);
+  color: var(--color-surface-soft);
+}
+
+.timeline-bar.is-overdue,
+.timeline-swatch.is-overdue {
+  background-color: var(--color-rust-soft);
+  border-color: var(--color-rust);
+  color: var(--color-rust);
+}
+
+.timeline-bar.is-sown,
+.timeline-swatch.is-sown {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary-dark);
+  color: var(--color-surface-soft);
+}
+
+.timeline-bar.is-catch,
+.timeline-swatch.is-catch {
+  background-color: rgba(62, 112, 137, 0.16);
+  border-color: var(--color-sky);
+  color: var(--color-sky);
+}
+
+.timeline-bar.is-grass,
+.timeline-swatch.is-grass {
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.timeline-track .timeline-bar.has-harvest {
+  border-right: 5px solid var(--color-accent-dark);
+}
+
+.timeline-cut {
+  position: absolute;
+  top: calc(50% - 6px);
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  box-sizing: border-box;
+  border: 2px solid var(--color-primary-dark);
+  border-radius: 50%;
+  background-color: var(--color-surface-soft);
+}
+
+.timeline-cut.is-done {
+  background-color: var(--color-primary-dark);
+}
+
+.timeline-legend {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: auto;
+  padding: 8px 10px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xs);
+}
+
+.timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.timeline-swatch {
+  width: 16px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+
+.timeline-swatch.is-harvest {
+  width: 5px;
+  background-color: var(--color-accent-dark);
+  border-radius: 1px;
+}
+
+.timeline-cut--legend {
+  position: static;
+  width: 10px;
+  height: 10px;
+  margin: 0;
+}

@@ -92,6 +92,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 <summary><b>Full feature list</b></summary>
 
 **Season plan**
+- Timeline view of the plan: one row per field from March to February, with sowing to harvest, catch crops and cuts.
 - Field table: field number (several fields can be combined into one row, e.g. `69-70-71`), hectares, crop, sowing month, the next job in the colour of the field's state (to plant / plant now / overdue / planted; click it when the job is done, right-click to step back), plowed or no-till, lime and nitrogen chips. Click a column header to sort.
 - Field view (click the field number): crop, catch crop, rotation, soils with *Load from the game*, pH and lime, notes, the nitrogen plan (requirement, nitrogen in the soil and from manure, what mineral fertilizer still has to cover) and the work list to tick off.
 - Work done in the game ticks itself off: with the save connected, cultivating, ploughing, mulching, sowing, fertilizing, liming and rolling tick the matching steps. With ploughing required in the game, a field whose plough counter ran out gets *Plough* marked *required by the game*.

@@ -170,6 +170,10 @@
                                 <input type="search" id="fields-search" data-i18n-placeholder="fieldsSearchPlaceholder" placeholder="Search fields…" data-i18n-title="fieldsSearchHint" title="Number, name or crop · Ctrl+F" autocomplete="off" spellcheck="false">
                                 <span id="fields-search-count" class="fields-search-count" hidden></span>
                             </label>
+                            <div id="fields-view-switch" class="fields-view-switch" role="group" data-i18n-aria-label="fieldsViewLabel" aria-label="Plan view">
+                                <button type="button" data-view="table" aria-pressed="true"><i class="fa-solid fa-table-list" aria-hidden="true"></i> <span data-i18n="fieldsViewTable">Table</span></button>
+                                <button type="button" data-view="timeline" aria-pressed="false"><i class="fa-solid fa-bars-progress" aria-hidden="true"></i> <span data-i18n="fieldsViewTimeline">Timeline</span></button>
+                            </div>
                             <div class="main-table-header-btns">
                                 <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n-title="loadFieldsFromGameHint" hidden><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="loadFieldsFromGame">FIELDS FROM GAME</span></button>
                                 <button type="button" class="new-season-btn"><i class="fa-solid fa-forward" aria-hidden="true"></i> <span data-i18n="newSeason">NEW SEASON</span></button>
@@ -178,7 +182,7 @@
                             </div>
                         </div>
                         <div id="bulk-bar" class="bulk-bar" hidden></div>
-                        <div class="table-container">
+                        <div class="table-container" id="fields-table-wrap">
                             <table id="fields-table">
                                 <thead>
                                     <tr>
@@ -195,6 +199,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div id="fields-timeline" class="table-container fields-timeline" hidden></div>
                         <div class="table-footer-controls">
                             <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
                             <span id="total-ha-sum">0.00 ha</span>
@@ -597,6 +602,7 @@
     <script src="market.js"></script>
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
+    <script src="fields-timeline.js"></script>
     <script src="rotation.js"></script>
     <script src="crop-generator.js"></script>
     <script src="today.js"></script>
