@@ -1909,7 +1909,7 @@ window.openHubPanel = function (type) {
                 // --- How the barn is doing: productivity, straw, water ---
                 const care = barnCareInfo(building);
                 const careClass = v => (v < 3 ? 'feed-days--critical' : (v < 7 ? 'feed-days--warning' : 'feed-days--ok'));
-                const careDays = v => (v === null ? '' : ` · <span class="${careClass(v)}">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(v)))}</span>`);
+                const careDays = v => (v === null ? '' : `<span class="barn-stat-days ${careClass(v)}">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(v)))}</span>`);
                 card += `<section class="barn-panel barn-panel--care">
                     <h4 class="barn-section-title">${t('barnCareTitle')}</h4>
                     <div class="barn-stat-list">`;

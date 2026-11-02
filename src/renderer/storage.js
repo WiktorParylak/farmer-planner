@@ -133,7 +133,18 @@ function storagePlacesHtml(places) {
 
 // One production: each line's input and output per in-game month, its cost and
 // whether it runs. A cost the mod's file doesn't give shows as unknown.
-function storageProductionHtml(p) {
+const STORAGE_CLOSED_SETTING = 'storageClosedProductions';
+
+function storageClosedProductions() {
+    try { return new Set(JSON.parse(getSetting(STORAGE_CLOSED_SETTING) || '[]')); }
+    catch (e) { return new Set(); }
+}
+
+function storageProductionKey(p) {
+    return String(p.id || p.name || '');
+}
+
+function storageProductionHtml(p, closed) {
     const fill = ft => storageFillName(ft, p);
     const per = (list, r) => list.map(i => `${escapeHtml(fill(i.fillType))} ${storageLitres(i.amount * r.cyclesPerMonth)}`).join('<br>') || '–';
     const lines = p.recipes.map(r => `<tr class="${r.enabled ? '' : 'is-off'}">
@@ -145,16 +156,18 @@ function storageProductionHtml(p) {
     const cost = on.reduce((s, r) => s + (r.costPerMonth || 0), 0);
     const stock = Object.keys(p.stock || {}).sort((a, b) => p.stock[b] - p.stock[a]).map(ft => `${escapeHtml(fill(ft))} ${storageLitres(p.stock[ft])}`).join(' · ');
     const title = (p.nameTitles && (p.nameTitles[currentLang] || p.nameTitles.en)) || p.name;
-    return `<article class="storage-production">
-        <header class="storage-production-head">
+    const key = storageProductionKey(p);
+    return `<details class="storage-production" data-storage-key="${escapeHtml(key)}"${closed.has(key) ? '' : ' open'}>
+        <summary class="storage-production-head">
+            <i class="fa-solid fa-chevron-right storage-production-chevron" aria-hidden="true"></i>
             <h4>${escapeHtml(plainModText(title))}</h4>
             <span class="storage-production-sum">${on.length ? escapeHtml(t('storageLinesOn').replace('{n}', on.length).replace('{all}', p.recipes.length)) + (cost > 0 ? ' · ' + escapeHtml(t('storageCostMonth').replace('{v}', finMoney(cost))) : '') : escapeHtml(t('storageNoLinesOn'))}</span>
-        </header>
+        </summary>
         <table class="data-table supply-table storage-table"><thead><tr>
             <th>${t('storageColLine')}</th><th>${t('storageColIn')}</th><th>${t('storageColOut')}</th><th>${t('storageColCost')}</th>
         </tr></thead><tbody>${lines}</tbody></table>
         ${stock ? `<p class="hub-panel-note storage-stock">${escapeHtml(t('storageInStock'))}: ${stock}</p>` : ''}
-    </article>`;
+    </details>`;
 }
 
 function renderStoragePanel(titleEl, bodyEl) {
@@ -166,12 +179,18 @@ function renderStoragePanel(titleEl, bodyEl) {
         bodyEl.innerHTML = `<p class="hub-panel-note">${t(farm && farm.saveGamePath ? 'storageNothing' : 'storageNoSave')}</p>`;
         return;
     }
+    const closed = storageClosedProductions();
     let html = `<p class="supply-intro">${t('storageIntro')}</p>`;
     if (storage) {
         html += `<h3 class="hub-panel-subtitle">${t('storageTotalsTitle')}</h3>${storageTotalsHtml(storage.totals || {})}`;
         html += `<h3 class="hub-panel-subtitle">${t('storagePlacesTitle')}</h3>${storagePlacesHtml(storage.places || [])}`;
     }
     html += `<h3 class="hub-panel-subtitle">${t('storageProductionsTitle')}</h3>`;
-    html += productions.length ? productions.map(storageProductionHtml).join('') : `<p class="hub-panel-note">${t('storageNoProductions')}</p>`;
+    html += productions.length ? productions.map(x => storageProductionHtml(x, closed)).join('') : `<p class="hub-panel-note">${t('storageNoProductions')}</p>`;
     bodyEl.innerHTML = html;
+    bodyEl.querySelectorAll('details.storage-production').forEach(d => d.addEventListener('toggle', () => {
+        const now = storageClosedProductions();
+        if (d.open) now.delete(d.dataset.storageKey); else now.add(d.dataset.storageKey);
+        setSetting(STORAGE_CLOSED_SETTING, JSON.stringify([...now]));
+    }));
 }

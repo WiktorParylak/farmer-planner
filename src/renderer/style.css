@@ -10238,10 +10238,34 @@ button.timeline-bar:hover {
 .storage-production-head {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 4px 12px;
+  gap: 4px 10px;
+  padding: 4px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.storage-production-head::-webkit-details-marker {
+  display: none;
+}
+
+.storage-production-chevron {
+  width: 12px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+  transition: transform 0.15s ease;
+}
+
+.storage-production[open] .storage-production-chevron {
+  transform: rotate(90deg);
+}
+
+.storage-production[open] .storage-production-head {
   margin-bottom: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storage-production-chevron { transition: none; }
 }
 
 .storage-production-head h4 {
@@ -10250,6 +10274,7 @@ button.timeline-bar:hover {
 }
 
 .storage-production-sum {
+  margin-left: auto;
   font-size: var(--fs-sm);
   color: var(--color-ink-soft);
 }
@@ -10291,4 +10316,41 @@ button.timeline-bar:hover {
 
 .gen-years-cover.is-short {
   color: var(--color-accent);
+}
+
+/* Barn state: days under the litres */
+.barn-panel--care .barn-stat-value {
+  text-align: right;
+}
+
+.barn-stat-days {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+
+/* Crop generator: which crops it may use */
+.gen-crop-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.gen-crop-picker-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.gen-crop-picker-head .hub-panel-subtitle {
+  margin: 0;
+}
+
+.gen-crop-picker-tools {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
 }

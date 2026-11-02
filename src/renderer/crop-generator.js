@@ -221,7 +221,7 @@ function buildCropGeneratorPlan(farm, ahead) {
         if (grassRun === earlier.length && cropOrderKey(f.crop) === cropOrderKey(prevCrop)) grassRun += grasslandSeasonCount(f, history, season);
         if (mode === 'this' && (f.state === 'Planted' || f.carriedFrom)) { status = 'growing'; keepCrop = f.crop; }
         else if (mode === 'next' && k === 1 && carry.has(idx)) { status = 'growing'; keepCrop = f.crop; }
-        else if (mode === 'next' && isPerennialCrop(prevCrop) && grassRun < grassLimit) { status = 'perennial'; keepCrop = prevCrop; }
+        else if (mode === 'next' && isPerennialCrop(prevCrop) && grassRun < grassLimit && !settings.excluded.includes(prevCrop)) { status = 'perennial'; keepCrop = prevCrop; }
         else if (k === 1 && settings.manual[key] !== undefined) { status = 'manual'; keepCrop = settings.manual[key]; }
         else if (settings.locks[key]) { status = 'locked'; keepCrop = mode === 'next' ? genCycleCrop(info, mode, k) ?? current : current; }
         else if (settings.keepCycles && info) { status = 'cycle'; keepCrop = mode === 'this' ? current || genCycleCrop(info, mode) : genCycleCrop(info, mode, k); }
@@ -338,7 +338,7 @@ function buildCropGeneratorPlan(farm, ahead) {
         if (x.status !== 'free' || assigned[x.idx]) return;
         if (x.info) {
             const crop = genCycleCrop(x.info, mode, k);
-            if (crop !== null && (!crop || usable(x, crop))) { assigned[x.idx] = { crop, reason: 'cycle' }; return; }
+            if (crop !== null && (!crop || (usable(x, crop) && !settings.excluded.includes(crop)))) { assigned[x.idx] = { crop, reason: 'cycle' }; return; }
         }
         if (x.current && pool.includes(x.current) && usable(x, x.current) && !cell(x, x.current).warnings.length) {
             assigned[x.idx] = { crop: x.current, reason: 'keep' };
@@ -446,7 +446,8 @@ function cropGeneratorHtml(farm) {
         <div class="gen-head">
             <p class="supply-intro">${t('genIntro')}</p>
             ${genModeTabs(farm, plan.mode)}
-        </div>`;
+        </div>
+        ${genCropPickerHtml(s)}`;
     if (!plan.needs.length) {
         html += `<p class="hub-panel-note">${t('genEmpty')}</p>`;
     } else {
@@ -629,11 +630,6 @@ function genSettingsHtml(farm, plan) {
                 <button type="button" class="feed-ration-tool" data-gen-prio="${i}" data-dir="-1" title="${escapeHtml(t('rotMoveUp'))}" ${i === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
                 <button type="button" class="feed-ration-tool" data-gen-prio="${i}" data-dir="1" title="${escapeHtml(t('rotMoveDown'))}" ${i === s.priority.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
             </span></li>`).join('');
-    const crops = AVAILABLE_CROPS.filter(c => CROP_CALENDAR[c] && getCropYieldRate(c) !== null && !(isCatchCropChoice(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c));
-    const chips = crops.map(c => {
-        const on = !s.excluded.includes(c);
-        return `<button type="button" class="rotation-area-chip gen-crop-toggle${on ? '' : ' is-unused'}" style="--crop-color:${rotationCropColor(c)}" data-gen-crop="${escapeHtml(c)}" aria-pressed="${on}">${on ? '<i class="fa-solid fa-check" aria-hidden="true"></i> ' : ''}${escapeHtml(translateCropName(c))}</button>`;
-    }).join('');
     return `<details class="feed-settings gen-settings" data-gen-details="settings"${genSettingsOpen ? ' open' : ''}>
         <summary><i class="fa-solid fa-sliders" aria-hidden="true"></i> ${t('genSettings')}</summary>
         <div class="gen-settings-body">
@@ -651,7 +647,6 @@ function genSettingsHtml(farm, plan) {
                     <label class="gen-check"><input type="checkbox" class="fp-check" id="gen-avoid-red" ${s.avoidRed ? 'checked' : ''}> ${t('genAvoidRed')}</label>
                 </div>
             </div>
-            <div class="settings-field"><span>${t('genCrops')}</span><div class="gen-crop-chips">${chips}</div></div>
         </div>
     </details>`;
 }
@@ -672,6 +667,32 @@ function buildCropGeneratorYears(farm) {
     return plans;
 }
 
+// Every crop the generator could use, ticked or not.
+function genAllCrops() {
+    return AVAILABLE_CROPS.filter(c => CROP_CALENDAR[c] && getCropYieldRate(c) !== null && !(isCatchCropChoice(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c));
+}
+
+function genCropPickerHtml(s) {
+    const crops = genAllCrops();
+    const on = crops.filter(c => !s.excluded.includes(c)).length;
+    const chips = crops.map(c => {
+        const active = !s.excluded.includes(c);
+        return `<button type="button" class="rotation-area-chip gen-crop-toggle${active ? '' : ' is-unused'}" style="--crop-color:${rotationCropColor(c)}" data-gen-crop="${escapeHtml(c)}" aria-pressed="${active}">${active ? '<i class="fa-solid fa-check" aria-hidden="true"></i> ' : ''}${escapeHtml(translateCropName(c))}</button>`;
+    }).join('');
+    return `<section class="gen-crop-picker">
+        <div class="gen-crop-picker-head">
+            <div class="hub-panel-subtitle">${t('genCrops')}</div>
+            <span class="supply-sub">${t('genCropsCount').replace('{n}', on).replace('{all}', crops.length)}</span>
+            <span class="gen-crop-picker-tools">
+                <button type="button" class="settings-btn" data-gen-crops="all" ${on === crops.length ? 'disabled' : ''}>${t('genCropsAll')}</button>
+                <button type="button" class="settings-btn" data-gen-crops="none" ${on === 0 ? 'disabled' : ''}>${t('genCropsNone')}</button>
+            </span>
+        </div>
+        <div class="gen-crop-chips">${chips}</div>
+        <span class="settings-hint">${t('genCropsHint')}</span>
+    </section>`;
+}
+
 function genModeTabs(farm, active) {
     const season = farm.currentSeason || 1;
     const btn = m => `<button type="button" class="view-tab gen-mode${active === m ? ' is-active' : ''}" data-gen-mode="${m}" aria-pressed="${active === m}">${t('genMode_' + m).replace('{n}', season + (m === 'next' ? 1 : 0))}</button>`;
@@ -686,7 +707,8 @@ function genYearsHtml(farm) {
         <div class="gen-head">
             <p class="supply-intro">${t('genYearsIntro')}</p>
             ${genModeTabs(farm, 'years')}
-        </div>`;
+        </div>
+        ${genCropPickerHtml(getGeneratorSettings(farm))}`;
     if (!first.length) return html + `<p class="settings-hint">${t('genNoFields')}</p></div>`;
 
     const rows = first.map((p, i) => {
@@ -947,6 +969,7 @@ function genRerender() {
             [s.priority[i], s.priority[j]] = [s.priority[j], s.priority[i]];
             return save(farm, true);
         }
+        if (el.dataset.genCrops) { s.excluded = el.dataset.genCrops === 'none' ? genAllCrops() : []; return save(farm); }
         if (el.dataset.genCrop) {
             const c = el.dataset.genCrop;
             s.excluded = s.excluded.includes(c) ? s.excluded.filter(x => x !== c) : [...s.excluded, c];
