@@ -9840,9 +9840,35 @@ button.field-open.has-callout .field-number-chip {
   display: none;
 }
 
+.timeline-scroll {
+  overflow-x: auto;
+}
+
+.timeline-ahead {
+  align-self: flex-end;
+  margin-bottom: 8px;
+  font-size: var(--fs-sm);
+}
+
 .timeline-table {
   table-layout: fixed;
   min-width: 760px;
+}
+
+.timeline-table th.timeline-year {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0;
+  border-left: 2px solid var(--color-border-strong);
+  letter-spacing: 0.04em;
+}
+
+.timeline-table thead th.timeline-month {
+  top: 32px;
+}
+
+.timeline-table th.timeline-month.is-year-start {
+  border-left: 2px solid var(--color-border-strong);
 }
 
 .timeline-table thead th {
@@ -9859,6 +9885,10 @@ button.field-open.has-callout .field-number-chip {
 }
 
 .timeline-table th.timeline-field {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--color-surface);
   width: 132px;
   padding: 6px 10px;
   font-weight: 400;
@@ -9867,6 +9897,7 @@ button.field-open.has-callout .field-number-chip {
 }
 
 .timeline-table thead th.timeline-field {
+  z-index: 4;
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
@@ -9899,7 +9930,9 @@ button.field-open.has-callout .field-number-chip {
   position: relative;
   height: 46px;
   padding: 0;
-  background-image: repeating-linear-gradient(to right, var(--color-border) 0, var(--color-border) 1px, transparent 1px, transparent calc(100% / 12));
+  background-image:
+    repeating-linear-gradient(to right, var(--color-border-strong) 0, var(--color-border-strong) 2px, transparent 2px, transparent calc(100% / var(--timeline-years, 1))),
+    repeating-linear-gradient(to right, var(--color-border) 0, var(--color-border) 1px, transparent 1px, transparent calc(100% / var(--timeline-months, 12)));
 }
 
 .timeline-track.has-catch {
@@ -9971,9 +10004,11 @@ button.timeline-bar:hover {
   border-left-style: dashed;
 }
 
-.timeline-track .timeline-bar.is-next-year,
-.timeline-swatch.is-next-year {
-  opacity: 0.55;
+.timeline-track .timeline-bar.is-projected,
+.timeline-swatch.is-projected {
+  opacity: 0.7;
+  border-style: dashed;
+  border-color: var(--color-border-strong);
 }
 
 .timeline-bar.is-planned,
