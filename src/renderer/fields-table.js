@@ -2291,7 +2291,7 @@ async function loadFieldsFromGame() {
     const farm = allFarms.find(f => f.id === currentFarmId);
     if (!farm || isEditMode) return;
     useSaveFarm(farm);
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) { await showNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
 
     const byId = {};

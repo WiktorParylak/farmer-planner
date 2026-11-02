@@ -40,7 +40,7 @@
 **Zsynchronizowany z grą**
 - Saldo, kredyty, czas gry, maszyny i zwierzęta prosto z zapisu gry.
 - Odświeża się sam przy każdym zapisie gry, także automatycznym.
-- Na żywo w trakcie gry z opcjonalnym modem **Farmer Planner Link** (dołączonym do aplikacji): prace polowe, chwasty i kamienie pojawiają się po kilku sekundach, a do tego strata plonu za stan pola.
+- Na żywo w trakcie gry z opcjonalnym modem **Farmer Planner Link** (dołączonym do aplikacji): strata plonu za stan pola, ceny środków i receptury produkcji. Tabela planu i listy prac zmieniają się nadal tylko przy zapisie gry.
 - Uprawy i kalendarz siewu czytane z moda mapy.
 - Gleby pól z Precision Farming, prosto z zapisu.
 
@@ -110,7 +110,7 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 **Synchronizacja z grą**
 - Import salda, kredytu, czasu gry, sprzętu i zwierząt z `careerSavegame.xml` — łącznie z kredytami z modów Enhanced Loan System i Bank And Credit.
 - Automatyczna synchronizacja w trakcie gry — planer odświeża się przy każdym zapisie gry (ręcznym lub autozapisie).
-- Mod **Farmer Planner Link** (opcjonalny, dołączony do aplikacji): co kilka sekund zapisuje pliki pól i działek gry oraz krótki plik stanu, więc planer nadąża za uruchomioną grą; przekazuje też ceny zakupu nasion, nawozu i wapna z poziomem trudności ekonomii, mnożnik plonu gry i receptury produkcji z gry podstawowej. *Na żywo* obok nazwy farmy pokazuje, że działa.
+- Mod **Farmer Planner Link** (opcjonalny, dołączony do aplikacji): co kilka sekund zapisuje pliki pól i działek gry oraz krótki plik stanu, więc straty plonu nadążają za uruchomioną grą (tabela planu i listy prac zmieniają się tylko przy zapisie gry); przekazuje też ceny zakupu nasion, nawozu i wapna z poziomem trudności ekonomii, mnożnik plonu gry i receptury produkcji z gry podstawowej. *Na żywo* obok nazwy farmy pokazuje, że działa.
 - Uprawy mapy, ich kolejność i kalendarz siewu odczytywane automatycznie z moda mapy, której używa zapis gry — bez importu folderu (folder mapy można nadal wskazać dla map, których aplikacja nie odczyta).
 - Wykrywanie modów zwierząt zmieniających zużycie paszy: **AnimalFoodCalculator** (tryb, mnożnik, dni w miesiącu, krzywe referencyjne) i **EnhancedAnimalSystem** (współczynnik paszy w laktacji).
 - Typy gleby pól z Precision Farming, odczytywane bezpośrednio z zapisu gry.

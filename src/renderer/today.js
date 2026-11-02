@@ -23,7 +23,7 @@ function todaySaveFieldsById(farm) {
     try { key = farm.saveGamePath + ':' + fs.statSync(path.join(path.dirname(farm.saveGamePath), 'fields.xml')).mtimeMs; }
     catch (e) { return null; }
     if (todaySaveCache.key !== key) {
-        const save = readSaveFields(farm);
+        const save = readSaveFields(farm, { saved: true });
         const byId = save.ok ? {} : null;
         if (byId) save.fields.forEach(f => { byId[f.id] = f; });
         todaySaveCache = { key, byId };

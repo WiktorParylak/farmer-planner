@@ -40,7 +40,7 @@
 **Synced with your game**
 - Balance, loans, playtime, equipment and animals read from your savegame.
 - Refreshes on its own every time the game saves, autosave included.
-- Live while you play with the optional **Farmer Planner Link** mod (comes with the app): field work, weeds and stones show up within seconds, plus the yield the game takes off for a field's state.
+- Live while you play with the optional **Farmer Planner Link** mod (comes with the app): the yield the game takes off for a field's state, input prices and production recipes. The plan table and work lists still change only when the game saves.
 - The map's crops and sowing calendar read from the map mod.
 - Field soils from Precision Farming, straight from the save.
 
@@ -111,7 +111,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 **Game sync**
 - Imports balance, loan, playtime, equipment and animals from `careerSavegame.xml` — loans from the Enhanced Loan System and Bank And Credit mods included.
 - Auto-sync while you play — the planner refreshes every time the game saves (manual save or autosave).
-- **Farmer Planner Link** mod (optional, shipped with the app): writes the game's field and farmland files and a short status file every few seconds, so the planner follows the running game; it also reports the buy prices of seed, fertilizer and lime with the economy difficulty, the game's yield multiplier and the recipes of base game productions. *Live* next to the farm name shows it is on.
+- **Farmer Planner Link** mod (optional, shipped with the app): writes the game's field and farmland files and a short status file every few seconds, so the yield losses follow the running game (the plan table and work lists change only when the game saves); it also reports the buy prices of seed, fertilizer and lime with the economy difficulty, the game's yield multiplier and the recipes of base game productions. *Live* next to the farm name shows it is on.
 - The map's crops, their order and sowing calendar read automatically from the map mod the savegame uses — no folder import needed (a map folder can still be picked for maps the app can't read).
 - Animal mods that change feed consumption are detected: **AnimalFoodCalculator** (mode, multiplier, days per month, reference curves) and **EnhancedAnimalSystem** (lactation food factor).
 - Field soil types from Precision Farming, read straight from the savegame.

@@ -3281,12 +3281,16 @@ function saveFruitToCropKey(raw) {
 // save folder or its files are missing. weedState feeds syncWeedsFromSave.
 // While the game runs with the link mod, fields.xml / farmland.xml come from
 // the mod's live copy (same format, see live-link.js) and add stoneShare.
-function readSaveFields(farm) {
+// opts.saved = what the game really saved: for anything that changes the farm's
+// fields, because the plan follows the save, never the live copy. stoneShare
+// still comes from the mod, the save has no such thing.
+function readSaveFields(farm, opts = {}) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
     const live = typeof liveLinkSource === 'function' ? liveLinkSource(farm) : null;
-    const fieldsPath = live ? live.fieldsPath : path.join(dir, 'fields.xml');
-    const farmlandPath = live ? live.farmlandPath : path.join(dir, 'farmland.xml');
+    const useLive = live && !opts.saved;
+    const fieldsPath = useLive ? live.fieldsPath : path.join(dir, 'fields.xml');
+    const farmlandPath = useLive ? live.farmlandPath : path.join(dir, 'farmland.xml');
     if (!fs.existsSync(fieldsPath) || !fs.existsSync(farmlandPath)) return { ok: false, reason: 'nofiles' };
 
     try {
@@ -3336,7 +3340,7 @@ function readSaveFields(farm) {
                 stoneShare: live && live.stones && live.stones[id] !== undefined ? live.stones[id] : null
             });
         }
-        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!live };
+        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive };
     } catch (e) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
@@ -4492,7 +4496,7 @@ window.openPlanner = function (id) {
 // whatever grows there now (last crop, grass, stubble), and cultivating or
 // sowing clears them anyway. Returns true if any field changed.
 function syncWeedsFromSave(farm) {
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) return false;
     const byId = weedStatesById(save);
     let changed = false;
@@ -4530,7 +4534,7 @@ const SAVE_GROUND_ROLLED = ['ROLLED_SEEDBED', 'ROLLER_LINES'];
 const SAVE_SPRAY_NATURAL = ['LIQUID_MANURE', 'MANURE', 'DIGESTATE'];
 const SAVE_STONES_MIN_SHARE = 0.005;   // below half a percent of the field: no stones to collect
 function syncWorkFromSave(farm) {
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) return false;
     const byId = {};
     save.fields.forEach(g => { byId[g.id] = g; });
@@ -4655,7 +4659,7 @@ function weedStatesKey(ids, byId) {
 // said at that moment, so syncWeedsFromSave leaves the choice alone until the
 // game saves something new for this field.
 function markWeedsManual(farm, field) {
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) return;
     field.weedsManual = weedStatesKey(gameFieldIds(field), weedStatesById(save));
 }

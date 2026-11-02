@@ -3,9 +3,10 @@
 // alternating slots) and live.xml to
 //   <FarmingSimulator2025>/modSettings/FS25_FarmerPlannerLink/savegame<N>/
 // every ~5 s. Fresh files take the place of the save's fields.xml and
-// farmland.xml in readSaveFields, so field work, weeds and the "What to do
-// today" list follow the game without waiting for a save. Without the mod, or
-// when the game is closed, everything reads the save as before.
+// farmland.xml in readSaveFields for what is only shown (yield losses). The mod
+// never changes the farm's fields: the plan table, the work lists and "What to
+// do today" follow the game's own saves. Without the mod, or when the game is
+// closed, everything reads the save as before.
 // Loaded after renderer.js: renderer.js only calls these at runtime.
 
 const LIVE_LINK_MOD = 'FS25_FarmerPlannerLink';
@@ -203,9 +204,9 @@ function runLiveLinkTick() {
     applyLiveLinkToFarm(farm, live);
 }
 
-// Takes what the mod wrote into the farm. Durable values (yield factors,
-// input prices, production recipes) are stored with the farm, so they keep
-// working when the game is closed; field work comes through readSaveFields.
+// Takes what the mod wrote into the farm: only durable values kept outside the
+// fields (yield factors, input prices, production recipes), so they keep
+// working when the game is closed. Nothing here may change farm.fields.
 function applyLiveLinkToFarm(farm, live) {
     let changed = false;
     let refreshSave = false;
@@ -230,15 +231,10 @@ function applyLiveLinkToFarm(farm, live) {
         if (keep('productionRecipes', book)) refreshSave = true;
     }
 
-    const workChanged = syncWorkFromSave(farm);
-    const weedsChanged = syncWeedsFromSave(farm);
-    if (workChanged || weedsChanged) changed = true;
-
     if (refreshSave) applyGameSaveToFarm(farm);
     if (!changed) return;
     saveFarmData(farm, { touch: false });
     renderSeasonView();
-    if (workChanged || weedsChanged) showAutoSyncToast(t('liveSyncedToast'));
 }
 
 // Header badge: "Live" while the mod writes, "From the save" once it stopped.
