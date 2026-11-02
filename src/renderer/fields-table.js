@@ -583,6 +583,8 @@ function renderFieldModal() {
     work.push(`<p class="settings-hint">${state(field.weeds || '', WEEDS_TITLES)}${rollingLine}</p>`);
     html += section(t('fieldViewWork'), work.join(''));
 
+    html += section(t('fieldLogTitle'), fieldLogSectionHtml(farm, gameFieldIds(field)));
+
     // History of this field number.
     const history = loadSeasonHistory(farm, season);
     const past = Object.keys(history).map(Number).sort((a, b) => b - a).map(s => {

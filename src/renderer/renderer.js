@@ -361,7 +361,7 @@ function devFarmExists() {
 }
 
 function createDevFarm() {
-    const { farm, seasons, monthly, notes } = buildDevFarm({ pl: currentLang === 'pl' });
+    const { farm, seasons, monthly, notes, fieldLog } = buildDevFarm({ pl: currentLang === 'pl' });
     const dir = devFarmDir();
     try {
         fs.mkdirSync(path.join(dir, 'seasons'), { recursive: true });
@@ -374,6 +374,7 @@ function createDevFarm() {
     saveFarmData(farm, { touch: false });
     saveMonthlyHistory(farm, monthly);
     saveNotes(farm, notes);
+    saveFieldLog(farm, fieldLog);
 }
 
 function removeDevFarm() {
@@ -2080,6 +2081,8 @@ window.openHubPanel = function (type) {
         renderNotesPanel(titleEl, bodyEl, modalEl);
     } else if (type === 'yieldforecast') {
         renderYieldForecastPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'seasonsummary') {
+        renderSeasonSummaryPanel(titleEl, bodyEl);
     } else if (type === 'rotation') {
         renderRotationPanel(titleEl, bodyEl);
     } else if (type === 'feedplan') {
@@ -3030,6 +3033,17 @@ function cropAgronomyFromDoc(doc) {
     const cutStates = [];
     doc.querySelectorAll('foliageState').forEach((el, i) => { if (el.getAttribute('isCut') === 'true') cutStates.push(i + 1); });
     if (cutStates.length) out.cutStates = cutStates;
+    // The other states the field log tells apart (field-log.js).
+    const states = [...doc.querySelectorAll('foliageState')];
+    const positions = test => states.reduce((list, el, i) => (test(el) ? [...list, i + 1] : list), []);
+    const ready = positions(el => el.getAttribute('isHarvestReady') === 'true' || el.getAttribute('name') === 'harvestReady');
+    const withered = positions(el => el.getAttribute('isWithered') === 'true');
+    const rolledCut = positions(el => el.getAttribute('isRolledCut') === 'true');
+    const regrow = positions(el => el.getAttribute('regrowthStart') === 'true');
+    if (ready.length) out.readyStates = ready;
+    if (withered.length) out.witheredStates = withered;
+    if (rolledCut.length) out.rolledCutStates = rolledCut;
+    if (regrow.length) out.regrowState = regrow[0];
     return Object.keys(out).length ? out : null;
 }
 
@@ -4731,6 +4745,7 @@ function applyGameSaveToFarm(farm) {
     // call every read — it only writes when the month rolls over or a value in
     // the current month actually moved.
     recordMonthlySnapshot(farm, gameData);
+    if (recordFieldLog(farm, gameData)) changed = true;
 
     return changed;
 }

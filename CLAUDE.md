@@ -100,6 +100,7 @@ src/renderer/fields-timeline.js drugi widok planu: oś czasu, tylko do odczytu (
 src/renderer/rotation.js       płodozmian: cykle, przypisanie pól, auto-uzupełnianie, widok w pasku bocznym (PO fields-table.js)
 src/renderer/crop-generator.js generator upraw: zakładka „Generator” płodozmianu, zapotrzebowanie farmy, propozycja, zastosuj/cofnij (PO rotation.js)
 src/renderer/live-link.js      dane na żywo z moda FS25_FarmerPlannerLink: odczyt modSettings, plakietka „Na żywo”, sekcja w ustawieniach (PO today.js)
+src/renderer/field-log.js      dziennik pola i podsumowanie sezonu: różnice między kolejnymi zapisami gry w field_log.json (PO fields-table.js)
 src/renderer/tramlines.js      narzędzie ścieżek technologicznych: widok, biblioteka, edytor (PO rotation.js)
 src/renderer/tramlines-worker.js proces potomny (fork, ELECTRON_RUN_AS_NODE): wycinanie, wklejanie, kopie mapy owoców
 src/renderer/tramlines-core.js kodeki GDM / PNG / XCF (wspólne dla workera i renderera)

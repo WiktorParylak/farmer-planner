@@ -23,6 +23,8 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Ścieżki bez chwastów**: wklejanie ścieżek usuwa też chwasty pod nimi w `densityMap_weed.gdm`. Obie mapy są kopiowane, sprawdzane i podmieniane razem, a *Przywróć ostatnią kopię* przywraca obie.
 - **Zmiana nazwy ścieżek**: ołówek przy pozycji biblioteki zmienia nazwę jej plików PNG i JSON. Nazwa zajęta albo ze znakami niedozwolonymi w Windows daje czytelny komunikat i niczego nie nadpisuje.
 - **Podpowiedź i cofanie w lassie**: przy włączonym lassie panel objaśnia klawisze. Backspace, Ctrl+Z albo *Cofnij punkt* cofają ostatni punkt (a gdy punktów nie ma, ostatni kształt).
+- **Dziennik pola**: widok pola pokazuje, co naprawdę działo się na polu, z datą z gry: siew, zbiór, koszenie, zwiędnięcie lub zniszczenie uprawy, orkę i inne uprawy gleby, nawożenie, wapnowanie i mulczowanie. Powstaje z porównania każdego zapisu z poprzednim, więc zaczyna się od pierwszego odczytu po aktualizacji.
+- **Podsumowanie sezonu**: nowy panel z hektarami faktycznie zasianymi, zebranymi, skoszonymi i straconymi na uprawę w każdym roku gry, według dziennika pola, a nie planu. Gdy rok gry się kończy, *Co dziś zrobić* o nim przypomina.
 
 **Zmiany**
 - **Jeden przewidywany plon wszędzie**: planer pasz, okno pokosów i *Plony i ceny* liczą zbiór pola tak samo — z FS25_MoistureSystem dzisiejsza wilgotność pola obniża też paszę z pola zbieranego w tym miesiącu.

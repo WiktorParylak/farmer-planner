@@ -23,6 +23,8 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **No weeds on pasted tramlines**: pasting tramlines also clears the weeds under them in `densityMap_weed.gdm`. Both maps are backed up, checked and replaced together, and *Restore last backup* puts both back.
 - **Rename tramlines**: a pencil on each library entry renames its PNG and JSON. A name that's taken or has characters Windows doesn't allow gets a clear message instead of overwriting anything.
 - **Lasso help and undo**: while the lasso is on, the panel explains the keys. Backspace, Ctrl+Z or *Undo last point* take back the last point (or, with none left, the last shape).
+- **Field log**: the field view lists what really happened on the field, with the in-game date: sowing, harvest, mowing, a crop withered or destroyed, ploughing and other soil work, fertilizer, lime and mulching. It comes from comparing each save with the one before, so it starts from the first read after updating.
+- **Season summary**: a new panel with the hectares really sown, harvested, mown and lost per crop in each game year, from the field log rather than the plan. When a game year ends, *What to do today* points to it.
 
 **Changed**
 - **Cuts ask only for what the grassland needs**: each cut in the cuts window shows only the checks the field really lacks. The next cut follows the field in the save — *fertilized* while the fertilizer isn't full, *rolled* while it isn't rolled — and later cuts expect each cut to take the fertilizer and the rolling. Cutting grass doesn't lower pH, so *limed* shows only while the field isn't limed and the game requires lime. A step the link mod measured as costing no yield is left out, and a ticked check always stays.

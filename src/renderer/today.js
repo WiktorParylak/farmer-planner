@@ -248,8 +248,9 @@ function renderTodayPanel() {
     const barns = todayLowFeedBarns(farm);
     const notes = loadNotes(farm).filter(n => (n.months || []).includes(month)).length;
     const weather = todayWetWeather(farm);
+    const summaryYear = fieldLogSummaryDue(farm);
     const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0)
-        + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0);
+        + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0) + (summaryYear ? 1 : 0);
     const open = todayPanelOpen();
 
     let body = '';
@@ -261,6 +262,15 @@ function renderTodayPanel() {
             <div class="today-chips"><button type="button" class="today-chip today-new-season" title="${escapeHtml(why)}">
                 <span class="today-chip-main">${escapeHtml(why)}</span>
                 <span class="today-chip-ha">${escapeHtml(t('newSeasonStart').replace('{n}', next))}</span>
+            </button></div>
+        </div>`;
+    }
+    if (summaryYear) {
+        const text = escapeHtml(t('todaySummaryDue').replace('{n}', summaryYear));
+        body += `<div class="today-group">
+            <h3 class="today-group-title"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> ${t('hubSeasonSummary')}</h3>
+            <div class="today-chips"><button type="button" class="today-chip today-view" data-view="seasonsummary" title="${text}">
+                <span class="today-chip-main">${text}</span>
             </button></div>
         </div>`;
     }

@@ -27,6 +27,7 @@
 ## One plan for the whole farm
 
 **Season plan**
+- Field log and season summary: what the saves show was really sown, harvested and worked, with in-game dates and hectares per crop for each game year.
 - Every field with its area, crop, sowing month, next job, ploughing or no-till, soil type and fertilization plan.
 - A field view with everything about one field: crop, rotation, soils (loaded from the game), lime, nitrogen plan and the work list to tick off.
 - Catch crops on the same field, before or after the main crop.

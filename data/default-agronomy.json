@@ -1,6 +1,15 @@
 {
   "Banana": {
-    "yield": 77000
+    "yield": 77000,
+    "readyStates": [
+      8,
+      9,
+      10,
+      11
+    ],
+    "witheredStates": [
+      12
+    ]
   },
   "Barley": {
     "seed": 265,
@@ -9,6 +18,12 @@
     "needsRolling": true,
     "cutStates": [
       10
+    ],
+    "readyStates": [
+      8
+    ],
+    "witheredStates": [
+      9
     ]
   },
   "Beetroot": {
@@ -17,6 +32,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Canola": {
@@ -25,6 +46,12 @@
     "needsRolling": true,
     "cutStates": [
       11
+    ],
+    "readyStates": [
+      9
+    ],
+    "witheredStates": [
+      10
     ]
   },
   "Carrot": {
@@ -33,6 +60,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Coffeecherries": {
@@ -40,6 +73,13 @@
     "cutStates": [
       11,
       12
+    ],
+    "readyStates": [
+      9,
+      10
+    ],
+    "witheredStates": [
+      13
     ]
   },
   "Cotton": {
@@ -47,6 +87,12 @@
     "yield": 4970,
     "cutStates": [
       11
+    ],
+    "readyStates": [
+      9
+    ],
+    "witheredStates": [
+      10
     ]
   },
   "Grape": {
@@ -54,6 +100,13 @@
     "cutStates": [
       12,
       13
+    ],
+    "readyStates": [
+      10,
+      11
+    ],
+    "witheredStates": [
+      14
     ]
   },
   "Grass": {
@@ -61,7 +114,15 @@
     "yield": 43700,
     "cutStates": [
       5
-    ]
+    ],
+    "readyStates": [
+      3,
+      4
+    ],
+    "rolledCutStates": [
+      6
+    ],
+    "regrowState": 2
   },
   "Greenbean": {
     "seed": 280,
@@ -69,6 +130,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Maize": {
@@ -77,6 +144,12 @@
     "cutStates": [
       9,
       10
+    ],
+    "readyStates": [
+      7
+    ],
+    "witheredStates": [
+      8
     ]
   },
   "Meadow": {
@@ -84,7 +157,15 @@
     "yield": 43700,
     "cutStates": [
       5
-    ]
+    ],
+    "readyStates": [
+      3,
+      4
+    ],
+    "rolledCutStates": [
+      6
+    ],
+    "regrowState": 1
   },
   "Oat": {
     "seed": 340,
@@ -93,18 +174,37 @@
     "needsRolling": true,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Oilseedradish": {
     "seed": 40,
     "yield": 9900,
-    "needsRolling": false
+    "needsRolling": false,
+    "readyStates": [
+      2
+    ],
+    "witheredStates": [
+      2
+    ]
   },
   "Olive": {
     "yield": 18400,
     "cutStates": [
       11,
       12
+    ],
+    "readyStates": [
+      9,
+      10
+    ],
+    "witheredStates": [
+      13
     ]
   },
   "Onion": {
@@ -113,6 +213,12 @@
     "needsRolling": true,
     "cutStates": [
       8
+    ],
+    "readyStates": [
+      6
+    ],
+    "witheredStates": [
+      7
     ]
   },
   "Parsnip": {
@@ -121,6 +227,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Pea": {
@@ -129,6 +241,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Poplar": {
@@ -136,7 +254,11 @@
     "yield": 66270,
     "cutStates": [
       15
-    ]
+    ],
+    "readyStates": [
+      14
+    ],
+    "regrowState": 1
   },
   "Potato": {
     "seed": 3733,
@@ -144,6 +266,13 @@
     "needsRolling": false,
     "cutStates": [
       8
+    ],
+    "readyStates": [
+      6,
+      9
+    ],
+    "witheredStates": [
+      7
     ]
   },
   "Rice": {
@@ -152,6 +281,12 @@
     "needsRolling": false,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Ricelonggrain": {
@@ -160,6 +295,12 @@
     "needsRolling": false,
     "cutStates": [
       8
+    ],
+    "readyStates": [
+      6
+    ],
+    "witheredStates": [
+      7
     ]
   },
   "Sorghum": {
@@ -167,6 +308,12 @@
     "yield": 8200,
     "cutStates": [
       7
+    ],
+    "readyStates": [
+      5
+    ],
+    "witheredStates": [
+      6
     ]
   },
   "Soybean": {
@@ -175,6 +322,12 @@
     "needsRolling": true,
     "cutStates": [
       9
+    ],
+    "readyStates": [
+      7
+    ],
+    "witheredStates": [
+      8
     ]
   },
   "Spinach": {
@@ -184,6 +337,13 @@
     "cutStates": [
       9,
       10
+    ],
+    "readyStates": [
+      6,
+      7
+    ],
+    "witheredStates": [
+      8
     ]
   },
   "Sugarbeet": {
@@ -192,6 +352,13 @@
     "needsRolling": true,
     "cutStates": [
       10
+    ],
+    "readyStates": [
+      8,
+      11
+    ],
+    "witheredStates": [
+      9
     ]
   },
   "Sugarcane": {
@@ -200,13 +367,27 @@
     "needsRolling": false,
     "cutStates": [
       10
-    ]
+    ],
+    "readyStates": [
+      8,
+      11
+    ],
+    "witheredStates": [
+      9
+    ],
+    "regrowState": 1
   },
   "Sunflower": {
     "seed": 143,
     "yield": 5200,
     "cutStates": [
       10
+    ],
+    "readyStates": [
+      8
+    ],
+    "witheredStates": [
+      9
     ]
   },
   "Wheat": {
@@ -216,6 +397,12 @@
     "needsRolling": true,
     "cutStates": [
       10
+    ],
+    "readyStates": [
+      8
+    ],
+    "witheredStates": [
+      9
     ]
   }
 }

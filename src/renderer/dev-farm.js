@@ -189,6 +189,39 @@ function devArchivedSeasons() {
 
 // One row per in-game month from year 1 MARCH to now. Money and the herd grow
 // with a little wobble so the trend charts have something to show.
+// A log as field-log.js writes it: last year's work and this autumn's, with one
+// crop lost, grass cut twice and the summary of last year still to be looked at.
+function devFieldLog() {
+    const y1 = DEV_YEAR - 1, y2 = DEV_YEAR;
+    const e = (y, m, d, id, type, crop, ha) => ({ y, m, d, day: ((y - 1) * 12 + DEV_MONTHS.indexOf(m)) * 3 + d, id, type, crop, ha });
+    return {
+        since: { y: y1, m: 'MARCH', d: 1 },
+        year: y2,
+        summaryDue: y1,
+        day: 23,
+        daysPerPeriod: 3,
+        fields: {},
+        events: [
+            e(y1, 'MARCH', 2, '6', 'fertilize', null, 4.0),
+            e(y1, 'APRIL', 1, '10', 'cultivate', null, 6.2),
+            e(y1, 'APRIL', 2, '10', 'sow', 'Maize', 6.2),
+            e(y1, 'MAY', 3, '6', 'mow', 'Grass', 4.0),
+            e(y1, 'JUNE', 1, '14', 'withered', 'Oat', 3.1),
+            e(y1, 'JULY', 1, '1', 'harvest', 'Wheat', 8.4),
+            e(y1, 'JULY', 3, '6', 'mow', 'Grass', 4.0),
+            e(y1, 'AUGUST', 1, '1', 'stubble', null, 8.4),
+            e(y1, 'AUGUST', 2, '3', 'plow', null, 4.1),
+            e(y1, 'AUGUST', 3, '3', 'sow', 'Canola', 4.1),
+            e(y1, 'OCTOBER', 2, '10', 'harvest', 'Maize', 6.2),
+            e(y2, 'MARCH', 1, '3', 'fertilize', null, 4.1),
+            e(y2, 'MARCH', 3, '3', 'lime', null, 4.1),
+            e(y2, 'JULY', 2, '3', 'harvest', 'Canola', 4.1),
+            e(y2, 'AUGUST', 1, '3', 'mulch', null, 4.1),
+            e(y2, 'SEPTEMBER', 1, '1', 'sow', 'Wheat', 8.4)
+        ]
+    };
+}
+
 function devMonthlyHistory() {
     const rows = [];
     const last = (DEV_YEAR - 1) * 12 + DEV_MONTH_INDEX;
@@ -453,6 +486,7 @@ function buildDevFarm({ pl }) {
     };
     return {
         farm,
+        fieldLog: devFieldLog(),
         seasons: devArchivedSeasons(),
         monthly: devMonthlyHistory(),
         notes: devNotes(pl)

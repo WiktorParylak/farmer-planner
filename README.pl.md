@@ -27,6 +27,7 @@
 ## Jeden plan na całe gospodarstwo
 
 **Plan sezonu**
+- Dziennik pola i podsumowanie sezonu: co według zapisów gry faktycznie zasiano, zebrano i wykonano, z datami z gry i hektarami na uprawę w każdym roku gry.
 - Każde pole z powierzchnią, uprawą, miesiącem siewu, następną pracą, orką lub bezorką, typem gleby i planem nawożenia.
 - Okno pola ze wszystkim o jednym polu: uprawa, płodozmian, gleby (wczytywane z gry), wapno, plan azotu i lista prac do odhaczania.
 - Międzyplony na tym samym polu, przed albo po głównej uprawie.

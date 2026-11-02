@@ -2448,6 +2448,7 @@ th.is-sortable[aria-sort="descending"]::after {
   .sidebar-badge { animation: none; }
 }
 .sidebar-item--yieldforecast .sidebar-item-icon { background-color: var(--color-primary); }
+.sidebar-item--seasonsummary .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--feedplan .sidebar-item-icon { background-color: var(--color-accent); }
 
 /* Keep the icon readable against the green active background. */
@@ -10078,4 +10079,56 @@ button.timeline-bar:hover {
   width: 10px;
   height: 10px;
   margin: 0;
+}
+
+/* Field log and season summary */
+.field-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-base);
+  text-align: left;
+}
+
+.field-log-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 4px 0;
+}
+
+.field-log-item > i {
+  width: 16px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.field-log-date {
+  min-width: 170px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-log-where {
+  min-width: 56px;
+  font-weight: 600;
+}
+
+.field-log-more {
+  margin-top: 6px;
+}
+
+.field-log-more > summary {
+  cursor: pointer;
+  font-size: var(--fs-base);
+  text-align: left;
+}
+
+.season-summary-log {
+  margin-top: 14px;
+}
+
+.season-summary-cuts {
+  opacity: 0.7;
 }
