@@ -403,6 +403,14 @@ const TRANSLATIONS = {
         liveState_idle: "Mod {version} installed. Start the game with this save to get live data.",
         liveState_inactive: "Mod {version} is in the mods folder but not turned on in this save — tick it when loading the save.",
         liveState_old: "An older version of the mod is installed ({version}). Copy the new one ({bundled}) over it.",
+
+        liveState_off: "The mod is sending data, but automatic sync is off for this farm, so the planner ignores it. Turn on automatic sync above.",
+
+        liveState_oldRunning: "Working, but the game is running an older version of the mod ({version}). Copy the new one ({bundled}) to your mods folder and restart the game.",
+
+        liveState_format: "The mod and this version of the app don't work together, so live data is ignored. Copy the mod from this app ({bundled}) to your mods folder and restart the game.",
+
+        liveState_otherMap: "Live data ignored: this save slot is running a game on another map ({map}), not this farm's.",
         liveState_missing: "The mod is not installed. Without it the planner refreshes at each save of the game, as before.",
         liveLastData: "Last data: {time}.",
         liveShowModFile: "Show the mod file",
@@ -1799,6 +1807,14 @@ const TRANSLATIONS = {
         liveState_idle: "Mod {version} zainstalowany. Uruchom grę z tym zapisem, żeby dostać dane na żywo.",
         liveState_inactive: "Mod {version} jest w folderze mods, ale nie jest włączony w tym zapisie — zaznacz go przy wczytywaniu zapisu.",
         liveState_old: "Zainstalowana jest starsza wersja moda ({version}). Skopiuj nową ({bundled}) w jej miejsce.",
+
+        liveState_off: "Mod przesyła dane, ale automatyczna synchronizacja tej farmy jest wyłączona, więc planer je pomija. Włącz automatyczną synchronizację powyżej.",
+
+        liveState_oldRunning: "Działa, ale gra używa starszej wersji moda ({version}). Skopiuj nową ({bundled}) do folderu mods i uruchom grę ponownie.",
+
+        liveState_format: "Mod i ta wersja aplikacji nie współpracują, więc dane na żywo są pomijane. Skopiuj moda z tej aplikacji ({bundled}) do folderu mods i uruchom grę ponownie.",
+
+        liveState_otherMap: "Dane na żywo pominięte: w tym slocie zapisu działa gra na innej mapie ({map}), nie na mapie tej farmy.",
         liveState_missing: "Mod nie jest zainstalowany. Bez niego planer odświeża się przy każdym zapisie gry, jak dotąd.",
         liveLastData: "Ostatnie dane: {time}.",
         liveShowModFile: "Pokaż plik moda",

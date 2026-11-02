@@ -3,8 +3,9 @@
 -- modSettings/FS25_FarmerPlannerLink/savegame<N>/ every few seconds:
 --   fields_<slot>.xml    the game's own fields.xml format (FieldManager)
 --   farmland_<slot>.xml  the game's own farmland.xml format (FarmlandManager)
---   live.xml             header, weather, input prices, harvest scale,
---                        stones per field and the farm's production recipes
+--   live.xml             header, weather and stones per field; about once a
+--                        minute also input prices, harvest scale and the
+--                        farm's production recipes, which rarely change
 -- Fields and farmland alternate between slots "a" and "b"; live.xml is written
 -- last and names the slot that is complete, so the app never reads a file the
 -- game is still writing. The mod only reads the game.
@@ -13,8 +14,9 @@ FarmerPlannerLink = {}
 FarmerPlannerLink.FORMAT_VERSION = 1
 FarmerPlannerLink.WRITE_INTERVAL = 5000      -- ms of game frames
 FarmerPlannerLink.STONES_EVERY = 6           -- writes between stone scans (~30 s)
+FarmerPlannerLink.SLOW_EVERY = 12            -- writes between prices, yield factors and recipes (~60 s)
 FarmerPlannerLink.modName = g_currentModName
-FarmerPlannerLink.modVersion = "1.0.0.0"
+FarmerPlannerLink.modVersion = "1.0.1.0"
 
 local FPL = FarmerPlannerLink
 
@@ -103,10 +105,13 @@ function FPL:writeAll()
     end
     self:safe("header", self.writeHeader, self, xmlFile, (fieldsOk and farmlandOk) and slot or self.slot)
     self:safe("weather", self.writeWeather, self, xmlFile)
-    self:safe("prices", self.writePrices, self, xmlFile)
-    self:safe("harvestScale", self.writeHarvestScale, self, xmlFile)
     self:safe("stonesXml", self.writeStones, self, xmlFile)
-    self:safe("productions", self.writeProductions, self, xmlFile)
+    -- The app keeps these with the farm, so a file without them changes nothing.
+    if self.counter % FPL.SLOW_EVERY == 1 then
+        self:safe("prices", self.writePrices, self, xmlFile)
+        self:safe("harvestScale", self.writeHarvestScale, self, xmlFile)
+        self:safe("productions", self.writeProductions, self, xmlFile)
+    end
     saveXMLFile(xmlFile)
     delete(xmlFile)
 
@@ -161,22 +166,51 @@ function FPL:writeWeather(xmlFile)
     end
 end
 
--- What the game charges per litre when you buy a fill type (seeds, fertilizer,
--- lime, herbicide...), with the economic difficulty already applied.
+-- What the game charges per litre when you buy a fill type, with the economic
+-- difficulty applied. Only the fill types the app prices (keep this list the
+-- same as LIVE_LINK_INPUT_FILLTYPES in live-link.js): asking about every fill
+-- type stopped at the first one the game has no price for, and then nothing
+-- was reported at all.
+local PRICE_FILLTYPES = {
+    "SEEDS", "FERTILIZER", "LIQUIDFERTILIZER", "LIME", "HERBICIDE", "MANURE", "LIQUIDMANURE",
+    "DIGESTATE", "DIESEL", "DEF", "SILAGE_ADDITIVE", "MINERAL_FEED", "ROADSALT"
+}
+
+function FPL:getBuyPrice(economy, fillTypeIndex)
+    local function ask(method, ...)
+        if economy[method] == nil then
+            return nil
+        end
+        local ok, price = pcall(economy[method], economy, ...)
+        if ok and type(price) == "number" and price > 0 then
+            return price
+        end
+        return nil
+    end
+    return ask("getCostPerLiter", fillTypeIndex, true) or ask("getPricePerLiter", fillTypeIndex)
+end
+
 function FPL:writePrices(xmlFile)
     local economy = g_currentMission.economyManager
     if economy == nil then
         return
     end
     local i = 0
-    for _, fillType in ipairs(g_fillTypeManager:getFillTypes()) do
-        local price = economy:getPricePerLiter(fillType.index)
-        if price ~= nil and price > 0 then
-            local k = string.format("farmerPlannerLink.prices.fillType(%d)", i)
-            setXMLString(xmlFile, k .. "#name", fillType.name)
-            setXMLFloat(xmlFile, k .. "#pricePerLiter", price)
-            i = i + 1
+    for _, name in ipairs(PRICE_FILLTYPES) do
+        local index = g_fillTypeManager:getFillTypeIndexByName(name)
+        if index ~= nil then
+            local price = self:getBuyPrice(economy, index)
+            if price ~= nil then
+                local k = string.format("farmerPlannerLink.prices.fillType(%d)", i)
+                setXMLString(xmlFile, k .. "#name", name)
+                setXMLFloat(xmlFile, k .. "#pricePerLiter", price)
+                i = i + 1
+            end
         end
+    end
+    if i == 0 and not self.errors.noPrices then
+        self.errors.noPrices = true
+        Logging.warning("FarmerPlannerLink: the game reported no input prices")
     end
 end
 

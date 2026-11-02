@@ -18,6 +18,7 @@ let liveLinkFarmId = null;
 let liveLinkSeen = null;               // "<mtime>:<counter>" already applied
 let liveLinkCache = { key: null, data: null };
 let liveLinkEverFresh = false;         // the mod wrote for this farm since it was opened
+let liveLinkCareerCache = { key: null, title: '' };
 
 // modSettings/FS25_FarmerPlannerLink/savegame<N> of the farm's save, or null.
 function liveLinkDir(farm) {
@@ -26,10 +27,29 @@ function liveLinkDir(farm) {
     return path.join(path.dirname(saveDir), 'modSettings', LIVE_LINK_MOD, path.basename(saveDir));
 }
 
-// live.xml of the farm, parsed: { mtime, ageMs, fresh, counter, slot,
-// fieldsPath, farmlandPath, time, weather, prices, harvestScale, stones,
-// productions }, or null when the mod never wrote for this save. Parsed again
-// only when the file changes.
+// The map title of the farm's save, '' when it can't be read.
+function liveLinkSaveMapTitle(farm) {
+    try {
+        const st = fs.statSync(farm.saveGamePath);
+        const key = farm.saveGamePath + ':' + st.mtimeMs;
+        if (liveLinkCareerCache.key !== key) {
+            const doc = new DOMParser().parseFromString(fs.readFileSync(farm.saveGamePath, 'utf-8'), 'text/xml');
+            const el = doc.querySelector('mapTitle');
+            liveLinkCareerCache = { key, title: el ? el.textContent.trim() : '' };
+        }
+        return liveLinkCareerCache.title;
+    } catch (e) {
+        return '';
+    }
+}
+
+// live.xml of the farm, parsed: { mtime, ageMs, fresh, writing, counter, slot,
+// mapTitle, fieldsPath, farmlandPath, time, weather, prices, harvestScale,
+// stones, productions }, or null when the mod never wrote for this save.
+// writing = the mod wrote lately; fresh = also usable for this farm. It isn't
+// when the file has another format (unsupported) or comes from a game on
+// another map in the same save slot (otherMap). Parsed again only when the
+// file changes.
 function readLiveLink(farm) {
     const dir = liveLinkDir(farm);
     if (!dir) return null;
@@ -41,7 +61,10 @@ function readLiveLink(farm) {
     const data = liveLinkCache.data;
     if (!data) return null;
     const ageMs = Date.now() - data.mtime;
-    return Object.assign({}, data, { ageMs, fresh: ageMs >= -5000 && ageMs < LIVE_LINK_FRESH_MS });
+    const writing = ageMs >= -5000 && ageMs < LIVE_LINK_FRESH_MS;
+    const saveMap = data.unsupported ? '' : liveLinkSaveMapTitle(farm);
+    const otherMap = !!(saveMap && data.mapTitle) && saveMap.toLowerCase() !== data.mapTitle.toLowerCase();
+    return Object.assign({}, data, { ageMs, writing, otherMap, fresh: writing && !otherMap && !data.unsupported });
 }
 
 function parseLiveLink(dir, file, mtime) {
@@ -52,7 +75,9 @@ function parseLiveLink(dir, file, mtime) {
         const doc = new DOMParser().parseFromString(text, 'text/xml');
         if (doc.querySelector('parsererror')) return null;
         const root = doc.documentElement;
-        if ((parseInt(root.getAttribute('format'), 10) || 0) !== LIVE_LINK_FORMAT) return null;
+        if ((parseInt(root.getAttribute('format'), 10) || 0) !== LIVE_LINK_FORMAT) {
+            return { mtime, unsupported: true, modVersion: root.getAttribute('modVersion') || '' };
+        }
         const num = (el, name) => { const v = el ? parseFloat(el.getAttribute(name)) : NaN; return isFinite(v) ? v : null; };
         const slot = root.getAttribute('slot') === 'b' ? 'b' : 'a';
 
@@ -102,6 +127,7 @@ function parseLiveLink(dir, file, mtime) {
             counter: parseInt(root.getAttribute('counter'), 10) || 0,
             farmId: root.getAttribute('farmId') || '',
             modVersion: root.getAttribute('modVersion') || '',
+            mapTitle: (root.getAttribute('mapTitle') || '').trim(),
             slot,
             fieldsPath: path.join(dir, `fields_${slot}.xml`),
             farmlandPath: path.join(dir, `farmland_${slot}.xml`),
@@ -257,8 +283,8 @@ function liveLinkCompareVersions(a, b) {
     return 0;
 }
 
-// { state: 'live' | 'idle' | 'inactive' | 'old' | 'missing' | 'nosave',
-//   installed, bundled, modsDir, zip, live }
+// { state: 'live' | 'off' | 'oldRunning' | 'format' | 'otherMap' | 'idle' |
+//   'inactive' | 'old' | 'missing' | 'nosave', installed, bundled, modsDir, zip, live }
 function liveLinkStatus(farm) {
     if (!farm || !farm.saveGamePath) return { state: 'nosave' };
     const dirs = modFiles.findModsDirs(farm.saveGamePath);
@@ -272,7 +298,11 @@ function liveLinkStatus(farm) {
     } catch (e) { /* the version check is optional */ }
     const live = readLiveLink(farm);
     let state;
-    if (live && live.fresh) state = 'live';
+    if (live && live.writing && live.unsupported) state = 'format';
+    else if (live && live.writing && live.otherMap) state = 'otherMap';
+    else if (live && live.fresh && !autoSyncSetting(farm)) state = 'off';
+    else if (live && live.fresh && bundled && liveLinkCompareVersions(live.modVersion, bundled) < 0) state = 'oldRunning';
+    else if (live && live.fresh) state = 'live';
     else if (!installed) state = 'missing';
     else if (bundled && liveLinkCompareVersions(installed, bundled) < 0) state = 'old';
     else if (!activeModsInSave(farm.saveGamePath).has(LIVE_LINK_MOD)) state = 'inactive';
@@ -287,8 +317,12 @@ function renderLiveLinkSettings(farm) {
     const s = liveLinkStatus(farm);
     if (s.state === 'nosave') { box.hidden = true; return; }
     box.hidden = false;
-    const icon = { live: 'fa-circle-check', idle: 'fa-circle-pause', inactive: 'fa-circle-exclamation', old: 'fa-circle-up', missing: 'fa-circle-info' }[s.state];
-    let detail = t('liveState_' + s.state).replace('{version}', s.installed || '').replace('{bundled}', s.bundled || '');
+    const icon = { live: 'fa-circle-check', off: 'fa-circle-pause', idle: 'fa-circle-pause', inactive: 'fa-circle-exclamation', format: 'fa-circle-exclamation', otherMap: 'fa-circle-exclamation', old: 'fa-circle-up', oldRunning: 'fa-circle-up', missing: 'fa-circle-info' }[s.state];
+    const running = s.live && s.live.modVersion;
+    let detail = t('liveState_' + s.state)
+        .replace('{version}', (s.state === 'oldRunning' ? running : s.installed) || '')
+        .replace('{bundled}', s.bundled || '')
+        .replace('{map}', (s.live && s.live.mapTitle) || '');
     if (s.state === 'idle' && s.live) detail += ' ' + t('liveLastData').replace('{time}', new Date(s.live.mtime).toLocaleString(currentLang));
     box.innerHTML = `
         <span>${escapeHtml(t('liveSettingsTitle'))}</span>

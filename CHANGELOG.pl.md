@@ -30,12 +30,16 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Miejsce na poprawki w obrazach biblioteki**: zapisane PNG ścieżek mają przezroczysty margines 64 px, więc można je poprawić w edytorze grafiki. Przezroczyste piksele nigdy się nie wklejają.
 - **Jeden sposób zaznaczania naraz**: *Pola z mapy*, *Pola z gleby* i *Lasso* się wykluczają, podświetlony przycisk to ten, który działa, a ponowne kliknięcie wyłącza go bez wychodzenia z narzędzia.
 - ***Połącz w jeden zestaw*** pojawia się dopiero przy dwóch lub więcej polach albo kształtach, z podpowiedzią, co robi.
+- **Mod Link rzadziej przesyła to, co rzadko się zmienia**: ceny, współczynniki plonów i receptury produkcji idą mniej więcej raz na minutę zamiast co 5 sekund. Prace na polach, pogoda i kamienie nadal aktualizują się co kilka sekund.
 
 **Poprawki**
 - **Ustawienia farmy prześwitywały pod przyciskami**: przewijana długa zakładka ustawień nie pokazuje już opcji w pasku pod *Anuluj* i *Zapisz i importuj*.
 - **Farma z drugiego komputera traciła zapis gry**: folder farmy skopiowany albo zsynchronizowany z innego komputera miał ścieżkę zapisu tamtego komputera (`Dokumenty\My Games\…` tam, `OneDrive\Dokumenty\My Games\…` tu), więc nic nie było czytane z gry. Gdy ścieżki nie ma, używany jest ten sam zapis w Dokumentach tego komputera. Bez żadnego zapisu *Plony i ceny* mówią o tym, zamiast zrzucać winę na brak `economy.xml`.
 - **Ustawienia generatora zwijały się przy każdej zmianie**: wybór profilu, uprawy albo limitu w ustawieniach generatora nie zwija już rozwiniętych ustawień, potrzeb ani problemów.
 - **Auto-sync nie widział zmian tylko na polach**: podpis zapisu obejmuje teraz także `fields.xml`, `farmland.xml` i `economy.xml`, więc prace na polach, kupno i sprzedaż ziemi oraz ceny rynkowe są wczytywane nawet wtedy, gdy gra nadpisze tylko te pliki.
+- **Mod Link nie przesyłał cen zakupu**: pytanie gry o każdy typ wypełnienia kończyło się na pierwszym bez ceny, więc do planera nie trafiała żadna. Teraz mod pyta tylko o środki, których planer używa, każdy osobno.
+- **Stan moda Link mówił za mało**: *Ustawienia farmy → Zapis* mówią teraz, gdy mod przesyła dane, ale automatyczna synchronizacja farmy jest wyłączona, gdy gra używa starszego moda i gdy mod nie współpracuje z aplikacją.
+- **Dane na żywo z innej mapy**: gra na innej mapie w slocie zapisu farmy nie odhacza już prac na tej farmie.
 
 - **Nie wykrywano działającej gry**: narzędzie ścieżek szukało `FarmingSimulator2025.exe`, a gra działa jako `FarmingSimulator2025Game.exe`, więc wklejanie i przywracanie mogły ruszyć przy otwartej grze, która potem nadpisałaby wynik przy zapisie. Teraz przy działającej grze obie operacje są odrzucane.
 - **Lasso gubiło narożniki i zostawiało dziury**: kliknięcie z lekkim ruchem myszy przepadało i ucinało róg kształtu, a kształt przecinający sam siebie i nakładające się obrysy w jednym zestawie zostawiały dziury.

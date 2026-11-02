@@ -404,6 +404,14 @@ const UI = {
     liveState_idle: "Mod {version} installiert. Starte das Spiel mit diesem Spielstand, um Live-Daten zu bekommen.",
     liveState_inactive: "Mod {version} liegt im Mods-Ordner, ist in diesem Spielstand aber nicht aktiviert — wähle ihn beim Laden des Spielstands aus.",
     liveState_old: "Eine ältere Version des Mods ist installiert ({version}). Kopiere die neue ({bundled}) darüber.",
+
+    liveState_off: "Der Mod sendet Daten, aber die automatische Synchronisierung ist für diesen Hof aus, daher ignoriert der Planer sie. Schalte oben die automatische Synchronisierung ein.",
+
+    liveState_oldRunning: "Funktioniert, aber das Spiel nutzt eine ältere Mod-Version ({version}). Kopiere die neue ({bundled}) in den Mods-Ordner und starte das Spiel neu.",
+
+    liveState_format: "Der Mod und diese App-Version arbeiten nicht zusammen, daher werden Live-Daten ignoriert. Kopiere den Mod aus dieser App ({bundled}) in den Mods-Ordner und starte das Spiel neu.",
+
+    liveState_otherMap: "Live-Daten ignoriert: In diesem Speicherplatz läuft ein Spiel auf einer anderen Karte ({map}), nicht auf der dieses Hofs.",
     liveState_missing: "Der Mod ist nicht installiert. Ohne ihn aktualisiert sich der Planer bei jedem Speichern des Spiels, wie bisher.",
     liveLastData: "Letzte Daten: {time}.",
     liveShowModFile: "Mod-Datei zeigen",

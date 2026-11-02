@@ -1244,6 +1244,10 @@ body {
 .live-link-state i { margin-top: 2px; color: var(--color-sky); }
 .live-link-state.is-live i { color: var(--color-primary); }
 .live-link-state.is-old i,
+.live-link-state.is-oldRunning i,
+.live-link-state.is-off i,
+.live-link-state.is-format i,
+.live-link-state.is-otherMap i,
 .live-link-state.is-inactive i { color: var(--color-accent-dark); }
 
 .live-link-actions {

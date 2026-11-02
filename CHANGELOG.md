@@ -31,6 +31,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Room to draw in library images**: saved tramline PNGs keep a clear 64 px margin around the tramlines, so they can be touched up in an image editor. Clear pixels are never pasted.
 - **One way of picking at a time**: *Fields from the map*, *Fields from the soil* and *Lasso* now exclude each other, the highlighted button is the one that works, and clicking it again turns it off without leaving the tool.
 - ***Merge into one set*** only appears when two or more fields or shapes are picked, with a tooltip saying what it does.
+- **Link mod works less often on what rarely changes**: prices, yield factors and production recipes go out about once a minute instead of every 5 seconds. Field work, weather and stones still follow every few seconds.
 
 **Fixed**
 - **New season ticked off last season's work**: right after *New season*, fields whose ground in the game was still cultivated, ploughed or rolled from the season before got *Cultivate*, *Plough* or *Roll* ticked off in the new one. The first read after *New season* now remembers the ground of each game field, and only ground that has changed since then (or a crop already sown) counts as this season's work.
@@ -40,6 +41,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **A farm from the other computer lost its save**: a farm folder copied or synced from another computer kept that computer's save path (`Documents\My Games\…` there, `OneDrive\Dokumenty\My Games\…` here), so nothing was read from the game. When the path doesn't exist, the same savegame under this computer's Documents is used. Without any save, *Yields and prices* now says so instead of blaming a missing `economy.xml`.
 - **Crop generator settings closed on every change**: picking a profile, a crop or a limit in the generator's settings no longer folds the settings, the needs or the problems you had opened.
 - **Auto-sync missed field-only changes**: the save signature now also watches `fields.xml`, `farmland.xml` and `economy.xml`, so work done on the fields, land bought or sold and market prices are picked up even when the game rewrites only those files.
+- **Link mod sent no input prices**: asking the game about every fill type stopped at the first one with no price, so no price reached the planner. It now asks only for the inputs the planner uses, each on its own.
+- **Link mod status told too little**: *Farm settings → Savegame* now says when the mod sends data but automatic sync is off for the farm, when the game runs an older mod, and when the mod and the app don't work together.
+- **Live data from another map**: a game on another map in the farm's save slot no longer ticks off work on that farm.
 
 - **The game running wasn't detected**: the tramlines tool looked for `FarmingSimulator2025.exe`, but the game runs as `FarmingSimulator2025Game.exe`, so pasting or restoring could go ahead with the game open, and the game would then overwrite the result when saving. Both are now refused while the game runs.
 - **Lasso lost corners and left holes**: a click where the mouse moved slightly was dropped, cutting a corner off the shape; a shape that crossed itself, and overlapping outlines in one set, left holes.
