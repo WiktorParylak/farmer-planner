@@ -3349,6 +3349,11 @@ th.is-sortable[aria-sort="descending"]::after {
   color: var(--color-ink-faint);
 }
 
+/* The timeline's seasons switch needs room in the row: flex wraps by the basis. */
+.main-table-header:has(#timeline-ahead-switch:not([hidden])) .fields-search {
+  flex-basis: 180px;
+}
+
 .fields-search[hidden] {
   display: none;
 }
@@ -9844,12 +9849,6 @@ button.field-open.has-callout .field-number-chip {
   overflow-x: auto;
 }
 
-.timeline-ahead {
-  align-self: flex-end;
-  margin-bottom: 8px;
-  font-size: var(--fs-sm);
-}
-
 .timeline-table {
   table-layout: fixed;
   min-width: 760px;
@@ -9898,6 +9897,7 @@ button.field-open.has-callout .field-number-chip {
 
 .timeline-table thead th.timeline-field {
   z-index: 4;
+  background-color: var(--color-surface-alt);
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;

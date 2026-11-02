@@ -34,6 +34,16 @@ function updateFieldsViewUi() {
             b.setAttribute('aria-pressed', String(b.dataset.view === getFieldsViewMode()));
         });
     }
+    // Seasons ahead: only on the timeline of the current season.
+    const aheadSw = document.getElementById('timeline-ahead-switch');
+    if (aheadSw) {
+        const farm = getAllFarms().find(f => f.id === currentFarmId);
+        aheadSw.hidden = !shown || viewedSeason < ((farm && farm.currentSeason) || 1);
+        const ahead = timelineAheadYears();
+        aheadSw.querySelectorAll('button').forEach(b => {
+            b.setAttribute('aria-pressed', String(parseInt(b.dataset.ahead, 10) === ahead));
+        });
+    }
 }
 
 function timelineMonthPos(month) {
@@ -255,11 +265,9 @@ function renderFieldsTimeline(fields) {
     const searching = !!fieldSearchQuery() && list.length > 0;
     const body = rows || (searching ? `<tr class="fields-search-empty"><td colspan="${months + 1}">${escapeHtml(t('fieldsSearchNone'))}</td></tr>` : '');
     const swatch = (cls, key) => `<span class="timeline-legend-item"><span class="timeline-swatch ${cls}"></span>${escapeHtml(t(key))}</span>`;
-    const options = Array.from({ length: TIMELINE_MAX_AHEAD }, (_, i) => i + 1).map(n => `<option value="${n}"${n === ahead ? ' selected' : ''}>${n}</option>`).join('');
     const scroller = box.querySelector('.timeline-scroll');
     const scrollLeft = scroller ? scroller.scrollLeft : 0;
-    box.innerHTML = `${isPastSeason ? '' : `<label class="timeline-ahead">${escapeHtml(t('timelineAheadLabel'))} <select id="timeline-ahead">${options}</select></label>`}
-        <div class="timeline-scroll">
+    box.innerHTML = `<div class="timeline-scroll">
         <table class="timeline-table" style="--timeline-months:${months};--timeline-years:${years};min-width:${132 + months * 44}px">
             <thead><tr><th scope="col" rowspan="2" class="timeline-field">${escapeHtml(t('thFieldNo'))}</th>${yearHead}</tr><tr>${head}</tr></thead>
             <tbody>${body}</tbody>
@@ -280,9 +288,11 @@ if (fieldsTimelineEl) fieldsTimelineEl.addEventListener('click', e => {
     if (btn && !isEditMode) openFieldModal(parseInt(btn.dataset.idx, 10));
 });
 
-if (fieldsTimelineEl) fieldsTimelineEl.addEventListener('change', e => {
-    if (e.target.id !== 'timeline-ahead') return;
-    try { setSetting('timelineAhead', e.target.value); } catch (err) { /* ignore */ }
+const timelineAheadSwitchEl = document.getElementById('timeline-ahead-switch');
+if (timelineAheadSwitchEl) timelineAheadSwitchEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-ahead]');
+    if (!btn) return;
+    try { setSetting('timelineAhead', btn.dataset.ahead); } catch (err) { /* ignore */ }
     renderSeasonView();
 });
 
