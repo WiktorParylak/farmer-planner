@@ -802,7 +802,11 @@ function readProductionsFromSave(saveFolder, modsDirs) {
         const recipes = def ? [...def.querySelectorAll('productionPoint productions > production')].map(pr => {
             const perMonth = parseFloat(pr.getAttribute('cyclesPerMonth')) || (parseFloat(pr.getAttribute('cyclesPerHour')) || 0) * 24;
             const items = sel => [...pr.querySelectorAll(sel)].map(i => ({ fillType: up(i.getAttribute('fillType')), amount: parseFloat(i.getAttribute('amount')) || 0 }));
-            return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth };
+            // Running cost per in-game month, converted like the cycles above.
+            const costMonth = parseFloat(pr.getAttribute('costsPerActiveMonth'));
+            const costHour = parseFloat(pr.getAttribute('costsPerActiveHour'));
+            const costPerMonth = isFinite(costMonth) ? costMonth : (isFinite(costHour) ? costHour * 24 : undefined);
+            return { id: pr.getAttribute('id') || '', inputs: items('inputs > input'), outputs: items('outputs > output'), cyclesPerMonth: perMonth, costPerMonth };
         }) : known.recipes.map(r => Object.assign({}, r, { inputs: r.inputs.slice(), outputs: r.outputs.slice() }));
         if (!recipes.length) return;
 

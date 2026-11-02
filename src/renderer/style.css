@@ -2448,6 +2448,7 @@ th.is-sortable[aria-sort="descending"]::after {
   .sidebar-badge { animation: none; }
 }
 .sidebar-item--yieldforecast .sidebar-item-icon { background-color: var(--color-primary); }
+.sidebar-item--storage .sidebar-item-icon { background-color: var(--color-accent); }
 .sidebar-item--seasonsummary .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--feedplan .sidebar-item-icon { background-color: var(--color-accent); }
 
@@ -10201,4 +10202,66 @@ button.timeline-bar:hover {
 
 .season-summary-cuts {
   opacity: 0.7;
+}
+
+/* Storage and productions (storage.js) */
+.storage-table {
+  margin-bottom: 18px;
+}
+
+.storage-table td,
+.storage-table th {
+  text-align: right;
+}
+
+.storage-table td:first-child,
+.storage-table th:first-child,
+.storage-table--places td,
+.storage-table--places th {
+  text-align: left;
+}
+
+.storage-state {
+  margin-left: 6px;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.storage-empty {
+  color: var(--color-ink-faint);
+}
+
+.storage-production {
+  margin-bottom: 18px;
+}
+
+.storage-production-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 6px;
+}
+
+.storage-production-head h4 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+
+.storage-production-sum {
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
+.storage-production .storage-table {
+  margin-bottom: 6px;
+}
+
+.storage-table tr.is-off td {
+  color: var(--color-ink-faint);
+}
+
+.storage-stock {
+  text-align: left;
 }

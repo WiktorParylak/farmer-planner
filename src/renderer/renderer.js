@@ -2102,6 +2102,8 @@ window.openHubPanel = function (type) {
         renderNotesPanel(titleEl, bodyEl, modalEl);
     } else if (type === 'yieldforecast') {
         renderYieldForecastPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'storage') {
+        renderStoragePanel(titleEl, bodyEl);
     } else if (type === 'seasonsummary') {
         renderSeasonSummaryPanel(titleEl, bodyEl);
     } else if (type === 'rotation') {
@@ -4457,6 +4459,8 @@ function readGameSave(pathToFile) {
 
         try { result.feedStock = readFeedStockFromSave(saveFolder); }
         catch (e) { console.error('Could not read feed stock from savegame', e); }
+        try { result.storage = readFarmStorageFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
+        catch (e) { console.error('Could not read storage from savegame', e); }
         try { result.feedBales = readFeedBalesFromSave(saveFolder); }
         catch (e) { console.error('Could not read bales from savegame', e); }
         try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
@@ -4749,7 +4753,7 @@ function applyGameSaveToFarm(farm) {
         farm[key] = gameData[key];
         changed = true;
     };
-    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules', 'forecast'].forEach(setIfMoved);
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules', 'forecast', 'storage'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
     if (gameData.productions !== undefined && JSON.stringify(gameData.productions) !== JSON.stringify(farm.productions || [])) { farm.productions = gameData.productions; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }

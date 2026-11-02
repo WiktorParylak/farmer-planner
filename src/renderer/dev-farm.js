@@ -222,6 +222,23 @@ function devFieldLog() {
     };
 }
 
+// Silos, a fermented bunker silo, a manure heap (level not in saves) and a shed, as readFarmStorageFromSave gives them.
+function devStorage() {
+    return {
+        places: [
+            { id: 'dev-silo', name: 'Grain silo', kind: 'silo', state: null, fills: { WHEAT: 42000, BARLEY: 18000, CANOLA: 9000 } },
+            { id: 'dev-silo2', name: 'Silo extension', kind: 'silo', state: null, fills: {} },
+            { id: 'dev-bunker', name: 'Bunker silo', kind: 'bunker', state: 'fermented', fills: { SILAGE: 240000 } },
+            { id: 'dev-heap', name: 'Manure heap', kind: 'heap', state: null, fills: {} },
+            { id: 'dev-shed', name: 'Bale shed', kind: 'shed', state: null, fills: { STRAW: 60000 } }
+        ],
+        totals: {
+            WHEAT: { silo: 42000 }, BARLEY: { silo: 18000 }, CANOLA: { silo: 9000 }, SILAGE: { bunker: 240000, bale: 28000 },
+            STRAW: { bale: 60000 }, MINERAL_FEED: { pallet: 1500 }, SEEDS: { pallet: 2000 }
+        }
+    };
+}
+
 function devMonthlyHistory() {
     const rows = [];
     const last = (DEV_YEAR - 1) * 12 + DEV_MONTH_INDEX;
@@ -293,7 +310,8 @@ function devProductions() {
     const recipe = (id, inputs, outputs, cyclesPerMonth, enabled) => ({
         id, cyclesPerMonth, enabled,
         inputs: inputs.map(([fillType, amount]) => ({ fillType, amount })),
-        outputs: outputs.map(([fillType, amount]) => ({ fillType, amount }))
+        outputs: outputs.map(([fillType, amount]) => ({ fillType, amount })),
+        costPerMonth: id === 'canola' ? undefined : 240
     });
     const prod = (id, kind, name, recipes, stock) => ({
         id, kind, name, nameTitles: null, fillTypeTitles: {}, mod: '',
@@ -473,6 +491,7 @@ function buildDevFarm({ pl }) {
             { id: "save:dev-mixer2", name: "Kuhn Profile 1880", capacity: null, source: "save" }
         ],
         productions: devProductions(),
+        storage: devStorage(),
         supplyRates: {
             defaultOverridesCleaned: true,
             fieldSoil: {
