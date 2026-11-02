@@ -3568,8 +3568,9 @@ function loadFarmConfigs(farm) {
 
     try {
         if (fs.existsSync(cropsPath)) {
-            const imported = JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {};
+            const imported = dropOutdatedCropCalendars(cropsPath, JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {});
             Object.keys(imported).forEach(cropName => {
+                if (cropName === '_calendarVersion') return;
                 CROP_CALENDAR[cropName] = { ...(CROP_CALENDAR[cropName] || {}), ...imported[cropName] };
                 // A manually imported crop is on the map even if the mod's
                 // list couldn't be read or doesn't name it.
@@ -3726,6 +3727,25 @@ function formatCropName(rawName) {
 // game's own growth-state machine, one period (~one month) at a time.
 // Returns null if the file isn't a recognizable crop growth definition —
 // map folders are full of unrelated XML files, so this must fail quietly.
+// An imported calendar wins over the map's, so one saved with an older way of
+// counting growth (harvest too early) would stay wrong for good. Crops the map
+// or the base game know go back to their fresh calendars; the old file is kept
+// next to it. Crops known only from the import stay until they are imported again.
+const CROP_CALENDAR_VERSION = 2;
+function dropOutdatedCropCalendars(cropsPath, imported) {
+    if (imported._calendarVersion >= CROP_CALENDAR_VERSION) return imported;
+    const known = new Set(Object.keys(CROP_CALENDAR).map(cropOrderKey));
+    const kept = { _calendarVersion: CROP_CALENDAR_VERSION };
+    Object.keys(imported).forEach(cropName => {
+        if (!known.has(cropOrderKey(cropName))) kept[cropName] = imported[cropName];
+    });
+    try {
+        fs.copyFileSync(cropsPath, cropsPath.replace(/\.json$/, '.before-calendar-v2.json'));
+        fs.writeFileSync(cropsPath, JSON.stringify(kept, null, 2), 'utf-8');
+    } catch (e) { console.error('Could not update crops_config.json', e); }
+    return kept;
+}
+
 function parseCropGrowthXml(xmlText) {
     let doc;
     try {
@@ -3790,30 +3810,17 @@ function parseCropGrowthXml(xmlText) {
         let state = sowStartState;
         let harvestIdx = null;
 
-        // Walk forward period by period (wrapping across the year boundary,
-        // up to 2 full years as a safety cap). Within each period, keep
-        // chaining every matching growth rule until none apply (or harvest
-        // is reached) before moving to the next period — a period's
-        // <update> list is often a full multi-step chain meant to resolve
-        // within that same ~month (e.g. grass: invisible -> greenSmall ->
-        // greenMiddle -> harvestReady all inside one period), not one step
-        // per period.
-        outer:
+        // Crops grow once per period: as a period ends, a field takes one step by
+        // that period's rules (the rules of one period are a table for every
+        // state, not a chain), so a step shows from the next period on, and the
+        // period it is sown in counts. Checked against the fields of real saves.
         for (let step = 0; step < 24; step++) {
             const idx = (sowIdx + step) % 12;
-
-            for (let inner = 0; inner < 20; inner++) {
-                const rule = periodData[idx].updates.find(u => u.from === state);
-                if (!rule) break;
-                state = rule.to;
-                if (harvestStateNames.has(state)) {
-                    harvestIdx = idx;
-                    break outer;
-                }
-            }
-
+            const rule = periodData[idx].updates.find(u => u.from === state);
+            if (!rule) continue;
+            state = rule.to;
             if (harvestStateNames.has(state)) {
-                harvestIdx = idx;
+                harvestIdx = (idx + 1) % 12;
                 break;
             }
         }
@@ -5828,7 +5835,7 @@ if (saveSettingsBtn) {
                             try { existing = JSON.parse(fs.readFileSync(generatedPath, 'utf-8')) || {}; }
                             catch (e) { /* corrupt existing file — start fresh from this scan */ }
                         }
-                        const merged = { ...existing };
+                        const merged = { ...existing, _calendarVersion: CROP_CALENDAR_VERSION };
                         Object.keys(combined).forEach(cropName => {
                             merged[cropName] = { ...(merged[cropName] || {}), ...combined[cropName] };
                         });

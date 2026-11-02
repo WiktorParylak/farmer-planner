@@ -98,29 +98,17 @@ function parseCropGrowthXml(xmlText) {
         let state = sowStartState;
         let harvestIdx = null;
 
-        // Walk forward period by period (wrapping the year, capped at 2
-        // years), but within EACH period keep chaining every matching update
-        // rule until none apply (or harvest is reached) before moving to the
-        // next period — a single ~month-long period's <update> list is often
-        // a full multi-step chain meant to resolve within that same period
-        // (e.g. grass: invisible -> greenSmall -> greenMiddle -> harvestReady
-        // all inside one period), not one step per period.
-        outer:
+        // Crops grow once per period: as a period ends, a field takes one step by
+        // that period's rules (the rules of one period are a table for every
+        // state, not a chain), so a step shows from the next period on, and the
+        // period it is sown in counts. Checked against the fields of real saves.
         for (let step = 0; step < 24; step++) {
             const idx = (sowIdx + step) % 12;
-
-            for (let inner = 0; inner < 20; inner++) {
-                const rule = periodData[idx].updates.find(u => u.from === state);
-                if (!rule) break;
-                state = rule.to;
-                if (harvestStateNames.has(state)) {
-                    harvestIdx = idx;
-                    break outer;
-                }
-            }
-
+            const rule = periodData[idx].updates.find(u => u.from === state);
+            if (!rule) continue;
+            state = rule.to;
             if (harvestStateNames.has(state)) {
-                harvestIdx = idx;
+                harvestIdx = (idx + 1) % 12;
                 break;
             }
         }
