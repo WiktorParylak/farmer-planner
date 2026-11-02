@@ -243,15 +243,15 @@ function rotationTimeline(farm, field, history, back, ahead) {
         out.push({ season: s, crops: past[s] || [], catchCrop: rows.map(f => f.catchCrop).filter(Boolean)[0] || '', projected: false });
     }
     out.push({ season, crops: field.crop ? [field.crop] : [], catchCrop: field.catchCrop || '', projected: false, current: true, slot: info ? info.slot : null });
-    const next = field.nextCrop;
-    if (info) {
-        for (let k = 1; k <= ahead; k++) {
+    // The crop generator's plan wins over the cycle, season by season.
+    for (let k = 1; k <= ahead; k++) {
+        const planned = k === 1 ? field.nextCrop : (field.planAhead || []).find(e => e.season === season + k);
+        if (planned) {
+            out.push({ season: season + k, crops: planned.crop ? [planned.crop] : [], catchCrop: '', projected: true, generated: true, sowingMonth: planned.sowingMonth || '' });
+        } else if (info) {
             const slot = rotationSlotAt(info.rot, info.index + k);
-            if (k === 1 && next) out.push({ season: season + 1, crops: next.crop ? [next.crop] : [], catchCrop: '', projected: true, generated: true });
-            else out.push({ season: season + k, crops: slot.crop ? [slot.crop] : [], catchCrop: slot.catchCrop, projected: true, slot });
+            out.push({ season: season + k, crops: slot.crop ? [slot.crop] : [], catchCrop: slot.catchCrop, projected: true, slot });
         }
-    } else if (next && ahead > 0) {
-        out.push({ season: season + 1, crops: next.crop ? [next.crop] : [], catchCrop: '', projected: true, generated: true });
     }
     return out;
 }
@@ -330,16 +330,27 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
     const filled = [];
     (farm.fields || []).forEach(field => {
         const info = fieldRotationInfo(farm, field);
+        // The generator's plan for later seasons: drop what has passed, and the
+        // season after this one becomes "next".
+        const movePlanUp = () => {
+            if (!field.planAhead) return;
+            const following = field.planAhead.find(e => e.season === newSeason + 1);
+            if (following && !field.nextCrop) field.nextCrop = { crop: following.crop, sowingMonth: following.sowingMonth, reason: following.reason };
+            field.planAhead = field.planAhead.filter(e => e.season > newSeason + 1);
+            if (!field.planAhead.length) delete field.planAhead;
+        };
         // A carried-over crop moves on after its harvest (settleCarriedFields).
-        if (field.carriedFrom) return;
+        if (field.carriedFrom) { movePlanUp(); return; }
         // Planned by the crop generator for this season: it wins over the cycle.
         if (field.nextCrop) {
             applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '' });
             delete field.nextCrop;
+            movePlanUp();
             if (info) setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
             filled.push(field);
             return;
         }
+        movePlanUp();
         if (!info) return;
         setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
         if (!fill) return;

@@ -10265,3 +10265,30 @@ button.timeline-bar:hover {
 .storage-stock {
   text-align: left;
 }
+
+/* Crop generator: five seasons */
+.gen-years-table th:nth-child(n+4),
+.gen-years-cell {
+  min-width: 118px;
+}
+
+.gen-years-cell.is-changed .gen-crop {
+  font-weight: 600;
+}
+
+.gen-years-table tfoot th,
+.gen-years-table tfoot td {
+  padding: 7px 10px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface-alt);
+  font-size: var(--fs-xs);
+  vertical-align: top;
+}
+
+.gen-years-cover .supply-sub {
+  display: block;
+}
+
+.gen-years-cover.is-short {
+  color: var(--color-accent);
+}

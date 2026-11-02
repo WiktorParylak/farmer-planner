@@ -123,7 +123,7 @@ function storagePlacesHtml(places) {
     const rows = places.slice().sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name)).map(p => {
         const fills = Object.keys(p.fills).sort((a, b) => p.fills[b] - p.fills[a]).map(ft => `${escapeHtml(storageFillName(ft))} ${storageLitres(p.fills[ft])}`);
         const state = p.kind === 'bunker' && p.state && fills.length ? ` <span class="storage-state">${escapeHtml(t('storageBunker_' + p.state))}</span>` : '';
-        return `<tr><td>${escapeHtml(p.name)}${state}</td><td>${t('storageKind_' + p.kind)}</td>
+        return `<tr><td>${escapeHtml(p.name)}${state}</td><td>${escapeHtml(t('storageKind_' + p.kind))}</td>
             <td class="storage-fills">${fills.length ? fills.join('<br>') : `<span class="storage-empty">${t(p.kind === 'heap' ? 'storageHeapNotSaved' : 'storageEmpty')}</span>`}</td></tr>`;
     }).join('');
     return `<table class="data-table supply-table storage-table storage-table--places"><thead><tr>

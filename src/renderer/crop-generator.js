@@ -7,7 +7,8 @@
 // crop with the best margin (market.js). Yields come from fieldExpectedYield,
 // rotation warnings from rotationSequenceWarnings — nothing is counted twice.
 // Applying writes the crops (this season) or field.nextCrop (next season,
-// put on the fields by advanceRotationsForNewSeason), keeps a fields backup and
+// put on the fields by advanceRotationsForNewSeason; seasons after it in
+// field.planAhead, moved up one by one), keeps a fields backup and
 // an undo record, and sets the feed planner's use of each field it planned.
 // Loaded after rotation.js.
 
@@ -183,9 +184,11 @@ function buildFarmDemand(farm, settings) {
 
 // --- The plan ------------------------------------------------------------------
 // { mode, needs, proposals, freeHa, limitHa, usedHa, problems }
-function buildCropGeneratorPlan(farm) {
+// `ahead` plans a season further on: { k: seasons from now, chosen: { fieldIdx: [crops of the seasons before it] } }.
+function buildCropGeneratorPlan(farm, ahead) {
     const settings = getGeneratorSettings(farm);
-    const mode = settings.mode === 'next' || settings.mode === 'this' ? settings.mode : genDefaultMode(farm);
+    const mode = ahead ? 'next' : (settings.mode === 'next' || settings.mode === 'this' ? settings.mode : genDefaultMode(farm));
+    const k = ahead ? ahead.k : 1;
     const rates = getSupplyRates();
     const plan = getFeedPlan(farm);
     const market = getFarmMarket(farm);
@@ -196,7 +199,8 @@ function buildCropGeneratorPlan(farm) {
     const pool = genCropPool(settings);
     const needs = buildFarmDemand(farm, settings);
     const needByRes = {};
-    needs.forEach(n => { n.fixed = 0; n.planned = 0; needByRes[n.res] = n; });
+    needs.forEach(n => { n.fixed = 0; n.planned = 0; if (k > 1) n.stock = 0; needByRes[n.res] = n; });
+    const before = idx => (ahead && ahead.chosen[idx] ? ahead.chosen[idx].slice(0, k - 1) : []);
 
     // Every numbered field with an area, and what the generator may do with it.
     const fields = [];
@@ -206,14 +210,21 @@ function buildCropGeneratorPlan(farm) {
         const key = genFieldKey(farm, idx);
         const info = fieldRotationInfo(farm, f);
         let status = 'free', keepCrop = null;
-        // What is planned already: this season's crop, or next season's plan / cycle step.
-        const current = mode === 'next' ? (f.nextCrop ? f.nextCrop.crop : genCycleCrop(info, mode)) || null : f.crop || null;
+        // What is planned already: this season's crop, or that season's plan / cycle step.
+        const planned = k > 1 ? (f.planAhead || []).find(e => e.season === season + k) : f.nextCrop;
+        const current = mode === 'next' ? (planned ? planned.crop : genCycleCrop(info, mode, k)) || null : f.crop || null;
+        // Grassland stays on until its limit, counting the seasons planned before this one.
+        const earlier = before(idx);
+        const prevCrop = k > 1 ? earlier[k - 2] : f.crop;
+        let grassRun = 0;
+        for (let i = earlier.length - 1; i >= 0 && cropOrderKey(earlier[i]) === cropOrderKey(prevCrop); i--) grassRun++;
+        if (grassRun === earlier.length && cropOrderKey(f.crop) === cropOrderKey(prevCrop)) grassRun += grasslandSeasonCount(f, history, season);
         if (mode === 'this' && (f.state === 'Planted' || f.carriedFrom)) { status = 'growing'; keepCrop = f.crop; }
-        else if (mode === 'next' && carry.has(idx)) { status = 'growing'; keepCrop = f.crop; }
-        else if (mode === 'next' && isPerennialCrop(f.crop) && grasslandSeasonCount(f, history, season) < grassLimit) { status = 'perennial'; keepCrop = f.crop; }
-        else if (settings.manual[key] !== undefined) { status = 'manual'; keepCrop = settings.manual[key]; }
-        else if (settings.locks[key]) { status = 'locked'; keepCrop = mode === 'next' ? genCycleCrop(info, mode) ?? current : current; }
-        else if (settings.keepCycles && info) { status = 'cycle'; keepCrop = mode === 'this' ? current || genCycleCrop(info, mode) : genCycleCrop(info, mode); }
+        else if (mode === 'next' && k === 1 && carry.has(idx)) { status = 'growing'; keepCrop = f.crop; }
+        else if (mode === 'next' && isPerennialCrop(prevCrop) && grassRun < grassLimit) { status = 'perennial'; keepCrop = prevCrop; }
+        else if (k === 1 && settings.manual[key] !== undefined) { status = 'manual'; keepCrop = settings.manual[key]; }
+        else if (settings.locks[key]) { status = 'locked'; keepCrop = mode === 'next' ? genCycleCrop(info, mode, k) ?? current : current; }
+        else if (settings.keepCycles && info) { status = 'cycle'; keepCrop = mode === 'this' ? current || genCycleCrop(info, mode) : genCycleCrop(info, mode, k); }
         fields.push({ f, idx, key, area, info, status, keepCrop: keepCrop || '', current: current || '' });
     });
     const freeHa = fields.filter(x => x.status === 'free').reduce((s, x) => s + x.area, 0);
@@ -240,18 +251,22 @@ function buildCropGeneratorPlan(farm) {
     // Memoised per field: yield per need, rotation warnings, sowing month.
     const memo = {}, timelines = {};
     const cell = (x, crop) => {
-        const k = x.idx + '|' + crop;
-        if (memo[k]) return memo[k];
+        const memoKey = x.idx + '|' + crop;
+        if (memo[memoKey]) return memo[memoKey];
         const base = timelines[x.idx] || (timelines[x.idx] = rotationTimeline(farm, x.f, history, 3, 0));
         const seq = base.map(e => ({ ...e, crops: e.crops.slice() }));
         let from = seq.findIndex(e => e.current);
         if (mode === 'this') seq[from].crops = [crop];
-        else { seq.push({ season: season + 1, crops: [crop] }); from += 1; }
+        else {
+            before(x.idx).forEach((c, i) => seq.push({ season: season + i + 1, crops: c ? [c] : [] }));
+            seq.push({ season: season + k, crops: [crop] });
+            from += k;
+        }
         const warnings = rotationSequenceWarnings(seq, from, grassLimit);
         const sow = mode === 'this'
             ? (cropOrderKey(crop) === cropOrderKey(x.f.crop) && x.f.sowingMonth && genSowThisSeason(crop, farm.month) ? x.f.sowingMonth : genSowThisSeason(crop, farm.month))
             : rotationDefaultSowMonth(crop) || null;
-        return (memo[k] = { warnings, red: warnings.some(w => w.level === 'red'), sow, perHa: {} });
+        return (memo[memoKey] = { warnings, red: warnings.some(w => w.level === 'red'), sow, perHa: {} });
     };
     const perHa = (x, crop, res) => {
         const c = cell(x, crop);
@@ -322,7 +337,7 @@ function buildCropGeneratorPlan(farm) {
     fields.forEach(x => {
         if (x.status !== 'free' || assigned[x.idx]) return;
         if (x.info) {
-            const crop = genCycleCrop(x.info, mode);
+            const crop = genCycleCrop(x.info, mode, k);
             if (crop !== null && (!crop || usable(x, crop))) { assigned[x.idx] = { crop, reason: 'cycle' }; return; }
         }
         if (x.current && pool.includes(x.current) && usable(x, x.current) && !cell(x, x.current).warnings.length) {
@@ -356,7 +371,7 @@ function buildCropGeneratorPlan(farm) {
             res: a && a.res, litres: a && a.litres, straw: a && a.straw, margin: a && a.margin !== undefined ? a.margin : (to ? marginOf(x, to) : null),
             perHa: a && a.res ? perHa(x, to, a.res) : null,
             warnings: to ? c.warnings : [],
-            changed: (x.status === 'free' || x.status === 'manual') && cropOrderKey(to || '') !== cropOrderKey(x.current || ''),
+            changed: (x.status === 'free' || x.status === 'manual' || (k > 1 && x.status === 'perennial')) && cropOrderKey(to || '') !== cropOrderKey(x.current || ''),
             alts
         };
     });
@@ -384,10 +399,10 @@ function genDefaultMode(farm) {
         && genSowThisSeason(f.crop || 'Wheat', farm.month)) ? 'this' : 'next';
 }
 
-// The crop a field's cycle gives it in the planned season ('' = fallow, null = none).
-function genCycleCrop(info, mode) {
+// The crop a field's cycle gives it in the planned season, k seasons on ('' = fallow, null = none).
+function genCycleCrop(info, mode, k) {
     if (!info) return null;
-    return (mode === 'next' ? rotationSlotAt(info.rot, info.index + 1) : info.slot).crop || '';
+    return (mode === 'next' ? rotationSlotAt(info.rot, info.index + (k || 1)) : info.slot).crop || '';
 }
 
 // Up to three other crops for a field: for its need first, else by margin.
@@ -410,6 +425,7 @@ function genAlternatives(x, a, pool, needs, perHa, usable, marginOf, chosen) {
 
 // --- The tab ---------------------------------------------------------------------
 function cropGeneratorHtml(farm) {
+    if (getGeneratorSettings(farm).mode === 'years') return genYearsHtml(farm);
     const plan = genLastPlan = buildCropGeneratorPlan(farm);
     const s = plan.settings;
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
@@ -426,11 +442,10 @@ function cropGeneratorHtml(farm) {
     const count = st => needs.filter(x => st.includes(x.state)).length;
 
     // Mode switch and KPIs.
-    const modeBtn = m => `<button type="button" class="view-tab gen-mode${plan.mode === m ? ' is-active' : ''}" data-gen-mode="${m}" aria-pressed="${plan.mode === m}">${t('genMode_' + m).replace('{n}', (farm.currentSeason || 1) + (m === 'next' ? 1 : 0))}</button>`;
     let html = `<div class="cropgen">
         <div class="gen-head">
             <p class="supply-intro">${t('genIntro')}</p>
-            <div class="view-tabs gen-modes" role="group" aria-label="${escapeHtml(t('genModeLabel'))}">${modeBtn('this')}${modeBtn('next')}</div>
+            ${genModeTabs(farm, plan.mode)}
         </div>`;
     if (!plan.needs.length) {
         html += `<p class="hub-panel-note">${t('genEmpty')}</p>`;
@@ -641,8 +656,129 @@ function genSettingsHtml(farm, plan) {
     </details>`;
 }
 
+// --- Five seasons -------------------------------------------------------------------
+// The next seasons one after the other: each is planned like "next season", on
+// top of what the seasons before it were given. Stock only helps the first one.
+const GEN_YEARS = 5;
+
+function buildCropGeneratorYears(farm) {
+    const chosen = {};
+    const plans = [];
+    for (let k = 1; k <= GEN_YEARS; k++) {
+        const plan = buildCropGeneratorPlan(farm, { k, chosen });
+        plan.proposals.forEach(p => { (chosen[p.idx] = chosen[p.idx] || [])[k - 1] = p.to; });
+        plans.push(plan);
+    }
+    return plans;
+}
+
+function genModeTabs(farm, active) {
+    const season = farm.currentSeason || 1;
+    const btn = m => `<button type="button" class="view-tab gen-mode${active === m ? ' is-active' : ''}" data-gen-mode="${m}" aria-pressed="${active === m}">${t('genMode_' + m).replace('{n}', season + (m === 'next' ? 1 : 0))}</button>`;
+    return `<div class="view-tabs gen-modes" role="group" aria-label="${escapeHtml(t('genModeLabel'))}">${btn('this')}${btn('next')}${btn('years')}</div>`;
+}
+
+function genYearsHtml(farm) {
+    const plans = buildCropGeneratorYears(farm);
+    const season = farm.currentSeason || 1;
+    const first = plans[0].proposals;
+    let html = `<div class="cropgen">
+        <div class="gen-head">
+            <p class="supply-intro">${t('genYearsIntro')}</p>
+            ${genModeTabs(farm, 'years')}
+        </div>`;
+    if (!first.length) return html + `<p class="settings-hint">${t('genNoFields')}</p></div>`;
+
+    const rows = first.map((p, i) => {
+        const name = fieldNameOf(farm, p.number);
+        const cells = plans.map(plan => {
+            const c = plan.proposals[i];
+            // Nothing to go on is not the same as a planned fallow.
+            const crop = c.to || c.reason !== 'keep' ? genCropCell(c.to) : '<span class="gen-crop is-empty">–</span>';
+            const warn = c.warnings.length ? ` <i class="fa-solid fa-triangle-exclamation gen-warn-icon" title="${escapeHtml(c.warnings.map(w => w.text).join('\n'))}"></i>` : '';
+            return `<td class="gen-years-cell${c.changed ? ' is-changed' : ''}">${crop}${warn}</td>`;
+        }).join('');
+        return `<tr>
+            <td><span class="field-number-chip">${escapeHtml(String(p.number))}</span>${name ? ` <span class="gen-field-name">${escapeHtml(name)}</span>` : ''}</td>
+            <td class="num">${p.area.toFixed(2)}</td>
+            <td>${genCropCell(p.from)}</td>
+            ${cells}
+        </tr>`;
+    }).join('');
+    const covered = plans.map(plan => {
+        const open = plan.needs.filter(n => !n.buyOnly && !n.fromFarm);
+        const short = open.filter(n => plan.remaining(n) > 1);
+        const names = short.slice(0, 3).map(n => escapeHtml(genResourceLabel(n.res))).join(', ') + (short.length > 3 ? '…' : '');
+        return `<td class="gen-years-cover${short.length ? ' is-short' : ''}">${t('genYearsCoveredValue').replace('{ok}', open.length - short.length).replace('{all}', open.length)}${short.length ? `<span class="supply-sub">${t('genYearsShort').replace('{res}', names)}</span>` : ''}</td>`;
+    }).join('');
+    html += `<div class="gen-table-wrap"><table class="gen-table gen-years-table">
+        <thead><tr><th>${t('genColField')}</th><th class="num">${t('genColArea')}</th><th>${t('genColNow')}</th>${plans.map((_, k) => `<th>${t('season')} ${season + k + 1}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><th colspan="3">${t('genYearsCovered')}</th>${covered}</tr></tfoot>
+    </table></div>`;
+
+    const changes = plans.reduce((s, plan) => s + plan.proposals.filter(p => p.changed).length, 0);
+    const fieldCount = new Set(plans.flatMap(plan => plan.proposals.filter(p => p.changed).map(p => p.idx))).size;
+    const undo = farm.cropGenerator && farm.cropGenerator.undo;
+    html += `<div class="gen-footer">
+        <span class="gen-footer-text"><strong>${t('genYearsFooter').replace('{n}', changes).replace('{f}', fieldCount)}</strong></span>
+        ${undo ? `<button type="button" class="settings-btn gen-undo"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> ${t('genUndo')}</button>` : ''}
+        <button type="button" class="settings-btn save-btn gen-apply" ${changes ? '' : 'disabled'}>${t('genApply')}</button>
+    </div>`;
+    html += genSettingsHtml(farm, plans[0]);
+    return html + '</div>';
+}
+
+async function applyCropGeneratorYears(farm) {
+    const plans = buildCropGeneratorYears(farm);
+    const season = farm.currentSeason || 1;
+    const count = plan => plan.proposals.filter(p => p.changed).length;
+    const total = plans.reduce((s, plan) => s + count(plan), 0);
+    if (!total) return;
+    const ok = await showDialog({
+        title: t('genYearsPreviewTitle'),
+        bodyHtml: `<p>${t('genYearsPreview')}</p><ul class="gen-pv-list">${plans.map((plan, k) => `<li>${t('genYearsPreviewRow').replace('{n}', season + k + 1).replace('{c}', count(plan))}</li>`).join('')}</ul>`,
+        confirmText: t('genConfirm'), cancelText: t('cancel'), icon: 'fa-wand-magic-sparkles'
+    });
+    if (ok !== true) return;
+
+    writeFieldsBackup(farm, JSON.parse(JSON.stringify(farm.fields || [])), 'generator');
+    const feedPlan = getFeedPlan(farm);
+    const undo = { at: new Date().toISOString(), mode: 'years', fields: [],
+        fieldUse: JSON.parse(JSON.stringify(feedPlan.fieldUse || {})), strawFields: JSON.parse(JSON.stringify(feedPlan.strawFields || {})) };
+    const remembered = new Set();
+    plans.forEach((plan, i) => {
+        const k = i + 1;
+        plan.proposals.filter(p => p.changed).forEach(p => {
+            const field = farm.fields[p.idx];
+            if (!remembered.has(p.idx)) {
+                remembered.add(p.idx);
+                const before = {};
+                GEN_UNDO_PROPS.forEach(prop => { before[prop] = field[prop] === undefined ? null : JSON.parse(JSON.stringify(field[prop])); });
+                undo.fields.push({ idx: p.idx, number: field.number, before });
+            }
+            const entry = { crop: p.to, sowingMonth: p.sow || '', reason: p.res || p.reason };
+            if (k === 1) field.nextCrop = entry;
+            else {
+                const target = season + k;
+                field.planAhead = (field.planAhead || []).filter(e => e.season !== target);
+                field.planAhead.push({ season: target, ...entry });
+            }
+            // The nearest season decides what the feed planner uses this field and crop for.
+            genSetFeedUse(feedPlan, field, p, k > 1);
+        });
+    });
+    farm.cropGenerator.undo = undo;
+    farm.cropGenerator.manual = {};
+    genStoreFeedPlan(farm, feedPlan);
+    saveFarmData(farm);
+    renderSeasonView();
+    renderRotationModal();
+    showAutoSyncToast(t('genAppliedToast').replace('{n}', remembered.size), 3000);
+}
+
 // --- Applying and undoing ---------------------------------------------------------
-const GEN_UNDO_PROPS = ['crop', 'sowingMonth', 'state', 'catchCrop', 'catchSowingMonth', 'tillage', 'nextCrop'];
+const GEN_UNDO_PROPS = ['crop', 'sowingMonth', 'state', 'catchCrop', 'catchSowingMonth', 'tillage', 'nextCrop', 'planAhead'];
 
 function genPreviewHtml(farm, plan, changed) {
     const before = {}, after = {};
@@ -668,6 +804,22 @@ function genPreviewHtml(farm, plan, changed) {
 function genStoreFeedPlan(farm, plan) {
     const { tmr, ...rest } = plan;
     farm.feedPlan = { ...rest, tmrShares: tmr };
+}
+
+// The feed planner uses the field for what it was planned for. keepSet leaves
+// a use already chosen for this field and crop alone.
+function genSetFeedUse(feedPlan, field, p, keepSet) {
+    const key = fertPlanSoilKey(field, p.idx) + '::' + p.to;
+    const setUse = use => { if (!keepSet || !feedPlan.fieldUse[key]) feedPlan.fieldUse[key] = use; };
+    if (p.res && p.res.startsWith('feed:')) {
+        const cat = p.res.slice(5);
+        if (cat === 'STRAW') feedPlan.strawFields[key] = true;
+        else {
+            const use = genUseFor(p.to, cat);
+            if (use) setUse(use);
+        }
+    } else if (p.res) setUse('sale');
+    if (p.straw) feedPlan.strawFields[key] = true;
 }
 
 async function applyCropGenerator(farm) {
@@ -696,17 +848,7 @@ async function applyCropGenerator(farm) {
         } else {
             field.nextCrop = { crop: p.to, sowingMonth: p.sow || '', reason: p.res || p.reason };
         }
-        // The feed planner uses the field for what it was planned for.
-        const key = fertPlanSoilKey(field, p.idx) + '::' + p.to;
-        if (p.res && p.res.startsWith('feed:')) {
-            const cat = p.res.slice(5);
-            if (cat === 'STRAW') feedPlan.strawFields[key] = true;
-            else {
-                const use = genUseFor(p.to, cat);
-                if (use) feedPlan.fieldUse[key] = use;
-            }
-        } else if (p.res) feedPlan.fieldUse[key] = 'sale';
-        if (p.straw) feedPlan.strawFields[key] = true;
+        genSetFeedUse(feedPlan, field, p);
     });
     farm.cropGenerator.undo = undo;
     farm.cropGenerator.manual = {};
@@ -810,7 +952,7 @@ function genRerender() {
             s.excluded = s.excluded.includes(c) ? s.excluded.filter(x => x !== c) : [...s.excluded, c];
             return save(farm);
         }
-        if (el.classList.contains('gen-apply')) { applyCropGenerator(farm); return; }
+        if (el.classList.contains('gen-apply')) { if (s.mode === 'years') applyCropGeneratorYears(farm); else applyCropGenerator(farm); return; }
         if (el.classList.contains('gen-undo')) { undoCropGenerator(farm); return; }
     });
 

@@ -97,7 +97,7 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
     if (field.crop && timelineMonthPos(field.sowingMonth) >= 0) {
         const start = timelineStart(field, timelineMonthPos(field.sowingMonth), nowPos, currentMonth);
         if (isCutCrop(field.crop)) {
-            const hasNext = !isPastSeason && (fieldRotationInfo(farm, field) || field.nextCrop);
+            const hasNext = !isPastSeason && (fieldRotationInfo(farm, field) || field.nextCrop || field.planAhead);
             last = { crop: field.crop, sowingMonth: field.sowingMonth, from: start, to: hasNext ? (Math.floor(start / 12) + 1) * 12 : months, harvest: '', harvestAt: null, grass: true };
             bars.push(last);
             cursor = Math.max(cursor, last.to);
@@ -126,7 +126,7 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
             cursor = Math.max(cursor, last.to);
             continue;
         }
-        const month = e.generated ? (field.nextCrop.sowingMonth || rotationDefaultSowMonth(crop)) : rotationSowMonth(e.slot);
+        const month = e.generated ? (e.sowingMonth || rotationDefaultSowMonth(crop)) : rotationSowMonth(e.slot);
         const pos = timelineMonthPos(month);
         if (pos < 0) continue;
         const from = timelineNextMonth(pos, cursor);

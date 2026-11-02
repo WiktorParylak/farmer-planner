@@ -27,6 +27,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Podsumowanie sezonu**: nowy panel z hektarami faktycznie zasianymi, zebranymi, skoszonymi i straconymi na uprawę w każdym roku gry, według dziennika pola, a nie planu. Gdy rok gry się kończy, *Co dziś zrobić* o nim przypomina.
 - **Stan każdego budynku ze zwierzętami**: widok budynku pokazuje produktywność z gry i na ile dni starczy słomy, a *Co dziś zrobić* wymienia budynki z małą ilością słomy albo niskim zdrowiem lub produktywnością. Gra nie zapisuje poziomu wody w budynku, więc woda pozostaje dziennym zapotrzebowaniem, chyba że mod trzyma ją w magazynie.
 - **Magazyny i produkcje**: nowy panel pokazuje wszystko, co jest na farmie, według produktu oraz silosu, silosu przejazdowego, płyty obornikowej i szopy, a także linie każdej produkcji ze wsadem i wyrobem na miesiąc, kosztem działania i informacją, czy są włączone. Gra nie zapisuje poziomu płyty obornikowej, więc panel mówi o tym zamiast pokazywać ją jako pustą.
+- **Generator upraw na pięć sezonów**: nowy tryb planuje następne pięć sezonów pole po polu, każdy na podstawie upraw sezonu wcześniejszego. „Nowy sezon” przesuwa plan dalej, płodozmian i oś czasu go pokazują, a „Cofnij generator” usuwa go w całości.
 
 **Zmiany**
 - **Jeden przewidywany plon wszędzie**: planer pasz, okno pokosów i *Plony i ceny* liczą zbiór pola tak samo — z FS25_MoistureSystem dzisiejsza wilgotność pola obniża też paszę z pola zbieranego w tym miesiącu.
