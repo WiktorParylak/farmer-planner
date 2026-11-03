@@ -33,9 +33,9 @@
 - Okno pola ze wszystkim o jednym polu: uprawa, płodozmian, gleby (wczytywane z gry), wapno, plan azotu i lista prac do odhaczania.
 - Międzyplony na tym samym polu, przed albo po głównej uprawie.
 - Historia sezonów: wrócisz do poprzednich i porównasz.
-- Cykle płodozmianu (z szablonów, np. norfolskiego, albo własne): następna uprawa wpisuje się sama, gdy zaczyna się nowy sezon, a widok płodozmianu ocenia każde pole.
+- Cykle płodozmianu (z szablonów, np. norfolskiego, albo własne): każde pole przechodzi na następną uprawę po swoim zbiorze, a widok płodozmianu ocenia każde pole.
 - Generator upraw, który planuje pola pod to, czego farma potrzebuje w roku — paszę i słomę dla zwierząt, surowce dla produkcji i biogazowni — w zgodzie z płodozmianem i w ustawionym limicie powierzchni.
-- Podpowiedź, kiedy zacząć nowy sezon: gdy wszystko jest zebrane.
+- Sezon to rok gry: zamyka to, co zeszło z pól, oraz finanse, a to, co jeszcze rośnie, zostaje na polach.
 - Panel *Co dziś robić* pod planem: siew, zbiór, chwasty, wałowanie, kroki prac, kończąca się pasza, deszcz z prognozy gry i notatki z bieżącego miesiąca.
 - Podsumowanie hektarów każdej uprawy.
 

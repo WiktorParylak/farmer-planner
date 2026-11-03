@@ -33,9 +33,9 @@
 - A field view with everything about one field: crop, rotation, soils (loaded from the game), lime, nitrogen plan and the work list to tick off.
 - Catch crops on the same field, before or after the main crop.
 - Past seasons kept, so you can step back and compare.
-- Crop rotation cycles (from templates like Norfolk or your own): the next crop is filled in when a new season starts, and a rotation view scores each field.
+- Crop rotation cycles (from templates like Norfolk or your own): each field moves on to its next crop after its own harvest, and a rotation view scores each field.
 - A crop generator that plans the fields for what the farm needs over a year — feed and straw for the animals, inputs for productions and biogas — within the rotation and an area limit you set.
-- Knows when to start a new season: it tells you once every crop is in.
+- A season is a year of the game: it files what came off the fields and the money, and what still grows stays on.
 - A *What to do today* panel under the plan: this month's sowing, harvest, weeds, rolling, work steps, low feed, rain from the game's forecast and notes.
 - A summary of hectares per crop.
 
@@ -105,7 +105,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 - Seasons with history — step back to previous seasons and compare.
 - Crops summary: total hectares per planted crop, filled in from the fields, in the game's crop order (or sorted by name / area); catch crops listed separately.
 - Optional whole land plot (farmland) area next to each field's area.
-- Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. A new season (or a new in-game month, once a sowing window opens) fills in each field's next crop. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).
+- Crop rotation: cycles per farm (templates such as Norfolk, cereals + canola, dairy feed, or your own, multi-season grass and fallow steps), assigned per field. After its harvest each field moves on to its next crop by itself, and a new in-game month fills it in on an empty field once a sowing window opens. The rotation view shows past and planned seasons with a green / yellow / red score and warnings (same crop twice, too many cereals, canola or beet too often, grass past its limit).
 - *What to do today* panel under the season plan: fields to sow or harvest this month, late sowings, weeds, rolling, the next step of your work lists, barns low on feed, rain, snow or hail from the game's forecast in the next 24 hours and this month's notes.
 - Crop generator (*Crop rotation → Generator*): proposes a crop for every field you can still change, this season or the next, from the feed planner's needs and the productions and biogas plants in the save. Each need shows stock, what the plan adds and what is still short; each field says why and offers other crops. Profiles, an area limit, a reserve and the allowed crops are in its settings; *Apply…* previews the change, keeps a backup of the fields and can be undone.
 - Several fields at once in Edit: tick the cards (or **Shift+click** them) and a change in one selected card goes to all of them, or merge them into one field.
