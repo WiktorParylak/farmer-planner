@@ -72,7 +72,7 @@ function genResourceLabel(res) {
 
 function genResourceIcon(res) {
     const [kind, id] = res.split(':');
-    return kind === 'feed' ? (FEED_CATEGORY_ICONS[id] || 'fa-wheat-awn') : 'fa-wheat-awn';
+    return kind === 'feed' ? (FEED_CATEGORY_ICONS[feedKeyCategory(id)] || 'fa-wheat-awn') : 'fa-wheat-awn';
 }
 
 // Crops that can be sown as a main crop and have a yield and a calendar.
@@ -85,6 +85,10 @@ function genCropPool(settings) {
 // Which feed-planner use of a crop gives feed category `cat` (null = none).
 function genUseFor(crop, cat) {
     const uses = FEED_CROP_USES[crop];
+    if (isFeedPickKey(cat)) {
+        if (!feedKeyFillTypes(cat).includes(genCropFillType(null, crop))) return null;
+        return uses ? Object.keys(uses).find(u => u !== 'silage' && uses[u] !== 'ROUGHAGE') || null : 'feed';
+    }
     if (!uses) return null;
     return Object.keys(uses).find(u => uses[u] === cat || (uses[u] === 'ROUGHAGE' && FEED_ROUGHAGE.includes(cat))) || null;
 }
@@ -97,7 +101,7 @@ function genRateFor(crop, res, plan) {
     const use = genUseFor(crop, id);
     if (!use) return null;
     const rate = getCropYieldRate(crop) || 0;
-    if (FEED_CROP_USES[crop][use] === 'ROUGHAGE') return rate * plan.grassCuts;
+    if ((FEED_CROP_USES[crop] || {})[use] === 'ROUGHAGE') return rate * plan.grassCuts;
     if (use === 'silage') return FEED_SILAGE_OWN_YIELD.includes(crop) ? rate : plan.chaffYield;
     return rate;
 }

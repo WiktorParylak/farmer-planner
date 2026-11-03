@@ -1175,8 +1175,8 @@ function wireBarnPanel(bodyEl) {
 // =============================================================
 const FIN_LOCALE = () => ({ pl: 'pl-PL', de: 'de-DE' }[currentLang] || 'en-US');
 function finMoney(v) {
-    const n = Math.round(v).toLocaleString(FIN_LOCALE());
-    return CURRENCY === '€' ? `${n} €` : `${CURRENCY}${n}`;
+    const n = Math.round(v * CURRENCY_RATE).toLocaleString(FIN_LOCALE());
+    return CURRENCY_PREFIXED.includes(CURRENCY) ? `${CURRENCY}${n}` : `${n} ${CURRENCY}`;
 }
 
 // Money amounts: farm.balance is a number now, but farms, archives and the
@@ -1211,9 +1211,13 @@ function parseDecimal(v) {
 
 // Currency symbol of the open farm: chosen in Settings, or the game's own
 // setting (gameSettings.xml <units><money>: 1 euro, 2 dollar, 3 pound).
-// Only the symbol changes — amounts in the save are the same.
+// The save always holds euros. A currency mod converts them on screen in the
+// game, so a chosen currency other than € takes a rate typed in by the player
+// (farm.currencyRates, €1 = rate; 1 changes only the symbol).
 const GAME_MONEY_UNITS = { '1': '€', '2': '$', '3': '£' };
+const CURRENCY_PREFIXED = ['$', '£'];
 let CURRENCY = '€';
+let CURRENCY_RATE = 1;
 
 function readGameCurrency(saveGamePath) {
     try {
@@ -1231,11 +1235,40 @@ function currencyOf(farm) {
     return (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
 }
 
+// The rate field in Settings shows only for a chosen currency other than €.
+function currencyHasRate(currency) {
+    return !!currency && currency !== 'auto' && currency !== '€';
+}
+
+function currencyRateOf(farm) {
+    const chosen = farm && farm.currency;
+    if (!currencyHasRate(chosen)) return 1;
+    const rate = parseFloat(farm.currencyRates && farm.currencyRates[chosen]);
+    return rate > 0 ? rate : 1;
+}
+
+function refreshCurrencyRateField(farm) {
+    const select = document.getElementById('currency-select');
+    const field = document.getElementById('currency-rate-field');
+    const input = document.getElementById('currency-rate-input');
+    if (!select || !field || !input) return;
+    const currency = select.value;
+    field.hidden = !currencyHasRate(currency);
+    const rate = farm && farm.currencyRates ? parseFloat(farm.currencyRates[currency]) : NaN;
+    input.value = (rate > 0 ? rate : 1).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 6, useGrouping: false });
+    document.getElementById('currency-rate-unit').textContent = currency;
+}
+
 function useCurrency(farm) {
     CURRENCY = currencyOf(farm);
+    CURRENCY_RATE = currencyRateOf(farm);
 }
 function finCompact(v) {
     return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+// A money value on a chart: in the chosen currency, the symbol at the end of the axis.
+function finChartMoney(v, end) {
+    return finCompact(v * CURRENCY_RATE) + (end ? ' ' + CURRENCY : '');
 }
 function finSigned(v) {
     return (v > 0 ? '+' : v < 0 ? '−' : '') + finMoney(Math.abs(v));
@@ -1312,9 +1345,11 @@ function buildTrendChart(rows, width, series, opts = {}) {
     const valid = v => v !== null && v !== undefined && isFinite(v);
     const vals = [];
     series.forEach(s => rows.forEach(r => { if (valid(r[s.key])) vals.push(r[s.key]); }));
-    const ticks = opts.domain
+    // Ticks are worked out in the unit shown (opts.scale), so they stay round.
+    const scale = opts.scale || 1;
+    const ticks = (opts.domain
         ? finTicks(opts.domain[0], opts.domain[1])
-        : finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
+        : finTicks(Math.min(0, ...vals) * scale, Math.max(...vals, 1) * scale)).map(v => v / scale);
     const minV = ticks[0], maxV = ticks[ticks.length - 1];
     const x = i => padL + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1));
     const y = v => padT + plotH - (Math.min(maxV, Math.max(minV, v)) - minV) / (maxV - minV) * plotH;
@@ -1460,12 +1495,12 @@ function trendLegendHtml(items) {
 }
 
 // Per-season values as columns (≤24px, 4px rounded top, value above).
-function buildSeasonBars(history, key, width, format, ariaLabel) {
+function buildSeasonBars(history, key, width, format, ariaLabel, scale = 1) {
     const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
     const padL = 64, padR = 16, padT = 26, padB = 30;
     const plotW = W - padL - padR, plotH = H - padT - padB;
     const vals = history.map(h => h[key] || 0);
-    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
+    const ticks = finTicks(Math.min(0, ...vals) * scale, Math.max(...vals, 1) * scale, 3).map(v => v / scale);
     const minV = ticks[0], maxV = ticks[ticks.length - 1];
     const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
     const band = plotW / history.length, bw = Math.min(24, band * 0.5);
@@ -1506,14 +1541,14 @@ function renderFinancePanel(bodyEl, farm) {
         const hasLoan = monthly.some(r => r.loan > 0);
         const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
         if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
-        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        const opts = { format: finChartMoney, scale: CURRENCY_RATE, formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
         html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
             w => buildTrendChart(monthly, w, series, opts), width);
     }
     if (history.length > 1) {
         html += `<section class="fin-card fin-chart">
             <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
-            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), t('finChartSeasons'))}
+            ${buildSeasonBars(history, 'balance', width, finChartMoney, t('finChartSeasons'), CURRENCY_RATE)}
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
@@ -1552,7 +1587,7 @@ function finFlowsHtml(monthly, width) {
             { key: 'cost', label: t('finCosts'), cls: 'loan' },
             { key: 'profit', label: t('finProfit'), cls: 'animals', dashed: true }
         ];
-        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, ariaLabel: t('finFlowsChart') };
+        const opts = { format: finChartMoney, scale: CURRENCY_RATE, formatFull: finMoney, ariaLabel: t('finFlowsChart') };
         html += trendCardHtml('fin-flows', t('finFlowsChart'), trendLegendHtml(series), '', w => buildTrendChart(rows, w, series, opts), width);
     }
 
@@ -5633,6 +5668,9 @@ function farmlandAreaForKey(key) {
     return ids.reduce((s, id) => s + FARMLAND_INFO.areas[id], 0);
 }
 
+const currencySelectEl = document.getElementById('currency-select');
+if (currencySelectEl) currencySelectEl.addEventListener('change', () => refreshCurrencyRateField(getCurrentFarm()));
+
 if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
@@ -5660,6 +5698,7 @@ if (settingsBtn) {
         if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
         const currencySelect = document.getElementById('currency-select');
         if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
+        refreshCurrencyRateField(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         // Manual import is rarely needed: folded unless this farm already uses it.
@@ -5906,6 +5945,13 @@ if (saveSettingsBtn) {
             const farm = getCurrentFarm();
             if (currencySelect && farm && (farm.currency || 'auto') !== currencySelect.value) {
                 farm.currency = currencySelect.value;
+                saveFarmData(farm);
+                refreshPlannerHeader(farm);
+            }
+            const rateInput = document.getElementById('currency-rate-input');
+            const rate = rateInput ? parseDecimal(rateInput.value) : NaN;
+            if (farm && currencyHasRate(farm.currency) && rate > 0 && rate !== currencyRateOf(farm)) {
+                farm.currencyRates = { ...(farm.currencyRates || {}), [farm.currency]: rate };
                 saveFarmData(farm);
                 refreshPlannerHeader(farm);
             }

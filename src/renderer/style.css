@@ -832,6 +832,20 @@ body {
   gap: 12px;
 }
 
+.settings-field[hidden] {
+  display: none;
+}
+
+.currency-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.currency-rate input {
+  width: 96px;
+}
+
 .settings-hint {
   margin: 0;
   font-size: var(--fs-sm);
@@ -5730,6 +5744,38 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.feed-picks {
+  margin: -2px 0 4px;
+  font-size: var(--fs-sm);
+}
+
+.feed-picks-summary {
+  width: fit-content;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feed-picks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 6px;
+}
+
+.feed-editor label.feed-pick {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.feed-picks .settings-hint {
+  text-align: left;
 }
 
 .feed-ed-add {

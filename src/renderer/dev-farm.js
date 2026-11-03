@@ -469,6 +469,15 @@ function buildDevFarm({ pl }) {
             "dev-cowbarn": { __ALL_FEED__: 120000 },
             "dev-sheeppasture": { __ALL_FEED__: 20000 }
         },
+        feedPlan: {
+            customFeeds: [{
+                id: 'devpicks', animalType: 'CHICKEN', name: 'Layer mix', efficiency: 100,
+                ingredients: [
+                    { category: 'GRAIN', pct: 70 },
+                    { category: 'PROTEIN', pct: 30, fillTypes: ['BEETROOT', 'BREAD', 'MAIZE'] }
+                ]
+            }]
+        },
         feedStock: {
             SILAGE: { bunker: 240000, bale: 28000 },
             DRYGRASS_WINDROW: { bale: 36000 },

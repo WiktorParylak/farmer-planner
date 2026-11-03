@@ -61,6 +61,8 @@ let TMR_LIMITS = { ...BASE_TMR_LIMITS };
 let MIXER_TMR_CATEGORIES = Object.keys(TMR_LIMITS);
 // Which file they came from (null = base game), for the settings mod list.
 let animalFoodSource = null;
+// Every fill type the map's animalFood.xml feeds (offered in the feed editor).
+let animalFoodFillTypes = [];
 
 // Feed categories a food group's fillTypes count as, in order, no repeats.
 function foodGroupCategories(fillTypes) {
@@ -78,6 +80,7 @@ function applyMapAnimalFood(mapFood) {
     ANIMAL_FOOD_GROUPS = JSON.parse(JSON.stringify(BASE_ANIMAL_FOOD_GROUPS));
     TMR_LIMITS = { ...BASE_TMR_LIMITS };
     animalFoodSource = null;
+    animalFoodFillTypes = [];
     const xml = mapFood && mapFood.xml;
     if (xml) {
         try {
@@ -93,6 +96,7 @@ function applyMapAnimalFood(mapFood) {
                     eat: parseFloat(attrOf(m[0], 'eatWeight'))
                 })).filter(g => !isNaN(g.production));
                 if (!groups.length) continue;
+                groups.forEach(g => animalFoodFillTypes.push(...g.fillTypes.toUpperCase().split(/\s+/).filter(Boolean)));
                 if (parallel) {
                     const eatSum = groups.reduce((sum, g) => sum + (g.eat > 0 ? g.eat : 0), 0) || 1;
                     const ingredients = [];
@@ -237,6 +241,68 @@ function animalTypeOf(subType) {
     const s = String(subType || '').toUpperCase();
     const hit = ANIMAL_TYPE_PREFIXES.find(([prefix]) => s.startsWith(prefix));
     return hit ? hit[1] : null;
+}
+
+// --- Hand-picked crops in a custom feed --------------------------------------
+// An ingredient of a custom feed can name what it is made of (fillTypes), e.g.
+// protein from maize, bread and beetroot. Its need is then a row of its own,
+// keyed "PROTEIN|BEETROOT+BREAD+MAIZE" wherever plain categories are keys, and
+// only those crops and products cover it (feedPickRoutes).
+const FEED_PICK_CATEGORIES = ['PIG_BASE', 'GRAIN', 'PROTEIN', 'EARTH', 'OAT'];
+const FEED_PICK_PRODUCTS = ['BREAD', 'FLOUR', 'CAKE'];
+const FEED_FILLTYPE_NAME = /^[A-Z0-9_]+$/;
+
+function feedIngredientKey(ingredient) {
+    const picks = (Array.isArray(ingredient.fillTypes) ? ingredient.fillTypes : []).filter(ft => FEED_FILLTYPE_NAME.test(ft));
+    return picks.length ? `${ingredient.category}|${[...picks].sort().join('+')}` : ingredient.category;
+}
+function isFeedPickKey(key) { return String(key).includes('|'); }
+function feedKeyCategory(key) { return String(key).split('|')[0]; }
+function feedKeyFillTypes(key) {
+    const picks = String(key).split('|')[1];
+    return picks ? picks.split('+').filter(ft => FEED_FILLTYPE_NAME.test(ft)) : [];
+}
+
+// A crop's harvest that can feed animals directly: not grassland, not only chopped.
+function feedCropHasGrain(crop) {
+    const uses = FEED_CROP_USES[crop];
+    return uses ? Object.keys(uses).some(u => u !== 'silage' && uses[u] !== 'ROUGHAGE') : getCropYieldRate(crop) !== null;
+}
+
+// Fill types the feed editor offers: the map's crops, what the map's animals
+// eat besides the roughage and ready mixes, and a few products.
+let feedPickCache = { crops: null, food: null, list: [] };
+function feedPickFillTypes() {
+    if (feedPickCache.crops === AVAILABLE_CROPS && feedPickCache.food === animalFoodFillTypes) return feedPickCache.list;
+    const own = AVAILABLE_CROPS.filter(feedCropHasGrain).map(c => genCropFillType(null, c)).filter(Boolean);
+    const food = animalFoodFillTypes.filter(ft => !FEED_MIXTURE_SPLIT[ft]
+        && !(FEED_FILLTYPE_CATEGORY[ft] && !FEED_PICK_CATEGORIES.includes(FEED_FILLTYPE_CATEGORY[ft])));
+    const list = [...new Set([...own, ...food, ...FEED_PICK_PRODUCTS])].filter(ft => FEED_FILLTYPE_NAME.test(ft));
+    feedPickCache = { crops: AVAILABLE_CROPS, food: animalFoodFillTypes, list };
+    return list;
+}
+
+// { fillType: { key: share } } for fill types picked in a ration some barn
+// uses, null when there are none. Each one is shared out by need between the
+// ingredients that picked it and its usual category, so nothing counts twice.
+const feedRoutesByPlan = new WeakMap();
+function feedPickRoutes(farm, plan) {
+    if (!plan || !plan.customFeeds.some(f => (f.ingredients || []).some(i => isFeedPickKey(feedIngredientKey(i))))) return null;
+    if (feedRoutesByPlan.has(plan)) return feedRoutesByPlan.get(plan);
+    const need = buildFeedDemand(farm, plan).byCategory;
+    const weights = {};
+    Object.keys(need).filter(k => isFeedPickKey(k) && need[k] > 0).forEach(k => feedKeyFillTypes(k).forEach(ft => {
+        (weights[ft] = weights[ft] || {})[k] = need[k];
+    }));
+    Object.keys(weights).forEach(ft => {
+        const cat = FEED_FILLTYPE_CATEGORY[ft];
+        if (cat && need[cat] > 0) weights[ft][cat] = need[cat];
+        const total = Object.values(weights[ft]).reduce((a, v) => a + v, 0);
+        Object.keys(weights[ft]).forEach(k => { weights[ft][k] /= total; });
+    });
+    const routes = Object.keys(weights).length ? weights : null;
+    feedRoutesByPlan.set(plan, routes);
+    return routes;
 }
 
 function defaultRationFor(type) {
@@ -475,14 +541,14 @@ function feedStockCategoriesFor(farm, plan) {
     Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => {
         stock[ft] = { ...(stock[ft] || {}), barn: litres };
     });
-    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+    return feedStockByCategory(stock, feedStockSplitOverride(plan), feedPickRoutes(farm, plan));
 }
 
 // Litres per feed category lying in the barns' troughs (part of the stock above).
 function feedBarnStockCategoriesFor(farm, plan) {
     const stock = {};
     Object.entries(feedBarnStock(farm)).forEach(([ft, litres]) => { stock[ft] = { barn: litres }; });
-    return feedStockByCategory(stock, feedStockSplitOverride(plan));
+    return feedStockByCategory(stock, feedStockSplitOverride(plan), feedPickRoutes(farm, plan));
 }
 
 function feedStockSplitOverride(plan) {
@@ -618,7 +684,8 @@ const FEED_UNSCALED_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
 function splitByRecipe(litres, recipe, into) {
     const total = recipe.absolute ? 100 : (recipe.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100);
     recipe.ingredients.forEach(i => {
-        into[i.category] = (into[i.category] || 0) + litres * (parseFloat(i.pct) || 0) / total;
+        const key = feedIngredientKey(i);
+        into[key] = (into[key] || 0) + litres * (parseFloat(i.pct) || 0) / total;
     });
 }
 
@@ -661,6 +728,7 @@ function defaultFieldUse(crop) {
 function buildFeedSupply(farm, plan, rates) {
     const rows = [];
     const byCategory = {};
+    const routes = feedPickRoutes(farm, plan);
     // A catch crop (green rye for silage…) is its own row with its own use.
     const entries = [];
     ((farm && farm.fields) || []).forEach((f, i) => {
@@ -669,7 +737,9 @@ function buildFeedSupply(farm, plan, rates) {
     });
     entries.forEach(({ f, i, crop, isCatch }) => {
         const area = parseFloat(f.area) || 0;
-        const uses = FEED_CROP_USES[crop];
+        // A crop outside the feed categories counts once a ration picks it.
+        const route = routes ? routes[genCropFillType(null, crop)] : null;
+        const uses = FEED_CROP_USES[crop] || (route ? { feed: Object.keys(route)[0] } : null);
         if (!uses || area <= 0) return;
 
         const key = fertPlanKey(f, i) + (isCatch ? ':catch' : '');
@@ -703,7 +773,8 @@ function buildFeedSupply(farm, plan, rates) {
             else if (use === 'silage') rate = FEED_SILAGE_OWN_YIELD.includes(crop) ? (getCropYieldRate(crop) || 0) : plan.chaffYield;
             else rate = getCropYieldRate(crop) || 0;
             litres = area * rate * factor;
-            byCategory[category] = (byCategory[category] || 0) + litres;
+            const split = route && category !== 'ROUGHAGE' && use !== 'silage' ? route : { [category]: 1 };
+            Object.entries(split).forEach(([c, share]) => { byCategory[c] = (byCategory[c] || 0) + litres * share; });
         }
 
         const strawRate = plan.strawYield || cropStrawRate(crop);
@@ -758,7 +829,7 @@ const FEED_PRODUCT_FILLTYPES = ['PIGFOOD', 'FORAGE', 'MINERAL_FEED'];
 const FEED_PRODUCT_ANIMALS = { PIGFOOD: ['PIG'], FORAGE: ['COW', 'SHEEP'], MINERAL_FEED: ['COW', 'SHEEP'] };
 
 function isFeedFillType(fillType) {
-    return !!(FEED_FILLTYPE_CATEGORY[fillType] || FEED_MIXTURE_SPLIT[fillType]);
+    return !!(FEED_FILLTYPE_CATEGORY[fillType] || FEED_MIXTURE_SPLIT[fillType]) || feedPickFillTypes().includes(fillType);
 }
 
 // Productions the player owns: placeables (farmId 1) with a productionPoint —
@@ -1038,11 +1109,11 @@ function readMixerWagonsFromSave(saveFolder, modsDirs) {
 }
 
 // Stock litres per feed category (sum over every source).
-function feedStockByCategory(stock, splitOverride = {}) {
+function feedStockByCategory(stock, splitOverride = {}, routes = null) {
     const byCategory = {};
     Object.entries(stock || {}).forEach(([ft, sources]) => {
         const litres = Object.values(sources).reduce((a, v) => a + v, 0);
-        const split = splitOverride[ft] || FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
+        const split = (routes && routes[ft]) || splitOverride[ft] || FEED_MIXTURE_SPLIT[ft] || (FEED_FILLTYPE_CATEGORY[ft] ? { [FEED_FILLTYPE_CATEGORY[ft]]: 1 } : null);
         if (!split) return;
         Object.entries(split).forEach(([c, share]) => { byCategory[c] = (byCategory[c] || 0) + litres * share; });
     });
@@ -1087,6 +1158,11 @@ function buildFeedBalance(demand, supply, plan, avgFactor, stockByCategory = {},
             : (ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0);
         rows.push({ id: c, need, have, stock, barn: barn(c), perHa, buyOnly: c === 'MINERAL' });
     });
+    Object.keys(d).filter(isFeedPickKey).forEach(c => {
+        const picks = feedKeyFillTypes(c);
+        const ref = AVAILABLE_CROPS.find(crop => picks.includes(genCropFillType(null, crop)));
+        rows.push({ id: c, need: d[c], have: s[c] || 0, stock: st[c] || 0, barn: barn(c), perHa: ref ? (getCropYieldRate(ref) || 0) * avgFactor : 0 });
+    });
     return rows;
 }
 
@@ -1107,7 +1183,12 @@ function rerenderFeedPlan() {
     if (modalEl) modalEl.scrollTop = scroll;
 }
 
-function feedCategoryLabel(c) { return t('feedCat_' + c); }
+function feedCategoryLabel(c) {
+    if (!isFeedPickKey(c)) return t('feedCat_' + c);
+    // Without the category's usual crops in brackets: this list replaces them.
+    const name = t('feedCat_' + feedKeyCategory(c)).replace(/\s*\(.*\)\s*$/, '');
+    return `${name}: ${feedKeyFillTypes(c).map(ft => feedFillTypeName(ft)).join(', ')}`;
+}
 
 const FEED_CATEGORY_ICONS = {
     GRASS: 'fa-seedling', HAY: 'fa-wheat-awn', SILAGE: 'fa-warehouse', STRAW: 'fa-wheat-awn',
@@ -1183,7 +1264,7 @@ function renderFeedIngredientTile(categories, barnLitres, row, num) {
     if (row && !row.buyOnly && row.have > 0) haveParts.push(`${t('feedHarvestShort')} ${num(row.have)}`);
     return `<div class="feed-ing-tile feed-ing-tile--${state}">
         <div class="feed-ing-head">
-            <span class="feed-ing-icon"><i class="fa-solid ${FEED_CATEGORY_ICONS[categories[0]] || 'fa-wheat-awn'}" aria-hidden="true"></i></span>
+            <span class="feed-ing-icon"><i class="fa-solid ${FEED_CATEGORY_ICONS[feedKeyCategory(categories[0])] || 'fa-wheat-awn'}" aria-hidden="true"></i></span>
             <span class="feed-ing-name">${categories.map(feedCategoryLabel).join(' + ')}</span>
         </div>
         <div class="feed-ing-barn">${t('feedThisBarn')}: <strong>${num(barnLitres)} l</strong>${t('feedPerYearShort')}</div>
@@ -1201,17 +1282,20 @@ const FEED_FILLTYPE_NAMES = {
     en: {
         DRYGRASS_WINDROW: 'Hay', DRYALFALFA_WINDROW: 'Alfalfa hay', DRYCLOVER_WINDROW: 'Clover hay',
         GRASS_WINDROW: 'Grass', ALFALFA_WINDROW: 'Alfalfa', CLOVER_WINDROW: 'Clover',
-        SILAGE: 'Silage', STRAW: 'Straw', WATER: 'Water', CHAFF: 'Chaff'
+        SILAGE: 'Silage', STRAW: 'Straw', WATER: 'Water', CHAFF: 'Chaff',
+        BREAD: 'Bread', FLOUR: 'Flour', CAKE: 'Cake'
     },
     pl: {
         DRYGRASS_WINDROW: 'Siano', DRYALFALFA_WINDROW: 'Siano z lucerny', DRYCLOVER_WINDROW: 'Siano z koniczyny',
         GRASS_WINDROW: 'Trawa', ALFALFA_WINDROW: 'Lucerna', CLOVER_WINDROW: 'Koniczyna',
-        SILAGE: 'Kiszonka', STRAW: 'Słoma', WATER: 'Woda', CHAFF: 'Sieczka'
+        SILAGE: 'Kiszonka', STRAW: 'Słoma', WATER: 'Woda', CHAFF: 'Sieczka',
+        BREAD: 'Chleb', FLOUR: 'Mąka', CAKE: 'Ciasto'
     },
     de: {
         DRYGRASS_WINDROW: 'Heu', DRYALFALFA_WINDROW: 'Luzerneheu', DRYCLOVER_WINDROW: 'Kleeheu',
         GRASS_WINDROW: 'Gras', ALFALFA_WINDROW: 'Luzerne', CLOVER_WINDROW: 'Klee',
-        SILAGE: 'Silage', STRAW: 'Stroh', WATER: 'Wasser', CHAFF: 'Häckselgut'
+        SILAGE: 'Silage', STRAW: 'Stroh', WATER: 'Wasser', CHAFF: 'Häckselgut',
+        BREAD: 'Brot', FLOUR: 'Mehl', CAKE: 'Kuchen'
     }
 };
 
@@ -1366,6 +1450,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
         // --- 3. Ingredient tiles ---
         const cats = FEED_CATEGORIES.filter(c => c !== 'STRAW' && barnNeed.byCategory[c] > 0);
+        cats.push(...Object.keys(barnNeed.byCategory).filter(c => isFeedPickKey(c) && barnNeed.byCategory[c] > 0));
         if (barnNeed.byCategory.STRAW > 0) cats.push('STRAW');
         html += `<div class="hub-panel-subtitle">${t('feedIngredients')}</div>`;
         if (barnNeed.food > 0 || barnNeed.bedding > 0) {
@@ -1423,7 +1508,7 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     if (plan.customFeeds.length) {
         html += `<div class="feed-custom-list">`;
         plan.customFeeds.forEach(f => {
-            const parts = f.ingredients.map(i => `${feedCategoryLabel(i.category)} ${i.pct}%`).join(' · ');
+            const parts = f.ingredients.map(i => `${escapeHtml(feedCategoryLabel(feedIngredientKey(i)))} ${i.pct}%`).join(' · ');
             html += `<div class="feed-custom-card">
                 <div class="feed-custom-head">
                     <span class="feed-custom-name"><i class="fa-solid fa-flask" aria-hidden="true"></i> ${escapeHtml(f.name)}</span>
@@ -1927,12 +2012,14 @@ function renderFeedEditor(d) {
             <label>${t('feedColEfficiency')}<span class="feed-pct"><input type="number" class="feed-input feed-ed-eff" min="1" max="100" step="1" value="${d.efficiency}"><span class="supply-unit">%</span></span></label>
         </div>
         <div class="feed-editor-sub">${t('feedCustomIngredients')}</div>`;
+    const pickNames = feedPickFillTypes().map(ft => ({ ft, name: feedFillTypeName(ft) }));
     d.ingredients.forEach((ing, idx) => {
         html += `<div class="feed-ing-row">
             <select class="feed-input feed-ed-cat" data-idx="${idx}">${FEED_CATEGORIES.map(c => `<option value="${c}" ${ing.category === c ? 'selected' : ''}>${feedCategoryLabel(c)}</option>`).join('')}</select>
             <span class="feed-pct"><input type="number" class="feed-input feed-ed-pct" data-idx="${idx}" min="0" max="100" step="1" value="${ing.pct}"><span class="supply-unit">%</span></span>
             <button type="button" class="note-edit-checklist-remove feed-ed-remove" data-idx="${idx}" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>`;
+        if (FEED_PICK_CATEGORIES.includes(ing.category)) html += renderFeedPicks(ing, idx, pickNames);
     });
     html += `<button type="button" class="feed-ed-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('feedCustomAddIng')}</button>
         <p class="feed-ed-sum ${sumState.warn ? 'feed-warn' : ''}">${sumState.text}</p>
@@ -1943,6 +2030,27 @@ function renderFeedEditor(d) {
         </div>
     </div>`;
     return html;
+}
+
+// One ingredient's crops: folded to one line, nothing ticked = its whole category.
+function feedPicksSummary(ing) {
+    const picks = ing.fillTypes || [];
+    return picks.length
+        ? t('feedPicksSome').replace('{list}', picks.map(ft => feedFillTypeName(ft)).join(', '))
+        : t('feedPicksAll');
+}
+
+function renderFeedPicks(ing, idx, pickNames) {
+    const picks = ing.fillTypes || [];
+    // A pick the map no longer offers stays listed, so it can be unticked.
+    const options = [...pickNames, ...picks.filter(ft => !pickNames.some(o => o.ft === ft)).map(ft => ({ ft, name: feedFillTypeName(ft) }))]
+        .sort((a, b) => a.name.localeCompare(b.name, currentLang));
+    const open = ing.picksOpen !== undefined ? ing.picksOpen : picks.length > 0;
+    return `<details class="feed-picks" data-idx="${idx}" ${open ? 'open' : ''}>
+        <summary class="feed-picks-summary">${escapeHtml(feedPicksSummary(ing))}</summary>
+        <div class="feed-picks-list">${options.map(o => `<label class="feed-pick"><input type="checkbox" class="feed-ed-pick" data-idx="${idx}" value="${escapeHtml(o.ft)}" ${picks.includes(o.ft) ? 'checked' : ''}>${escapeHtml(o.name)}</label>`).join('')}</div>
+        <p class="settings-hint">${t('feedPicksHint')}</p>
+    </details>`;
 }
 
 // { key: percent } -> the same rounded to 0.1 %, adding up to exactly 100
@@ -1960,7 +2068,11 @@ function sharesTo100(shares) {
 // validation to reject. Returns a new list — the input is never changed.
 const FEED_SUM_ROUNDING = 1;
 function feedIngredientsTo100(ingredients) {
-    const list = ingredients.map(i => ({ category: i.category, pct: parseFloat(i.pct) || 0 }));
+    const list = ingredients.map(i => ({
+        category: i.category,
+        pct: parseFloat(i.pct) || 0,
+        ...(i.fillTypes && i.fillTypes.length ? { fillTypes: [...i.fillTypes] } : {})
+    }));
     const sum = list.reduce((s, i) => s + i.pct, 0);
     const diff = 100 - sum;
     if (list.length && Math.abs(diff) > 0.001 && Math.abs(diff) <= FEED_SUM_ROUNDING) {
@@ -1983,7 +2095,7 @@ function feedSumState(ingredients) {
 function validateFeedDraft(d) {
     if (!d.name.trim()) return t('feedErrName');
     if (!d.ingredients.length) return t('feedErrNoIng');
-    const cats = d.ingredients.map(i => i.category);
+    const cats = d.ingredients.map(feedIngredientKey);
     if (new Set(cats).size !== cats.length) return t('feedErrDuplicate');
     if (d.ingredients.some(i => !(parseFloat(i.pct) > 0))) return t('feedErrPct');
     const sum = d.ingredients.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0);
@@ -2084,6 +2196,7 @@ function wireFeedPlanPanel(bodyEl) {
         const f = getFeedPlan(getCurrentFarm()).customFeeds.find(x => x.id === el.dataset.id);
         if (!f) return;
         feedEditorDraft = JSON.parse(JSON.stringify(f));
+        feedSettingsOpen = true;   // the editor of a saved feed sits in the settings
         rerenderFeedPlan();
         const editor = document.querySelector('#hub-view .feed-editor');
         if (editor) editor.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -2113,7 +2226,20 @@ function wireFeedPlanPanel(bodyEl) {
     editor.querySelector('.feed-ed-name').addEventListener('input', e => { d.name = e.target.value; });
     editor.querySelector('.feed-ed-type').addEventListener('change', e => { d.animalType = e.target.value; });
     editor.querySelector('.feed-ed-eff').addEventListener('input', e => { d.efficiency = parseFloat(e.target.value) || 0; });
-    editor.querySelectorAll('.feed-ed-cat').forEach(el => el.addEventListener('change', () => { d.ingredients[el.dataset.idx].category = el.value; }));
+    editor.querySelectorAll('.feed-ed-cat').forEach(el => el.addEventListener('change', () => {
+        const ing = d.ingredients[el.dataset.idx];
+        ing.category = el.value;
+        if (!FEED_PICK_CATEGORIES.includes(el.value)) delete ing.fillTypes;
+        rerenderFeedPlan();
+    }));
+    editor.querySelectorAll('.feed-picks').forEach(el => el.addEventListener('toggle', () => { d.ingredients[el.dataset.idx].picksOpen = el.open; }));
+    editor.querySelectorAll('.feed-ed-pick').forEach(el => el.addEventListener('change', () => {
+        const ing = d.ingredients[el.dataset.idx];
+        const picks = new Set(ing.fillTypes || []);
+        if (el.checked) picks.add(el.value); else picks.delete(el.value);
+        ing.fillTypes = [...picks];
+        el.closest('.feed-picks').querySelector('.feed-picks-summary').textContent = feedPicksSummary(ing);
+    }));
     editor.querySelectorAll('.feed-ed-pct').forEach(el => el.addEventListener('input', () => { d.ingredients[el.dataset.idx].pct = parseFloat(el.value) || 0; refreshSum(); }));
     editor.querySelectorAll('.feed-ed-remove').forEach(el => el.addEventListener('click', () => { d.ingredients.splice(el.dataset.idx, 1); rerenderFeedPlan(); }));
     editor.querySelector('.feed-ed-add').addEventListener('click', () => {

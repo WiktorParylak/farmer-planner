@@ -306,7 +306,16 @@
                                 <option value="€">€</option>
                                 <option value="$">$</option>
                                 <option value="£">£</option>
+                                <option value="zł">zł</option>
                             </select>
+                        </label>
+                        <label class="settings-field" id="currency-rate-field" hidden>
+                            <span data-i18n="currencyRateLabel">Exchange rate: €1 =</span>
+                            <span class="currency-rate">
+                                <input type="text" inputmode="decimal" id="currency-rate-input" autocomplete="off" value="1">
+                                <span id="currency-rate-unit" class="supply-unit"></span>
+                            </span>
+                            <small class="settings-hint" data-i18n="currencyRateHint">Saves always hold euros. Enter the rate your currency mod uses. At 1, only the symbol changes.</small>
                         </label>
                     </div>
                 </section>
