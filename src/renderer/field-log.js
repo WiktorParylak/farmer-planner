@@ -121,6 +121,27 @@ function fieldLogArea(farm, g) {
     return area > 0 ? area : null;
 }
 
+// Mowing the log just found ticks off the planned cut: this month's if there is
+// one not done, else the earliest not done. A row of several game fields counts
+// once all of them are mown this month. No plan, no tick; an unticked cut stays
+// so, as only new mowing ticks. Returns the rows it changed.
+function tickCutsFromMowing(farm, log, mown, stamp) {
+    const sameCrop = (a, b) => cropOrderKey(a || '') === cropOrderKey(b || '');
+    const month = String(stamp.m || '').toUpperCase();
+    return (farm.fields || []).filter(field => {
+        if (!field.crop || !isCutCrop(field.crop) || !Array.isArray(field.cuts)) return false;
+        const ids = gameFieldIds(field);
+        if (!mown.some(x => ids.includes(x.id) && sameCrop(x.crop, field.crop))) return false;
+        const allMown = ids.every(id => log.events.some(e => e.type === 'mow' && e.id === id && e.y === stamp.y && e.m === stamp.m && sameCrop(e.crop, field.crop)));
+        if (!allMown) return false;
+        const undone = field.cuts.filter(c => !c.harvested);
+        const cut = undone.find(c => String(c.month || '').toUpperCase() === month) || undone[0];
+        if (!cut) return false;
+        cut.harvested = true;
+        return true;
+    });
+}
+
 // Called on every read of the save. Returns true when the log gained something
 // the planner should show.
 function recordFieldLog(farm, gameData) {
@@ -147,6 +168,7 @@ function recordFieldLog(farm, gameData) {
         // compared, so start again from here and keep the log.
         const comparable = log.savePath === farm.saveGamePath && log.daysPerPeriod === dpp;
         let added = 0, due = false, rolledBack = false;
+        const mown = [];
         if (comparable && day < log.day) {
             // An older save was put back: what the log says happened after it didn't.
             const kept = log.events.filter(e => e.day <= day);
@@ -164,6 +186,7 @@ function recordFieldLog(farm, gameData) {
                 const ha = fieldLogArea(farm, g);
                 changes.forEach(c => {
                     log.events.push({ ...stamp, day, id: g.id, type: c.type, crop: c.crop, ha });
+                    if (c.type === 'mow') mown.push({ id: g.id, crop: c.crop });
                     added++;
                 });
             });
@@ -176,6 +199,11 @@ function recordFieldLog(farm, gameData) {
             || JSON.stringify(log.fields) !== JSON.stringify(fields);
         if (!moved) return false;
         saveFieldLog(farm, { ...log, savePath: farm.saveGamePath, day, daysPerPeriod: dpp, year, fields });
+        const ticked = mown.length ? tickCutsFromMowing(farm, log, mown, stamp) : [];
+        if (ticked.length) {
+            saveFarmData(farm, { touch: false });
+            showAutoSyncToast(t('cutTickedFromGame').replace('{list}', ticked.map(f => f.number).join(', ')), 5000);
+        }
         return added > 0 || due || rolledBack;
     } catch (e) {
         console.error('recordFieldLog failed', e);

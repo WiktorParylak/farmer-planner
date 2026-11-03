@@ -873,6 +873,7 @@ const UI = {
     today_late: "Aussaat verpasst",
     today_mow: "Diesen Monat mähen",
     cutDueNow: "Jetzt mähen",
+    cutTickedFromGame: "Im Spiel gemäht, Schnitt abgehakt: Feld {list}",
     today_finish: "Geerntet: nächste Frucht",
     fieldFinish: "Geerntet: Feld leeren",
     fieldFinishTo: "Geerntet: weiter mit {crop}",
