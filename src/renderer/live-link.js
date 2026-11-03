@@ -106,7 +106,7 @@ function parseLiveFields(root, text) {
     const rows = {}, stones = {};
     for (const m of text.matchAll(/<field\s+id="(\d+)"[^>]*\/>/g)) {
         rows[m[1]] = m[0];
-        const stone = m[0].match(/stoneShare="([\d.]+)"/);
+        const stone = m[0].match(/stoneShare="([^"]+)"/);
         if (stone) stones[m[1]] = parseFloat(stone[1]);
     }
     return { session: root.getAttribute('session') || '', rev: parseInt(root.getAttribute('rev'), 10) || 0, rows, stones };
