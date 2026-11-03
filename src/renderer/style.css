@@ -10151,6 +10151,26 @@ button.timeline-bar:hover {
   border-right: 5px solid var(--color-accent-dark);
 }
 
+.timeline-bar-window {
+  position: absolute;
+  top: calc(50% - 13px);
+  height: 26px;
+  box-sizing: border-box;
+  border: 1px dashed var(--color-accent-dark);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  pointer-events: none;
+}
+
+.timeline-track.has-catch .timeline-bar-window.timeline-bar--lane0 {
+  top: calc(50% - 25px);
+}
+
+.timeline-track.has-catch .timeline-bar-window.timeline-bar--lane1 {
+  top: calc(50% + 5px);
+  height: 20px;
+}
+
 .timeline-cut {
   position: absolute;
   top: calc(50% - 6px);

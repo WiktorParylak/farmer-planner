@@ -3206,6 +3206,12 @@ function saveCropHarvested(fruitType, growthState) {
 // Base game agronomy (data/default-agronomy.json, from the game's own crop
 // files) with the open farm's map crops on top — see loadFarmConfigs.
 let DEFAULT_AGRONOMY = {};
+let DEFAULT_HARVEST_WINDOWS = {};   // crop -> sowing month -> last harvest month
+try {
+    DEFAULT_HARVEST_WINDOWS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-harvest-windows.json'), 'utf-8')) || {};
+} catch (e) {
+    console.error('Could not load default-harvest-windows.json', e);
+}
 try {
     DEFAULT_AGRONOMY = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-agronomy.json'), 'utf-8')) || {};
 } catch (e) {
@@ -3216,10 +3222,18 @@ let CROP_AGRONOMY = {};   // cropOrderKey -> { seed, yield, straw }
 function buildCropAgronomy(mapCrops) {
     const out = {};
     Object.keys(DEFAULT_AGRONOMY).forEach(k => { out[cropOrderKey(k)] = { ...DEFAULT_AGRONOMY[k] }; });
+    Object.keys(DEFAULT_HARVEST_WINDOWS).forEach(k => { out[cropOrderKey(k)] = { ...(out[cropOrderKey(k)] || {}), harvestUntil: DEFAULT_HARVEST_WINDOWS[k] }; });
     (mapCrops || []).forEach(c => {
         if (c.agronomy) out[cropOrderKey(c.name)] = { ...(out[cropOrderKey(c.name)] || {}), ...c.agronomy };
     });
     return out;
+}
+
+// The last month a crop sown in this month can be harvested, when it has more
+// than one ('' otherwise).
+function cropHarvestUntil(crop, sowingMonth) {
+    const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
+    return (a && a.harvestUntil && a.harvestUntil[sowingMonth]) || '';
 }
 
 function cropAgronomy(crop, key) {
@@ -3965,12 +3979,14 @@ function parseCropGrowthXml(xmlText) {
     const sowStartState = hasInvisibleRule ? 'invisible' : (seasonalEl.getAttribute('initialState') || 'invisible');
 
     const calendar = {};
+    const harvestUntil = {};
 
     for (let sowIdx = 0; sowIdx < 12; sowIdx++) {
         if (!periodData[sowIdx].plantingAllowed) continue;
 
         let state = sowStartState;
         let harvestIdx = null;
+        let firstStep = 0;
 
         // Crops grow once per period: as a period ends, a field takes one step by
         // that period's rules (the rules of one period are a table for every
@@ -3983,17 +3999,29 @@ function parseCropGrowthXml(xmlText) {
             state = rule.to;
             if (harvestStateNames.has(state)) {
                 harvestIdx = (idx + 1) % 12;
+                firstStep = step + 1;
                 break;
             }
         }
 
         if (harvestIdx !== null) {
             calendar[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[harvestIdx];
+            // The last month it can be harvested: the one whose end takes it
+            // out of the ready states. One that stays ready has no last month.
+            for (let step = firstStep; step < firstStep + 12; step++) {
+                const idx = (sowIdx + step) % 12;
+                const rule = periodData[idx].updates.find(u => u.from === state);
+                if (!rule) continue;
+                state = rule.to;
+                if (harvestStateNames.has(state)) continue;
+                if (idx !== harvestIdx) harvestUntil[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[idx];
+                break;
+            }
         }
     }
 
     if (Object.keys(calendar).length === 0) return null;
-    return { name: formatCropName(rawName), calendar, agronomy: cropAgronomyFromDoc(doc) };
+    return { name: formatCropName(rawName), calendar, agronomy: { ...cropAgronomyFromDoc(doc), harvestUntil } };
 }
 
 // Takes a FileList (from a <input webkitdirectory> folder picker, which the

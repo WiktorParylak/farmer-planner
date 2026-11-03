@@ -59,14 +59,24 @@ function timelineNextMonth(pos, after) {
     return after + ((pos - after % 12 + 12) % 12);
 }
 
-// A crop sown at month `from`: where it ends, from the crop calendar.
-function timelineCropBar(crop, sowingMonth, from) {
+// One game day as a part of a month: the bars' smallest step.
+function timelineDayStep(farm) {
+    return 1 / feedDaysPerPeriod(farm);
+}
+
+// A crop sown at month `from`: the bar ends on the first day of its harvest,
+// from the crop calendar. `until` is the end of its last harvest month, if it
+// has several (an imported calendar may not fit the window: then none).
+function timelineCropBar(crop, sowingMonth, from, dayStep) {
     const sow = String(sowingMonth || '').toUpperCase();
     const harvest = String((CROP_CALENDAR[crop] || {})[sow] || '').toUpperCase();
     const h = timelineMonthPos(harvest);
     if (h < 0) return { crop, sowingMonth: sow, from, to: from + 1, harvest: '', harvestAt: null };
     const at = from + ((h - ((from % 12) + 12) % 12 + 12) % 12);
-    return { crop, sowingMonth: sow, from, to: at + 1, harvest, harvestAt: at };
+    const bar = { crop, sowingMonth: sow, from, to: at + dayStep, harvest, harvestAt: at };
+    const u = timelineMonthPos(cropHarvestUntil(crop, sow)), s = timelineMonthPos(sow);
+    if (u >= 0 && (u - s + 12) % 12 > (h - s + 12) % 12) bar.until = at + ((u - h + 12) % 12) + 1;
+    return bar;
 }
 
 // Where this season's main crop starts. A crop sown earlier may lie before the
@@ -79,10 +89,10 @@ function timelineStart(field, sowPos, nowPos, currentMonth) {
 }
 
 // A catch crop goes in once the main crop is off the field.
-function timelineCatchBar(main, catchCrop, catchMonth, after) {
+function timelineCatchBar(main, catchCrop, catchMonth, after, dayStep) {
     const pos = timelineMonthPos(catchMonth);
     if (!catchCrop || pos < 0) return null;
-    return { ...timelineCropBar(catchCrop, catchMonth, timelineNextMonth(pos, Math.max(after, 0))), lane: 1 };
+    return { ...timelineCropBar(catchCrop, catchMonth, timelineNextMonth(pos, Math.max(after, 0)), dayStep), lane: 1 };
 }
 
 // The crops of one field along the axis, in order: this season's from the plan,
@@ -90,6 +100,7 @@ function timelineCatchBar(main, catchCrop, catchMonth, after) {
 // before is off the field. Catch crops run until the next crop goes in.
 function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeason) {
     const bars = [];
+    const dayStep = timelineDayStep(farm);
     let cursor = Math.max(nowPos, 0);
     let last = null;
     if (field.crop && timelineMonthPos(field.sowingMonth) >= 0) {
@@ -100,11 +111,11 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
             bars.push(last);
             cursor = Math.max(cursor, last.to);
         } else {
-            last = timelineCropBar(field.crop, field.sowingMonth, start);
+            last = timelineCropBar(field.crop, field.sowingMonth, start, dayStep);
             bars.push(last);
             const off = last.harvestAt !== null ? last.harvestAt : last.to;
             cursor = Math.max(cursor, off);
-            const catchBar = timelineCatchBar(last, field.catchCrop, field.catchSowingMonth, off);
+            const catchBar = timelineCatchBar(last, field.catchCrop, field.catchSowingMonth, off, dayStep);
             if (catchBar) bars.push(catchBar);
         }
     } else if (field.crop && isCutCrop(field.crop)) {
@@ -130,19 +141,25 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
         const from = timelineNextMonth(pos, cursor);
         const bar = isCutCrop(crop)
             ? { crop, sowingMonth: month, from, to: from + 12, harvest: '', harvestAt: null, grass: true }
-            : timelineCropBar(crop, month, from);
+            : timelineCropBar(crop, month, from, dayStep);
         bar.source = source;
-        // Sown in the month the crop before comes off: half a month each.
-        const start = last && last.harvestAt === from ? from + 0.5 : from;
+        // Sown in the month the crop before comes off: a day after its harvest,
+        // or half a month each where a month is a single day.
+        const start = last && last.harvestAt === from ? from + (dayStep < 1 ? dayStep : 0.5) : from;
         if (last && last.harvestAt === from) last.to = start;
+        if (last && last.until > start) last.until = start;
         bar.from = start;
-        bars.forEach(b => { if (b.lane === 1 && b.to > start) b.to = start; });
+        bars.forEach(b => {
+            if (b.lane !== 1) return;
+            if (b.to > start) b.to = start;
+            if (b.until > start) b.until = start;
+        });
         bars.push(bar);
         last = bar;
         const off = bar.harvestAt !== null ? bar.harvestAt : bar.to;
         cursor = off;
         if (e.catchCrop && !bar.grass) {
-            const catchBar = timelineCatchBar(bar, e.catchCrop, rotationCatchSowMonth(crop, month, e.catchCrop), off);
+            const catchBar = timelineCatchBar(bar, e.catchCrop, rotationCatchSowMonth(crop, month, e.catchCrop), off, dayStep);
             if (catchBar) { catchBar.source = source; bars.push(catchBar); }
         }
     }
@@ -159,9 +176,14 @@ function timelineBarHtml(bar, cls, label, title, idx, clickable, months) {
     if (bar.source) classes.push('is-projected');
     const style = `left:${from / months * 100}%;width:${(to - from) / months * 100}%`;
     const inner = `<span class="timeline-bar-label">${escapeHtml(label)}</span>`;
-    return clickable
+    // The rest of the harvest window, dashed, past the bar.
+    const until = Math.min(bar.until || 0, months);
+    const windowHtml = until > to
+        ? `<span class="timeline-bar-window timeline-bar--lane${bar.lane || 0}" style="left:${to / months * 100}%;width:${(until - to) / months * 100}%"></span>`
+        : '';
+    return windowHtml + (clickable
         ? `<button type="button" class="${classes.join(' ')} field-open" data-idx="${idx}" style="${style}" title="${escapeHtml(title)}">${inner}</button>`
-        : `<span class="${classes.join(' ')}" style="${style}" title="${escapeHtml(title)}">${inner}</span>`;
+        : `<span class="${classes.join(' ')}" style="${style}" title="${escapeHtml(title)}">${inner}</span>`);
 }
 
 // Month names come in capitals; a sentence wants "October".

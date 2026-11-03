@@ -91,12 +91,14 @@ function parseCropGrowthXml(xmlText) {
     const sowStartState = hasInvisibleRule ? 'invisible' : (getAttr(seasonalAttrs, 'initialState') || 'invisible');
 
     const calendar = {};
+    const harvestUntil = {};
 
     for (let sowIdx = 0; sowIdx < 12; sowIdx++) {
         if (!periodData[sowIdx].plantingAllowed) continue;
 
         let state = sowStartState;
         let harvestIdx = null;
+        let firstStep = 0;
 
         // Crops grow once per period: as a period ends, a field takes one step by
         // that period's rules (the rules of one period are a table for every
@@ -109,17 +111,29 @@ function parseCropGrowthXml(xmlText) {
             state = rule.to;
             if (harvestStateNames.has(state)) {
                 harvestIdx = (idx + 1) % 12;
+                firstStep = step + 1;
                 break;
             }
         }
 
         if (harvestIdx !== null) {
             calendar[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[harvestIdx];
+            // The last month it can be harvested: the one whose end takes it
+            // out of the ready states. One that stays ready has no last month.
+            for (let step = firstStep; step < firstStep + 12; step++) {
+                const idx = (sowIdx + step) % 12;
+                const rule = periodData[idx].updates.find(u => u.from === state);
+                if (!rule) continue;
+                state = rule.to;
+                if (harvestStateNames.has(state)) continue;
+                if (idx !== harvestIdx) harvestUntil[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[idx];
+                break;
+            }
         }
     }
 
     if (Object.keys(calendar).length === 0) return null;
-    return { name: formatCropName(rawName), calendar };
+    return { name: formatCropName(rawName), calendar, harvestUntil };
 }
 
 function walkXmlFiles(dir) {
@@ -141,6 +155,7 @@ function main() {
 
     const files = walkXmlFiles(foliageDir);
     const combined = {};
+    const windows = {};
     const found = [];
 
     for (const file of files) {
@@ -149,6 +164,7 @@ function main() {
         const parsed = parseCropGrowthXml(text);
         if (parsed) {
             combined[parsed.name] = { ...(combined[parsed.name] || {}), ...parsed.calendar };
+            if (Object.keys(parsed.harvestUntil).length) windows[parsed.name] = { ...(windows[parsed.name] || {}), ...parsed.harvestUntil };
             found.push(`${parsed.name} <- ${path.relative(foliageDir, file)}`);
         }
     }
@@ -159,6 +175,9 @@ function main() {
     const outPath = path.join(__dirname, '..', 'data', 'default-crops.json');
     fs.writeFileSync(outPath, JSON.stringify(combined, null, 2) + '\n', 'utf-8');
     console.log(`Written to ${outPath}`);
+    const windowsPath = path.join(__dirname, '..', 'data', 'default-harvest-windows.json');
+    fs.writeFileSync(windowsPath, JSON.stringify(windows, null, 2) + '\n', 'utf-8');
+    console.log(`Written to ${windowsPath}`);
 }
 
 main();
