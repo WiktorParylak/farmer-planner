@@ -167,15 +167,51 @@ function rotationSowMonth(slot) {
     return rotationDefaultSowMonth(slot.crop);
 }
 
+// The month to sow a crop in once the one before comes off, in `afterMonth`:
+// the first its calendar allows from then on, so a field doesn't stand empty
+// for a year. A month chosen by hand stays, unless its sowing window is already
+// running at the harvest: then the rest of that window. No crop before: `wanted`.
+function rotationSowMonthAfter(crop, wanted, afterMonth, chosen) {
+    const cal = crop && CROP_CALENDAR[crop];
+    const after = ALL_MONTHS.indexOf(afterMonth);
+    if (!cal || after < 0) return wanted;
+    const inCal = i => !!cal[ALL_MONTHS[(i + 12) % 12]];
+    if (chosen) {
+        if (!inCal(after)) return wanted;
+        for (let k = 0; k < 12 && inCal(after - k); k++) {
+            if (ALL_MONTHS[(after - k + 12) % 12] === wanted) return afterMonth;
+        }
+        return wanted;
+    }
+    for (let k = 0; k < 12; k++) {
+        if (inCal(after + k)) return ALL_MONTHS[(after + k) % 12];
+    }
+    return wanted;
+}
+
+// Whether the slot names its own sowing month that the crop's calendar allows.
+function rotationSlotChoosesMonth(slot) {
+    const cal = slot.crop && CROP_CALENDAR[slot.crop];
+    return !!(slot.sowingMonth && (!cal || cal[slot.sowingMonth]));
+}
+
+// The month a field's crop first comes off ('' for grassland and anything else
+// without a harvest to wait for).
+function rotationHarvestMonth(field) {
+    if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return '';
+    const sow = String(field.sowingMonth || '').toUpperCase();
+    return String((CROP_CALENDAR[field.crop] || {})[sow] || '').toUpperCase();
+}
+
 // Puts the slot's crop on the field. Grassland that simply carries on keeps
-// its crop and stays sown.
-function applyRotationSlot(field, slot) {
+// its crop and stays sown. afterMonth: when the crop before it comes off.
+function applyRotationSlot(field, slot, afterMonth) {
     const crop = slot.crop || '';
     const carriesOn = crop && isPerennialCrop(crop) && cropOrderKey(field.crop) === cropOrderKey(crop);
     if (!carriesOn) {
         if (cropOrderKey(field.crop) !== cropOrderKey(crop)) field.tillage = null;
         field.crop = crop;
-        field.sowingMonth = crop ? rotationSowMonth(slot) : '';
+        field.sowingMonth = crop ? rotationSowMonthAfter(crop, rotationSowMonth(slot), afterMonth, rotationSlotChoosesMonth(slot) && !slot.generated) : '';
         field.state = 'To Plant';
     } else {
         field.state = 'Planted';
@@ -326,9 +362,11 @@ function rotationCycleWarnings(rot, grassLimit) {
 // ---------- new season and new month ----------
 // Called by runNewSeason after the fields were cleared. Moves every field with
 // a cycle one season on; fills its crop when `fill`. Returns the filled fields.
-function advanceRotationsForNewSeason(farm, newSeason, fill) {
+// harvests: each field's rotationHarvestMonth from before the season was cleared.
+function advanceRotationsForNewSeason(farm, newSeason, fill, harvests) {
     const filled = [];
-    (farm.fields || []).forEach(field => {
+    (farm.fields || []).forEach((field, i) => {
+        const afterMonth = (harvests && harvests[i]) || '';
         const info = fieldRotationInfo(farm, field);
         // The generator's plan for later seasons: drop what has passed, and the
         // season after this one becomes "next".
@@ -341,7 +379,7 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
         };
         // Planned by the crop generator for this season: it wins over the cycle.
         if (field.nextCrop) {
-            applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '' });
+            applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '', generated: true }, afterMonth);
             delete field.nextCrop;
             movePlanUp();
             if (info) setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
@@ -352,7 +390,7 @@ function advanceRotationsForNewSeason(farm, newSeason, fill) {
         if (!info) return;
         setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
         if (!fill) return;
-        applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1));
+        applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1), afterMonth);
         filled.push(field);
     });
     return filled;

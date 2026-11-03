@@ -135,7 +135,9 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
             cursor = Math.max(cursor, last.to);
             continue;
         }
-        const month = e.generated ? (e.sowingMonth || rotationDefaultSowMonth(crop)) : rotationSowMonth(e.slot);
+        const wanted = e.generated ? (e.sowingMonth || rotationDefaultSowMonth(crop)) : rotationSowMonth(e.slot);
+        const cursorMonth = FS_PERIOD_TO_MONTH[Math.floor(cursor) % 12];
+        const month = rotationSowMonthAfter(crop, wanted, cursorMonth, !e.generated && rotationSlotChoosesMonth(e.slot));
         const pos = timelineMonthPos(month);
         if (pos < 0) continue;
         const from = timelineNextMonth(pos, cursor);

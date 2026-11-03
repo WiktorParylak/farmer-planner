@@ -5455,12 +5455,13 @@ async function runNewSeason({ intro = '' } = {}) {
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
             const supplyRatesForLime = getSupplyRates();
+            const harvests = farm.fields.map(rotationHarvestMonth);
             farm.fields.forEach((field, i) => clearFieldForNewSeason(field, i, currentSeasonNum, supplyRatesForLime));
             // Fertilization plans ("N already in the soil", natural N) belong to
             // the season just archived — a new crop on the same field starts clean.
             if (farm.supplyRates) farm.supplyRates.fertPlan = {};
 
-            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
+            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation, harvests);
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
