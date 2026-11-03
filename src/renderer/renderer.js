@@ -3205,8 +3205,11 @@ function saveCropHarvested(fruitType, growthState) {
 
 // Whether this game field grows the crop now: its stubble keeps the crop's name
 // in fields.xml, so a harvested one doesn't count. Unknown states count as growing.
+// The save has one point of the field; the link mod's cutShare knows how much is cut.
 function saveFieldGrowsCrop(g, crop) {
-    return g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(crop) && saveCropHarvested(g.fruitType, g.growthState) !== true;
+    if (!g.sown || cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(crop)) return false;
+    if (g.cutShare != null) return g.cutShare < LIVE_HARVEST_DONE;
+    return saveCropHarvested(g.fruitType, g.growthState) !== true;
 }
 
 // Base game agronomy (data/default-agronomy.json, from the game's own crop
@@ -3461,8 +3464,8 @@ function saveFruitToCropKey(raw) {
 //   fields.xml             -> planned crop + current spray/lime level per field
 // Returns { ok, fields:[...], hasArea, live }; fails quietly (ok:false) when the
 // save folder or its files are missing. weedState feeds syncWeedsFromSave.
-// While the game runs with the link mod, fields.xml / farmland.xml come from
-// the mod's live copy (same format, see live-link.js) and add stoneShare.
+// While the game runs with the link mod, the fields owned and their state come
+// from the mod (same attributes, see live-link.js), with stoneShare and cutShare.
 // opts.saved = what the game really saved: for anything that changes the farm's
 // fields, because the plan follows the save, never the live copy. stoneShare
 // still comes from the mod, the save has no such thing.
@@ -3471,15 +3474,17 @@ function readSaveFields(farm, opts = {}) {
     const dir = path.dirname(farm.saveGamePath);
     const live = typeof liveLinkSource === 'function' ? liveLinkSource(farm) : null;
     const useLive = live && !opts.saved;
-    const fieldsPath = useLive ? live.fieldsPath : path.join(dir, 'fields.xml');
-    const farmlandPath = useLive ? live.farmlandPath : path.join(dir, 'farmland.xml');
+    const fieldsPath = path.join(dir, 'fields.xml');
+    const farmlandPath = path.join(dir, 'farmland.xml');
     if (!fs.existsSync(fieldsPath) || !fs.existsSync(farmlandPath)) return { ok: false, reason: 'nofiles' };
 
     try {
-        const flText = fs.readFileSync(farmlandPath, 'utf-8');
-        const owned = new Set();
-        for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
-            if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
+        const owned = new Set(useLive ? Object.keys(live.rows) : []);
+        if (!useLive) {
+            const flText = fs.readFileSync(farmlandPath, 'utf-8');
+            for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
+                if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
+            }
         }
 
         const areaById = {};
@@ -3498,7 +3503,10 @@ function readSaveFields(farm, opts = {}) {
         for (const m of fxText.matchAll(/<field\s+id="(\d+)"[^>]*\/>/g)) {
             const id = m[1];
             if (!owned.has(id)) continue;
-            const tag = m[0];
+            // A live row without state: the mod couldn't read it, the save still knows.
+            const liveTag = useLive ? live.rows[id] : '';
+            const tag = liveTag && liveTag.includes('fruitType=') ? liveTag : m[0];
+            const cutShare = parseFloat(attrOf(tag, 'cutShare'));
             const fruitType = attrOf(tag, 'fruitType');
             const growthState = parseInt(attrOf(tag, 'growthState')) || 0;
             out.push({
@@ -3519,7 +3527,9 @@ function readSaveFields(farm, opts = {}) {
                 stubbleShredLevel: parseInt(attrOf(tag, 'stubbleShredLevel')) || 0,
                 rollerLevel: parseInt(attrOf(tag, 'rollerLevel')) || 0,
                 // Share of the field still under stones (0..1), only from the link mod.
-                stoneShare: live && live.stones && live.stones[id] !== undefined ? live.stones[id] : null
+                stoneShare: live && live.stones[id] !== undefined ? live.stones[id] : null,
+                // How much of a ripe field is cut (0..1), only from the link mod.
+                cutShare: isFinite(cutShare) ? cutShare : null
             });
         }
         return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive };

@@ -31,6 +31,44 @@ function todaySaveFieldsById(farm) {
     return todaySaveCache.byId;
 }
 
+// The same with the link mod's live fields on top, for what is only shown: nothing
+// stored may follow it, as a game closed without saving never happened.
+let todayLiveCache = { key: null, byId: null };
+function todayLiveFieldsById(farm) {
+    const live = typeof liveLinkSource === 'function' ? liveLinkSource(farm) : null;
+    if (!live) return todaySaveFieldsById(farm);
+    const key = farm.saveGamePath + ':' + live.session + ':' + live.rev;
+    if (todayLiveCache.key !== key) {
+        const save = readSaveFields(farm);
+        const byId = save.ok ? {} : null;
+        if (byId) save.fields.forEach(f => { byId[f.id] = f; });
+        todayLiveCache = { key, byId };
+    }
+    return todayLiveCache.byId;
+}
+
+// The row's game fields the mod has a cut share for, or null: [{ share, ha }].
+function todayCutShares(field, byId) {
+    if (!byId) return null;
+    const games = gameFieldIds(field).map(id => byId[id]).filter(g => g && g.cutShare != null);
+    return games.length ? games.map(g => ({ share: g.cutShare, ha: g.areaHa || 1 })) : null;
+}
+
+// The harvest with how far it got, once it's under way (link mod only).
+function todayHarvestText(field, byId) {
+    const shares = todayCutShares(field, byId);
+    if (!shares) return t('work_harvest');
+    const ha = shares.reduce((s, x) => s + x.ha, 0);
+    const done = shares.reduce((s, x) => s + x.share * x.ha, 0) / ha;
+    return done > 0 ? t('today_harvestPartly').replace('{pct}', Math.round(done * 100)) : t('work_harvest');
+}
+
+// Grass the mod sees cut all over, before the game has saved it (link mod only).
+function todayMownLive(field, byId) {
+    const shares = todayCutShares(field, byId);
+    return !!shares && shares.length === gameFieldIds(field).length && shares.every(x => x.share >= LIVE_HARVEST_DONE);
+}
+
 // A field ticked "sown" by hand (or carried on by its rotation) may still grow
 // something else in the game. With the save at hand, harvest only when the
 // game fields of the row grow the planned crop, until the last of them is
@@ -50,8 +88,8 @@ function todayFieldGroups(farm) {
     const fields = farm.fields || [];
     const groups = { sow: [], late: [], harvest: [], mow: [], finish: [], weeds: [], roll: [], work: [] };
     if (!month) return groups;
-    const saveById = todaySaveFieldsById(farm);
-    const ctx = seasonHarvestContext(farm);
+    const saveById = todayLiveFieldsById(farm);
+    const ctx = seasonHarvestContext(farm, true);
     fields.forEach((field, idx) => {
         if (!field.crop) return;
         const tasks = {};
@@ -61,8 +99,8 @@ function todayFieldGroups(farm) {
         const cut = isCutCrop(field.crop) || isPerennialCrop(field.crop);
         if (!planted && sow === month) tasks.sow = t('work_sow');
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
-        if (planted && !cut && sow && cal[sow] && fieldInHarvestWindow(field, month) && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = t('work_harvest');
-        if (isCutCrop(field.crop) && fieldCutDue(field, month)) tasks.mow = t('cutDueNow');
+        if (planted && !cut && sow && cal[sow] && fieldInHarvestWindow(field, month) && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = todayHarvestText(field, saveById);
+        if (isCutCrop(field.crop) && fieldCutDue(field, month) && !todayMownLive(field, saveById)) tasks.mow = t('cutDueNow');
         if (planted && !cut && fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested') tasks.finish = t('today_finish');
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
@@ -121,11 +159,13 @@ function fieldHarvestState(field, month, saveById, yearPassed) {
     return sinceSowing > w.last || (gone && (sinceSowing >= w.first || yearPassed)) ? 'harvested' : 'growing';
 }
 
-function seasonHarvestContext(farm) {
+// live: may follow the link mod, for what is only shown. A new season files crops
+// away, so it goes by the save.
+function seasonHarvestContext(farm, live) {
     const year = parseInt(farm.yearNumber, 10), started = parseInt(farm.seasonStartedGameYear, 10);
     return {
         month: getFarmCurrentMonth(farm),
-        saveById: farm.saveGamePath ? todaySaveFieldsById(farm) : null,
+        saveById: farm.saveGamePath ? (live ? todayLiveFieldsById(farm) : todaySaveFieldsById(farm)) : null,
         yearPassed: !!farm.saveGamePath && year > 0 && started > 0 && year > started
     };
 }

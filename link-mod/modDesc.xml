@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="115">
     <author>Wiktor Parylak</author>
-    <version>1.0.1.0</version>
+    <version>2.0.0.0</version>
     <title>
         <en>Farmer Planner Link</en>
         <de>Farmer Planner Link</de>
@@ -10,19 +10,19 @@
     <description>
         <en><![CDATA[Connects the game with the Farmer Planner desktop app (farmerplanner.pl).
 
-While you play, the mod writes the state of your fields, stones, input prices, the weather and your productions to modSettings/FS25_FarmerPlannerLink every few seconds, so the planner sees field work right away instead of waiting for the next save.
+While you play, the planner sees how your fields stand and how far each harvest got, along with stones, input prices, the weather and your productions, without waiting for the next save.
 
-The mod only reads the game. It does not change your savegame, it does not need the app to be running and it has no effect on the game when the app is closed.]]></en>
+The mod only reads the game: it replaces no game function, sends nothing over the network and adds nothing to your savegame. It reads one field at a time and writes small files of its own to modSettings/FS25_FarmerPlannerLink only when something changed, never during a save. It does not need the app to be running.]]></en>
         <de><![CDATA[Verbindet das Spiel mit der Desktop-App Farmer Planner (farmerplanner.pl).
 
-Während du spielst, schreibt der Mod alle paar Sekunden den Zustand deiner Felder, Steine, Einkaufspreise, das Wetter und deine Produktionen nach modSettings/FS25_FarmerPlannerLink, damit der Planer Feldarbeiten sofort sieht und nicht auf den nächsten Spielstand warten muss.
+Während du spielst, sieht der Planer den Stand deiner Felder und jeder Ernte, dazu Steine, Einkaufspreise, das Wetter und deine Produktionen, ohne auf den nächsten Spielstand zu warten.
 
-Der Mod liest das Spiel nur. Er ändert deinen Spielstand nicht, braucht keine laufende App und hat keinen Einfluss auf das Spiel, wenn die App geschlossen ist.]]></de>
+Der Mod liest das Spiel nur: Er ersetzt keine Spielfunktion, sendet nichts über das Netzwerk und fügt deinem Spielstand nichts hinzu. Er liest ein Feld nach dem anderen und schreibt kleine eigene Dateien nach modSettings/FS25_FarmerPlannerLink, nur wenn sich etwas geändert hat und nie während des Speicherns. Er braucht keine laufende App.]]></de>
         <pl><![CDATA[Łączy grę z aplikacją Farmer Planner (farmerplanner.pl).
 
-W trakcie gry mod co kilka sekund zapisuje stan Twoich pól, kamienie, ceny środków, pogodę i produkcje do modSettings/FS25_FarmerPlannerLink, więc planer widzi prace polowe od razu, bez czekania na zapis gry.
+W trakcie gry planer widzi stan Twoich pól i postęp każdego zbioru, a także kamienie, ceny środków, pogodę i produkcje, bez czekania na zapis gry.
 
-Mod tylko czyta grę. Nie zmienia zapisu, nie wymaga uruchomionej aplikacji i nie wpływa na grę, kiedy aplikacja jest zamknięta.]]></pl>
+Mod tylko czyta grę: nie podmienia żadnej funkcji gry, nic nie wysyła przez sieć i nic nie dodaje do zapisu. Czyta po jednym polu naraz, a własne małe pliki zapisuje do modSettings/FS25_FarmerPlannerLink tylko wtedy, gdy coś się zmieniło, i nigdy w trakcie zapisu gry. Nie wymaga uruchomionej aplikacji.]]></pl>
     </description>
     <iconFilename>icon_FarmerPlannerLink.dds</iconFilename>
     <multiplayer supported="true" />

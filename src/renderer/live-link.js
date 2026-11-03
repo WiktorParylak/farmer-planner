@@ -1,23 +1,30 @@
 // Live data from the FS25_FarmerPlannerLink mod (link-mod/). While the game
-// runs, the mod writes the game's own fields.xml / farmland.xml (in two
-// alternating slots) and live.xml to
+// runs, the mod keeps three files in
 //   <FarmingSimulator2025>/modSettings/FS25_FarmerPlannerLink/savegame<N>/
-// every ~5 s. Fresh files take the place of the save's fields.xml and
-// farmland.xml in readSaveFields for what is only shown (yield losses). The mod
-// never changes the farm's fields: the plan table, the work lists and "What to
-// do today" follow the game's own saves. Without the mod, or when the game is
+//   live.xml    heartbeat: time and weather, every ~10 s
+//   fields.xml  a row per owned field, with the attribute names of the game's own
+//               fields.xml plus stoneShare and cutShare; only when they change
+//   data.xml    input prices, yield factors and recipes; only when they change
+// Each names the session that wrote it, so what an earlier game left is ignored.
+// The live fields take the place of the save's in readSaveFields for what is only
+// shown: yield losses, and in What to do today and the field view how a harvest
+// stands. Nothing here changes the farm's fields: the plan table, the work lists,
+// the field log and a new season follow the game's own saves, and a field moves on
+// to its next crop when the player says so. Without the mod, or when the game is
 // closed, everything reads the save as before.
 // Loaded after renderer.js: renderer.js only calls these at runtime.
 
 const LIVE_LINK_MOD = 'FS25_FarmerPlannerLink';
-const LIVE_LINK_FORMAT = 1;
+const LIVE_LINK_FORMAT = 2;
 const LIVE_LINK_TICK_MS = 3000;
 const LIVE_LINK_FRESH_MS = 30000;      // older live.xml = the game is closed or paused
+// A field counts as harvested from this share on: machines leave odd corners behind.
+const LIVE_HARVEST_DONE = 0.95;
 
 let liveLinkTimer = null;
 let liveLinkFarmId = null;
-let liveLinkSeen = null;               // "<mtime>:<counter>" already applied
-let liveLinkCache = { key: null, data: null };
+let liveLinkSeen = null;               // revisions of data.xml and fields.xml already applied
+let liveLinkFileCache = {};            // path -> { key, data }
 let liveLinkEverFresh = false;         // the mod wrote for this farm since it was opened
 let liveLinkCareerCache = { key: null, title: '' };
 
@@ -44,121 +51,125 @@ function liveLinkSaveMapTitle(farm) {
     }
 }
 
-// live.xml of the farm, parsed: { mtime, ageMs, fresh, writing, counter, slot,
-// mapTitle, fieldsPath, farmlandPath, time, weather, prices, harvestScale,
-// stones, productions }, or null when the mod never wrote for this save.
-// writing = the mod wrote lately; fresh = also usable for this farm. It isn't
-// when the file has another format (unsupported) or comes from a game on
-// another map in the same save slot (otherMap). Parsed again only when the
-// file changes.
+// A file of the mod, parsed again only when it changes. The game may be part-way
+// through writing it: then the last good one stands, and the next tick tries again.
+function liveLinkFile(file, parse) {
+    let st;
+    try { st = fs.statSync(file); } catch (e) { delete liveLinkFileCache[file]; return null; }
+    const key = st.mtimeMs + ':' + st.size;
+    const cached = liveLinkFileCache[file];
+    if (cached && cached.key === key) return cached.data;
+    try {
+        const text = fs.readFileSync(file, 'utf-8').replace(/^\uFEFF/, '');
+        const doc = new DOMParser().parseFromString(text, 'text/xml');
+        if (doc.querySelector('parsererror')) return cached ? cached.data : null;
+        const data = parse(doc.documentElement, text);
+        data.mtime = st.mtimeMs;
+        liveLinkFileCache[file] = { key, data };
+        return data;
+    } catch (e) {
+        console.error('readLiveLink failed', file, e);
+        return cached ? cached.data : null;
+    }
+}
+
+function liveLinkNum(el, name) {
+    const v = el ? parseFloat(el.getAttribute(name)) : NaN;
+    return isFinite(v) ? v : null;
+}
+
+function parseLiveHead(root) {
+    if ((parseInt(root.getAttribute('format'), 10) || 0) !== LIVE_LINK_FORMAT) {
+        return { unsupported: true, modVersion: root.getAttribute('modVersion') || '' };
+    }
+    const time = root.querySelector(':scope > time');
+    const weatherEl = root.querySelector(':scope > weather');
+    return {
+        session: root.getAttribute('session') || '',
+        counter: parseInt(root.getAttribute('counter'), 10) || 0,
+        farmId: root.getAttribute('farmId') || '',
+        modVersion: root.getAttribute('modVersion') || '',
+        mapTitle: (root.getAttribute('mapTitle') || '').trim(),
+        errors: root.getAttribute('errors') || '',
+        time: time ? { dayTime: liveLinkNum(time, 'dayTime'), monotonicDay: liveLinkNum(time, 'monotonicDay'), period: liveLinkNum(time, 'period'), dayInPeriod: liveLinkNum(time, 'dayInPeriod') } : null,
+        weather: weatherEl ? {
+            temperature: liveLinkNum(weatherEl, 'temperature'),
+            isRaining: weatherEl.getAttribute('isRaining') === 'true',
+            groundWetness: liveLinkNum(weatherEl, 'groundWetness')
+        } : null
+    };
+}
+
+// rows: id -> the field's tag, read like the save's fields.xml. A row with no
+// state means the mod couldn't read that field: it's owned, the save knows the rest.
+function parseLiveFields(root, text) {
+    const rows = {}, stones = {};
+    for (const m of text.matchAll(/<field\s+id="(\d+)"[^>]*\/>/g)) {
+        rows[m[1]] = m[0];
+        const stone = m[0].match(/stoneShare="([\d.]+)"/);
+        if (stone) stones[m[1]] = parseFloat(stone[1]);
+    }
+    return { session: root.getAttribute('session') || '', rev: parseInt(root.getAttribute('rev'), 10) || 0, rows, stones };
+}
+
+function parseLiveData(root) {
+    const prices = {};
+    root.querySelectorAll(':scope > prices > fillType').forEach(el => {
+        const v = liveLinkNum(el, 'pricePerLiter');
+        if (v !== null) prices[String(el.getAttribute('name') || '').toUpperCase()] = v;
+    });
+    const harvestScale = {};
+    root.querySelectorAll(':scope > harvestScale > fruit').forEach(el => {
+        const row = {};
+        ['full', 'spray0', 'spray05', 'plow0', 'lime0', 'weed0', 'stubble0', 'roller0'].forEach(k => { row[k] = liveLinkNum(el, k); });
+        if (row.full) harvestScale[String(el.getAttribute('name') || '').toUpperCase()] = row;
+    });
+    const fills = (r, tag) => [...r.querySelectorAll(':scope > ' + tag)].map(i => ({ fillType: String(i.getAttribute('fillType') || '').toUpperCase(), amount: liveLinkNum(i, 'amount') || 0 }));
+    const productions = [...root.querySelectorAll(':scope > productions > production')].map(el => ({
+        filename: el.getAttribute('filename') || '',
+        name: el.getAttribute('name') || '',
+        recipes: [...el.querySelectorAll(':scope > recipe')].map(r => ({
+            id: r.getAttribute('id') || '',
+            cyclesPerMonth: liveLinkNum(r, 'cyclesPerMonth') || 0,
+            inputs: fills(r, 'input'),
+            outputs: fills(r, 'output')
+        })).filter(r => r.inputs.length || r.outputs.length)
+    })).filter(p => p.filename && p.recipes.length);
+    return { session: root.getAttribute('session') || '', rev: parseInt(root.getAttribute('rev'), 10) || 0, prices, harvestScale, productions };
+}
+
+// What the mod says for this farm: live.xml's values plus { mtime, ageMs, fresh,
+// writing, otherMap, unsupported, fields, data }, or null when it never wrote for
+// this save. writing = the mod wrote lately; fresh = also usable for this farm. It
+// isn't when the file has another format (unsupported) or comes from a game on
+// another map in the same save slot (otherMap). fields and data are null until
+// this game session has written them.
 function readLiveLink(farm) {
     const dir = liveLinkDir(farm);
     if (!dir) return null;
-    const file = path.join(dir, 'live.xml');
-    let st;
-    try { st = fs.statSync(file); } catch (e) { return null; }
-    const key = file + ':' + st.mtimeMs + ':' + st.size;
-    if (liveLinkCache.key !== key) liveLinkCache = { key, data: parseLiveLink(dir, file, st.mtimeMs) };
-    const data = liveLinkCache.data;
-    if (!data) return null;
-    const ageMs = Date.now() - data.mtime;
+    const head = liveLinkFile(path.join(dir, 'live.xml'), parseLiveHead);
+    if (!head) return null;
+    const ageMs = Date.now() - head.mtime;
     const writing = ageMs >= -5000 && ageMs < LIVE_LINK_FRESH_MS;
-    const saveMap = data.unsupported ? '' : liveLinkSaveMapTitle(farm);
-    const otherMap = !!(saveMap && data.mapTitle) && saveMap.toLowerCase() !== data.mapTitle.toLowerCase();
-    return Object.assign({}, data, { ageMs, writing, otherMap, fresh: writing && !otherMap && !data.unsupported });
+    const saveMap = head.unsupported ? '' : liveLinkSaveMapTitle(farm);
+    const otherMap = !!(saveMap && head.mapTitle) && saveMap.toLowerCase() !== head.mapTitle.toLowerCase();
+    const ofThisGame = file => (file && !head.unsupported && file.session === head.session ? file : null);
+    return Object.assign({}, head, {
+        ageMs, writing, otherMap,
+        fresh: writing && !otherMap && !head.unsupported,
+        fields: ofThisGame(liveLinkFile(path.join(dir, 'fields.xml'), parseLiveFields)),
+        data: ofThisGame(liveLinkFile(path.join(dir, 'data.xml'), parseLiveData))
+    });
 }
 
-function parseLiveLink(dir, file, mtime) {
-    try {
-        const text = fs.readFileSync(file, 'utf-8');
-        // The game may be part-way through writing it: wait for the next one.
-        if (!text.includes('</farmerPlannerLink>')) return null;
-        const doc = new DOMParser().parseFromString(text, 'text/xml');
-        if (doc.querySelector('parsererror')) return null;
-        const root = doc.documentElement;
-        if ((parseInt(root.getAttribute('format'), 10) || 0) !== LIVE_LINK_FORMAT) {
-            return { mtime, unsupported: true, modVersion: root.getAttribute('modVersion') || '' };
-        }
-        const num = (el, name) => { const v = el ? parseFloat(el.getAttribute(name)) : NaN; return isFinite(v) ? v : null; };
-        const slot = root.getAttribute('slot') === 'b' ? 'b' : 'a';
-
-        const time = root.querySelector(':scope > time');
-        const weatherEl = root.querySelector(':scope > weather');
-        const weather = weatherEl ? {
-            temperature: num(weatherEl, 'temperature'),
-            isRaining: weatherEl.getAttribute('isRaining') === 'true',
-            groundWetness: num(weatherEl, 'groundWetness')
-        } : null;
-
-        const prices = {};
-        root.querySelectorAll(':scope > prices > fillType').forEach(el => {
-            const v = num(el, 'pricePerLiter');
-            if (v !== null) prices[String(el.getAttribute('name') || '').toUpperCase()] = v;
-        });
-
-        const harvestScale = {};
-        root.querySelectorAll(':scope > harvestScale > fruit').forEach(el => {
-            const row = {};
-            ['full', 'spray0', 'spray05', 'plow0', 'lime0', 'weed0', 'stubble0', 'roller0'].forEach(k => { row[k] = num(el, k); });
-            if (row.full) harvestScale[String(el.getAttribute('name') || '').toUpperCase()] = row;
-        });
-
-        let stones = null;
-        const stonesEl = root.querySelector(':scope > stones');
-        if (stonesEl) {
-            stones = {};
-            stonesEl.querySelectorAll(':scope > field').forEach(el => { stones[el.getAttribute('id')] = num(el, 'share') || 0; });
-        }
-
-        const productions = [...root.querySelectorAll(':scope > productions > production')].map(el => ({
-            filename: el.getAttribute('filename') || '',
-            name: el.getAttribute('name') || '',
-            uniqueId: el.getAttribute('uniqueId') || '',
-            recipes: [...el.querySelectorAll(':scope > recipe')].map(r => ({
-                id: r.getAttribute('id') || '',
-                cyclesPerMonth: num(r, 'cyclesPerMonth') || 0,
-                enabled: r.getAttribute('enabled') === 'true',
-                inputs: [...r.querySelectorAll(':scope > input')].map(i => ({ fillType: String(i.getAttribute('fillType') || '').toUpperCase(), amount: num(i, 'amount') || 0 })),
-                outputs: [...r.querySelectorAll(':scope > output')].map(o => ({ fillType: String(o.getAttribute('fillType') || '').toUpperCase(), amount: num(o, 'amount') || 0 }))
-            })).filter(r => r.inputs.length || r.outputs.length)
-        })).filter(p => p.filename && p.recipes.length);
-
-        return {
-            mtime,
-            counter: parseInt(root.getAttribute('counter'), 10) || 0,
-            farmId: root.getAttribute('farmId') || '',
-            modVersion: root.getAttribute('modVersion') || '',
-            mapTitle: (root.getAttribute('mapTitle') || '').trim(),
-            slot,
-            fieldsPath: path.join(dir, `fields_${slot}.xml`),
-            farmlandPath: path.join(dir, `farmland_${slot}.xml`),
-            time: time ? { dayTime: num(time, 'dayTime'), monotonicDay: num(time, 'monotonicDay'), period: num(time, 'period'), dayInPeriod: num(time, 'dayInPeriod') } : null,
-            weather,
-            prices,
-            harvestScale,
-            stones,
-            productions
-        };
-    } catch (e) {
-        console.error('readLiveLink failed', e);
-        return null;
-    }
-}
-
-// What readSaveFields reads instead of the save while the game runs:
-// { fieldsPath, farmlandPath, stones } when live.xml is fresh and both slot
-// files are complete, else null.
+// What readSaveFields reads on top of the save while the game runs: { rows,
+// stones, session, rev } when the mod is live for this farm's game farm, else null.
 function liveLinkSource(farm) {
     if (!autoSyncSetting(farm)) return null;
     const live = readLiveLink(farm);
-    if (!live || !live.fresh) return null;
-    try {
-        const tail = (p, close) => fs.readFileSync(p, 'utf-8').trimEnd().endsWith(close);
-        if (!tail(live.fieldsPath, '</fields>') || !tail(live.farmlandPath, '</farmlands>')) return null;
-    } catch (e) {
-        return null;
-    }
-    return { fieldsPath: live.fieldsPath, farmlandPath: live.farmlandPath, stones: live.stones };
+    if (!live || !live.fresh || !live.fields) return null;
+    if (live.farmId !== gameFarmIdOf(farm)) return null;
+    return live.fields;
 }
 
 // The game's price per 1000 l when buying a fill type (seeds, fertilizer,
@@ -196,18 +207,27 @@ function runLiveLinkTick() {
     if (live && live.fresh) liveLinkEverFresh = true;
     renderLiveLinkBadge(live);
     if (!live || !live.fresh) return;
-    const seen = live.mtime + ':' + live.counter;
-    if (seen === liveLinkSeen) return;
+    const fieldsRev = live.session + ':' + (live.fields ? live.fields.rev : 0);
+    const dataRev = live.session + ':' + (live.data ? live.data.rev : 0);
+    const seen = liveLinkSeen || {};
+    if (fieldsRev === seen.fieldsRev && dataRev === seen.dataRev) return;
     // Same as auto-sync: never under an open edit; try again on the next tick.
     if (isEditMode) return;
-    liveLinkSeen = seen;
-    applyLiveLinkToFarm(farm, live);
+    liveLinkSeen = { fieldsRev, dataRev };
+    if (dataRev !== seen.dataRev && live.data) applyLiveLinkToFarm(farm, live);
+    if (fieldsRev !== seen.fieldsRev) {
+        const now = getAllFarms().find(f => f.id === liveLinkFarmId) || farm;
+        const stones = live.fields ? Object.keys(live.fields.stones).length > 0 : false;
+        if (stones && !now.stonesEnabled) { now.stonesEnabled = true; saveFarmData(now, { touch: false }); }
+        renderTodayPanel();
+    }
 }
 
 // Takes what the mod wrote into the farm: only durable values kept outside the
 // fields (yield factors, input prices, production recipes), so they keep
 // working when the game is closed. Nothing here may change farm.fields.
 function applyLiveLinkToFarm(farm, live) {
+    const data = live.data;
     let changed = false;
     let refreshSave = false;
     const keep = (key, value) => {
@@ -217,14 +237,13 @@ function applyLiveLinkToFarm(farm, live) {
         changed = true;
         return true;
     };
-    if (Object.keys(live.harvestScale).length) keep('harvestScale', live.harvestScale);
+    if (Object.keys(data.harvestScale).length) keep('harvestScale', data.harvestScale);
     const inputs = {};
-    LIVE_LINK_INPUT_FILLTYPES.forEach(ft => { if (live.prices[ft]) inputs[ft] = Math.round(live.prices[ft] * 10000) / 10000; });
+    LIVE_LINK_INPUT_FILLTYPES.forEach(ft => { if (data.prices[ft]) inputs[ft] = Math.round(data.prices[ft] * 10000) / 10000; });
     if (Object.keys(inputs).length) keep('liveInputPrices', inputs);
-    if (live.stones) keep('stonesEnabled', true);
-    if (live.productions.length) {
+    if (data.productions.length) {
         const book = Object.assign({}, farm.productionRecipes || {});
-        live.productions.forEach(p => {
+        data.productions.forEach(p => {
             book[p.filename] = { name: p.name, recipes: p.recipes.map(r => ({ id: r.id, cyclesPerMonth: r.cyclesPerMonth, inputs: r.inputs, outputs: r.outputs })) };
         });
         // New recipes show up in the productions read from placeables.xml.
@@ -320,6 +339,7 @@ function renderLiveLinkSettings(farm) {
         .replace('{bundled}', s.bundled || '')
         .replace('{map}', (s.live && s.live.mapTitle) || '');
     if (s.state === 'idle' && s.live) detail += ' ' + t('liveLastData').replace('{time}', new Date(s.live.mtime).toLocaleString(currentLang));
+    if ((s.state === 'live' || s.state === 'oldRunning') && s.live.errors) detail += ' ' + t('liveModErrors').replace('{list}', s.live.errors);
     box.innerHTML = `
         <span>${escapeHtml(t('liveSettingsTitle'))}</span>
         <p class="live-link-state is-${s.state}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${escapeHtml(detail)}</p>

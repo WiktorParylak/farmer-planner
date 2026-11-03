@@ -473,7 +473,7 @@ function fieldFinishHtml(farm, field, idx) {
     const nextCrop = field.nextCrop ? field.nextCrop.crop || '' : (info ? rotationSlotAt(info.rot, info.index + 1).crop || '' : '');
     const grass = field.crop && (isCutCrop(field.crop) || isPerennialCrop(field.crop));
     const month = getFarmCurrentMonth(farm);
-    const ctx = seasonHarvestContext(farm);
+    const ctx = seasonHarvestContext(farm, true);
     const ready = field.crop && (grass
         ? !!nextCrop && cropOrderKey(nextCrop) !== cropOrderKey(field.crop)
         : field.state === 'Planted' && (fieldInHarvestWindow(field, month) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested'));
