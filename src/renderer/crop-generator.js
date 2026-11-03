@@ -6,9 +6,9 @@
 // and straw for bedding. Fields left over follow their crop rotation, else the
 // crop with the best margin (market.js). Yields come from fieldExpectedYield,
 // rotation warnings from rotationSequenceWarnings — nothing is counted twice.
-// Applying writes the crops (this season) or field.nextCrop (next season,
-// put on the fields by advanceRotationsForNewSeason; seasons after it in
-// field.planAhead, moved up one by one), keeps a fields backup and
+// Applying writes the crops (this season) or field.nextCrop (the next crop,
+// put on the field by advanceFieldPlan when its crop comes off; those after it
+// in field.planAhead, moved up one by one), keeps a fields backup and
 // an undo record, and sets the feed planner's use of each field it planned.
 // Loaded after rotation.js.
 
@@ -214,7 +214,7 @@ function buildCropGeneratorPlan(farm, ahead) {
         const info = fieldRotationInfo(farm, f);
         let status = 'free', keepCrop = null;
         // What is planned already: this season's crop, or that season's plan / cycle step.
-        const planned = k > 1 ? (f.planAhead || []).find(e => e.season === season + k) : f.nextCrop;
+        const planned = k > 1 ? (f.planAhead || []).find(e => planAheadStep(e, season) === k) : f.nextCrop;
         const current = mode === 'next' ? (planned ? planned.crop : genCycleCrop(info, mode, k)) || null : f.crop || null;
         // Grassland stays on until its limit, counting the seasons planned before this one.
         const earlier = before(idx);
@@ -784,9 +784,8 @@ async function applyCropGeneratorYears(farm) {
             const entry = { crop: p.to, sowingMonth: p.sow || '', reason: p.res || p.reason };
             if (k === 1) field.nextCrop = entry;
             else {
-                const target = season + k;
-                field.planAhead = (field.planAhead || []).filter(e => e.season !== target);
-                field.planAhead.push({ season: target, ...entry });
+                field.planAhead = (field.planAhead || []).filter(e => planAheadStep(e, season) !== k);
+                field.planAhead.push({ step: k, ...entry });
             }
             // The nearest season decides what the feed planner uses this field and crop for.
             genSetFeedUse(feedPlan, field, p, k > 1);

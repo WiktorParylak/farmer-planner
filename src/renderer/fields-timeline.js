@@ -103,6 +103,15 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
     const dayStep = timelineDayStep(farm);
     let cursor = Math.max(nowPos, 0);
     let last = null;
+    // What this field already finished this season, ending when it came off.
+    if (!isPastSeason) {
+        (farm.finishedCrops || []).filter(r => (field.id && r.id ? r.id === field.id : r.number === field.number)).forEach(r => {
+            const end = timelineMonthPos(r.finishedMonth), sow = timelineMonthPos(r.sowingMonth);
+            if (end < 0 || sow < 0) return;
+            last = { crop: r.crop, sowingMonth: r.sowingMonth, from: end - ((end - sow + 12) % 12), to: end + dayStep, harvest: r.finishedMonth, harvestAt: end, done: true };
+            bars.push(last);
+        });
+    }
     if (field.crop && timelineMonthPos(field.sowingMonth) >= 0) {
         const start = timelineStart(field, timelineMonthPos(field.sowingMonth), nowPos, currentMonth);
         if (isCutCrop(field.crop)) {
@@ -111,7 +120,13 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
             bars.push(last);
             cursor = Math.max(cursor, last.to);
         } else {
+            const done = last;
             last = timelineCropBar(field.crop, field.sowingMonth, start, dayStep);
+            // Sown in the month the finished crop came off: a day after it, as below.
+            if (done && done.harvestAt === start) {
+                last.from = start + (dayStep < 1 ? dayStep : 0.5);
+                done.to = last.from;
+            }
             bars.push(last);
             const off = last.harvestAt !== null ? last.harvestAt : last.to;
             cursor = Math.max(cursor, off);
@@ -128,7 +143,7 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
         if (cursor >= months) break;
         const crop = e.crops[0];
         if (!crop) continue;
-        const source = { season: e.season, generated: !!e.generated };
+        const source = { generated: !!e.generated };
         // Grassland that stays on simply goes on for another year.
         if (last && isPerennialCrop(crop) && cropOrderKey(last.crop) === cropOrderKey(crop)) {
             last.to += 12;
@@ -151,6 +166,7 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
         if (last && last.harvestAt === from) last.to = start;
         if (last && last.until > start) last.until = start;
         bar.from = start;
+        bar.source.season = (farm.currentSeason || 1) + Math.floor(start / 12);
         bars.forEach(b => {
             if (b.lane !== 1) return;
             if (b.to > start) b.to = start;
@@ -229,7 +245,7 @@ function timelineTrackHtml(bars, field, idx, currentMonth, isPastSeason, months)
     bars.forEach(bar => {
         const name = translateCropName(bar.crop);
         const planned = !bar.source && !bar.lane && !bar.grass;
-        const cls = bar.lane === 1 ? 'is-catch' : (bar.grass ? 'is-grass' : (planned ? timelineMainClass(field, currentMonth, isPastSeason) : 'is-planned'));
+        const cls = bar.done ? 'is-sown' : (bar.lane === 1 ? 'is-catch' : (bar.grass ? 'is-grass' : (planned ? timelineMainClass(field, currentMonth, isPastSeason) : 'is-planned')));
         let title = timelineCropTitle(bar);
         if (bar.lane === 1) title = t('catchCropShort') + ' · ' + title;
         if (bar.source) title = `${t('season')} ${bar.source.season} · ${t(bar.source.generated ? 'rotByGenerator' : 'rotProjected')} · ${title}`;

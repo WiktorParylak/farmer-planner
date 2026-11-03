@@ -13,7 +13,7 @@ function todayPanelOpen() {
 
 // Order in which a field's tasks claim it: each field shows once, in its most
 // urgent group, and names its other tasks after the crop.
-const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'weeds', 'roll', 'work'];
+const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'finish', 'weeds', 'roll', 'work'];
 
 // The save's fields by id, read again only when fields.xml changes (the panel
 // renders with every season view). Null without a readable save.
@@ -47,9 +47,10 @@ function todayGrowsPlannedCrop(field, byId) {
 function todayFieldGroups(farm) {
     const month = getFarmCurrentMonth(farm);
     const fields = farm.fields || [];
-    const groups = { sow: [], late: [], harvest: [], weeds: [], roll: [], work: [] };
+    const groups = { sow: [], late: [], harvest: [], finish: [], weeds: [], roll: [], work: [] };
     if (!month) return groups;
     const saveById = todaySaveFieldsById(farm);
+    const ctx = seasonHarvestContext(farm);
     fields.forEach((field, idx) => {
         if (!field.crop) return;
         const tasks = {};
@@ -59,7 +60,8 @@ function todayFieldGroups(farm) {
         const cut = isCutCrop(field.crop) || isPerennialCrop(field.crop);
         if (!planted && sow === month) tasks.sow = t('work_sow');
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
-        if (planted && !cut && sow && cal[sow] === month && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = t('work_harvest');
+        if (planted && !cut && sow && cal[sow] && fieldInHarvestWindow(field, month) && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = t('work_harvest');
+        if (planted && !cut && fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested') tasks.finish = t('today_finish');
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
         if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
@@ -77,23 +79,44 @@ function todayFieldGroups(farm) {
     return groups;
 }
 
-// Where a field's crop of this season stands: 'harvested', 'growing',
-// 'unsown' or null (no annual crop to go by — grass and other cut crops, a
-// missed sowing). Harvested once its harvest month (crop calendar, from its
-// sowing month) has gone by — or, with the save at hand, in that month once
-// the game field no longer grows the crop.
-function fieldHarvestState(field, month, saveById, yearPassed) {
-    if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return null;
+// The months a crop can be harvested in, counted from its sowing month: the first
+// from the crop calendar, the last from its growth rules if it has several.
+// Null without a calendar.
+function fieldHarvestWindow(field) {
     const sow = (field.sowingMonth || '').toUpperCase();
     const s = ALL_MONTHS.indexOf(sow);
     const h = ALL_MONTHS.indexOf((CROP_CALENDAR[field.crop] || {})[sow] || '');
     if (s < 0 || h < 0) return null;
+    const first = (h - s + 12) % 12;
+    const u = ALL_MONTHS.indexOf(cropHarvestUntil(field.crop, sow));
+    const until = u < 0 ? first : (u - s + 12) % 12;
+    return { first, last: until > first ? until : first };
+}
+
+function fieldInHarvestWindow(field, month) {
+    const w = fieldHarvestWindow(field);
+    const m = ALL_MONTHS.indexOf(month || '');
+    if (!w || m < 0) return false;
+    const since = (m - ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase()) + 12) % 12;
+    return since >= w.first && since <= w.last;
+}
+
+// Where a field's crop of this season stands: 'harvested', 'growing',
+// 'unsown' or null (no annual crop to go by — grass and other cut crops, a
+// missed sowing). Harvested once its last harvest month has gone by — or, with
+// the save at hand, from its first once the game field no longer grows the crop.
+function fieldHarvestState(field, month, saveById, yearPassed) {
+    if (!field.crop || isCutCrop(field.crop) || isPerennialCrop(field.crop)) return null;
+    const sow = (field.sowingMonth || '').toUpperCase();
+    const s = ALL_MONTHS.indexOf(sow);
+    const w = fieldHarvestWindow(field);
+    if (s < 0 || !w) return null;
     if (field.state !== 'Planted') return isSowingOverdue(field, month) ? null : 'unsown';
     const m = ALL_MONTHS.indexOf(month || '');
     if (m < 0) return 'growing';
-    const untilHarvest = (h - s + 12) % 12, sinceSowing = (m - s + 12) % 12;
+    const sinceSowing = (m - s + 12) % 12;
     const gone = !todayGrowsPlannedCrop(field, saveById);
-    return sinceSowing > untilHarvest || (gone && (sinceSowing === untilHarvest || yearPassed)) ? 'harvested' : 'growing';
+    return sinceSowing > w.last || (gone && (sinceSowing >= w.first || yearPassed)) ? 'harvested' : 'growing';
 }
 
 function seasonHarvestContext(farm) {
@@ -105,32 +128,12 @@ function seasonHarvestContext(farm) {
     };
 }
 
-// Fields whose crop is still in the ground, which a new season would clear.
-function seasonGrowingIndexes(farm) {
-    const ctx = seasonHarvestContext(farm);
-    const out = [];
-    (farm.fields || []).forEach((field, i) => {
-        if (fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'growing') out.push(i);
-    });
-    return out;
-}
-
-// When to start a new season. It clears every field, so it's time once every
-// crop is in. A farm with no field crops to go by falls back to a year gone by
-// in the game. why: the reason to show.
+// When to start a new season: a year has gone by in the game. It only moves the
+// season number on and files what came off the fields. why: the reason to show.
 function seasonEndInfo(farm) {
     const ctx = seasonHarvestContext(farm);
-    let total = 0, harvested = 0;
-    (farm.fields || []).forEach(field => {
-        const state = fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed);
-        if (!state) return;
-        total++;
-        if (state === 'harvested') harvested++;
-    });
-    let why = '';
-    if (total && harvested === total) why = t('seasonEndHarvested').replace('{n}', total);
-    else if (!total && ctx.yearPassed) why = t('seasonEndYear');
-    return { total, harvested, yearPassed: ctx.yearPassed, ready: !!why, why };
+    const why = ctx.yearPassed ? t('seasonEndYear') : '';
+    return { yearPassed: ctx.yearPassed, ready: !!why, why };
 }
 
 // The New season button says when to use it; once it's time it stands out.
@@ -141,8 +144,7 @@ function refreshNewSeasonHint(farm, info) {
     newSeasonBtn.classList.toggle('is-ready', ready);
     let title = '';
     if (current && info) {
-        title = ready ? t('newSeasonBtnReady')
-            : t('newSeasonBtnWait').replace('{h}', info.harvested).replace('{n}', info.total);
+        title = ready ? t('newSeasonBtnReady') : t('newSeasonBtnWait');
     }
     newSeasonBtn.title = title;
 }
@@ -222,6 +224,7 @@ const TODAY_GROUPS = [
     { key: 'sow', icon: 'fa-seedling' },
     { key: 'late', icon: 'fa-triangle-exclamation', warn: true },
     { key: 'harvest', icon: 'fa-wheat-awn' },
+    { key: 'finish', icon: 'fa-forward-step' },
     { key: 'weeds', icon: 'fa-spray-can' },
     { key: 'roll', icon: 'fa-grip-lines' },
     { key: 'work', icon: 'fa-list-check' }

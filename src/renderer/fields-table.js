@@ -151,19 +151,26 @@ window.toggleLimeChip = function (btn) {
 // archive can't be read — the warning simply doesn't show then.
 function getPreviousSeasonCropMap(farm, seasonNum) {
     const map = {};
-    if (!farm || !farm.folderName || seasonNum <= 1) return map;
+    if (!farm || !farm.folderName) return map;
 
     const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum - 1}.json`);
-    if (!fs.existsSync(archivePath)) return map;
-
-    try {
-        const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
-        (archiveData.fields || []).forEach(f => {
+    if (seasonNum > 1 && fs.existsSync(archivePath)) {
+        try {
+            const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
+            (archiveData.fields || []).forEach(f => {
+                const key = (f.number || '').toString().trim();
+                if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
+            });
+        } catch (err) {
+            // Unreadable/corrupt archive — just skip the warning, don't crash the table.
+        }
+    }
+    // A crop that already came off this season is the one before the crop now on.
+    if (seasonNum === (farm.currentSeason || 1)) {
+        (farm.finishedCrops || []).forEach(f => {
             const key = (f.number || '').toString().trim();
-            if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
+            if (key && f.crop) map[key] = [f.crop];
         });
-    } catch (err) {
-        // Unreadable/corrupt archive — just skip the warning, don't crash the table.
     }
     return map;
 }
@@ -482,7 +489,7 @@ function renderFieldModal() {
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}`);
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
 
     // Crop rotation: cycle, this season's step, the next seasons.
     html += section(t('rotTitle'), rotationFieldViewHtml(farm, field));
@@ -673,6 +680,20 @@ window.openFieldModal = function (idx) {
         const idx = fieldModalIdx;
         const field = farm && (farm.fields || [])[idx];
         if (!field) return;
+        const finishBtn = e.target.closest('.field-view-finish, .field-view-finish-undo');
+        if (finishBtn) {
+            const crop = field.crop;
+            if (finishBtn.classList.contains('field-view-finish')) {
+                finishFieldCrop(farm, idx, rotationFillMode(farm) !== 'off');
+                showAutoSyncToast(t('fieldFinishDone').replace('{crop}', translateCropName(crop)), 3000);
+            } else {
+                undoFieldFinish(farm, idx);
+            }
+            saveFarmData(farm);
+            renderSeasonView();
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
         if (handleRotationFieldViewClick(e.target, farm, field)) {
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
@@ -1391,6 +1412,9 @@ function isSowingOverdue(field, currentMonth) {
     if (cur < 0 || inWindow(cur)) return false;
     let end = idx(sow);
     for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
+    // Put on the field after the crop before it came off: counted from then.
+    const from = idx(field.plannedFrom || '');
+    if (from >= 0) return (end - from + 24) % 12 < (cur - from + 12) % 12;
     const posInYear = m => (m - SOWING_YEAR_START + 24) % 12;
     return posInYear(end) < posInYear(cur);
 }
@@ -1750,7 +1774,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

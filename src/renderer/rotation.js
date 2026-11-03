@@ -278,10 +278,13 @@ function rotationTimeline(farm, field, history, back, ahead) {
         const rows = (history[s] || []).filter(f => (f.number || '').toString().trim() === (field.number || '').toString().trim());
         out.push({ season: s, crops: past[s] || [], catchCrop: rows.map(f => f.catchCrop).filter(Boolean)[0] || '', projected: false });
     }
+    // Crops this field has already finished this season come first.
+    (farm.finishedCrops || []).filter(r => (r.number || '').toString().trim() === (field.number || '').toString().trim())
+        .forEach(r => out.push({ season, crops: r.crop ? [r.crop] : [], catchCrop: r.catchCrop || '', projected: false }));
     out.push({ season, crops: field.crop ? [field.crop] : [], catchCrop: field.catchCrop || '', projected: false, current: true, slot: info ? info.slot : null });
     // The crop generator's plan wins over the cycle, season by season.
     for (let k = 1; k <= ahead; k++) {
-        const planned = k === 1 ? field.nextCrop : (field.planAhead || []).find(e => e.season === season + k);
+        const planned = k === 1 ? field.nextCrop : (field.planAhead || []).find(e => planAheadStep(e, season) === k);
         if (planned) {
             out.push({ season: season + k, crops: planned.crop ? [planned.crop] : [], catchCrop: '', projected: true, generated: true, sowingMonth: planned.sowingMonth || '' });
         } else if (info) {
@@ -362,42 +365,127 @@ function rotationCycleWarnings(rot, grassLimit) {
 // ---------- new season and new month ----------
 // Called by runNewSeason after the fields were cleared. Moves every field with
 // a cycle one season on; fills its crop when `fill`. Returns the filled fields.
-// harvests: each field's rotationHarvestMonth from before the season was cleared.
-function advanceRotationsForNewSeason(farm, newSeason, fill, harvests) {
-    const filled = [];
-    (farm.fields || []).forEach((field, i) => {
-        const afterMonth = (harvests && harvests[i]) || '';
-        const info = fieldRotationInfo(farm, field);
-        // The generator's plan for later seasons: drop what has passed, and the
-        // season after this one becomes "next".
-        const movePlanUp = () => {
-            if (!field.planAhead) return;
-            const following = field.planAhead.find(e => e.season === newSeason + 1);
-            if (following && !field.nextCrop) field.nextCrop = { crop: following.crop, sowingMonth: following.sowingMonth, reason: following.reason };
-            field.planAhead = field.planAhead.filter(e => e.season > newSeason + 1);
-            if (!field.planAhead.length) delete field.planAhead;
-        };
-        // Planned by the crop generator for this season: it wins over the cycle.
-        if (field.nextCrop) {
-            applyRotationSlot(field, { crop: field.nextCrop.crop || '', catchCrop: '', sowingMonth: field.nextCrop.sowingMonth || '', generated: true }, afterMonth);
-            delete field.nextCrop;
-            movePlanUp();
-            if (info) setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
-            filled.push(field);
-            return;
-        }
-        movePlanUp();
-        if (!info) return;
-        setFieldRotationSlot(field, info.rot, info.index + 1, { filled: newSeason });
-        if (!fill) return;
-        applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1), afterMonth);
-        filled.push(field);
-    });
+// How far on a planned crop is: `step` crops after the one on the field. Plans
+// from before crops moved on field by field name a season instead.
+function planAheadStep(entry, season) {
+    return entry.step != null ? entry.step : entry.season - season;
+}
+
+function normalizePlanAhead(field, season) {
+    if (!field.planAhead) return;
+    field.planAhead = field.planAhead
+        .map(e => { const { season: _s, ...rest } = e; return { ...rest, step: planAheadStep(e, season) }; })
+        .filter(e => e.step >= 2);
+    if (!field.planAhead.length) delete field.planAhead;
+}
+
+// The field's plan moves on by one crop: the generator's next crop, else its
+// cycle's next step (put on the field only with `fill`). True if it got a crop
+// that way. afterMonth: from when the new crop can go in.
+function advanceFieldPlan(farm, field, fill, afterMonth) {
+    const season = farm.currentSeason || 1;
+    const info = fieldRotationInfo(farm, field);
+    normalizePlanAhead(field, season);
+    const planned = field.nextCrop;
+    if (planned) applyRotationSlot(field, { crop: planned.crop || '', catchCrop: '', sowingMonth: planned.sowingMonth || '', generated: true }, afterMonth);
+    delete field.nextCrop;
+    if (field.planAhead) {
+        const following = field.planAhead.find(e => e.step === 2);
+        if (following) field.nextCrop = { crop: following.crop, sowingMonth: following.sowingMonth, reason: following.reason };
+        field.planAhead = field.planAhead.filter(e => e.step > 2).map(e => ({ ...e, step: e.step - 1 }));
+        if (!field.planAhead.length) delete field.planAhead;
+    }
+    if (info) setFieldRotationSlot(field, info.rot, info.index + 1, { filled: season });
+    if (planned) return true;
+    if (!info || !fill) return false;
+    applyRotationSlot(field, rotationSlotAt(info.rot, info.index + 1), afterMonth);
+    return true;
+}
+
+// The crop of this field comes off and its plan moves on, whatever the other
+// fields do. What it grew goes to farm.finishedCrops, whole, so the season's
+// archive can list it and undoFieldFinish can put it back. Grassland keeps its
+// crop unless its plan says otherwise. Returns true if a next crop went on.
+function finishFieldCrop(farm, idx, fill) {
+    const field = farm.fields[idx];
+    const season = farm.currentSeason || 1;
+    const month = getFarmCurrentMonth(farm) || '';
+    const afterMonth = month || rotationHarvestMonth(field);
+    const rates = getSupplyRates();
+    const planKey = fertPlanKey(field, idx);
+    const plans = farm.supplyRates && farm.supplyRates.fertPlan;
+    if (field.crop) {
+        const row = JSON.parse(JSON.stringify(field));
+        row.finishedSeason = season;
+        row.finishedMonth = afterMonth;
+        if (plans && plans[planKey]) row.finishedFert = { [planKey]: plans[planKey] };
+        (farm.finishedCrops || (farm.finishedCrops = [])).push(row);
+    }
+    if (plans) delete plans[planKey];
+    const before = field.crop;
+    clearFieldForNewSeason(field, idx, season, rates);
+    const filled = advanceFieldPlan(farm, field, fill, afterMonth);
+    // Its sowing may be next year: not late until a window since now has gone by.
+    delete field.plannedFrom;
+    if (month && field.crop && (field.state !== 'Planted' || cropOrderKey(field.crop) !== cropOrderKey(before))) field.plannedFrom = month;
     return filled;
 }
 
-function rotationFieldCount(farm) {
-    return (farm.fields || []).filter(f => fieldRotationInfo(farm, f)).length;
+// The last crop this field finished this season, which can still be taken back.
+function fieldFinishedRow(farm, field) {
+    const rows = (farm.finishedCrops || []).filter(r => (field.id && r.id ? r.id === field.id : r.number === field.number));
+    return rows[rows.length - 1] || null;
+}
+
+function undoFieldFinish(farm, idx) {
+    const field = farm.fields[idx];
+    const row = fieldFinishedRow(farm, field);
+    if (!row) return false;
+    const restored = JSON.parse(JSON.stringify(row));
+    const fert = restored.finishedFert;
+    delete restored.finishedSeason;
+    delete restored.finishedMonth;
+    delete restored.finishedFert;
+    farm.fields[idx] = restored;
+    farm.finishedCrops.splice(farm.finishedCrops.indexOf(row), 1);
+    if (fert && farm.supplyRates) farm.supplyRates.fertPlan = { ...(farm.supplyRates.fertPlan || {}), ...fert };
+    return true;
+}
+
+// Which fields move on when a season ends: crops already off the field, and
+// grassland, whose year is up. Crops growing or still to be sown stay on.
+function seasonEndFinishIndexes(farm) {
+    const ctx = seasonHarvestContext(farm);
+    const out = [];
+    (farm.fields || []).forEach((field, i) => {
+        const info = fieldRotationInfo(farm, field);
+        const moves = field.crop
+            ? (isCutCrop(field.crop) || isPerennialCrop(field.crop) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested')
+            : !!(field.nextCrop || (info && !info.slot.crop));
+        if (moves) out.push(i);
+    });
+    return out;
+}
+
+// Field view: move this field on, once its crop can be off, and take that back.
+function fieldFinishHtml(farm, field, idx) {
+    const info = fieldRotationInfo(farm, field);
+    const nextCrop = field.nextCrop ? field.nextCrop.crop || '' : (info ? rotationSlotAt(info.rot, info.index + 1).crop || '' : '');
+    const grass = field.crop && (isCutCrop(field.crop) || isPerennialCrop(field.crop));
+    const month = getFarmCurrentMonth(farm);
+    const ctx = seasonHarvestContext(farm);
+    const ready = field.crop && (grass
+        ? !!nextCrop && cropOrderKey(nextCrop) !== cropOrderKey(field.crop)
+        : field.state === 'Planted' && (fieldInHarvestWindow(field, month) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested'));
+    const row = fieldFinishedRow(farm, field);
+    if (!ready && !row) return '';
+    const label = nextCrop && rotationFillMode(farm) !== 'off' || field.nextCrop
+        ? t('fieldFinishTo').replace('{crop}', translateCropName(nextCrop))
+        : t('fieldFinish');
+    return `<div class="rotation-field-actions">
+        ${ready ? `<button type="button" class="settings-btn field-view-finish">${escapeHtml(label)}</button>` : ''}
+        ${row ? `<button type="button" class="settings-btn field-view-finish-undo">${escapeHtml(t('fieldFinishUndo').replace('{crop}', translateCropName(row.crop)))}</button>` : ''}
+    </div>${ready ? `<p class="settings-hint">${t('fieldFinishHint')}</p>` : ''}`;
 }
 
 function rotationFilledList(fields) {

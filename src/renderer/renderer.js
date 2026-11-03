@@ -2397,7 +2397,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const isPast = season < currentSeason;
 
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates, isPast ? null : farm);
+    const data = buildYieldForecastRows(seasonCropRows(farm, season), rates, isPast ? null : farm);
     const showMoisture = !isPast && !!MOISTURE_DATA;
     const showLoss = !isPast && data.rows.some(r => r.state);
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
@@ -2419,7 +2419,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     }
 
     // Prices and margin: this season only, from the save's price curve.
-    const margin = isPast ? null : buildCropMarginRows(farm, loadSeasonFields(farm, season), rates, data.rows);
+    const margin = isPast ? null : buildCropMarginRows(farm, seasonCropRows(farm, season), rates, data.rows);
     const money = v => v === null || v === undefined ? '–' : finMoney(v);
     html += `<table class="data-table supply-table yield-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
@@ -5088,6 +5088,13 @@ function loadSeasonFields(farm, seasonNum) {
     }
 }
 
+// Every crop of a season, for totals: its archive, or this season's crops on the
+// fields and those already off them (after the live rows, whose indexes count).
+function seasonCropRows(farm, seasonNum) {
+    const fields = loadSeasonFields(farm, seasonNum);
+    return farm && seasonNum >= (farm.currentSeason || 1) ? [...fields, ...(farm.finishedCrops || [])] : fields;
+}
+
 window.renderSeasonView = function () {
     const farm = getAllFarms().find(f => f.id === currentFarmId);
     if (!farm) return;
@@ -5378,6 +5385,7 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     field.groundBaseline = true;
     // Undo only covers the season the liming was made in.
     delete field.limePrev;
+    delete field.plannedFrom;
 }
 
 if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
@@ -5395,17 +5403,13 @@ async function runNewSeason({ intro = '' } = {}) {
         if (!startFarm) return;
         const seasonNow = parseInt(startFarm.currentSeason) || 1;
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
-        // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
+        // Fields that move on with the season take their next crop (asked here in 'ask' mode).
         const rotationMode = rotationFillMode(startFarm);
-        // A new season clears every field: say so when a crop is still in the ground.
-        const growing = seasonGrowingIndexes(startFarm);
-        const growingText = growing.length ? '\n\n' + t('newSeasonGrowing').replace('{list}', growing
-            .map(i => startFarm.fields[i].number + ': ' + translateCropName(startFarm.fields[i].crop)).join(', ')) : '';
-        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
+        const rotationCount = rotationMode === 'off' ? 0 : seasonEndFinishIndexes(startFarm).filter(i => fieldRotationInfo(startFarm, startFarm.fields[i])).length;
         const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
-            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + growingText + rotationText,
+            body: (intro ? intro + '\n\n' : '') + fill(t('newSeasonBody')) + rotationText,
             confirmText: fill(t('newSeasonConfirm')),
             cancelText: t('cancel'),
             extraText: rotationCount && rotationMode === 'ask' ? t('rotNewSeasonSkip') : null,
@@ -5425,6 +5429,18 @@ async function runNewSeason({ intro = '' } = {}) {
             const seasonsDirPath = path.join(appDataDir, farm.folderName, 'seasons');
             if (!fs.existsSync(seasonsDirPath)) fs.mkdirSync(seasonsDirPath, { recursive: true });
 
+            // Taken before anything moves: the undo puts all of it back.
+            const undoFields = JSON.parse(JSON.stringify(farm.fields || []));
+            const undoFertPlan = JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}));
+            const undoFinished = JSON.parse(JSON.stringify(farm.finishedCrops || []));
+            // Normalized first: a plan's steps must not depend on the season number from here on.
+            farm.fields.forEach(field => normalizePlanAhead(field, currentSeasonNum));
+            const rotationFilled = [];
+            seasonEndFinishIndexes(farm).forEach(i => {
+                if (finishFieldCrop(farm, i, fillFromRotation)) rotationFilled.push(farm.fields[i]);
+            });
+            const seasonRows = farm.finishedCrops || [];
+
             const archivePath = path.join(seasonsDirPath, `season_${currentSeasonNum}.json`);
             // An archive for this season number already exists (e.g. left over
             // after an undo or a manual copy) — keep it under another name
@@ -5435,8 +5451,9 @@ async function runNewSeason({ intro = '' } = {}) {
             // Everything needed to take this new season back.
             const undoData = {
                 season: currentSeasonNum,
-                fields: JSON.parse(JSON.stringify(farm.fields || [])),
-                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {})),
+                fields: undoFields,
+                fertPlan: undoFertPlan,
+                finishedCrops: undoFinished,
                 seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
                 createdAt: new Date().toISOString()
             };
@@ -5445,23 +5462,17 @@ async function runNewSeason({ intro = '' } = {}) {
             const archiveData = {
                 season: currentSeasonNum,
                 dateArchived: new Date().toISOString(),
-                fields: JSON.parse(JSON.stringify(farm.fields)),
+                // The crops that came off in this season. What still grows belongs to the season it comes off in.
+                fields: JSON.parse(JSON.stringify(seasonRows)),
                 balance: farm.balance,
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
                 avgHealth: archivedAvgHealth,
-                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}))
+                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {}))
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
-            const supplyRatesForLime = getSupplyRates();
-            const harvests = farm.fields.map(rotationHarvestMonth);
-            farm.fields.forEach((field, i) => clearFieldForNewSeason(field, i, currentSeasonNum, supplyRatesForLime));
-            // Fertilization plans ("N already in the soil", natural N) belong to
-            // the season just archived — a new crop on the same field starts clean.
-            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
-
-            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation, harvests);
+            farm.finishedCrops = [];
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
             saveFarmData(farm);
@@ -5530,6 +5541,7 @@ async function undoLastNewSeason() {
         farm.fields = undo.fields;
         if (!farm.supplyRates) farm.supplyRates = {};
         farm.supplyRates.fertPlan = undo.fertPlan || {};
+        farm.finishedCrops = undo.finishedCrops || [];
         farm.currentSeason = undo.season;
         farm.seasonStartedGameYear = undo.seasonStartedGameYear;
         saveFarmData(farm);
@@ -5618,6 +5630,7 @@ if (resetSeasonsBtn) {
         }
 
         farm.currentSeason = 1;
+        farm.finishedCrops = [];
         saveFarmData(farm);
 
         viewedSeason = 1;
