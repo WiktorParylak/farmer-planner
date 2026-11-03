@@ -3203,6 +3203,12 @@ function saveCropHarvested(fruitType, growthState) {
     return a.cutStates.includes(growthState);
 }
 
+// Whether this game field grows the crop now: its stubble keeps the crop's name
+// in fields.xml, so a harvested one doesn't count. Unknown states count as growing.
+function saveFieldGrowsCrop(g, crop) {
+    return g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(crop) && saveCropHarvested(g.fruitType, g.growthState) !== true;
+}
+
 // Base game agronomy (data/default-agronomy.json, from the game's own crop
 // files) with the open farm's map crops on top — see loadFarmConfigs.
 let DEFAULT_AGRONOMY = {};
@@ -4762,7 +4768,7 @@ function syncWorkFromSave(farm) {
         const det = { ...(field.workDetected || {}) };
         const rise = { ...(field.workRise || {}) };
         const seen = { ...(field.workSeen || {}) };
-        const grows = !!field.crop && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+        const grows = !!field.crop && games.every(g => saveFieldGrowsCrop(g, field.crop));
         const levelsOf = g => ({ s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel });
         // Another crop still stands in the game (last season's, not harvested
         // yet): nothing on the field is this plan's work. Only the levels are

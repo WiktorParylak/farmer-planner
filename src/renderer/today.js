@@ -33,14 +33,15 @@ function todaySaveFieldsById(farm) {
 
 // A field ticked "sown" by hand (or carried on by its rotation) may still grow
 // something else in the game. With the save at hand, harvest only when the
-// game fields of the row grow the planned crop; rows the save doesn't know
-// (not owned, no save) keep what the plan says.
+// game fields of the row grow the planned crop, until the last of them is
+// harvested; rows the save doesn't know (not owned, no save) keep what the plan says.
 function todayGrowsPlannedCrop(field, byId) {
     if (!byId) return true;
     const ids = gameFieldIds(field);
     const games = ids.map(id => byId[id]).filter(Boolean);
     if (!games.length || games.length !== ids.length) return true;
-    return games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop));
+    return games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))
+        && games.some(g => saveFieldGrowsCrop(g, field.crop));
 }
 
 // { key, fields: [{ idx, field, extra }] } groups for the current season.

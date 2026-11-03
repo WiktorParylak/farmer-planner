@@ -2338,7 +2338,7 @@ async function loadFieldsFromGame() {
             }
         }
         // Sown: the planned crop is what's growing there in the game.
-        if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
+        if (field.crop && field.state !== 'Planted' && games.every(g => saveFieldGrowsCrop(g, field.crop))) {
             field.state = 'Planted';
             syncSowStep(field);
             sown++;
