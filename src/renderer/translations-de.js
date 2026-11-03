@@ -871,6 +871,8 @@ const UI = {
     todayField: "Feld {n}",
     today_sow: "Diesen Monat säen",
     today_late: "Aussaat verpasst",
+    today_mow: "Diesen Monat mähen",
+    cutDueNow: "Jetzt mähen",
     today_finish: "Geerntet: nächste Frucht",
     fieldFinish: "Geerntet: Feld leeren",
     fieldFinishTo: "Geerntet: weiter mit {crop}",

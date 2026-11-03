@@ -404,7 +404,13 @@ window.openCutsModal = function (idx) {
 // the current season).
 // Grassland age is shown under the crop name (grassAgeCaption), not here, so
 // the state column stays narrow.
-function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+// A planned cut of this month not made yet.
+function fieldCutDue(field, month) {
+    const m = String(month || '').toUpperCase();
+    return !!m && (Array.isArray(field.cuts) ? field.cuts : []).some(c => !c.harvested && String(c.month || '').toUpperCase() === m);
+}
+
+function stateCellHtml(field, idx, isPastSeason, stateDisplay, month) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
@@ -413,7 +419,7 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
         const title = t('cutsOpenHint');
         return isPastSeason
             ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
-            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+            : `<div class="state-pills"><button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>${fieldCutDue(field, month) ? `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="badge badge--job">${escapeHtml(t('cutDueNow'))}</span></button>` : ''}</div>`;
     }
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
@@ -1691,7 +1697,7 @@ function renderFieldsTable(fields) {
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}</td>
+                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay, farm ? getFarmCurrentMonth(farm) : null)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {

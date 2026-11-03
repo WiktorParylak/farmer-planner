@@ -13,7 +13,7 @@ function todayPanelOpen() {
 
 // Order in which a field's tasks claim it: each field shows once, in its most
 // urgent group, and names its other tasks after the crop.
-const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'finish', 'weeds', 'roll', 'work'];
+const TODAY_PRIORITY = ['late', 'sow', 'harvest', 'mow', 'finish', 'weeds', 'roll', 'work'];
 
 // The save's fields by id, read again only when fields.xml changes (the panel
 // renders with every season view). Null without a readable save.
@@ -47,7 +47,7 @@ function todayGrowsPlannedCrop(field, byId) {
 function todayFieldGroups(farm) {
     const month = getFarmCurrentMonth(farm);
     const fields = farm.fields || [];
-    const groups = { sow: [], late: [], harvest: [], finish: [], weeds: [], roll: [], work: [] };
+    const groups = { sow: [], late: [], harvest: [], mow: [], finish: [], weeds: [], roll: [], work: [] };
     if (!month) return groups;
     const saveById = todaySaveFieldsById(farm);
     const ctx = seasonHarvestContext(farm);
@@ -61,6 +61,7 @@ function todayFieldGroups(farm) {
         if (!planted && sow === month) tasks.sow = t('work_sow');
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
         if (planted && !cut && sow && cal[sow] && fieldInHarvestWindow(field, month) && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = t('work_harvest');
+        if (isCutCrop(field.crop) && fieldCutDue(field, month)) tasks.mow = t('cutDueNow');
         if (planted && !cut && fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested') tasks.finish = t('today_finish');
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
@@ -224,6 +225,7 @@ const TODAY_GROUPS = [
     { key: 'sow', icon: 'fa-seedling' },
     { key: 'late', icon: 'fa-triangle-exclamation', warn: true },
     { key: 'harvest', icon: 'fa-wheat-awn' },
+    { key: 'mow', icon: 'fa-scissors' },
     { key: 'finish', icon: 'fa-forward-step' },
     { key: 'weeds', icon: 'fa-spray-can' },
     { key: 'roll', icon: 'fa-grip-lines' },
@@ -274,7 +276,7 @@ function renderTodayPanel() {
     }
     if (weather) {
         // A warning when there is field work this month that rain gets in the way of.
-        const fieldWork = ['sow', 'late', 'harvest', 'weeds'].some(k => groups[k].length);
+        const fieldWork = ['sow', 'late', 'harvest', 'mow', 'weeds'].some(k => groups[k].length);
         const kind = t('todayWeather_' + (weather.type.includes('SNOW') ? 'snow' : weather.type.includes('HAIL') ? 'hail' : 'rain'));
         const hours = h => Math.max(1, Math.round(h));
         const when = weather.inHours < 0.5
