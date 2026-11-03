@@ -1176,7 +1176,7 @@ function wireBarnPanel(bodyEl) {
 const FIN_LOCALE = () => ({ pl: 'pl-PL', de: 'de-DE' }[currentLang] || 'en-US');
 function finMoney(v) {
     const n = Math.round(v * CURRENCY_RATE).toLocaleString(FIN_LOCALE());
-    return CURRENCY_PREFIXED.includes(CURRENCY) ? `${CURRENCY}${n}` : `${n} ${CURRENCY}`;
+    return CURRENCY_PREFIX ? `${CURRENCY}${n}` : `${n} ${CURRENCY}`;
 }
 
 // Money amounts: farm.balance is a number now, but farms, archives and the
@@ -1218,21 +1218,106 @@ const GAME_MONEY_UNITS = { '1': '€', '2': '$', '3': '£' };
 const CURRENCY_PREFIXED = ['$', '£'];
 let CURRENCY = '€';
 let CURRENCY_RATE = 1;
+let CURRENCY_PREFIX = false;
 
-function readGameCurrency(saveGamePath) {
+function readGameMoneyUnit(saveGamePath) {
     try {
         const gameDir = path.dirname(path.dirname(saveGamePath));
         const gs = fs.readFileSync(path.join(gameDir, 'gameSettings.xml'), 'utf-8');
         const m = gs.match(/<units>[\s\S]*?<money>\s*(\d+)\s*<\/money>/);
-        return m ? (GAME_MONEY_UNITS[m[1]] || null) : null;
+        return m ? m[1] : null;
     } catch (e) {
         return null;
     }
 }
 
-function currencyOf(farm) {
-    if (farm && farm.currency && farm.currency !== 'auto') return farm.currency;
-    return (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+function readGameCurrency(saveGamePath) {
+    return GAME_MONEY_UNITS[readGameMoneyUnit(saveGamePath)] || null;
+}
+
+// Additional Currencies (FS25_additionalCurrencies, active in the save): what
+// the game shows, read the way the mod's script does. modSettings/<mod>/settings.xml
+// holds the currency's number and the converter switch (no file: the game's
+// money unit, converter on). 1-3 are the game's €, $, £ with the factors on the
+// list's root; 4 and up are the list's entries in order. The list is the
+// player's additionalCurrencies.xml there, else currencies.xml in the mod.
+// null = not in the save or unreadable. Cached until one of the files changes.
+const ADDITIONAL_CURRENCIES_MOD = 'FS25_additionalCurrencies';
+let currencyModCache = { key: null, value: null };
+
+function readAdditionalCurrencies(saveGamePath) {
+    if (!saveGamePath) return null;
+    const dir = path.join(path.dirname(path.dirname(saveGamePath)), 'modSettings', ADDITIONAL_CURRENCIES_MOD);
+    const settingsFile = path.join(dir, 'settings.xml'), customFile = path.join(dir, 'additionalCurrencies.xml');
+    const stamp = p => { try { const s = fs.statSync(p); return s.mtimeMs + ':' + s.size; } catch (e) { return ''; } };
+    const gameSettings = path.join(path.dirname(path.dirname(saveGamePath)), 'gameSettings.xml');
+    const key = [saveGamePath, ...[saveGamePath, gameSettings, settingsFile, customFile].map(stamp)].join('|');
+    if (currencyModCache.key !== key) currencyModCache = { key, value: parseAdditionalCurrencies(saveGamePath, settingsFile, customFile) };
+    return currencyModCache.value;
+}
+
+function parseAdditionalCurrencies(saveGamePath, settingsFile, customFile) {
+    try {
+        if (!activeModsInSave(saveGamePath).has(ADDITIONAL_CURRENCIES_MOD)) return null;
+        const list = fs.existsSync(customFile)
+            ? fs.readFileSync(customFile, 'utf-8')
+            : String(modFiles.readModFile(modFiles.findModsDirs(saveGamePath), `$moddir$${ADDITIONAL_CURRENCIES_MOD}/currencies.xml`) || '');
+        const doc = new DOMParser().parseFromString(list.replace(/^\uFEFF/, ''), 'text/xml');
+        const root = doc.querySelector('currencies');
+        if (!root || doc.querySelector('parsererror')) return null;
+        const factorOf = (el, name, fallback) => { const v = parseFloat(el.getAttribute(name)); return v > 0 ? v : fallback; };
+        const entries = [...root.querySelectorAll('currency')];
+        const currencies = [
+            { symbol: '€', prefix: false, factor: factorOf(root, 'euroFactor', 1) },
+            { symbol: '$', prefix: true, factor: factorOf(root, 'dolarFactor', 1.34) },
+            { symbol: '£', prefix: true, factor: factorOf(root, 'poundFactor', 0.79) },
+            ...entries.map(el => ({
+                // A symbol that points at the mod's texts can't be read here.
+                symbol: /^\$l10n/.test(el.getAttribute('symbol') || '') ? '' : plainModText(el.getAttribute('symbol')).replace(/&/g, '').trim(),
+                prefix: el.getAttribute('prefixSymbol') !== 'false',
+                factor: factorOf(el, 'factor', 1)
+            }))
+        ];
+        let state = parseInt(readGameMoneyUnit(saveGamePath), 10) || 1;
+        let converter = true;
+        if (fs.existsSync(settingsFile)) {
+            const settings = fs.readFileSync(settingsFile, 'utf-8');
+            const number = parseInt((settings.match(/<currency>\s*(-?\d+)\s*<\/currency>/) || [])[1], 10);
+            if (number >= 1 && number <= currencies.length) state = number;
+            const on = (settings.match(/<converter>\s*(true|false)\s*<\/converter>/) || [])[1];
+            if (on) converter = on === 'true';
+        }
+        const chosen = currencies[state - 1];
+        if (!chosen || !chosen.symbol) return null;
+        return { symbol: chosen.symbol, prefix: chosen.prefix, rate: converter ? chosen.factor : 1, converter, factor: chosen.factor };
+    } catch (e) {
+        console.warn('Additional Currencies unreadable', e);
+        return null;
+    }
+}
+
+// What the mod does for this farm, unless switched off in the mods list.
+function currencyModOf(farm) {
+    if (!farm || !farm.saveGamePath || disabledModsOf(farm).has('additionalCurrencies')) return null;
+    return readAdditionalCurrencies(farm.saveGamePath);
+}
+
+function currencyModText(mod) {
+    if (mod.factor === 1) return mod.symbol;
+    if (!mod.converter) return t('currencyModNoConverter').replace('{symbol}', mod.symbol);
+    return t('currencyModRate').replace(/\{symbol\}/g, mod.symbol)
+        .replace('{rate}', mod.rate.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 4 }));
+}
+
+// Symbol, rate and place of the symbol: a currency chosen in Settings first,
+// then the currency mod, then the game's own setting.
+function resolveCurrency(farm) {
+    const chosen = farm && farm.currency;
+    if (chosen && chosen !== 'auto') return { symbol: chosen, rate: currencyRateOf(farm), prefix: CURRENCY_PREFIXED.includes(chosen) };
+    const mod = currencyModOf(farm);
+    if (mod) return mod;
+    const symbol = (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+    return { symbol, rate: 1, prefix: CURRENCY_PREFIXED.includes(symbol) };
 }
 
 // The rate field in Settings shows only for a chosen currency other than €.
@@ -1257,11 +1342,16 @@ function refreshCurrencyRateField(farm) {
     const rate = farm && farm.currencyRates ? parseFloat(farm.currencyRates[currency]) : NaN;
     input.value = (rate > 0 ? rate : 1).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 6, useGrouping: false });
     document.getElementById('currency-rate-unit').textContent = currency;
+    const note = document.getElementById('currency-mod-note');
+    const mod = currency === 'auto' ? currencyModOf(farm) : null;
+    if (note) note.textContent = mod ? `Additional Currencies: ${currencyModText(mod)}` : '';
 }
 
 function useCurrency(farm) {
-    CURRENCY = currencyOf(farm);
-    CURRENCY_RATE = currencyRateOf(farm);
+    const currency = resolveCurrency(farm);
+    CURRENCY = currency.symbol;
+    CURRENCY_RATE = currency.rate;
+    CURRENCY_PREFIX = currency.prefix;
 }
 function finCompact(v) {
     return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
@@ -4146,6 +4236,7 @@ const SUPPORTED_MODS = [
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
     { id: 'cropRolling', name: 'Crop Dependent Rolling', modNames: ['FS25_CropDependentRolling'] },
     { id: 'moisture', name: 'Moisture System', modNames: ['FS25_MoistureSystem'] },
+    { id: 'additionalCurrencies', name: 'Additional Currencies', modNames: [ADDITIONAL_CURRENCIES_MOD] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
@@ -5546,6 +5637,10 @@ function renderAnimalModsInfo(farm) {
         if (def.id === 'moisture' && inSave && MOISTURE_DATA && farm.id === currentFarmId) {
             detail += ' · ' + t('moistureModLine').replace('{pct}', formatMoisturePct(MOISTURE_DATA.moisture));
         }
+        if (def.id === 'additionalCurrencies' && inSave) {
+            const mod = readAdditionalCurrencies(farm.saveGamePath);
+            if (mod) detail += ' · ' + currencyModText(mod);
+        }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
             <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
             <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
@@ -6002,6 +6097,7 @@ if (saveSettingsBtn) {
                     saveFarmData(farm);
                     loadFarmConfigs(farm);
                     refreshFarmlandInfo(farm);
+                    refreshPlannerHeader(farm);
                     if (plannerView && plannerView.style.display !== 'none' && !isEditMode) renderSeasonView();
                 }
             }
