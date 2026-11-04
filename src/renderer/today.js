@@ -275,7 +275,7 @@ function todayWeatherIcon(type) {
     return 'fa-cloud-rain';
 }
 
-function todayFieldChipHtml(item, farm) {
+function todayFieldChipHtml(item, farm, group) {
     const f = item.field;
     const num = (f.number || '').toString().trim();
     const name = fieldNameOf(farm, num);
@@ -283,7 +283,9 @@ function todayFieldChipHtml(item, farm) {
     const parts = [t('todayField').replace('{n}', num) + (name ? ' · ' + name : ''), translateCropName(f.crop)];
     if (item.extra) parts.push(item.extra);
     const text = escapeHtml(parts.join(' · '));
-    return `<button type="button" class="today-chip today-field" data-idx="${item.idx}" title="${text}">
+    // A job opens the field on its work list, the rest on its crop.
+    const tab = ['work', 'weeds', 'roll'].includes(group) ? 'work' : 'crop';
+    return `<button type="button" class="today-chip today-field" data-idx="${item.idx}" data-tab="${tab}" title="${text}">
         <span class="today-chip-main">${text}</span>
         ${area ? `<span class="today-chip-ha">${area.toFixed(2)} ha</span>` : ''}
     </button>`;
@@ -369,7 +371,7 @@ function renderTodayPanel() {
         body += `<div class="today-group${g.warn ? ' is-warn' : ''}">
             <h3 class="today-group-title"><i class="fa-solid ${g.icon}" aria-hidden="true"></i> ${t('today_' + g.key)}
                 <span class="today-group-sum">${ha ? ha.toFixed(2) + ' ha' : ''}</span></h3>
-            <div class="today-chips">${items.map(i => todayFieldChipHtml(i, farm)).join('')}</div>
+            <div class="today-chips">${items.map(i => todayFieldChipHtml(i, farm, g.key)).join('')}</div>
         </div>`;
     });
     if (barns.length) {
@@ -429,7 +431,7 @@ function renderTodayPanel() {
         }
         if (e.target.closest('.today-new-season')) { runNewSeason(); return; }
         const field = e.target.closest('.today-field');
-        if (field) { openFieldModal(parseInt(field.dataset.idx, 10)); return; }
+        if (field) { openFieldModal(parseInt(field.dataset.idx, 10), field.dataset.tab); return; }
         const view = e.target.closest('.today-view');
         if (view) showPlannerView(view.dataset.view);
     });

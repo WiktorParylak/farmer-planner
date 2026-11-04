@@ -502,7 +502,7 @@ const TUTORIAL_CHAPTERS = [
         steps: [
             tutClick('e1', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.field-open') : null; },
                 () => tutModalOpen('field-modal')),
-            tutInfo('e2', '#field-modal-body .field-view-fert-target'),
+            tutInfo('e2', '#field-modal-body .field-view-fert-target', { enter: () => { fieldViewTab = 'soil'; renderFieldModal(); } }),
             tutInput('e3', '#field-modal-body .field-view-fert[data-key="existingN"]', () => tutNumValue(tq('#field-modal-body .field-view-fert[data-key="existingN"]')) > 0, '40'),
             tutInput('e4', '#field-modal-body .field-view-fert[data-key="orgN"]', () => tutNumValue(tq('#field-modal-body .field-view-fert[data-key="orgN"]')) > 0, '30'),
             tutInfo('e5', '#field-modal-body .field-view-fert-result'),

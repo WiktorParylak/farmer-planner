@@ -455,6 +455,8 @@ function fieldHarvestLineHtml(field, idx, farm) {
     return `<p class="settings-hint field-view-harvest">${escapeHtml(t('harvestExpected').replace('{l}', perHa))}${tail}</p>`;
 }
 
+let fieldViewTab = 'crop';
+
 function renderFieldModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[fieldModalIdx];
@@ -483,14 +485,15 @@ function renderFieldModal() {
     ].filter(Boolean).join(' · ');
     document.getElementById('field-modal-summary').textContent = summary;
 
-    let html = '';
+    // One tab open at a time; what stays above them says which field this is.
+    const tabs = { crop: '', work: '', soil: '', history: '' };
     const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
 
     // Everything about this field's crop is edited here and saved straight away:
     // crop, catch crop, months, state, tillage and the rotation cycle.
     const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
-    html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
-        ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}" title="${escapeHtml(t('fieldNameHint'))}"></label>` : ''}
+    const identity = fieldViewIdentityHtml(farm, field, num, name);
+    tabs.crop += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
         ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
@@ -501,7 +504,7 @@ function renderFieldModal() {
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
-    html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
+    tabs.soil += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
             <span>${escapeHtml(soilLabel(s.id))}</span>
             <input type="number" min="0" max="100" step="1" class="field-view-soil" data-soil="${s.id}" value="${mix[s.id] != null ? mix[s.id] : ''}" placeholder="0">
         </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>${fieldViewSoilImportHtml(farm)}`);
@@ -517,12 +520,12 @@ function renderFieldModal() {
     } else {
         limeText = t('fieldViewNoLime');
     }
-    html += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
+    tabs.soil += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
 
     // Notes pinned to this field (added and edited in Notes).
     if (num) {
         const fieldNotes = loadNotes(farm).filter(n => noteHasField(n, num));
-        html += section(t('fieldViewNotes'), fieldNotes.length
+        tabs.history += section(t('fieldViewNotes'), fieldNotes.length
             ? `<ul class="field-view-notes">${fieldNotes.map(n => `<li><strong>${escapeHtml(n.title)}</strong>${(n.months || []).length ? ` <span class="settings-hint">${n.months.map(translateMonth).join(', ')}</span>` : ''}</li>`).join('')}</ul>`
             : `<p class="settings-hint">${t('fieldViewNotesNone')}</p>`);
     }
@@ -534,7 +537,7 @@ function renderFieldModal() {
         const status = d.covered
             ? `<span class="fertplan-status is-covered">${t('fertPlanCovered')}</span>`
             : `${fmt(d.mineralRate)} ${kgN} · ${fmt(d.mineralLitres * area * d.buffer)} l`;
-        html += section(t('fieldViewFert'), `
+        tabs.soil += section(t('fieldViewFert'), `
             <p class="details-category field-view-fert-target"><span>${t('fertPlanColTarget')}</span><span class="details-category-value">${fmt(d.targetRate)} ${kgN}</span></p>
             <label class="fertplan-field">
                 <span>${t('fertPlanColExisting')}</span>
@@ -560,7 +563,7 @@ function renderFieldModal() {
     const plan = getFeedPlan(farm);
     const feedRows = buildFeedSupply(farm, plan, rates).rows.filter(r => r.key === planKey || r.key === planKey + ':catch');
     if (feedRows.length) {
-        html += section(t('fieldViewFeed'), feedRows.map(r => {
+        tabs.crop += section(t('fieldViewFeed'), feedRows.map(r => {
             const label = translateCropName(r.crop) + (r.isCatch ? ' (' + t('catchCropShort') + ')' : '');
             if (r.use === 'cuts') return `<p>${escapeHtml(label)}: ${t('feedUseCuts').replace('{n}', r.cuts)}</p>`;
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
@@ -586,9 +589,9 @@ function renderFieldModal() {
     const state = (v, map) => t(map[v] || map['']);
     const rollingLine = cropNeedsRolling(field.crop) ? ' · ' + t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff') : '';
     work.push(`<p class="settings-hint">${state(field.weeds || '', WEEDS_TITLES)}${rollingLine}</p>`);
-    html += section(t('fieldViewWork'), work.join(''));
+    tabs.work += section(t('fieldViewWork'), work.join(''));
 
-    html += section(t('fieldLogTitle'), fieldLogSectionHtml(farm, gameFieldIds(field)));
+    tabs.history += section(t('fieldLogTitle'), fieldLogSectionHtml(farm, gameFieldIds(field)));
 
     // History of this field number.
     const history = loadSeasonHistory(farm, season);
@@ -596,14 +599,69 @@ function renderFieldModal() {
         const crops = (history[s] || []).filter(f => (f.number || '').toString().trim() === num && f.crop).map(f => translateCropName(f.crop));
         return crops.length ? `<li>${t('season')} ${s}: ${escapeHtml(crops.join(', '))}</li>` : '';
     }).filter(Boolean);
-    html += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
+    tabs.history += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
 
-    body.innerHTML = html;
+    const tabBtn = (id, label) => `<button type="button" class="settings-tab field-view-tab${fieldViewTab === id ? ' is-active' : ''}" role="tab" aria-selected="${fieldViewTab === id}" data-tab="${id}">${t(label)}</button>`;
+    body.innerHTML = identity
+        + `<div class="settings-tabs field-view-tabs" role="tablist">${tabBtn('crop', 'fieldViewTabCrop')}${tabBtn('work', 'fieldViewTabWork')}${tabBtn('soil', 'fieldViewTabSoil')}${tabBtn('history', 'fieldViewTabHistory')}</div>`
+        + Object.keys(tabs).map(id => `<div class="field-view-pane" data-pane="${id}" role="tabpanel"${fieldViewTab === id ? '' : ' hidden'}>${tabs[id]}</div>`).join('');
 }
 
-window.openFieldModal = function (idx) {
+// Number, name, area and lease: above the tabs, saved as soon as they change.
+function fieldViewIdentityHtml(farm, field, num, name) {
+    const shared = (farm.fields || []).filter(f => (f.number || '').toString().trim() === num).length > 1;
+    const size = farm.fieldSizes && farm.fieldSizes[num] !== undefined ? farm.fieldSizes[num] : '';
+    const lease = field.lease || null;
+    return `<section class="settings-group field-view-section field-view-identity"><div class="field-view-identity-grid">
+        <label class="settings-field"><span>${t('thFieldNo')}</span><input type="text" class="field-view-number" value="${escapeHtml(num)}"></label>
+        <label class="settings-field"><span>${t('thFieldHa')}</span><input type="text" inputmode="decimal" class="field-view-area" value="${escapeHtml(String(field.area || ''))}" placeholder="0.00"${field.areaSource === 'game' ? ` title="${escapeHtml(t('fieldViewFromGame'))}"` : ''}></label>
+        ${shared ? `<label class="settings-field"><span title="${escapeHtml(t('fieldSizeHint'))}">${t('fieldSizeLabel')}</span><input type="text" inputmode="decimal" class="field-view-size" value="${escapeHtml(String(size))}" placeholder="0.00"></label>` : ''}
+        ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}"></label>` : ''}
+    </div>
+    <div class="field-view-lease-row">
+        <label class="lease-check"><input type="checkbox" class="field-view-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseLabel')}</label>
+        ${lease ? `<label class="settings-field"><span>${t('leaseSeasons')}</span><input type="number" min="1" max="50" step="1" class="field-view-lease-seasons" value="${lease.seasons || ''}" placeholder="–"></label>
+        <label class="settings-field"><span>${t('leaseThen')}</span><select class="field-view-lease-then">
+            <option value="return" ${lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
+            <option value="buy" ${lease.then === 'buy' ? 'selected' : ''}>${t('leaseBuy')}</option>
+        </select></label>` : ''}
+    </div></section>`;
+}
+
+// A new number moves the field's soil, plan and name with it, as Edit does. A
+// number another row has makes both one field shared by two crops, so ask.
+async function changeFieldNumberFromView(idx, value) {
+    const refresh = () => rerenderKeepingFocus(renderFieldModal, document.querySelector('#field-modal .modal-content'));
+    const to = (value || '').trim();
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    if (to === (field.number || '').toString().trim()) { refresh(); return; }
+    if (!to) {
+        refresh();
+        showNotice(t('missingFieldNumberTitle'), t('fieldNumberEmpty'), true);
+        return;
+    }
+    if (farm.fields.some((f, i) => i !== idx && (f.number || '').toString().trim() === to)) {
+        const yes = await showConfirm({
+            title: t('fieldNumberTakenTitle').replace('{n}', to),
+            body: t('fieldNumberTakenBody'),
+            confirmText: t('fieldNumberTakenConfirm')
+        });
+        if (yes !== true) { refresh(); return; }
+    }
+    const live = getCurrentFarm();
+    const before = JSON.parse(JSON.stringify(live.fields));
+    live.fields[idx].number = to;
+    migrateFieldKeys(live, before, live.fields);
+    saveFarmData(live);
+    refresh();
+}
+
+window.openFieldModal = function (idx, tab) {
     markFieldViewKnown();
     fieldModalIdx = idx;
+    fieldViewTab = tab || 'crop';
     renderFieldModal();
     const modal = document.getElementById('field-modal');
     if (modal) {
@@ -627,6 +685,33 @@ window.openFieldModal = function (idx) {
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
         if (handleRotationFieldViewChange(el, farm, field)) {
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-number')) {
+            changeFieldNumberFromView(fieldModalIdx, el.value);
+        } else if (el.classList.contains('field-view-area')) {
+            const n = parseDecimal(el.value);
+            if (!isNaN(n) && n >= 0 && n !== (parseFloat(field.area) || 0)) {
+                field.area = String(n);
+                // Typed by hand: overrides the area from the game.
+                field.areaSource = 'manual';
+                saveFarmData(farm);
+            }
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-size')) {
+            const key = (field.number || '').toString().trim();
+            const n = parseDecimal(el.value);
+            farm.fieldSizes = { ...(farm.fieldSizes || {}) };
+            if (!el.value.trim()) delete farm.fieldSizes[key];
+            else if (!isNaN(n) && n > 0) farm.fieldSizes[key] = n;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.matches('.field-view-lease, .field-view-lease-seasons, .field-view-lease-then')) {
+            const wrap = el.closest('.field-view-lease-row');
+            const on = wrap.querySelector('.field-view-lease').checked;
+            const seasons = wrap.querySelector('.field-view-lease-seasons');
+            const then = wrap.querySelector('.field-view-lease-then');
+            field.lease = on ? leaseFromValues(field.lease, farm, seasons ? seasons.value : '', then ? then.value : 'return') : null;
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-name')) {
@@ -690,6 +775,13 @@ window.openFieldModal = function (idx) {
         }
     });
     body.addEventListener('click', e => {
+        const tabBtn = e.target.closest('.field-view-tab');
+        if (tabBtn) {
+            fieldViewTab = tabBtn.dataset.tab;
+            renderFieldModal();
+            modal.querySelector('.modal-content').scrollTop = 0;
+            return;
+        }
         const farm = getCurrentFarm();
         const idx = fieldModalIdx;
         const field = farm && (farm.fields || [])[idx];
@@ -991,7 +1083,7 @@ window.openWorkModal = function (idx) {
         closeModal(modal);
         workFieldIdx = null;
         renderSeasonView();
-        if (workReturnToField != null) { const i = workReturnToField; workReturnToField = null; openFieldModal(i); }
+        if (workReturnToField != null) { const i = workReturnToField; workReturnToField = null; openFieldModal(i, 'work'); }
     };
     document.getElementById('work-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
@@ -1319,7 +1411,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
     const fertBtn = e.target.closest('.fert-open');
     if (fertBtn && !isEditMode) {
-        openFieldModal(parseInt(fertBtn.dataset.idx, 10));
+        openFieldModal(parseInt(fertBtn.dataset.idx, 10), 'soil');
         const target = document.querySelector('#field-modal-body .field-view-fert-target');
         if (target) target.closest('section').scrollIntoView({ block: 'start' });
         return;
@@ -2400,11 +2492,15 @@ function readLeaseInputs(row, farm) {
     if (!on || !on.checked) return null;
     let prev = null;
     try { prev = JSON.parse(row.dataset.extra || '{}').lease || null; } catch (e) { /* none */ }
-    const seasons = parseInt(row.querySelector('.field-lease-seasons').value, 10);
+    return leaseFromValues(prev, farm, row.querySelector('.field-lease-seasons').value, row.querySelector('.field-lease-then').value);
+}
+
+function leaseFromValues(prev, farm, seasonsValue, thenValue) {
+    const seasons = parseInt(seasonsValue, 10);
     const out = {
         since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
         seasons: seasons > 0 ? seasons : null,
-        then: row.querySelector('.field-lease-then').value === 'buy' ? 'buy' : 'return'
+        then: thenValue === 'buy' ? 'buy' : 'return'
     };
     // A lease read from Field Leasing keeps the game's numbers (next sync refreshes them).
     if (prev && prev.source === 'game') ['source', 'months', 'minMonths', 'monthlyFee'].forEach(k => { out[k] = prev[k]; });
@@ -2590,6 +2686,7 @@ function editTableSnapshot(farm) {
 
 function setEditModeUi(on) {
     isEditMode = on;
+    if (editSeasonBtn) editSeasonBtn.title = on ? '' : t('editFieldsHint');
     if (on) hideUndoToast();
     if (editSeasonBtn) {
         const label = editSeasonBtn.querySelector('.edit-main-label');

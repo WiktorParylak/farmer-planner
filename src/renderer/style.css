@@ -8121,6 +8121,36 @@ button.field-open.has-callout .field-number-chip {
   border-top: 1px dashed var(--color-border);
 }
 
+.field-view-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px 12px;
+}
+
+.field-view-identity-grid .field-view-name-field {
+  grid-column: span 2;
+}
+
+.field-view-lease-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.field-view-lease-row .settings-field {
+  flex: 1 1 120px;
+}
+
+.field-view-tabs {
+  justify-content: flex-start;
+}
+
+.field-view-pane:not([hidden]) {
+  display: contents;
+}
+
 .field-view-crop-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
