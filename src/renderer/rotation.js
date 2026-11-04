@@ -594,7 +594,7 @@ function rotationFieldViewHtml(farm, field) {
     if (info) {
         const seq = rotationTimeline(farm, field, history, 2, 4);
         html += `<div class="rotation-strip">${seq.map(e => rotationCellHtml(e)).join('')}</div>`;
-        html += `<div class="rotation-field-actions"><button type="button" class="settings-btn field-view-rotation-detect">${t('rotDetect')}</button>${score.offCycle ? `<button type="button" class="settings-btn field-view-rotation-realign">${t('rotRealign')}</button>` : ''}</div>`;
+        html += `<div class="rotation-field-actions"><button type="button" class="settings-btn field-view-rotation-detect">${t('rotDetect')}</button>${score.offCycle ? `<button type="button" class="settings-btn field-view-rotation-realign">${t('rotRealign')}</button>` : ''}${score.offCycle && info.slot.crop ? `<button type="button" class="settings-btn field-view-rotation-match-crop" title="${escapeHtml(t('rotMatchCropHint'))}">${escapeHtml(t('rotMatchCrop').replace('{crop}', translateCropName(info.slot.crop)))}</button>` : ''}</div>`;
     } else if (!getRotations(farm).length) {
         html += `<p class="settings-hint">${t('rotNoCyclesHint')}</p>`;
     }
@@ -636,6 +636,12 @@ function setFieldCycleStep(farm, field, index) {
 function fillEmptyFieldFromRotation(farm, field) {
     const info = field.crop ? null : fieldRotationInfo(farm, field);
     if (!info || !info.slot.crop) return false;
+    putRotationCropOnField(farm, field, info);
+    return true;
+}
+
+// The crop of the field's step goes on the field, in place of what's planned there.
+function putRotationCropOnField(farm, field, info) {
     const before = JSON.parse(JSON.stringify(farm.fields));
     applyRotationSlot(field, info.slot);
     // Mid-season, like the month fill: this month or next when the crop allows it.
@@ -643,7 +649,6 @@ function fillEmptyFieldFromRotation(farm, field) {
     field.rotation.filled = farm.currentSeason || 1;
     migrateFieldKeys(farm, before, farm.fields);
     showAutoSyncToast(t('rotFieldFilled').replace('{crop}', translateCropName(field.crop)), 4000);
-    return true;
 }
 
 // Changes from the field view section (wired in fields-table.js).
@@ -662,6 +667,10 @@ function handleRotationFieldViewClick(target, farm, field) {
     }
     if (target.closest('.field-view-rotation-realign')) {
         setFieldRotationSlot(field, info.rot, rotationRealignIndex(info, field));
+        return true;
+    }
+    if (target.closest('.field-view-rotation-match-crop')) {
+        if (info.slot.crop) putRotationCropOnField(farm, field, info);
         return true;
     }
     return false;

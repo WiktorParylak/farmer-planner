@@ -1038,6 +1038,8 @@ const UI = {
     rotDetect: "Schritt erkennen",
     rotRealign: "An die Frucht auf dem Feld anpassen",
     rotRealignHint: "Die Frucht auf dem Feld gehört nicht zu diesem Schritt — das Feld auf den Schritt mit dieser Frucht setzen",
+    rotMatchCrop: "Frucht auf dem Feld anpassen: {crop}",
+    rotMatchCropHint: "Plant die Frucht dieses Schritts anstelle der aktuellen auf dem Feld, noch zu säen. Der Schritt bleibt.",
     rotNoCyclesHint: "Noch keine Zyklen — leg einen unter Fruchtfolge → Zyklen an (aus einer Vorlage oder eigen).",
     rotNoCycles: "Noch keine Zyklen.",
     rotNoFields: "In dieser Saison gibt es noch keine Felder.",
