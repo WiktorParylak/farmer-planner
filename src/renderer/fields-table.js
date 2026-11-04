@@ -737,7 +737,16 @@ window.openFieldModal = function (idx) {
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
 // Lime only while the pH needs it (the game's pH with Precision Farming) and
 // the crop uses lime up; no weeds step on a ploughed field.
+// A list of your own belongs to the crops it was made for (field.workFor): plan
+// another crop or catch crop, however that happens, and the suggestion is back.
 const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'stones', 'sow', 'roll', 'weeds'];
+// Done on the ground before sowing, so still done when another crop is planned instead.
+const GROUND_WORK_STEPS = ['cultivate', 'plow', 'stones', 'lime'];
+
+// The crops a work list is made for.
+function workCropsKey(field) {
+    return cropOrderKey(field.crop) + '|' + cropOrderKey(field.catchCrop);
+}
 
 // A row joining several game fields ("10-11") has to be worked as one first:
 // the strip between them cultivated or ploughed over. Once ticked off it's
@@ -792,14 +801,16 @@ function suggestedWork(field, idx, farm) {
     steps.push('fertilize');
     if (!plowed && rules.weeds !== false) steps.push('weeds');
     if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
-    return steps.map(step => ({ step, done: false }));
+    const groundDone = fieldWork(field) ? [] : (field.work || []).filter(w => w.done && GROUND_WORK_STEPS.includes(w.step)).map(w => w.step);
+    return steps.map(step => ({ step, done: groundDone.includes(step) }));
 }
 
-// The field's own list, or null when it never had one (then the month-based
-// suggestion shows). A list you emptied stays empty (field.workCleared) — an
-// empty field.work without the flag is how older versions cleared it.
+// The field's own list, or null when it never had one or it was made for other
+// crops (then the month-based suggestion shows). A list you emptied stays empty
+// (field.workCleared) — an empty field.work without the flag is how older
+// versions cleared it.
 function fieldWork(field) {
-    if (!Array.isArray(field.work)) return null;
+    if (!Array.isArray(field.work) || field.workFor !== workCropsKey(field)) return null;
     return field.work.length || field.workCleared ? field.work : null;
 }
 
@@ -903,6 +914,7 @@ function renderWorkModal() {
 // One field's list, without saving (the work modal and the bulk bar save after).
 function changeFieldWork(farm, field, idx, fn) {
     field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+    field.workFor = workCropsKey(field);
     fn(field.work, field, farm);
     syncSowStep(field);
     // Emptied on purpose: keep it empty instead of suggesting again.
@@ -1788,7 +1800,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
+const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workFor', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

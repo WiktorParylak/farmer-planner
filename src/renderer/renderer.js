@@ -3591,6 +3591,14 @@ function migrateFarmFolderToId(oldFolderName, farmData) {
 // still get their own copy (they change it and save it, or drop it).
 const FARM_FILE_CACHE = new Map();   // jsonPath -> { mtimeMs, size, data }
 
+// Work lists from before field.workFor (also in backups and undo files, or a
+// crop taken back) belong to the crops on the field now.
+function stampFieldWorkCrops(farm) {
+    (farm.fields || []).forEach(f => {
+        if (Array.isArray(f.work) && f.workFor === undefined) f.workFor = workCropsKey(f);
+    });
+}
+
 function readFarmFile(jsonPath) {
     const st = fs.statSync(jsonPath);
     const hit = FARM_FILE_CACHE.get(jsonPath);
@@ -3598,6 +3606,7 @@ function readFarmFile(jsonPath) {
     const content = fs.readFileSync(jsonPath, 'utf-8');
     if (content.trim() === '') return null;
     const data = JSON.parse(content);
+    stampFieldWorkCrops(data);
     FARM_FILE_CACHE.set(jsonPath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(data) });
     return data;
 }
@@ -3658,6 +3667,7 @@ function saveFarmData(farmData, { touch = true } = {}) {
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
     if (touch) farmData.lastEdited = new Date().toISOString();
+    stampFieldWorkCrops(farmData);
 
     try {
         fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8');
@@ -5391,6 +5401,7 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     field.weeds = null;
     delete field.weedsManual;
     delete field.work;
+    delete field.workFor;
     delete field.workCleared;
     // Work found in the save belongs to the season just archived
     // (workSeen stays: the levels to compare the next read with).
