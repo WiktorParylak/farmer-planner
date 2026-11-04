@@ -353,13 +353,22 @@ body {
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
 }
 
+/* Same line as the end of the start-up animation (.splash-line). */
+.logo-line {
+  display: block;
+  width: 64%;
+  height: 2px;
+  margin-bottom: 6px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-accent) 20%, #E9A55A 50%, var(--color-accent) 80%, transparent);
+}
+
 .logo-author {
   font-family: var(--font-mono);
   font-weight: 500;
   font-size: var(--fs-base);
   letter-spacing: 0.14em;
   color: var(--color-surface-alt);
-  opacity: 0.75;
   margin: 0;
 }
 
