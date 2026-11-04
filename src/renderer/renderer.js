@@ -3662,21 +3662,98 @@ function localizeSavePath(farm) {
 
 // touch: false for writes that aren't the user's own edits (savegame sync,
 // migrations), so "Last edited" on the farm list stays meaningful.
-function saveFarmData(farmData, { touch = true } = {}) {
+// undo: false for a change that also rewrites files next to data.json (new
+// season, importing map data), which going back to the old data.json wouldn't
+// put right. restoring: this save is Undo itself.
+function saveFarmData(farmData, { touch = true, undo = true, restoring = false } = {}) {
     if (!farmData.folderName) return;
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
     if (touch) farmData.lastEdited = new Date().toISOString();
     stampFieldWorkCrops(farmData);
 
+    const cached = FARM_FILE_CACHE.get(filePath);
+    const before = cached ? cached.data : null;
     try {
         fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8');
         // Keep the cache in step so the next read doesn't parse the file again.
         const st = fs.statSync(filePath);
         FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
+        if (!restoring) trackFarmUndo(farmData, before, touch && undo);
     }
     catch (err) { console.error('saveFarmData failed', err); showNotice(t('noticeErrorTitle'), t('saveDataError'), true); }
 }
+
+// --- Undo ------------------------------------------------------------------
+// Everything about a farm's plan is in its data.json, so going back a step is
+// putting the file back as it was. Only saves you caused count (touch): one that
+// came from the game clears the steps, since going back over it would lose it.
+// A cached copy is never handed out or changed, so the stack can keep it as is.
+const FARM_UNDO_MAX = 30;
+const FARM_UNDO_MERGE_MS = 400;     // saves of one click are one step
+const UNDO_TOAST_MS = 8000;
+let farmUndoStack = [];
+let farmUndoLastAt = 0;
+let undoToastTimer = null;
+
+function farmContent(farm) {
+    return JSON.stringify({ ...farm, lastEdited: null });
+}
+
+function trackFarmUndo(farmData, before, byUser) {
+    if (before && farmContent(before) === farmContent(farmData)) return;
+    if (!byUser || !before || farmData.id !== currentFarmId || tut.active) { clearFarmUndo(); return; }
+    const now = Date.now();
+    if (!farmUndoStack.length || now - farmUndoLastAt > FARM_UNDO_MERGE_MS) {
+        farmUndoStack.push({ farmId: farmData.id, data: before });
+        if (farmUndoStack.length > FARM_UNDO_MAX) farmUndoStack.shift();
+    }
+    farmUndoLastAt = now;
+    showUndoToast(t('undoSaved'));
+}
+
+function clearFarmUndo() {
+    farmUndoStack = [];
+    hideUndoToast();
+}
+
+function hideUndoToast() {
+    clearTimeout(undoToastTimer);
+    const el = document.getElementById('undo-toast');
+    if (el) el.hidden = true;
+}
+
+function showUndoToast(text) {
+    const el = document.getElementById('undo-toast');
+    if (!el) return;
+    document.getElementById('undo-toast-text').textContent = text;
+    document.getElementById('undo-toast-btn').hidden = !farmUndoStack.length;
+    el.hidden = false;
+    clearTimeout(undoToastTimer);
+    undoToastTimer = setTimeout(hideUndoToast, UNDO_TOAST_MS);
+}
+
+function undoLastFarmChange() {
+    if (isEditMode || !farmUndoStack.length) return;
+    const step = farmUndoStack.pop();
+    if (step.farmId !== currentFarmId) { clearFarmUndo(); return; }
+    saveFarmData(structuredClone(step.data), { touch: false, restoring: true });
+    if (document.getElementById('field-modal').style.display === 'flex') renderFieldModal();
+    if (document.getElementById('work-modal').style.display === 'flex') renderWorkModal();
+    renderSeasonView();
+    if (currentPlannerView && currentPlannerView !== 'plan') openHubPanel(currentPlannerView);
+    showUndoToast(t('undoDone'));
+}
+
+document.getElementById('undo-toast-btn').addEventListener('click', undoLastFarmChange);
+// Ctrl+Z inside a text box keeps undoing the typing.
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+    if (e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, [contenteditable]')) return;
+    if (!farmUndoStack.length) return;
+    e.preventDefault();
+    undoLastFarmChange();
+});
 
 // Absolute path to a farm's own data folder (named after its id).
 function farmDir(farm) {
@@ -4680,6 +4757,7 @@ function readGameSave(pathToFile) {
 window.openPlanner = function (id) {
     let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
+        clearFarmUndo();
         currentFarmId = farm.id;
         animalPictures.lookupFarmId = undefined;   // save path may have changed
         clearFieldSearch();
@@ -5096,7 +5174,7 @@ function showAutoSyncToast(text, ms = 2500) {
     }, ms);
 }
 
-if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
+if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; clearFarmUndo(); stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
 // Fields of one season: the archive (seasons/season_N.json) for a past
 // season, the live farm.fields for the current one. [] if the archive is
@@ -5502,7 +5580,7 @@ async function runNewSeason({ intro = '' } = {}) {
             farm.finishedCrops = [];
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
-            saveFarmData(farm);
+            saveFarmData(farm, { undo: false });
             fs.writeFileSync(path.join(seasonsDirPath, 'undo_new_season.json'), JSON.stringify(undoData, null, 2), 'utf-8');
             refreshUndoSeasonButton(farm);
 
@@ -5571,7 +5649,7 @@ async function undoLastNewSeason() {
         farm.finishedCrops = undo.finishedCrops || [];
         farm.currentSeason = undo.season;
         farm.seasonStartedGameYear = undo.seasonStartedGameYear;
-        saveFarmData(farm);
+        saveFarmData(farm, { undo: false });
         const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${undo.season}.json`);
         if (fs.existsSync(archivePath)) fs.rmSync(archivePath);
         fs.rmSync(undoSeasonPath(farm));
@@ -5658,7 +5736,7 @@ if (resetSeasonsBtn) {
 
         farm.currentSeason = 1;
         farm.finishedCrops = [];
-        saveFarmData(farm);
+        saveFarmData(farm, { undo: false });
 
         viewedSeason = 1;
         setEditModeUi(false);
@@ -6069,7 +6147,7 @@ if (saveSettingsBtn) {
                     }
                 }
 
-                saveFarmData(importFarm);
+                saveFarmData(importFarm, { undo: false });
                 loadFarmConfigs(importFarm);
                 // Reflect the fresh crop list in the planner behind the modal.
                 if (currentFarmId && plannerView && plannerView.style.display !== 'none' && !isEditMode) {
@@ -6234,6 +6312,11 @@ if (saveSettingsBtn) {
     });
 }
 
+const openFieldSoilBtn = document.getElementById('open-field-soil-btn');
+if (openFieldSoilBtn) openFieldSoilBtn.addEventListener('click', () => {
+    closeModal(settingsModal);
+    showPlannerView('fieldsoil');
+});
 if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => closeModal(settingsModal));
 
 // =============================================================

@@ -244,7 +244,7 @@ function fieldViewSoilImportHtml(farm) {
     const why = !hasSave ? t('fieldSoilImportNoPath') : (pfOn ? t('fieldViewSoilImportHint') : t('fieldSoilImportNoPf'));
     const msg = fieldViewSoilMsg;
     fieldViewSoilMsg = '';
-    return `<div class="field-view-soil-import-row"><button type="button" class="settings-btn field-view-soil-import" title="${escapeHtml(why)}" ${pfOn ? '' : 'disabled'}><i class="fa-solid fa-download" aria-hidden="true"></i> ${t('fieldViewSoilImport')}</button>${pfOn ? '' : `<span class="settings-hint">${escapeHtml(why)}</span>`}</div>${msg ? `<p class="settings-hint field-view-soil-msg">${msg}</p>` : ''}`;
+    return `<div class="field-view-soil-import-row"><button type="button" class="settings-btn field-view-soil-import" title="${escapeHtml(why)}" ${pfOn ? '' : 'disabled'}><i class="fa-solid fa-download" aria-hidden="true"></i> ${t('fieldViewSoilImport')}</button>${pfOn ? '' : `<span class="settings-hint">${escapeHtml(why)}</span>`}<button type="button" class="settings-btn field-view-soil-all">${t('fieldSoilOpen')}</button></div>${msg ? `<p class="settings-hint field-view-soil-msg">${msg}</p>` : ''}`;
 }
 
 function catchCropCaption(field) {
@@ -713,6 +713,11 @@ window.openFieldModal = function (idx) {
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
             return;
         }
+        if (e.target.closest('.field-view-soil-all')) {
+            close();
+            showPlannerView('fieldsoil');
+            return;
+        }
         if (e.target.closest('.field-view-soil-import')) {
             fieldViewSoilMsg = importFieldSoilFromGame(farm, fertPlanSoilKey(field, idx));
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
@@ -853,6 +858,20 @@ function syncSowStep(field) {
     if (own) field.work = withSowFromState(field, own);
 }
 
+// Is this job for now? The one rule behind the table's job badge (faded when
+// not) and What to do today (lists it only when it is). Sowing and harvest wait
+// for their month. Your own list and a sown field's jobs are always for now; on
+// a field still to be sown the ground work starts the month before its sowing.
+function fieldJobDue(field, step, month) {
+    if (!month) return true;
+    const sow = (field.sowingMonth || '').toUpperCase();
+    if (step === 'sow') return sow === month || isSowingOverdue(field, month);
+    if (step === 'harvest') return fieldInHarvestWindow(field, month);
+    if (field.state === 'Planted' || fieldWork(field) || isSowingOverdue(field, month)) return true;
+    const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf(sow);
+    return to < 0 || from < 0 || (to - from + 12) % 12 <= 1;
+}
+
 function nextWorkStep(field, idx, farm) {
     const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     const next = list.find(w => !w.done);
@@ -870,7 +889,9 @@ function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
     const state = `<button type="button" class="state-toggle" data-idx="${idx}" title="${escapeHtml(stateLabel + ' · ' + t('stateToggleHint'))}"><span class="badge ${badgeCls}">${escapeHtml(label)}</span></button>`;
     if (!next) return `<div class="state-pills">${state}</div>`;
     const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(t('workBadgeHint'))}"><span class="badge badge--job">${escapeHtml(t('work_' + next.step))}${count}</span></button></div>`;
+    const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm));
+    const hint = t('workBadgeHint') + (due ? '' : ' ' + t('workLaterHint'));
+    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(t('work_' + next.step))}${count}</span></button></div>`;
 }
 
 // A small tag after a step the game itself asks for (ploughing required), or
@@ -2569,6 +2590,7 @@ function editTableSnapshot(farm) {
 
 function setEditModeUi(on) {
     isEditMode = on;
+    if (on) hideUndoToast();
     if (editSeasonBtn) {
         const label = editSeasonBtn.querySelector('.edit-main-label');
         const icon = editSeasonBtn.querySelector('i');

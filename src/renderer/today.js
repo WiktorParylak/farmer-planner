@@ -7,6 +7,32 @@
 const TODAY_FEED_LOW_DAYS = 3;   // same "low" as the Animals tab gauge
 
 // Settings come back as strings.
+// The column next to the plan: What to do today and, folded until asked for, the
+// crops on the farm. With no What to do today to show (a past season, editing)
+// the crop list has the column to itself. The tutorial needs it all in view.
+function syncPlanSidePanels(todayShown, count) {
+    const side = document.querySelector('.planner-crops');
+    const handle = document.getElementById('plan-side-toggle');
+    const cropsBtn = document.getElementById('crops-toggle');
+    const legend = document.getElementById('treatments-legend');
+    if (!side || !handle || !cropsBtn) return;
+    const forced = tut.active;
+    const open = forced || String(getSetting('planSideOpen')) !== 'false';
+    side.hidden = !open;
+    handle.hidden = forced;
+    handle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    handle.querySelector('.fa-solid').className = 'fa-solid ' + (open ? 'fa-chevron-right' : 'fa-chevron-left');
+    const badge = handle.querySelector('.plan-side-count');
+    badge.hidden = open || !count;
+    badge.textContent = count;
+    const cropsOpen = forced || !todayShown || String(getSetting('cropsPanelOpen')) === 'true';
+    side.classList.toggle('is-crops-open', cropsOpen);
+    cropsBtn.disabled = forced || !todayShown;
+    cropsBtn.setAttribute('aria-expanded', cropsOpen ? 'true' : 'false');
+    cropsBtn.querySelector('.fa-solid').className = 'fa-solid ' + (cropsOpen ? 'fa-chevron-down' : 'fa-chevron-right');
+    if (legend) legend.hidden = isEditMode || getFieldsViewMode() !== 'table';
+}
+
 function todayPanelOpen() {
     return String(getSetting('todayPanelOpen')) !== 'false';
 }
@@ -105,10 +131,11 @@ function todayFieldGroups(farm) {
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
         if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
-        // Your own work list: its next step, unless a group above already covers it.
-        if (fieldWork(field) && !cut) {
+        // The job the table's badge shows, when it's for now (fieldJobDue), unless
+        // a group above already covers it or the crop is off the field.
+        if (!cut && !tasks.finish) {
             const { next } = nextWorkStep(field, idx, farm);
-            if (next && !['sow', 'weeds', 'roll', 'harvest'].includes(next.step)) tasks.work = t('work_' + next.step);
+            if (next && !['sow', 'harvest'].includes(next.step) && !tasks[next.step] && fieldJobDue(field, next.step, month)) tasks.work = t('work_' + next.step);
         }
         const keys = TODAY_PRIORITY.filter(k => tasks[k]);
         if (!keys.length) return;
@@ -281,7 +308,7 @@ function renderTodayPanel() {
     const month = farm ? getFarmCurrentMonth(farm) : null;
     const seasonEnd = farm && current ? seasonEndInfo(farm) : null;
     refreshNewSeasonHint(farm, seasonEnd);
-    if (!farm || !current || isEditMode || !month) { el.hidden = true; return; }
+    if (!farm || !current || isEditMode || !month) { el.hidden = true; syncPlanSidePanels(false, 0); return; }
     el.hidden = false;
 
     const groups = todayFieldGroups(farm);
@@ -293,6 +320,8 @@ function renderTodayPanel() {
     const count = TODAY_GROUPS.reduce((s, g) => s + groups[g.key].length, 0) + barns.length + (notes ? 1 : 0)
         + (seasonEnd.ready ? 1 : 0) + (weather ? 1 : 0) + (summaryYear ? 1 : 0) + barnCare.length;
     const open = todayPanelOpen();
+    el.classList.toggle('is-open', open);
+    syncPlanSidePanels(true, count);
 
     let body = '';
     if (seasonEnd.ready) {
@@ -386,6 +415,12 @@ function renderTodayPanel() {
 (function wireTodayPanel() {
     const el = document.getElementById('today-panel');
     if (!el) return;
+    const toggleSetting = (key, on) => {
+        setSetting(key, on ? 'true' : 'false');
+        renderTodayPanel();
+    };
+    document.getElementById('plan-side-toggle').addEventListener('click', () => toggleSetting('planSideOpen', String(getSetting('planSideOpen')) === 'false'));
+    document.getElementById('crops-toggle').addEventListener('click', () => toggleSetting('cropsPanelOpen', String(getSetting('cropsPanelOpen')) !== 'true'));
     el.addEventListener('click', e => {
         if (e.target.closest('.today-toggle')) {
             setSetting('todayPanelOpen', todayPanelOpen() ? 'false' : 'true');

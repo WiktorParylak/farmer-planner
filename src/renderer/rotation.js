@@ -549,7 +549,7 @@ function maybeFillFromRotation(farm, tries = 0) {
             }
             f.rotation.filled = season;
         });
-        saveFarmData(live);
+        saveFarmData(live, { undo: false });
         if (fill) {
             if (!isEditMode) renderSeasonView();
             showAutoSyncToast(t('rotMonthFilled').replace('{list}', rotationFilledList(fields)), 6000);

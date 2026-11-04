@@ -551,7 +551,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('h1', '#planner-sidebar'),
             hubOpen('h3', 'finance'),
             tutInfo('h4', () => { const parts = tqa('#hub-panel-body .fin-kpis, #hub-panel-body .fin-card.trend-card, #hub-panel-body .fin-chart'); return parts.length ? parts : tq('#hub-panel-body'); }),
-            hubOpen('h6', 'fieldsoil'),
+            tutInfo('h6', '#hub-panel-body', { enter: () => showPlannerView('fieldsoil') }),
             tutInput('h7', '#hub-panel-body .supply-soil-input[data-soil-field="1"]', () => {
                 const el = tq('#hub-panel-body .supply-soil-input[data-soil-field="1"]');
                 const saved = getSupplyRates().fieldSoil['1'];
@@ -1026,6 +1026,7 @@ function endTutorial() {
     if (!tut.active) return;
     tutLeaveStep();
     tut.active = false;
+    renderTodayPanel();
     renderSeasonView();
     tut.mode = null;
     clearInterval(tut.timer);
