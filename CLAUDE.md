@@ -58,6 +58,7 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | `node tools/generate-default-crops.js "<FS25>\data\foliage"` | regeneruje `data/default-crops.json` |
 | `node tools/generate-default-agronomy.js "<FS25>\data\foliage"` | regeneruje `data/default-agronomy.json` (dawka wysiewu, plon, słoma z gry podstawowej) |
 | `node tools/generate-default-animals.js "<FS25>\sdk\xmlDoku\character\animals.xml"` | regeneruje `data/default-animals.json` |
+| `node_modules/electron/dist/electron.exe tools/generate-app-icon.js` | regeneruje ikonę aplikacji (`Assets/Logo.ico`, `Assets/Icon.svg`) z traktora w `Assets/Logo.svg` |
 | `gh release list` | lista wydań |
 
 Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienionej funkcji.
