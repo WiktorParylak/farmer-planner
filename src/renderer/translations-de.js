@@ -176,7 +176,7 @@ const UI = {
     fieldViewTabHistory: "Notizen und Verlauf",
     fieldNumberEmpty: "Ein Feld braucht eine Nummer, deshalb bleibt die alte.",
     fieldNumberTakenTitle: "Feld {n} gibt es schon",
-    fieldNumberTakenBody: "Beide Zeilen zählen dann als ein Feld mit zwei Feldfrüchten unter derselben Nummer.",
+    fieldNumberTakenBody: "Beide Zeilen zählen dann als ein Feld mit zwei Feldfrüchten unter derselben Nummer. Haben beide einen Bodenmix, Namen oder eine Größe oder einen Plan für dieselbe Feldfrucht, bleiben die unter dieser Nummer erhalten, die anderen gehen verloren.",
     fieldNumberTakenConfirm: "Nummer verwenden",
     editFieldsHint: "Felder hinzufügen, entfernen und zusammenlegen oder viele gleichzeitig ändern. Ein einzelnes Feld änderst du per Klick auf seine Nummer.",
     fieldViewSoilHint: "Anteil jedes Bodentyps in %. „Aus dem Spiel laden“ übernimmt sie aus der Bodenkarte von Precision Farming.",

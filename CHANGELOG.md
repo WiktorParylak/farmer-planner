@@ -60,6 +60,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Link mod works less often on what rarely changes**: prices, yield factors and production recipes go out about once a minute instead of every 5 seconds. Field work, weather and stones still follow every few seconds.
 
 **Fixed**
+- **Saving Edit no longer drops the ploughing and stone steps**: the game's plough requirement and stone share now stay on the field, so *Plough* and *Collect stones* stay on its work list.
 - The pencil on a custom feed did nothing while the feed planner's settings were folded: the editor opened out of sight inside them.
 - **Harvest months**: the crop calendar counted growth too fast, so crops showed as ready before they were in the game (silage maize sown in April said July, it is ready in August; later sowings were off by more). Growth is now counted one step per period, as the game does it, for the base game, maps and imports. Imported calendars of crops the map or game knows are replaced once; the old file stays as `crops_config.before-calendar-v2.json`.
 - **New season ticked off last season's work**: right after *New season*, fields whose ground in the game was still cultivated, ploughed or rolled from the season before got *Cultivate*, *Plough* or *Roll* ticked off in the new one. The first read after *New season* now remembers the ground of each game field, and only ground that has changed since then (or a crop already sown) counts as this season's work.
