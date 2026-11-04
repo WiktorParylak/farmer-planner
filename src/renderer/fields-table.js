@@ -486,8 +486,8 @@ function renderFieldModal() {
     let html = '';
     const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
 
-    // Crop, catch crop and sowing months — editable here, so changing a crop
-    // doesn't need the whole table in Edit mode.
+    // Everything about this field's crop is edited here and saved straight away:
+    // crop, catch crop, months, state, tillage and the rotation cycle.
     const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
     html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
         ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}" title="${escapeHtml(t('fieldNameHint'))}"></label>` : ''}
@@ -495,10 +495,9 @@ function renderFieldModal() {
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
-
-    // Crop rotation: cycle, this season's step, the next seasons.
-    html += section(t('rotTitle'), rotationFieldViewHtml(farm, field));
+        ${sel('field-view-state', t('thState'), [['To Plant', t('toPlant')], ['Planted', t('planted')]].map(([v, label]) => `<option value="${v}" ${(field.state === 'Planted' ? 'Planted' : 'To Plant') === v ? 'selected' : ''}>${label}</option>`).join(''))}
+        ${sel('field-view-tillage', t('thTillage'), [['', '–'], ['plowed', t('tillagePlowed')], ['noTill', t('tillageNoTill')]].map(([v, label]) => `<option value="${v}" ${(field.tillage || '') === v ? 'selected' : ''}>${label}</option>`).join(''))}
+    </div><div class="field-view-rotation-part">${rotationFieldViewHtml(farm, field)}</div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
@@ -618,7 +617,7 @@ window.openFieldModal = function (idx) {
     const modal = document.getElementById('field-modal');
     const body = document.getElementById('field-modal-body');
     if (!modal || !body) return;
-    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); renderRotationModal(); };
     document.getElementById('field-modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -649,6 +648,15 @@ window.openFieldModal = function (idx) {
             }
             // Fertilization plan, feed use and straw are keyed by number + crop.
             migrateFieldKeys(farm, before, farm.fields);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-state')) {
+            field.state = el.value;
+            syncSowStep(field);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-tillage')) {
+            field.tillage = el.value || null;
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-soil')) {
@@ -1043,7 +1051,7 @@ function mirrorToSelected(el) {
         } else {
             target.value = el.value;
         }
-        syncCardOptionalCells(row, true);
+        syncCardOptionalCells(row);
         flashMirrored(row);
     });
 }
@@ -1201,7 +1209,7 @@ function applyEditBulk(action, bar) {
             const crop = bar.querySelector('#eb-catch').value;
             row.querySelector('.field-catch-crop').value = crop;
             row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-catch-sow').value || null);
-            syncCardOptionalCells(row, true);
+            syncCardOptionalCells(row);
         } else if (action === 'sown' || action === 'unsown') {
             row.querySelector('.field-state').checked = action === 'sown';
         } else {
@@ -1871,13 +1879,6 @@ function buildFieldEditCard(field, opts) {
     const limeCls = limeStatusForCard === 'active' ? 'is-active' : (limeStatusForCard === 'warning' ? 'is-warning' : '');
     const limeColorForCard = limeChipColor(limePhForCard);
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
-    // Catch crop, rotation and lease fold away; what's already set opens them and shows in the summary.
-    const rotInfo = isNew ? null : fieldRotationInfo(farm, field);
-    const moreSet = [
-        field.catchCrop ? `${t('thCatchCrop')}: ${translateCropName(field.catchCrop)}` : '',
-        rotInfo ? `${t('rotFieldCycle')}: ${rotInfo.rot.name} (${rotInfo.slot.step + 1}/${rotInfo.rot.steps.length})` : '',
-        lease ? t('leaseLabel') + (lease.seasons ? ` (${lease.seasons})` : '') : ''
-    ].filter(Boolean);
 
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
@@ -1929,8 +1930,6 @@ function buildFieldEditCard(field, opts) {
                             </div>
                         </div>
                     </div>
-                    <details class="field-card-more"${moreSet.length ? ' open' : ''}>
-                        <summary class="field-card-more-summary"><span class="field-card-more-label">${t('fieldCardMore')}</span>${moreSet.length ? `<span class="field-card-more-set">${escapeHtml(moreSet.join(' · '))}</span>` : ''}</summary>
                     <div class="field-card-row field-card-row--grid field-card-row--catch">
                         <div class="fc-cell">
                             <span class="fc-label" title="${t('catchCropHint')}">${t('thCatchCrop')}</span>
@@ -1940,9 +1939,6 @@ function buildFieldEditCard(field, opts) {
                             <span class="fc-label">${t('thCatchSowingMth')}</span>
                             <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
                         </div>
-                    </div>
-                    ${getRotations(farm).length ? `<div class="field-card-row field-card-row--grid field-card-row--rotation">${rotationEditCellsHtml(farm, field)}</div>` : ''}
-                    <div class="field-card-row field-card-row--grid field-card-row--lease">
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseLabel')}</span>
                             <label class="lease-check"><input type="checkbox" class="field-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
@@ -1959,7 +1955,6 @@ function buildFieldEditCard(field, opts) {
                             </select>
                         </div>
                     </div>
-                    </details>
                     <div class="field-card-foot">
                         <input type="text" class="edit-input field-size-input" value="${savedSize}" placeholder="${t('fieldSizeLabel')}" title="${t('fieldSizeHint')}" style="display:none;">
                         <span class="split-hint"></span>
@@ -2013,16 +2008,13 @@ window.onCatchCropChange = function (selectEl) {
 };
 
 // Edit card: the catch crop's month only with a catch crop, the lease length
-// and "then" only on a leased field. `reveal` opens the folded part when a
-// value lands there from elsewhere (the bulk bar, a mirrored card).
-function syncCardOptionalCells(row, reveal) {
+// and "then" only on a leased field.
+function syncCardOptionalCells(row) {
     const catchSel = row.querySelector('.field-catch-crop');
     const lease = row.querySelector('.field-lease');
     const sowCell = row.querySelector('.fc-cell--catch-sow');
     if (sowCell && catchSel) sowCell.hidden = !catchSel.value;
     row.querySelectorAll('.fc-cell--lease-detail').forEach(c => { c.hidden = !(lease && lease.checked); });
-    const more = row.querySelector('.field-card-more');
-    if (reveal && more && ((catchSel && catchSel.value) || (lease && lease.checked))) more.open = true;
 }
 
 if (fieldsBody) fieldsBody.addEventListener('change', e => {
@@ -2544,9 +2536,6 @@ function collectEditedFields(farm) {
         });
         const added = fields[fields.length - 1];
         if (!added.id) added.id = newFieldId();
-        const rotation = readRotationInputs(row, farm, added.rotation);
-        if (rotation) added.rotation = rotation;
-        else delete added.rotation;
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {

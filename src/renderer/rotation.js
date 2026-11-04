@@ -582,90 +582,6 @@ function rotationStepOptionsHtml(rot, selectedIndex) {
     }).join('');
 }
 
-// Edit card: cycle + this season's step (proposed from the history when a cycle is picked).
-function rotationEditCellsHtml(farm, field) {
-    const info = fieldRotationInfo(farm, field);
-    return `<div class="fc-cell">
-            <span class="fc-label">${t('rotFieldCycle')}</span>
-            ${rotationSelectHtml(farm, info ? info.rot.id : '', 'edit-input field-rotation')}
-        </div>
-        <div class="fc-cell">
-            <span class="fc-label">${t('rotFieldStep')}</span>
-            <select class="edit-input field-rotation-step">${rotationStepOptionsHtml(info && info.rot, info ? info.index : 0)}</select>
-        </div>`;
-}
-
-document.addEventListener('change', e => {
-    const sel = e.target;
-    if (!sel.classList || !sel.classList.contains('field-rotation')) return;
-    const row = sel.closest('tr');
-    const farm = getCurrentFarm();
-    const rot = rotationById(farm, sel.value);
-    const stepSel = row && row.querySelector('.field-rotation-step');
-    if (!stepSel) return;
-    const crop = row.querySelector('.field-crop');
-    const number = row.querySelector('.field-number');
-    // A crop this card filled in from a cycle doesn't count as the field's own.
-    const own = crop && crop.value && crop.value !== row.dataset.rotationCrop ? crop.value : '';
-    const probe = { number: number ? number.value : '', crop: own };
-    const idx = rot ? detectRotationSlot(rot, probe, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1) : 0;
-    stepSel.innerHTML = rotationStepOptionsHtml(rot, idx);
-    fillEditCardFromRotation(row, rot);
-});
-
-document.addEventListener('change', e => {
-    const sel = e.target;
-    if (!sel.classList || !sel.classList.contains('field-rotation-step')) return;
-    const row = sel.closest('tr');
-    const cycle = row && row.querySelector('.field-rotation');
-    if (cycle) fillEditCardFromRotation(row, rotationById(getCurrentFarm(), cycle.value));
-});
-
-// Edit card: an empty crop (or one this card filled in before) takes the
-// chosen step's crop, sowing month and catch crop, so they show before saving.
-function fillEditCardFromRotation(row, rot) {
-    const crop = row.querySelector('.field-crop');
-    const sow = row.querySelector('.field-sow');
-    const stepSel = row.querySelector('.field-rotation-step');
-    if (!crop || !sow || !stepSel) return;
-    if (crop.value && crop.value !== row.dataset.rotationCrop) return;
-    const slot = rot ? rotationSlotAt(rot, parseInt(stepSel.value, 10) || 0) : null;
-    if (!slot || !slot.crop || !crop.querySelector(`option[value="${CSS.escape(slot.crop)}"]`)) {
-        // Cycle removed or a fallow step: take back what this card filled in.
-        if (row.dataset.rotationCrop) {
-            crop.value = '';
-            onCropChange(crop);
-            delete row.dataset.rotationCrop;
-        }
-        return;
-    }
-    crop.value = slot.crop;
-    onCropChange(crop);
-    const farm = getCurrentFarm();
-    sow.value = rotationSowMonthSoon(slot, farm && farm.month) || rotationSowMonth(slot);
-    row.dataset.rotationCrop = slot.crop;
-    const catchSel = row.querySelector('.field-catch-crop');
-    const catchSow = row.querySelector('.field-catch-sow');
-    if (catchSel && !catchSel.value && slot.catchCrop && catchSel.querySelector(`option[value="${CSS.escape(slot.catchCrop)}"]`)) {
-        catchSel.value = slot.catchCrop;
-        onCatchCropChange(catchSel);
-        if (catchSow) catchSow.value = rotationCatchSowMonth(slot.crop, sow.value, slot.catchCrop);
-    }
-}
-
-// Reads the cycle back from an edit card (keeps `filled` when nothing changed).
-function readRotationInputs(row, farm, previous) {
-    const sel = row.querySelector('.field-rotation');
-    if (!sel) return previous || null;
-    const rot = rotationById(farm, sel.value);
-    if (!rot) return null;
-    const stepSel = row.querySelector('.field-rotation-step');
-    const slot = rotationSlotAt(rot, parseInt(stepSel && stepSel.value, 10) || 0);
-    const pos = { id: rot.id, step: slot.step, stepSeason: slot.stepSeason };
-    if (previous && previous.id === pos.id && previous.step === pos.step && previous.stepSeason === pos.stepSeason && previous.filled != null) pos.filled = previous.filled;
-    return pos;
-}
-
 // Field view section: cycle, step, Detect step, the next seasons and warnings.
 function rotationFieldViewHtml(farm, field) {
     const history = loadSeasonHistory(farm, farm.currentSeason || 1);
@@ -799,6 +715,15 @@ function renderRotationModal() {
     if (hubView) hubView.scrollTop = scroll;
 }
 
+// The step in a grid row: "3/6", marked when the crop on the field isn't this step's.
+function rotationStepLabelHtml(score) {
+    const { rot, slot } = score.info;
+    const pos = `${slot.step + 1}/${rot.steps.length}`;
+    const seasons = slot.seasons > 1 ? `${t('season')} ${slot.stepSeason}/${slot.seasons}. ` : '';
+    const tip = seasons + (score.offCycle ? t('rotRealignHint') + '. ' : '') + t('rotStepInFieldView');
+    return `<span class="rotation-assign-step${score.offCycle ? ' is-off-cycle' : ''}" title="${escapeHtml(tip)}">${pos}</span>`;
+}
+
 // Grid: rows = fields, columns = past seasons, this one and the next ones.
 const ROTATION_BACK = 3, ROTATION_AHEAD = 4;
 function rotationPlanHtml(farm) {
@@ -824,11 +749,11 @@ function rotationPlanHtml(farm) {
         const name = fieldNameOf(farm, field.number);
         const colCls = s => s === season ? 'is-current-col' : (s < season ? 'is-past-col' : '');
         return `<tr>
-            <th scope="row" class="rotation-field-cell"><div class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><span class="field-number-chip">${escapeHtml(String(field.number))}</span>
+            <th scope="row" class="rotation-field-cell"><div class="rotation-field"><span class="rotation-dot is-${score.level || 'none'}" title="${escapeHtml(tip)}"></span><button type="button" class="field-open rotation-open-field" data-idx="${idx}" title="${escapeHtml(t('rotOpenField'))}"><span class="field-number-chip">${escapeHtml(String(field.number))}</span></button>
                 <span class="rotation-field-meta">${name ? `<span class="rotation-field-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>` : ''}<span class="rotation-field-ha">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></span></div></th>
             <td class="rotation-assign"><div class="rotation-assign-inner">${rotationSelectHtml(farm, score.info ? score.info.rot.id : '', 'rotation-plan-cycle' + (score.info ? '' : ' is-none'), ` data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldCycle'))}"`)}
-                ${score.info ? `<span class="rotation-assign-step"><select class="rotation-plan-step" data-idx="${idx}" aria-label="${escapeHtml(t('rotFieldStep'))}">${rotationStepOptionsHtml(score.info.rot, score.info.index)}</select>${score.offCycle ? `<button type="button" class="rotation-plan-realign" data-idx="${idx}" title="${escapeHtml(t('rotRealignHint'))}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>` : ''}</span>` : ''}</div></td>
-            ${cols.map(s => `<td class="${colCls(s)}">${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
+                ${score.info ? rotationStepLabelHtml(score) : '<span class="rotation-assign-step"></span>'}</div></td>
+            ${cols.map(s => `<td class="${colCls(s)}${s === season ? ' rotation-open-cell' : ''}"${s === season ? ` data-idx="${idx}"` : ''}>${bySeason[s] ? rotationCellHtml(bySeason[s]) : '<span class="rotation-cell is-empty">–</span>'}</td>`).join('')}
         </tr>`;
     }).join('');
     const areaList = Object.entries(nextArea).sort((a, b) => b[1] - a[1])
@@ -976,11 +901,10 @@ function addRotation(farm, rot) {
             saveRotations(farm);
             return;
         }
-        if (el.classList.contains('rotation-plan-cycle') || el.classList.contains('rotation-plan-step')) {
+        if (el.classList.contains('rotation-plan-cycle')) {
             const field = farm.fields[+el.dataset.idx];
             if (!field) return;
-            if (el.classList.contains('rotation-plan-cycle')) setFieldCycle(farm, field, el.value);
-            else setFieldCycleStep(farm, field, el.value);
+            setFieldCycle(farm, field, el.value);
             saveRotations(farm);
             return;
         }
@@ -1059,13 +983,8 @@ function addRotation(farm, rot) {
             if (name) { name.focus(); name.select(); }
             return;
         }
-        const realign = e.target.closest('.rotation-plan-realign');
-        if (realign) {
-            const field = farm.fields[+realign.dataset.idx];
-            const info = field && fieldRotationInfo(farm, field);
-            if (info) { setFieldRotationSlot(field, info.rot, rotationRealignIndex(info, field)); saveRotations(farm); }
-            return;
-        }
+        const openField = e.target.closest('.rotation-open-field, .rotation-open-cell');
+        if (openField) { openFieldModal(+openField.dataset.idx); return; }
         const rot = selectedRot(farm);
         if (!rot) return;
         if (e.target.closest('.rotation-duplicate')) {

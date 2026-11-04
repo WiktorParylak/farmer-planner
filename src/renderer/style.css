@@ -3595,66 +3595,9 @@ span.tillage-switch-option {
   color: var(--color-ink-soft);
 }
 
-/* Optional rows of the field edit card (catch crop, rotation, lease) fold
-   under one summary line; it opens by itself when the field uses any of them. */
 /* auto-fill (not auto-fit) keeps the columns lined up with the row above. */
-.field-card-more {
-  border-top: 1px dashed var(--color-border);
-  padding-top: 6px;
-}
-
-.field-card-more > .field-card-row {
+.field-card-row--grid.field-card-row--catch {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  margin-top: 8px;
-}
-
-.field-card-more-summary {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 2px 0;
-  list-style: none;
-  cursor: pointer;
-  font-size: var(--fs-sm);
-  color: var(--color-ink-soft);
-}
-
-.field-card-more-summary::-webkit-details-marker { display: none; }
-
-.field-card-more-label {
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.field-card-more-label::before {
-  content: "\25B8";
-  display: inline-block;
-  width: 1em;
-  transition: transform var(--motion-fast) var(--ease-out);
-}
-
-.field-card-more[open] .field-card-more-label::before {
-  transform: rotate(90deg);
-}
-
-.field-card-more-summary:hover .field-card-more-label {
-  color: var(--color-ink);
-}
-
-.field-card-more-summary:focus-visible {
-  outline: 2px solid var(--color-accent-dark);
-  outline-offset: 2px;
-  border-radius: var(--radius-small);
-}
-
-.field-card-more-set {
-  font-weight: 600;
-  color: var(--color-primary-dark);
 }
 
 .field-card .fc-cell[hidden] {
@@ -7957,6 +7900,15 @@ button.field-open.has-callout .field-number-chip {
   font-weight: 600;
 }
 
+.field-view-rotation-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
 .field-view-crop-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8412,14 +8364,24 @@ button.field-open.has-callout .field-number-chip {
 
 .rotation-assign-inner {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
 .rotation-assign-step {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  flex: 0 0 3ch;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-ink-soft);
+}
+
+.rotation-assign-step.is-off-cycle {
+  font-weight: 600;
+  color: var(--color-accent-dark);
+}
+
+.rotation-open-cell .rotation-cell {
+  cursor: pointer;
 }
 
 .rotation-assign select {
@@ -8429,10 +8391,6 @@ button.field-open.has-callout .field-number-chip {
   margin: 0;
   padding: 4px 6px;
   font-size: var(--fs-xs);
-}
-
-.rotation-assign-step select {
-  flex: 1 1 auto;
 }
 
 .rotation-assign select.is-none {
@@ -8480,20 +8438,6 @@ button.field-open.has-callout .field-number-chip {
   height: 7px;
   border-radius: 50%;
   background-color: #9a7fc0;
-}
-
-.rotation-plan-realign {
-  padding: 3px 7px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-ink-soft);
-  cursor: pointer;
-}
-
-.rotation-plan-realign:hover {
-  color: var(--color-ink);
-  background-color: var(--color-surface-alt);
 }
 
 .rotation-cell {
