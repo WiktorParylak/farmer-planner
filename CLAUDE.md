@@ -1,7 +1,7 @@
 # Farmer Planner — CLAUDE.md
 
 Planer sezonów do **Farming Simulator 25** (pola, uprawy, nawożenie, zwierzęta, pasza), zsynchronizowany z savegame'em.
-Aplikacja desktopowa **Electron** (Windows), czysty HTML/CSS/JS, bez frameworka, bez bundlera, bez testów.
+Aplikacja desktopowa **Electron** (Windows), czysty HTML/CSS/JS, bez frameworka, bez bundlera.
 Autor: Wiktor Parylak. Repo: https://github.com/WiktorParylak/farmer-planner
 
 Rozmawiamy po polsku. Kod, komentarze, commity, CHANGELOG i README (EN) — po angielsku.
@@ -52,6 +52,8 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | Komenda | Co robi |
 |---|---|
 | `npm start` | uruchamia aplikację (`tools/start.js`): z głównego folderu repo odpala worktree z najnowszą gałęzią `dev/vX.Y.Z` z `.claude/worktrees/`, w innym wypadku `electron .` |
+| `npm test` | testy logiki w prawdziwej aplikacji (ukryte okno, ok. 30 s): lista prac, płodozmian, sezony, edycja pola, tłumaczenia |
+| `npm run test:screens` | przegląd ekranów: wszystkie główne ekrany farmy testowej w en/pl/de, sprawdzenie i zdjęcia do `test-output/screens/index.html` (widoczne okno, ok. 1,5 min, nie klikaj w nie) |
 | `npm run build` | electron-builder (NSIS → `dist/payload/`), potem `tools/build-installer.js` → własny instalator `dist/Farmer Planner Setup X.Y.Z.exe` |
 | `node tools/build-link-mod.js` | pakuje `link-mod/` w `build-cache/link-mod/FS25_FarmerPlannerLink.zip` (robi to też `npm run build` i aplikacja przy `npm start`) |
 | `node tools/build-installer.js --payload <setup.exe> --version X.Y.Z --out <dir>` | owija wydany już instalator NSIS w nowe okno (podmiana instalatora w starym release'ie) |
@@ -61,7 +63,7 @@ Wymaga Node.js 20+ i Gita. Tożsamość gita: `Wiktor Parylak <parylakw@gmail.co
 | `node_modules/electron/dist/electron.exe tools/generate-app-icon.js` | regeneruje ikonę aplikacji (`Assets/Logo.ico`, `Assets/Icon.svg`) z traktora w `Assets/Logo.svg` |
 | `gh release list` | lista wydań |
 
-Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienionej funkcji.
+Nie ma lintera. Przed commitem z logiką uruchom `npm test`, po zmianach w UI też `npm run test:screens` i obejrzyj zdjęcia; nowa funkcja albo naprawiony błąd = nowy test w `tests/logic/`. Testy nie zastępują przeklikania zmienionej funkcji przez `npm start` i nie obejmują synchronizacji z zapisem gry ani modu Link.
 
 ## Gałęzie i wydania
 
@@ -77,6 +79,7 @@ Nie ma testów ani lintera — weryfikacja to `npm start` i przeklikanie zmienio
 - **CHANGELOG na bieżąco**: każdą zrobioną zmianę dopisz do sekcji `## X.Y.Z — unreleased` w `CHANGELOG.md` w tym samym commicie (data wpisywana przy wydaniu). To samo po polsku w `CHANGELOG.pl.md` (ta sama sekcja wersji, **Nowe / Zmiany / Poprawki**, nazwy jak w polskim UI) — okno „Co nowego” w aplikacji po polsku bierze wersję stąd, a wersji, których tu nie ma, pokazuje po angielsku.
 
 ### Wydanie wersji (krok po kroku)
+0. `npm test` i `npm run test:screens` muszą przechodzić.
 1. `package.json` + `package-lock.json` → nowy `version` (to jedyne miejsce z numerem wersji).
 2. `CHANGELOG.md` — nowa sekcja `## X.Y.Z — RRRR-MM-DD` z **New / Changed / Fixed**, w stylu poprzednich wpisów; ta sama data w `CHANGELOG.pl.md`.
 3. Teksty tutoriala (EN i PL), jeśli zmieniły się widoki.
@@ -125,6 +128,7 @@ data/                          dane bazowej gry dołączone do aplikacji
 link-mod/                      mod-łącznik FS25_FarmerPlannerLink (modDesc + Lua); zip w paczce aplikacji jako extraResources
 installer/                     własny instalator/deinstalator (Setup.cs + Window.xaml, poza paczką aplikacji)
 tools/                         skrypty deweloperskie (nie są używane w runtime)
+tests/                         testy: run.js (folder tymczasowy, limit czasu), electron-main.js (start aplikacji, sprawdza izolację), logic/*.test.js, screens.js
 docs/                          logo i screenshoty do README
 ```
 

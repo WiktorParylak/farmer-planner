@@ -4,6 +4,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
+    "test": "node tests/run.js logic",
+    "test:screens": "node tests/run.js screens",
     "build": "node tools/build-link-mod.js && electron-builder && node tools/build-installer.js"
   },
   "build": {
@@ -35,6 +37,8 @@
       "!.claude${/*}",
       "!docs${/*}",
       "!tools${/*}",
+      "!tests${/*}",
+      "!test-output${/*}",
       "!CLAUDE.md",
       "!installer${/*}",
       "!link-mod${/*}",

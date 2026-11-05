@@ -37,6 +37,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Crop generator for five seasons**: a new mode plans the next five seasons field by field, each on top of the crops of the season before. New season moves the plan along, the rotation view and the timeline show it, and Undo the generator takes it all back. The crops to consider now sit at the top of the generator, with select all and clear all, and an unselected crop is no longer kept going. Picking a field's cycle or step by hand replaces the generator's plan for that field.
 
 **Changed**
+- **Automatic checks before a release**: `npm test` runs the logic of work lists, crop rotation, seasons, field editing and translations in the real app, and `npm run test:screens` photographs every main screen in all languages and flags broken ones. Both use a temporary folder, never your farms.
 - **Field view in tabs, with the field's own details on top**: *Crop*, *Work*, *Soil and fertilizer* and *Notes and history* replace one long scroll. Number, area, name and lease now sit above the tabs and save straight away, so one field never needs Edit. A number another row already has asks first. Edit stays for adding, removing and joining fields and for changes to many at once. A job in *What to do today* opens the field on its work list, and the fertilizer chip on its nitrogen plan.
 - **More room for the plan**: *What to do today* moved from under the table to the column beside it, so the table takes the full height. The crop list folds under it until you open it, and a handle in the gap hides the whole column, showing the number of jobs while it's hidden.
 - **What to do today matches the table**: it now lists a field's next job whether the list is your own or suggested. Ground work on a field still to be sown starts the month before its sowing; until then its badge in the table is faded and stays off the panel.
@@ -60,6 +61,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Link mod works less often on what rarely changes**: prices, yield factors and production recipes go out about once a minute instead of every 5 seconds. Field work, weather and stones still follow every few seconds.
 
 **Fixed**
+- The field number in the timeline showed the raw text `fieldViewOpen` as its tooltip instead of saying what a click does.
 - **Saving Edit no longer drops the ploughing and stone steps**: the game's plough requirement and stone share now stay on the field, so *Plough* and *Collect stones* stay on its work list.
 - The pencil on a custom feed did nothing while the feed planner's settings were folded: the editor opened out of sight inside them.
 - **Harvest months**: the crop calendar counted growth too fast, so crops showed as ready before they were in the game (silage maize sown in April said July, it is ready in August; later sowings were off by more). Growth is now counted one step per period, as the game does it, for the base game, maps and imports. Imported calendars of crops the map or game knows are replaced once; the old file stays as `crops_config.before-calendar-v2.json`.

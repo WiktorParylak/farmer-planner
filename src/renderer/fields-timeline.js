@@ -294,7 +294,7 @@ function renderFieldsTimeline(fields) {
             const bars = timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeason);
             const hasCatch = bars.some(b => b.lane === 1);
             return `<tr>
-                <th scope="row" class="timeline-field">${isPastSeason ? label : `<button type="button" class="field-open timeline-field-open" data-idx="${idx}" title="${escapeHtml(t('fieldViewOpen'))}">${label}</button>`}
+                <th scope="row" class="timeline-field">${isPastSeason ? label : `<button type="button" class="field-open timeline-field-open" data-idx="${idx}" title="${escapeHtml(t('fieldViewOpenHint'))}">${label}</button>`}
                     <span class="ha-caption">${(parseFloat(field.area) || 0).toFixed(2)} ha</span></th>
                 <td colspan="${months}" class="timeline-track${hasCatch ? ' has-catch' : ''}">${nowBand}${timelineTrackHtml(bars, field, idx, currentMonth, isPastSeason, months)}</td>
             </tr>`;
