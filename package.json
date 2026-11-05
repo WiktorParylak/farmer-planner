@@ -40,6 +40,7 @@
       "!tests${/*}",
       "!test-output${/*}",
       "!CLAUDE.md",
+      "!TODO.md",
       "!installer${/*}",
       "!link-mod${/*}",
       "!build-cache${/*}",
