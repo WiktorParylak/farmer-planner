@@ -1278,7 +1278,7 @@ const UI = {
     mmProbHint_noModDesc: "Es enthält keine modDesc.xml. Das Spiel ignoriert es.",
     mmProbHint_badName: "Das Spiel lädt nur Namen aus Buchstaben, Ziffern und _, die mit einem Buchstaben beginnen.",
     mmProbHint_copyName: "Ein Name mit „(1)“ oder „- Kopie“ stammt von einem zweiten Download. Das Spiel lädt ihn nicht.",
-    mmProbHint_folder: "Ein entpackter Mod funktioniert, aber der Mehrspielermodus braucht das ZIP, und er lädt langsamer.",
+    mmProbHint_folder: "Ein entpackter Mod funktioniert nur im Einzelspielermodus — der Mehrspielermodus braucht das ZIP. Er lädt außerdem langsamer.",
     mmProbHint_noDescVersion: "Die modDesc.xml hat keine descVersion. Das Spiel lehnt ihn eventuell ab.",
     mmProbHint_duplicate: "Derselbe Mod liegt mehrfach in der Bibliothek. Das Spiel lädt nur einen davon:",
     mmNoProblems: "In dieser Bibliothek gibt es keine Probleme.",

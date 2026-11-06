@@ -226,7 +226,8 @@ function mmBadgesHtml(mod) {
         badges.push(`<button type="button" class="mm-badge is-update-btn" data-mm="update" data-file="${escapeHtml(mod.file)}"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdate'))}</button>`);
     }
     else if (h) badges.push(`<button type="button" class="mm-badge is-hub" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">ModHub</button>`);
-    if (mod.multiplayer) badges.push(`<span class="mm-badge" title="${escapeHtml(t('mmMultiplayer'))}"><i class="fa-solid fa-users" aria-hidden="true"></i></span>`);
+    // modDesc can say multiplayer, but the game only sends zips to other players.
+    if (mod.multiplayer && mod.isZip) badges.push(`<span class="mm-badge" title="${escapeHtml(t('mmMultiplayer'))}"><i class="fa-solid fa-users" aria-hidden="true"></i></span>`);
     return badges.join('');
 }
 
