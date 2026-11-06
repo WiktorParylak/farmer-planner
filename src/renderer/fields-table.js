@@ -151,19 +151,26 @@ window.toggleLimeChip = function (btn) {
 // archive can't be read — the warning simply doesn't show then.
 function getPreviousSeasonCropMap(farm, seasonNum) {
     const map = {};
-    if (!farm || !farm.folderName || seasonNum <= 1) return map;
+    if (!farm || !farm.folderName) return map;
 
     const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum - 1}.json`);
-    if (!fs.existsSync(archivePath)) return map;
-
-    try {
-        const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
-        (archiveData.fields || []).forEach(f => {
+    if (seasonNum > 1 && fs.existsSync(archivePath)) {
+        try {
+            const archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf-8'));
+            (archiveData.fields || []).forEach(f => {
+                const key = (f.number || '').toString().trim();
+                if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
+            });
+        } catch (err) {
+            // Unreadable/corrupt archive — just skip the warning, don't crash the table.
+        }
+    }
+    // A crop that already came off this season is the one before the crop now on.
+    if (seasonNum === (farm.currentSeason || 1)) {
+        (farm.finishedCrops || []).forEach(f => {
             const key = (f.number || '').toString().trim();
-            if (key && f.crop) (map[key] = map[key] || []).push(f.crop);
+            if (key && f.crop) map[key] = [f.crop];
         });
-    } catch (err) {
-        // Unreadable/corrupt archive — just skip the warning, don't crash the table.
     }
     return map;
 }
@@ -229,6 +236,17 @@ document.querySelectorAll('#fields-table thead [data-sort]').forEach(th => {
     });
 });
 
+// "Load from the game" in the field view's soil section: this field only, from
+// Precision Farming's soil map (same as Field soil type → Load soils from the game).
+function fieldViewSoilImportHtml(farm) {
+    const hasSave = !!(farm && farm.saveGamePath);
+    const pfOn = hasSave && modEnabled('precisionFarming');
+    const why = !hasSave ? t('fieldSoilImportNoPath') : (pfOn ? t('fieldViewSoilImportHint') : t('fieldSoilImportNoPf'));
+    const msg = fieldViewSoilMsg;
+    fieldViewSoilMsg = '';
+    return `<div class="field-view-soil-import-row"><button type="button" class="settings-btn field-view-soil-import" title="${escapeHtml(why)}" ${pfOn ? '' : 'disabled'}><i class="fa-solid fa-download" aria-hidden="true"></i> ${t('fieldViewSoilImport')}</button>${pfOn ? '' : `<span class="settings-hint">${escapeHtml(why)}</span>`}<button type="button" class="settings-btn field-view-soil-all">${t('fieldSoilOpen')}</button></div>${msg ? `<p class="settings-hint field-view-soil-msg">${msg}</p>` : ''}`;
+}
+
 function catchCropCaption(field) {
     if (!field.catchCrop) return '';
     const month = field.catchSowingMonth ? ` · ${translateMonth(field.catchSowingMonth)}` : '';
@@ -248,6 +266,46 @@ function cutsMonthOptions(selected) {
     return html;
 }
 
+// The lowest fertilizer / lime / roller level over the game fields a planner
+// field covers that grow its crop now, or null without a save.
+function cutFieldGameState(farm, field) {
+    const save = (farm.saveGamePath || farm.devSaveFields) ? harvestSaveFields(farm) : null;
+    if (!save) return null;
+    const ids = new Set(gameFieldIds(field));
+    const rows = save.filter(g => ids.has(g.id) && g.sown && saveFruitToCropKey(g.fruitType) === field.crop);
+    if (!rows.length) return null;
+    const low = key => Math.min(...rows.map(g => g[key] || 0));
+    return { sprayLevel: low('sprayLevel'), limeLevel: low('limeLevel'), rollerLevel: low('rollerLevel') };
+}
+
+// Which done-checks a cut asks for — only what the grassland really lacks.
+// The next open cut follows the field's state in the save; later cuts expect
+// the cut to take the fertilizer and the rolling. Cut crops don't lower pH
+// (consumesLime="false"), so lime is asked once, while the field isn't limed
+// and the game requires lime. A part the link mod measured as costing no
+// yield is never asked; a ticked check always stays.
+function cutChecksNeeded(farm, field, idx, cutIdx) {
+    const cuts = field.cuts || [];
+    const scale = farm.harvestScale ? farm.harvestScale[String(field.crop || '').replace(/[_\s]+/g, '').toUpperCase()] : null;
+    const matters = part => !scale || !(scale.full > 0) || typeof scale[part + '0'] !== 'number' || scale[part + '0'] < scale.full;
+    const need = {
+        harvested: true,
+        fertilized: matters('spray'),
+        limed: !(farm.gameRules && farm.gameRules.lime === false) && matters('lime'),
+        rolled: cropNeedsRolling(field.crop) && matters('roller')
+    };
+    const game = cutFieldGameState(farm, field);
+    if (game && cutIdx === cuts.findIndex(c => !c.harvested)) {
+        need.fertilized = need.fertilized && game.sprayLevel < HARVEST_MAX_SPRAY_LEVEL;
+        need.rolled = need.rolled && game.rollerLevel === 0;
+    }
+    if (need.limed && cropKeepsLime(field.crop)) {
+        const limed = game ? game.limeLevel > 0 : getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates()).status === 'active';
+        if (limed || cuts.slice(0, cutIdx).some(c => c.limed)) need.limed = false;
+    }
+    return need;
+}
+
 function renderCutsModal() {
     const farm = getCurrentFarm();
     const field = farm && (farm.fields || [])[cutsFieldIdx];
@@ -255,18 +313,18 @@ function renderCutsModal() {
     if (!field || !body) return;
     const label = [(field.number || '').toString().trim(), translateCropName(field.crop)].filter(Boolean).join(' · ');
     document.getElementById('cuts-title').textContent = t('cutsTitle').replace('{field}', label);
-    const area = parseFloat(field.area) || 0;
-    const perCut = area * (getCropYieldRate(field.crop) || 0) * fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, cutsFieldIdx), getSupplyRates()));
+    const perCut = fieldExpectedYield(field, cutsFieldIdx, field.crop, getSupplyRates(), farm).litres;
     const ageN = grasslandSeasonCount(field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1);
     document.getElementById('cuts-intro').textContent = (perCut > 0
         ? t('cutsIntro').replace('{l}', Math.round(perCut).toLocaleString(FIN_LOCALE()))
         : t('cutsIntroNoYield')) + ' ' + t('cutsGrassAge').replace('{n}', ageN).replace('{max}', grasslandSeasonLimit(farm));
 
     const cuts = Array.isArray(field.cuts) ? field.cuts : [];
-    const checks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']]
-        .filter(([key]) => key !== 'rolled' || cropNeedsRolling(field.crop));
+    const allChecks = [['harvested', 'cutHarvested'], ['fertilized', 'cutFertilized'], ['limed', 'cutLimed'], ['rolled', 'cutRolled']];
     let html = '';
     cuts.forEach((c, i) => {
+        const need = cutChecksNeeded(farm, field, cutsFieldIdx, i);
+        const checks = allChecks.filter(([k]) => need[k] || c[k]);
         html += `${i ? '<span class="cuts-link" aria-hidden="true"></span>' : ''}
         <div class="cuts-node${c.harvested ? ' is-done' : ''}">
             <span class="cuts-node-label">${t('cutsCutN').replace('{n}', i + 1)}</span>
@@ -346,7 +404,13 @@ window.openCutsModal = function (idx) {
 // the current season).
 // Grassland age is shown under the crop name (grassAgeCaption), not here, so
 // the state column stays narrow.
-function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
+// A planned cut of this month not made yet.
+function fieldCutDue(field, month) {
+    const m = String(month || '').toUpperCase();
+    return !!m && (Array.isArray(field.cuts) ? field.cuts : []).some(c => !c.harvested && String(c.month || '').toUpperCase() === m);
+}
+
+function stateCellHtml(field, idx, isPastSeason, stateDisplay, month) {
     if (isCutCrop(field.crop)) {
         const cuts = Array.isArray(field.cuts) ? field.cuts : [];
         const done = cuts.filter(c => c.harvested).length;
@@ -355,7 +419,7 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
         const title = t('cutsOpenHint');
         return isPastSeason
             ? `<span class="${cls}" title="${title}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span>`
-            : `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>`;
+            : `<div class="state-pills"><button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="${cls}"><i class="fa-solid fa-scissors" aria-hidden="true"></i> ${text}</span></button>${fieldCutDue(field, month) ? `<button type="button" class="cuts-open" data-idx="${idx}" title="${title}"><span class="badge badge--job">${escapeHtml(t('cutDueNow'))}</span></button>` : ''}</div>`;
     }
     return isPastSeason ? stateDisplay : `<button type="button" class="state-toggle" data-idx="${idx}" title="${t('stateToggleHint')}">${stateDisplay}</button>`;
 }
@@ -365,6 +429,8 @@ function stateCellHtml(field, idx, isPastSeason, stateDisplay) {
 // nitrogen and the fertilization plan, feed use, cuts, work, and what grew
 // there in past seasons. Opened from the field number in the table.
 let fieldModalIdx = null;
+// One-shot status line under the soil section after "Load from the game".
+let fieldViewSoilMsg = '';
 
 // FS25_MoistureSystem: today's moisture for the main and catch crop, and the
 // yield factor when one is harvested this month (see fieldMoistureInfo).
@@ -374,6 +440,22 @@ function fieldMoistureLineHtml(field, farm) {
         return m ? `<p class="settings-hint field-view-moisture">${t('yieldForecastColMoisture')} · ${escapeHtml(translateCropName(crop))}: ${moistureCellHtml(m.moisture, m.def, m.factor, m.now)}</p>` : '';
     }).join('');
 }
+
+// The game's yield multiplier for the crop in the ground now (link mod data):
+// "Expected yield 7 600 l/ha (-12 %: fertilizer -8 %, lime -4 %)".
+function fieldHarvestLineHtml(field, idx, farm) {
+    if (!field.crop) return '';
+    const y = fieldExpectedYield(field, idx, field.crop, getSupplyRates(), farm);
+    if (!y.state || y.perHa === null) return '';
+    const txt = harvestLossText(y.state);
+    const perHa = Math.round(y.perHa).toLocaleString(FIN_LOCALE());
+    const tail = txt.loss > 0
+        ? ` <span class="yield-loss is-loss">(${txt.short}${txt.parts ? ': ' + escapeHtml(txt.parts) : ''})</span>`
+        : ` <span class="yield-loss is-ok">${escapeHtml(t('harvestNoLoss'))}</span>`;
+    return `<p class="settings-hint field-view-harvest">${escapeHtml(t('harvestExpected').replace('{l}', perHa))}${tail}</p>`;
+}
+
+let fieldViewTab = 'crop';
 
 function renderFieldModal() {
     const farm = getCurrentFarm();
@@ -403,29 +485,29 @@ function renderFieldModal() {
     ].filter(Boolean).join(' · ');
     document.getElementById('field-modal-summary').textContent = summary;
 
-    let html = '';
+    // One tab open at a time; what stays above them says which field this is.
+    const tabs = { crop: '', work: '', soil: '', history: '' };
     const section = (title, inner) => `<section class="settings-group field-view-section"><h4>${title}</h4>${inner}</section>`;
 
-    // Crop, catch crop and sowing months — editable here, so changing a crop
-    // doesn't need the whole table in Edit mode.
+    // Everything about this field's crop is edited here and saved straight away:
+    // crop, catch crop, months, state, tillage and the rotation cycle.
     const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
-    html += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
-        ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}" title="${escapeHtml(t('fieldNameHint'))}"></label>` : ''}
+    const identity = fieldViewIdentityHtml(farm, field, num, name);
+    tabs.crop += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
         ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
         ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
         ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}`);
-
-    // Crop rotation: cycle, this season's step, the next seasons.
-    html += section(t('rotTitle'), rotationFieldViewHtml(farm, field));
+        ${sel('field-view-state', t('thState'), [['To Plant', t('toPlant')], ['Planted', t('planted')]].map(([v, label]) => `<option value="${v}" ${(field.state === 'Planted' ? 'Planted' : 'To Plant') === v ? 'selected' : ''}>${label}</option>`).join(''))}
+        ${sel('field-view-tillage', t('thTillage'), [['', '–'], ['plowed', t('tillagePlowed')], ['noTill', t('tillageNoTill')]].map(([v, label]) => `<option value="${v}" ${(field.tillage || '') === v ? 'selected' : ''}>${label}</option>`).join(''))}
+    </div><div class="field-view-rotation-part">${rotationFieldViewHtml(farm, field)}</div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
-    html += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
+    tabs.soil += section(t('fieldViewSoil'), `<div class="field-soil-grid">${soilTypeList().map(s => `<label class="settings-field">
             <span>${escapeHtml(soilLabel(s.id))}</span>
             <input type="number" min="0" max="100" step="1" class="field-view-soil" data-soil="${s.id}" value="${mix[s.id] != null ? mix[s.id] : ''}" placeholder="0">
-        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>`);
+        </label>`).join('')}</div>${soilMixBarHtml(soilKey)}<p class="settings-hint">${t('fieldViewSoilHint')}</p>${fieldViewSoilImportHtml(farm)}`);
 
     // pH and lime.
     const lime = getLimeStatus(field, idx, season, rates);
@@ -438,34 +520,50 @@ function renderFieldModal() {
     } else {
         limeText = t('fieldViewNoLime');
     }
-    html += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
+    tabs.soil += section(t('fieldViewLime'), `<p>${escapeHtml(limeText)}</p>`);
 
     // Notes pinned to this field (added and edited in Notes).
     if (num) {
         const fieldNotes = loadNotes(farm).filter(n => noteHasField(n, num));
-        html += section(t('fieldViewNotes'), fieldNotes.length
+        tabs.history += section(t('fieldViewNotes'), fieldNotes.length
             ? `<ul class="field-view-notes">${fieldNotes.map(n => `<li><strong>${escapeHtml(n.title)}</strong>${(n.months || []).length ? ` <span class="settings-hint">${n.months.map(translateMonth).join(', ')}</span>` : ''}</li>`).join('')}</ul>`
             : `<p class="settings-hint">${t('fieldViewNotesNone')}</p>`);
     }
 
-    // Nitrogen and the fertilization plan.
+    // Nitrogen: a simple fertilization plan (the full one stays in Supplies).
     if (field.crop && area > 0) {
         const d = computeFieldFertPlan(planKey, soilKey, field.crop, area, rates);
-        const rows = [
-            [t('fertPlanColTarget'), fmt(d.targetRate) + ' kg N/ha'],
-            [t('fertPlanColExisting'), fmt(d.existingRate) + ' kg N/ha' + (d.existingFromGame ? ' (' + t('fieldViewFromGame') + ')' : '')],
-            [t('fertPlanColOrg'), fmt(d.orgRate) + ' kg N/ha'],
-            [t('fertPlanColMineralL'), fmt(d.mineralLitres * area) + ' l']
-        ];
-        html += section(t('fieldViewFert'), rows.map(([k, v]) => `<p class="details-category"><span>${k}</span><span class="details-category-value">${v}</span></p>`).join('')
-            + `<button type="button" class="settings-btn field-view-fertplan">${t('fertPlanBtn')}</button>`);
+        const kgN = t('suppliesNRateUnit');
+        const status = d.covered
+            ? `<span class="fertplan-status is-covered">${t('fertPlanCovered')}</span>`
+            : `${fmt(d.mineralRate)} ${kgN} · ${fmt(d.mineralLitres * area * d.buffer)} l`;
+        tabs.soil += section(t('fieldViewFert'), `
+            <p class="details-category field-view-fert-target"><span>${t('fertPlanColTarget')}</span><span class="details-category-value">${fmt(d.targetRate)} ${kgN}</span></p>
+            <label class="fertplan-field">
+                <span>${t('fertPlanColExisting')}</span>
+                <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="field-view-fert" data-key="existingN" value="${d.existingRate > 0 && !d.existingFromGame ? d.existingRate : ''}" placeholder="${d.existingFromGame ? d.existingRate : 0}"><span class="supply-unit">${kgN}</span></span>
+                ${d.existingFromGame ? `<small class="fertplan-from-game">${t('fertPlanExistingFromGame')}</small>` : ''}
+            </label>
+            <label class="fertplan-field">
+                <span>${t('fertPlanColOrg')}</span>
+                <span class="fertplan-input-wrap"><input type="number" min="0" step="5" class="field-view-fert" data-key="orgN" value="${d.orgRate > 0 ? d.orgRate : ''}" placeholder="0"><span class="supply-unit">${kgN}</span></span>
+            </label>
+            <p class="details-category field-view-fert-result"><span>${t('fertPlanColMineralN')}</span><span class="details-category-value">${status}</span></p>
+            <label class="fertplan-field fertplan-checkbox-field">
+                <span>${t('fertPlanManureApplied')}</span>
+                <input type="checkbox" class="field-view-fert-done" data-prop="manure" ${field.manure ? 'checked' : ''}>
+            </label>
+            <label class="fertplan-field fertplan-checkbox-field">
+                <span>${t('fertPlanFertilizerApplied')}</span>
+                <input type="checkbox" class="field-view-fert-done" data-prop="fertilizer" ${field.fertilizer ? 'checked' : ''}>
+            </label>`);
     }
 
     // Feed use (same choices as the Feed planner).
     const plan = getFeedPlan(farm);
     const feedRows = buildFeedSupply(farm, plan, rates).rows.filter(r => r.key === planKey || r.key === planKey + ':catch');
     if (feedRows.length) {
-        html += section(t('fieldViewFeed'), feedRows.map(r => {
+        tabs.crop += section(t('fieldViewFeed'), feedRows.map(r => {
             const label = translateCropName(r.crop) + (r.isCatch ? ' (' + t('catchCropShort') + ')' : '');
             if (r.use === 'cuts') return `<p>${escapeHtml(label)}: ${t('feedUseCuts').replace('{n}', r.cuts)}</p>`;
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
@@ -480,14 +578,20 @@ function renderFieldModal() {
         work.push(`<p>${cuts.length ? t('cutsBadge').replace('{done}', cuts.filter(c => c.harvested).length).replace('{n}', cuts.length) : t('cutsBadgeEmpty')}</p>
             <button type="button" class="settings-btn field-view-cuts">${t('cutsOpenHint')}</button>`);
     } else if (field.crop) {
-        const { next, done, total } = nextWorkStep(field, idx, farm);
-        work.push(`<p>${next ? t('fieldViewNextJob').replace('{job}', t('work_' + next.step)) + (done ? ` (${done}/${total})` : '') : t(total ? 'workAllDone' : 'workEmpty')}</p>
-            <button type="button" class="settings-btn field-view-work">${t('workOpenHint')}</button>`);
+        // The work list itself, ticked off right here; reorder / add / remove in the work window.
+        const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+        work.push((list.length
+            ? `<ul class="field-view-work-list">${list.map((w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label></li>`).join('')}</ul>`
+            : `<p class="settings-hint">${t('workEmpty')}</p>`)
+            + `<p class="settings-hint">${t(fieldWork(field) ? 'workIntro' : 'workIntroSuggested')}</p>
+            <button type="button" class="settings-btn field-view-work"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${t('workEditList')}</button>`);
     }
     const state = (v, map) => t(map[v] || map['']);
     const rollingLine = cropNeedsRolling(field.crop) ? ' · ' + t(field.rolling ? (field.rollingDone ? 'rollingDone' : 'rollingPlanned') : 'rollingOff') : '';
     work.push(`<p class="settings-hint">${state(field.weeds || '', WEEDS_TITLES)}${rollingLine}</p>`);
-    html += section(t('fieldViewWork'), work.join(''));
+    tabs.work += section(t('fieldViewWork'), work.join(''));
+
+    tabs.history += section(t('fieldLogTitle'), fieldLogSectionHtml(farm, gameFieldIds(field)));
 
     // History of this field number.
     const history = loadSeasonHistory(farm, season);
@@ -495,13 +599,69 @@ function renderFieldModal() {
         const crops = (history[s] || []).filter(f => (f.number || '').toString().trim() === num && f.crop).map(f => translateCropName(f.crop));
         return crops.length ? `<li>${t('season')} ${s}: ${escapeHtml(crops.join(', '))}</li>` : '';
     }).filter(Boolean);
-    html += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
+    tabs.history += section(t('fieldViewHistory'), past.length ? `<ul class="field-view-history">${past.join('')}</ul>` : `<p class="settings-hint">${t('fieldViewNoHistory')}</p>`);
 
-    body.innerHTML = html;
+    const tabBtn = (id, label) => `<button type="button" class="settings-tab field-view-tab${fieldViewTab === id ? ' is-active' : ''}" role="tab" aria-selected="${fieldViewTab === id}" data-tab="${id}">${t(label)}</button>`;
+    body.innerHTML = identity
+        + `<div class="settings-tabs field-view-tabs" role="tablist">${tabBtn('crop', 'fieldViewTabCrop')}${tabBtn('work', 'fieldViewTabWork')}${tabBtn('soil', 'fieldViewTabSoil')}${tabBtn('history', 'fieldViewTabHistory')}</div>`
+        + Object.keys(tabs).map(id => `<div class="field-view-pane" data-pane="${id}" role="tabpanel"${fieldViewTab === id ? '' : ' hidden'}>${tabs[id]}</div>`).join('');
 }
 
-window.openFieldModal = function (idx) {
+// Number, name, area and lease: above the tabs, saved as soon as they change.
+function fieldViewIdentityHtml(farm, field, num, name) {
+    const shared = (farm.fields || []).filter(f => (f.number || '').toString().trim() === num).length > 1;
+    const size = farm.fieldSizes && farm.fieldSizes[num] !== undefined ? farm.fieldSizes[num] : '';
+    const lease = field.lease || null;
+    return `<section class="settings-group field-view-section field-view-identity"><div class="field-view-identity-grid">
+        <label class="settings-field"><span>${t('thFieldNo')}</span><input type="text" class="field-view-number" value="${escapeHtml(num)}"></label>
+        <label class="settings-field"><span>${t('thFieldHa')}</span><input type="text" inputmode="decimal" class="field-view-area" value="${escapeHtml(String(field.area || ''))}" placeholder="0.00"${field.areaSource === 'game' ? ` title="${escapeHtml(t('fieldViewFromGame'))}"` : ''}></label>
+        ${shared ? `<label class="settings-field"><span title="${escapeHtml(t('fieldSizeHint'))}">${t('fieldSizeLabel')}</span><input type="text" inputmode="decimal" class="field-view-size" value="${escapeHtml(String(size))}" placeholder="0.00"></label>` : ''}
+        ${num ? `<label class="settings-field field-view-name-field"><span>${t('fieldName')}</span><input type="text" class="field-view-name" maxlength="40" value="${escapeHtml(name)}" placeholder="${escapeHtml(t('fieldNamePlaceholder'))}"></label>` : ''}
+    </div>
+    <div class="field-view-lease-row">
+        <label class="lease-check"><input type="checkbox" class="field-view-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseLabel')}</label>
+        ${lease ? `<label class="settings-field"><span>${t('leaseSeasons')}</span><input type="number" min="1" max="50" step="1" class="field-view-lease-seasons" value="${lease.seasons || ''}" placeholder="–"></label>
+        <label class="settings-field"><span>${t('leaseThen')}</span><select class="field-view-lease-then">
+            <option value="return" ${lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
+            <option value="buy" ${lease.then === 'buy' ? 'selected' : ''}>${t('leaseBuy')}</option>
+        </select></label>` : ''}
+    </div></section>`;
+}
+
+// A new number moves the field's soil, plan and name with it, as Edit does. A
+// number another row has makes both one field shared by two crops, so ask.
+async function changeFieldNumberFromView(idx, value) {
+    const refresh = () => rerenderKeepingFocus(renderFieldModal, document.querySelector('#field-modal .modal-content'));
+    const to = (value || '').trim();
+    const farm = getCurrentFarm();
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    if (to === (field.number || '').toString().trim()) { refresh(); return; }
+    if (!to) {
+        refresh();
+        showNotice(t('missingFieldNumberTitle'), t('fieldNumberEmpty'), true);
+        return;
+    }
+    if (farm.fields.some((f, i) => i !== idx && (f.number || '').toString().trim() === to)) {
+        const yes = await showConfirm({
+            title: t('fieldNumberTakenTitle').replace('{n}', to),
+            body: t('fieldNumberTakenBody'),
+            confirmText: t('fieldNumberTakenConfirm')
+        });
+        if (yes !== true) { refresh(); return; }
+    }
+    const live = getCurrentFarm();
+    const before = JSON.parse(JSON.stringify(live.fields));
+    live.fields[idx].number = to;
+    migrateFieldKeys(live, before, live.fields);
+    saveFarmData(live);
+    refresh();
+}
+
+window.openFieldModal = function (idx, tab) {
+    markFieldViewKnown();
     fieldModalIdx = idx;
+    fieldViewTab = tab || 'crop';
     renderFieldModal();
     const modal = document.getElementById('field-modal');
     if (modal) {
@@ -515,7 +675,7 @@ window.openFieldModal = function (idx) {
     const modal = document.getElementById('field-modal');
     const body = document.getElementById('field-modal-body');
     if (!modal || !body) return;
-    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); };
+    const close = () => { closeModal(modal); fieldModalIdx = null; renderSeasonView(); renderRotationModal(); };
     document.getElementById('field-modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -525,6 +685,33 @@ window.openFieldModal = function (idx) {
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
         if (handleRotationFieldViewChange(el, farm, field)) {
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-number')) {
+            changeFieldNumberFromView(fieldModalIdx, el.value);
+        } else if (el.classList.contains('field-view-area')) {
+            const n = parseDecimal(el.value);
+            if (!isNaN(n) && n >= 0 && n !== (parseFloat(field.area) || 0)) {
+                field.area = String(n);
+                // Typed by hand: overrides the area from the game.
+                field.areaSource = 'manual';
+                saveFarmData(farm);
+            }
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-size')) {
+            const key = (field.number || '').toString().trim();
+            const n = parseDecimal(el.value);
+            farm.fieldSizes = { ...(farm.fieldSizes || {}) };
+            if (!el.value.trim()) delete farm.fieldSizes[key];
+            else if (!isNaN(n) && n > 0) farm.fieldSizes[key] = n;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.matches('.field-view-lease, .field-view-lease-seasons, .field-view-lease-then')) {
+            const wrap = el.closest('.field-view-lease-row');
+            const on = wrap.querySelector('.field-view-lease').checked;
+            const seasons = wrap.querySelector('.field-view-lease-seasons');
+            const then = wrap.querySelector('.field-view-lease-then');
+            field.lease = on ? leaseFromValues(field.lease, farm, seasons ? seasons.value : '', then ? then.value : 'return') : null;
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-name')) {
@@ -548,6 +735,15 @@ window.openFieldModal = function (idx) {
             migrateFieldKeys(farm, before, farm.fields);
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-state')) {
+            field.state = el.value;
+            syncSowStep(field);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-tillage')) {
+            field.tillage = el.value || null;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-soil')) {
             const r = getSupplyRates();
             const k = fertPlanSoilKey(field, fieldModalIdx);
@@ -559,6 +755,18 @@ window.openFieldModal = function (idx) {
             if (Object.keys(r.fieldSoil[k]).length === 0) delete r.fieldSoil[k];
             saveSupplyRates(r);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-fert')) {
+            setFertPlanValue(fertPlanKey(field, fieldModalIdx), el.dataset.key, el.value);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-work-check')) {
+            const i = +el.dataset.i;
+            changeFieldWork(farm, field, fieldModalIdx, (work, f, fm) => setWorkStepDone(work, i, el.checked, f, fm));
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+        } else if (el.classList.contains('field-view-fert-done')) {
+            field[el.dataset.prop] = el.checked;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-use')) {
             const plan = getFeedPlan(farm);
             plan.fieldUse[el.dataset.key] = el.value;
@@ -567,24 +775,52 @@ window.openFieldModal = function (idx) {
         }
     });
     body.addEventListener('click', e => {
+        const tabBtn = e.target.closest('.field-view-tab');
+        if (tabBtn) {
+            fieldViewTab = tabBtn.dataset.tab;
+            renderFieldModal();
+            modal.querySelector('.modal-content').scrollTop = 0;
+            return;
+        }
         const farm = getCurrentFarm();
         const idx = fieldModalIdx;
         const field = farm && (farm.fields || [])[idx];
         if (!field) return;
+        const finishBtn = e.target.closest('.field-view-finish, .field-view-finish-undo');
+        if (finishBtn) {
+            const crop = field.crop;
+            if (finishBtn.classList.contains('field-view-finish')) {
+                finishFieldCrop(farm, idx, rotationFillMode(farm) !== 'off');
+                showAutoSyncToast(t('fieldFinishDone').replace('{crop}', translateCropName(crop)), 3000);
+            } else {
+                undoFieldFinish(farm, idx);
+            }
+            saveFarmData(farm);
+            renderSeasonView();
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
         if (handleRotationFieldViewClick(e.target, farm, field)) {
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
             return;
         }
-        if (e.target.closest('.field-view-fertplan')) {
+        if (e.target.closest('.field-view-soil-all')) {
             close();
-            const num = (field.number || '').toString().trim();
-            openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
-        } else if (e.target.closest('.field-view-cuts')) {
+            showPlannerView('fieldsoil');
+            return;
+        }
+        if (e.target.closest('.field-view-soil-import')) {
+            fieldViewSoilMsg = importFieldSoilFromGame(farm, fertPlanSoilKey(field, idx));
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
+        if (e.target.closest('.field-view-cuts')) {
             close();
             openCutsModal(idx);
         } else if (e.target.closest('.field-view-work')) {
             close();
+            workReturnToField = idx;
             openWorkModal(idx);
         }
     });
@@ -598,7 +834,16 @@ window.openFieldModal = function (idx) {
 // before it -> cultivate / lime, in it -> cultivate / sow / roll, after -> fertilize / weeds.
 // Lime only while the pH needs it (the game's pH with Precision Farming) and
 // the crop uses lime up; no weeds step on a ploughed field.
-const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'cultivate', 'plow', 'sow', 'roll', 'weeds'];
+// A list of your own belongs to the crops it was made for (field.workFor): plan
+// another crop or catch crop, however that happens, and the suggestion is back.
+const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'stones', 'sow', 'roll', 'weeds'];
+// Done on the ground before sowing, so still done when another crop is planned instead.
+const GROUND_WORK_STEPS = ['cultivate', 'plow', 'stones', 'lime'];
+
+// The crops a work list is made for.
+function workCropsKey(field) {
+    return cropOrderKey(field.crop) + '|' + cropOrderKey(field.catchCrop);
+}
 
 // A row joining several game fields ("10-11") has to be worked as one first:
 // the strip between them cultivated or ploughed over. Once ticked off it's
@@ -609,42 +854,94 @@ function needsMerging(field, farm) {
     return parts.length > 1 && !(farm && farm.mergedFields && farm.mergedFields[key]);
 }
 
+// A catch crop comes before the main crop (green rye before beet) when it's
+// sown before the main crop's harvest, counting from the main sowing month;
+// sown at or after that harvest (a rotation's catch crop) it comes after.
+// Without a calendar or months to compare, before — as it always was.
+function catchCropComesFirst(field) {
+    const sow = (field.sowingMonth || '').toUpperCase();
+    const catchSow = (field.catchSowingMonth || '').toUpperCase();
+    const harvest = String((CROP_CALENDAR[field.crop] || {})[sow] || '').toUpperCase();
+    const from = ALL_MONTHS.indexOf(sow);
+    if (from < 0 || ALL_MONTHS.indexOf(catchSow) < 0 || ALL_MONTHS.indexOf(harvest) < 0) return true;
+    const offset = m => (ALL_MONTHS.indexOf(m) - from + 12) % 12;
+    if (!offset(harvest)) return true;
+    return offset(catchSow) < offset(harvest);
+}
+
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
     const steps = [];
-    if (field.catchCrop) steps.push('fertilize', 'mow', 'bale', 'harvestWrap');
+    const catchSteps = ['fertilize', 'mow', 'bale', 'harvestWrap'];
+    const catchFirst = field.catchCrop && catchCropComesFirst(field);
+    if (catchFirst) steps.push(...catchSteps);
     const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
     const cur = ALL_MONTHS.indexOf(((farm && farm.month) || '').toUpperCase());
     // Months until the sowing month (0 = this month), wrapping round the year.
     const until = sow >= 0 && cur >= 0 ? (sow - cur + 12) % 12 : 0;
     const sown = field.state === 'Planted';
     const plowed = field.tillage === 'plowed';
+    // Mechanics switched off in the game settings get no steps (null = unknown, keep them).
+    const rules = (farm && farm.gameRules) || {};
     if (!sown) {
         if (needsMerging(field, farm)) steps.push('merge');
+        // The game asks for ploughing (see syncWorkFromSave): plough first, then the seedbed.
+        if (!plowed && field.plowRequired) steps.push('plow');
         steps.push(plowed ? 'plow' : 'cultivate');
-        if (until > 0 && !cropKeepsLime(field.crop)
+        // Stones the link mod found (see syncWorkFromSave): collect them before sowing.
+        if (field.stones !== undefined && rules.stones !== false) steps.push('stones');
+        if (until > 0 && rules.lime !== false && !cropKeepsLime(field.crop)
             && getLimeStatus(field, idx, (farm && farm.currentSeason) || 1, getSupplyRates()).status !== 'active') steps.push('lime');
         steps.push('sow');
         if (field.rolling && cropNeedsRolling(field.crop)) steps.push('roll');
     }
     steps.push('fertilize');
-    if (!plowed) steps.push('weeds');
-    return steps.map(step => ({ step, done: false }));
+    if (!plowed && rules.weeds !== false) steps.push('weeds');
+    if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
+    const groundDone = fieldWork(field) ? [] : (field.work || []).filter(w => w.done && GROUND_WORK_STEPS.includes(w.step)).map(w => w.step);
+    return steps.map(step => ({ step, done: groundDone.includes(step) }));
 }
 
-// The field's own list, or null when it never had one (then the month-based
-// suggestion shows). A list you emptied stays empty (field.workCleared) — an
-// empty field.work without the flag is how older versions cleared it.
+// The field's own list, or null when it never had one or it was made for other
+// crops (then the month-based suggestion shows). A list you emptied stays empty
+// (field.workCleared) — an empty field.work without the flag is how older
+// versions cleared it.
 function fieldWork(field) {
-    if (!Array.isArray(field.work)) return null;
+    if (!Array.isArray(field.work) || field.workFor !== workCropsKey(field)) return null;
     return field.work.length || field.workCleared ? field.work : null;
 }
 
 // Next step for the table button: your list, else the month-based suggestion.
 // The field's state is the one truth for sowing: a Sow step is done exactly
 // when the field is sown (the state badge and the checklist can't disagree).
+// Work found in the save (field.workDetected, see syncWorkFromSave) ticks its
+// steps too: a flag every step of that kind, a count that many of them (a
+// step ticked by hand uses one up); weeds and rolling follow their chips.
 function withSowFromState(field, list) {
-    return list.map(w => w.step === 'sow' ? { ...w, done: field.state === 'Planted' } : w);
+    const det = field.workDetected || {};
+    const left = {};
+    Object.keys(det).forEach(k => { if (typeof det[k] === 'number') left[k] = det[k]; });
+    return list.map(w => {
+        if (w.step === 'sow') return { ...w, done: field.state === 'Planted' };
+        if (left[w.step] > 0) {
+            left[w.step]--;
+            return w.done ? w : { ...w, done: true };
+        }
+        if (w.done) return w;
+        const found = det[w.step] === true
+            || (w.step === 'weeds' && (field.weeds === 'done' || field.weeds === 'hoed'))
+            || (w.step === 'roll' && !!field.rollingDone);
+        return found ? { ...w, done: true } : w;
+    });
+}
+
+// Unticking a step by hand drops what the save said about it.
+function forgetDetectedStep(field, step) {
+    const det = field.workDetected;
+    if (!det || det[step] === undefined) return;
+    if (typeof det[step] === 'number' && det[step] > 1) det[step]--;
+    else delete det[step];
+    if (!Object.keys(det).length) delete field.workDetected;
 }
 
 // Writes the state into the field's own list (after the state changed elsewhere).
@@ -653,21 +950,57 @@ function syncSowStep(field) {
     if (own) field.work = withSowFromState(field, own);
 }
 
+// Is this job for now? The one rule behind the table's job badge (faded when
+// not) and What to do today (lists it only when it is). Sowing and harvest wait
+// for their month. Your own list and a sown field's jobs are always for now; on
+// a field still to be sown the ground work starts the month before its sowing.
+function fieldJobDue(field, step, month) {
+    if (!month) return true;
+    const sow = (field.sowingMonth || '').toUpperCase();
+    if (step === 'sow') return sow === month || isSowingOverdue(field, month);
+    if (step === 'harvest') return fieldInHarvestWindow(field, month);
+    if (field.state === 'Planted' || fieldWork(field) || isSowingOverdue(field, month)) return true;
+    const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf(sow);
+    return to < 0 || from < 0 || (to - from + 12) % 12 <= 1;
+}
+
 function nextWorkStep(field, idx, farm) {
     const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
     const next = list.find(w => !w.done);
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-function workCellHtml(field, idx, isPastSeason, farm) {
-    if (isPastSeason || !field.crop || isCutCrop(field.crop)) return '';
-    const { next, done, total, own } = nextWorkStep(field, idx, farm);
-    const label = next ? t('work_' + next.step) : t(total ? 'workAllDone' : 'workEmpty');
-    const count = own && done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    return `<button type="button" class="work-open${next ? '' : ' is-complete'}" data-idx="${idx}" title="${t(own ? 'workOpenHint' : 'workSuggestedHint')}">→ ${escapeHtml(label)}${count}</button>`;
+// State column of a field with a crop (current season): two pills. The state,
+// sown or to sow (click toggles it), coloured by how urgent the sowing is
+// (badgeCls: planted / plant now / overdue / to plant; stateLabel in the
+// tooltip), and the job at hand: click ticks it off, right-click steps back,
+// the list itself is edited in the field view. All jobs done: no second pill.
+function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
+    const { next, done, total } = nextWorkStep(field, idx, farm);
+    const label = t(field.state === 'Planted' ? 'planted' : 'toPlant');
+    const state = `<button type="button" class="state-toggle" data-idx="${idx}" title="${escapeHtml(stateLabel + ' · ' + t('stateToggleHint'))}"><span class="badge ${badgeCls}">${escapeHtml(label)}</span></button>`;
+    if (!next) return `<div class="state-pills">${state}</div>`;
+    const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
+    const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm));
+    const hint = t('workBadgeHint') + (due ? '' : ' ' + t('workLaterHint'));
+    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(t('work_' + next.step))}${count}</span></button></div>`;
+}
+
+// A small tag after a step the game itself asks for (ploughing required), or
+// how much of the field is still under stones.
+function workStepTagHtml(field, w) {
+    if (w.done) return '';
+    if (w.step === 'stones' && field.stones > 0) {
+        const pct = Math.max(1, Math.round(field.stones * 100));
+        return ` <span class="work-tag" title="${escapeHtml(t('workStonesHint'))}">${escapeHtml(t('workStonesShare').replace('{pct}', pct))}</span>`;
+    }
+    if (w.step !== 'plow' || !field.plowRequired) return '';
+    return ` <span class="work-tag work-tag--required" title="${escapeHtml(t('workRequiredByGameHint'))}">${escapeHtml(t('workRequiredByGame'))}</span>`;
 }
 
 let workFieldIdx = null;
+// Opened from the field view: closing the work window goes back there.
+let workReturnToField = null;
 
 function renderWorkModal() {
     const farm = getCurrentFarm();
@@ -681,7 +1014,7 @@ function renderWorkModal() {
     const listEl = document.getElementById('work-list');
     listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
     listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
-        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}</label>
+        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label>
         <span class="work-item-btns">
             <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
@@ -694,6 +1027,7 @@ function renderWorkModal() {
 // One field's list, without saving (the work modal and the bulk bar save after).
 function changeFieldWork(farm, field, idx, fn) {
     field.work = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+    field.workFor = workCropsKey(field);
     fn(field.work, field, farm);
     syncSowStep(field);
     // Emptied on purpose: keep it empty instead of suggesting again.
@@ -704,6 +1038,12 @@ function changeFieldWork(farm, field, idx, fn) {
 // Ticks a step on or off, with what that step means for the field itself.
 function setWorkStepDone(work, i, done, field, farm) {
     work[i].done = done;
+    if (!done) forgetDetectedStep(field, work[i].step);
+    if (!done && work[i].step === 'weeds' && (field.weeds === 'done' || field.weeds === 'hoed')) {
+        field.weeds = 'needed';
+        markWeedsManual(farm, field);
+    }
+    if (!done && work[i].step === 'roll') field.rollingDone = false;
     // Sowing done = the field is sown.
     if (work[i].step === 'sow') field.state = done ? 'Planted' : 'To Plant';
     if (work[i].step === 'weeds' && done) {
@@ -739,7 +1079,12 @@ window.openWorkModal = function (idx) {
     const modal = document.getElementById('work-modal');
     const listEl = document.getElementById('work-list');
     if (!modal || !listEl) return;
-    const close = () => { closeModal(modal); workFieldIdx = null; renderSeasonView(); };
+    const close = () => {
+        closeModal(modal);
+        workFieldIdx = null;
+        renderSeasonView();
+        if (workReturnToField != null) { const i = workReturnToField; workReturnToField = null; openFieldModal(i, 'work'); }
+    };
     document.getElementById('work-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
@@ -831,6 +1176,7 @@ function mirrorToSelected(el) {
         } else {
             target.value = el.value;
         }
+        syncCardOptionalCells(row);
         flashMirrored(row);
     });
 }
@@ -917,6 +1263,7 @@ function renderEditBulkBar() {
                 <button type="button" class="btn btn--sm btn--secondary" data-ebulk="noTill">${t('tillageNoTill')}</button>
                 <button type="button" class="btn btn--sm" data-ebulk="noTillage" title="${t('bulkNoTillageHint')}">–</button>
             </span>
+            <button type="button" class="btn btn--sm btn--secondary" data-ebulk="merge" title="${t('bulkMergeHint')}"><i class="fa-solid fa-object-group" aria-hidden="true"></i> ${t('bulkMerge')}</button>
             <button type="button" class="btn btn--sm btn--danger" data-ebulk="delete">${t('bulkDelete')}</button>
         </span>`;
     updateEditBulkCount();
@@ -939,6 +1286,30 @@ function updateEditBulkCount() {
     if (all) { all.checked = total > 0 && n === total; all.indeterminate = n > 0 && n < total; }
 }
 
+// Joins the selected cards into the first one: its number becomes all their
+// game field numbers ("10-11-12", in order, each once), its area their sum;
+// crop, month and the rest stay the first card's. The other cards go, as with
+// Delete — Save keeps it, Cancel undoes it. A row of several game fields then
+// gets "Merge the fields" in its work list (see needsMerging).
+function mergeEditRows(rows) {
+    if (rows.length < 2) { showAutoSyncToast(t('bulkMergeNeedTwo')); return; }
+    const parts = [];
+    rows.forEach(row => {
+        String(row.querySelector('.field-number').value || '').split(/[^0-9]+/).filter(Boolean)
+            .map(s => String(parseInt(s, 10))).forEach(p => { if (!parts.includes(p)) parts.push(p); });
+    });
+    parts.sort((a, b) => a - b);
+    const area = rows.reduce((sum, row) => sum + (parseFloat(String(row.querySelector('.field-area').value).replace(',', '.')) || 0), 0);
+    const [keep, ...rest] = rows;
+    keep.querySelector('.field-number').value = parts.join('-');
+    keep.querySelector('.field-area').value = area.toFixed(2);
+    rest.forEach(r => r.remove());
+    updateSplitHints();
+    flashMirrored(keep);
+    updateEditBulkCount();
+    showAutoSyncToast(t('bulkMerged').replace('{n}', rows.length).replace('{field}', parts.join('-')));
+}
+
 // Writes into the selected cards' inputs as if typed there.
 function applyEditBulk(action, bar) {
     const rows = editBulkRows();
@@ -947,6 +1318,10 @@ function applyEditBulk(action, bar) {
         rows.forEach(r => r.remove());
         updateSplitHints();
         updateEditBulkCount();
+        return;
+    }
+    if (action === 'merge') {
+        mergeEditRows(rows);
         return;
     }
     rows.forEach(row => {
@@ -959,6 +1334,7 @@ function applyEditBulk(action, bar) {
             const crop = bar.querySelector('#eb-catch').value;
             row.querySelector('.field-catch-crop').value = crop;
             row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-catch-sow').value || null);
+            syncCardOptionalCells(row);
         } else if (action === 'sown' || action === 'unsown') {
             row.querySelector('.field-state').checked = action === 'sown';
         } else {
@@ -969,6 +1345,59 @@ function applyEditBulk(action, bar) {
     });
 }
 
+// The job badge / line in the table: dir 1 ticks off the next job (left click
+// on the badge), -1 unticks the last one done (right click on the badge or
+// the "→" line). Same as ticking it in the work list (Sow sets the state).
+// unsow: right-click on the "Planted" badge — takes the sowing back. A sown
+// field's suggested list has no Sow step any more, so the same happens on the
+// "→" line when nothing in its list is ticked yet.
+function stepFieldWork(idx, dir, unsow) {
+    const allFarms = getAllFarms();
+    const farm = allFarms.find(f => f.id === currentFarmId);
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    // "Plant now" isn't sown yet: its right-click steps back like the job badge.
+    unsow = !!unsow && field.state === 'Planted';
+    const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
+    let i = -1;
+    if (dir > 0) i = list.findIndex(w => !w.done);
+    else if (!unsow) for (let j = list.length - 1; j >= 0; j--) if (list[j].done) { i = j; break; }
+    if (dir < 0 && field.state === 'Planted' && (unsow || i < 0) && !list.some(w => w.step === 'sow')) {
+        field.state = 'To Plant';
+        syncSowStep(field);
+        saveFarmData(farm);
+        renderSeasonView();
+        showAutoSyncToast(t('workStepUndoneToast').replace('{job}', t('work_sow')));
+        return;
+    }
+    if (unsow) i = list.findIndex(w => w.step === 'sow' && w.done);
+    if (i < 0) return;
+    changeFieldWork(farm, field, idx, (work, f, fm) => setWorkStepDone(work, i, dir > 0, f, fm));
+    saveFarmData(farm);
+    renderSeasonView();
+    showAutoSyncToast(t(dir > 0 ? 'workStepDoneToast' : 'workStepUndoneToast').replace('{job}', t('work_' + list[i].step)));
+}
+
+// Right-click on the N chip: the field's full fertilization plan.
+if (fieldsBody) fieldsBody.addEventListener('contextmenu', e => {
+    // The "Planted" / "Plant now" badge too: back one job (from Planted that's Sow).
+    const workBtn = e.target.closest('.work-open, .state-toggle');
+    if (workBtn && !isEditMode) {
+        e.preventDefault();
+        stepFieldWork(parseInt(workBtn.dataset.idx, 10), -1, workBtn.classList.contains('state-toggle'));
+        return;
+    }
+    const fertBtn = e.target.closest('.fert-open');
+    if (!fertBtn || isEditMode) return;
+    e.preventDefault();
+    const farm = getCurrentFarm();
+    const idx = parseInt(fertBtn.dataset.idx, 10);
+    const field = farm && (farm.fields || [])[idx];
+    if (!field) return;
+    const num = (field.number || '').toString().trim();
+    openFieldFertPlan(fertPlanKey(field, idx), fertPlanSoilKey(field, idx), num || ('#' + (idx + 1)), field.crop, parseFloat(field.area) || 0);
+});
+
 // Main table quick edits, current season only (past seasons render plain
 // badges/chips): the state badge toggles sown / not sown and the rolling chip
 // cycles rolling (none / to roll / rolled) straight away; the lime chip asks first in a small
@@ -977,10 +1406,22 @@ function applyEditBulk(action, bar) {
 if (fieldsBody) fieldsBody.addEventListener('click', async e => {
     const cutsBtn = e.target.closest('.cuts-open');
     if (cutsBtn && !isEditMode) { openCutsModal(parseInt(cutsBtn.dataset.idx, 10)); return; }
+    if (e.target.closest('.field-open-callout-close')) { markFieldViewKnown(); return; }
     const fieldBtn = e.target.closest('.field-open');
     if (fieldBtn && !isEditMode) { openFieldModal(parseInt(fieldBtn.dataset.idx, 10)); return; }
+    const fertBtn = e.target.closest('.fert-open');
+    if (fertBtn && !isEditMode) {
+        openFieldModal(parseInt(fertBtn.dataset.idx, 10), 'soil');
+        const target = document.querySelector('#field-modal-body .field-view-fert-target');
+        if (target) target.closest('section').scrollIntoView({ block: 'start' });
+        return;
+    }
     const workBtn = e.target.closest('.work-open');
-    if (workBtn && !isEditMode) { openWorkModal(parseInt(workBtn.dataset.idx, 10)); return; }
+    if (workBtn && !isEditMode) {
+        if (workBtn.classList.contains('work-open--badge')) stepFieldWork(parseInt(workBtn.dataset.idx, 10), 1);
+        else openWorkModal(parseInt(workBtn.dataset.idx, 10));
+        return;
+    }
     const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
@@ -1110,6 +1551,9 @@ function isSowingOverdue(field, currentMonth) {
     if (cur < 0 || inWindow(cur)) return false;
     let end = idx(sow);
     for (let i = 0; i < 11 && inWindow(end + 1); i++) end++;
+    // Put on the field after the crop before it came off: counted from then.
+    const from = idx(field.plannedFrom || '');
+    if (from >= 0) return (end - from + 24) % 12 < (cur - from + 12) % 12;
     const posInYear = m => (m - SOWING_YEAR_START + 24) % 12;
     return posInYear(end) < posInYear(cur);
 }
@@ -1168,6 +1612,18 @@ function weedsChipHtml(field, idx, isPastSeason) {
     const icon = `<i class="fa-solid ${state === 'hoed' ? 'fa-broom' : 'fa-spray-can-sparkles'}" aria-hidden="true"></i>`;
     if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
     return `<button type="button" class="${cls} table-chip-toggle weeds-toggle" data-idx="${idx}" title="${title} · ${t('weedsClickHint')}">${icon}</button>`;
+}
+
+// Fertilization: the "applied" ticks of the field's nitrogen plan — nothing /
+// natural only (rust outline) / mineral, with or without natural (green).
+// Click opens the field view at its nitrogen section.
+function fertChipHtml(field, idx, isPastSeason) {
+    if (!field.crop) return '';
+    const state = field.fertilizer ? 'mineral' : (field.manure ? 'natural' : '');
+    const title = t(field.fertilizer && field.manure ? 'fertChipBoth' : (state === 'mineral' ? 'fertChipMineral' : (state === 'natural' ? 'fertChipNatural' : 'fertChipNone')));
+    const cls = `treatment-chip treatment-chip--fert${state ? ' is-' + state : ''}`;
+    if (isPastSeason) return state ? `<span class="${cls}" title="${title}">N</span>` : '';
+    return `<button type="button" class="${cls} table-chip-toggle fert-open" data-idx="${idx}" title="${title} · ${t('fertChipClickHint')}">N</button>`;
 }
 
 // ---------- field names and search ----------
@@ -1241,6 +1697,22 @@ function clearFieldSearch() {
     if (input) input.value = '';
 }
 
+// Settings come back as strings.
+function fieldViewKnown() {
+    return String(getSetting('fieldViewOpened')) === 'true';
+}
+
+function fieldOpenCalloutHtml() {
+    return `<span class="field-open-callout" role="note">${escapeHtml(t('fieldOpenCallout'))}<button type="button" class="field-open-callout-close" aria-label="${escapeHtml(t('close'))}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></span>`;
+}
+
+function markFieldViewKnown() {
+    if (fieldViewKnown()) return;
+    setSetting('fieldViewOpened', 'true');
+    document.querySelectorAll('.field-open-callout').forEach(el => el.remove());
+    document.querySelectorAll('.field-open.has-callout').forEach(el => el.classList.remove('has-callout'));
+}
+
 function renderFieldsTable(fields) {
     updateFieldsSortHeaders();
     if (!fieldsBody) return;
@@ -1258,6 +1730,9 @@ function renderFieldsTable(fields) {
     let sownArea = 0;      // ...of which already sown
     const seasonHistory = loadSeasonHistory(farm, viewedSeason);
     const grassLimit = grasslandSeasonLimit(farm);
+    // Few players find the field view: the first row points at it until it's opened once.
+    const showOpenCallout = !isPastSeason && !fieldViewKnown() && !(typeof tut !== 'undefined' && tut.active);
+    let openCalloutShown = false;
 
     if (fields && fields.length > 0) {
         const numberTotals = getFieldNumberTotals(fields);
@@ -1303,15 +1778,20 @@ function renderFieldsTable(fields) {
             areaCell += soilMixBarHtml(key);
 
             let stateDisplay;
+            // A field with a crop: its state pill takes this colour (workCellHtml).
+            let stateBadge = 'badge--to-plant', stateLabel = t('toPlant');
 
             if (field.state === 'Planted') {
                 stateDisplay = `<span class="badge badge--planted">${t('planted')}</span>`;
+                stateBadge = 'badge--planted'; stateLabel = t('planted');
             } else {
                 const sowMonth = field.sowingMonth ? field.sowingMonth.toUpperCase() : "";
                 if (sowMonth === currentFarmMonth && sowMonth !== "") {
                     stateDisplay = `<span class="badge badge--plant-now">${t('plantNow')}</span>`;
+                    stateBadge = 'badge--plant-now'; stateLabel = t('plantNow');
                 } else if (!isPastSeason && isSowingOverdue(field, currentFarmMonth)) {
                     stateDisplay = `<span class="badge badge--overdue" title="${t('overdueHint')}">${t('overdue')}</span>`;
+                    stateBadge = 'badge--overdue'; stateLabel = t('overdue') + ' — ' + t('overdueHint');
                 } else {
                     stateDisplay = `<span class="badge badge--to-plant">${t('toPlant')}</span>`;
                 }
@@ -1340,29 +1820,17 @@ function renderFieldsTable(fields) {
                 : `<span class="field-number-chip">${field.number || '–'}</span>`;
             const numberCellTitle = numberParts.length > 1 ? ` title="${field.number}"` : '';
 
-            let fertPlanCell = '<td class="fertplan-cell"></td>';
-            if (!isPastSeason && field.crop && area > 0) {
-                const numStr = (field.number || '').toString().trim();
-                const soilK = fertPlanSoilKey(field, origIdx);
-                const planK = fertPlanKey(field, origIdx);
-                const dispNum = numStr || ('#' + (origIdx + 1));
-                // White = nothing marked yet; brown = natural fertilizer applied;
-                // green = synthetic applied (wins if both are checked — it's the
-                // "topped up to target" state). Flags live on the field itself,
-                // set from the plan modal's Zabiegi checkboxes.
-                const btnState = field.fertilizer ? ' fertplan-open-btn--synthetic' : (field.manure ? ' fertplan-open-btn--natural' : '');
-                fertPlanCell = `<td class="fertplan-cell"><button type="button" class="fertplan-open-btn${btnState}" ${fertPlanOpenAttrs(planK, soilK, dispNum, field.crop, area)}>${t('fertPlanBtn')}</button></td>`;
-            }
-
+            const calloutHere = showOpenCallout && !openCalloutShown;
+            if (calloutHere) openCalloutShown = true;
             htmlString += `
                 <tr class="${isSplit ? 'field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}">
                     <td class="field-number-cell"${numberCellTitle}>${isPastSeason
-                        ? `<span class="field-number-chips">${numberChipsHtml}</span>`
-                        : `<button type="button" class="field-open" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}</span></button>`}${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}${leaseBadgeHtml(field, viewedSeason)}</td>
+                        ? `<span class="field-number-chips">${numberChipsHtml}</span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}`
+                        : `<button type="button" class="field-open${calloutHere ? ' has-callout' : ''}" data-idx="${origIdx}" title="${t('fieldViewOpenHint')}"><span class="field-number-chips">${numberChipsHtml}<i class="fa-solid fa-up-right-from-square field-open-icon" aria-hidden="true"></i></span>${fieldName ? `<span class="field-name">${escapeHtml(fieldName)}</span>` : ''}</button>${calloutHere ? fieldOpenCalloutHtml() : ''}`}${leaseBadgeHtml(field, viewedSeason)}</td>
                     <td>${areaCell}</td>
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
-                    <td>${stateCellHtml(field, origIdx, isPastSeason, stateDisplay)}${workCellHtml(field, origIdx, isPastSeason, farm)}</td>
+                    <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay, farm ? getFarmCurrentMonth(farm) : null)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
                     <td class="treatments-cell">
                         ${(() => {
@@ -1371,22 +1839,22 @@ function renderFieldsTable(fields) {
                             const btnAttrs = isPastSeason ? '' : ` type="button" data-idx="${origIdx}"`;
                             const limeHtml = `<${tag}${btnAttrs} class="treatment-chip treatment-chip--lime${isPastSeason ? '' : ' table-chip-toggle lime-toggle'}${limedNow ? ' is-limed-now' : ''}"${limeColor ? ` style="--lime-color:${limeColor}; --lime-pct:${Math.round(limePh * 100)}%;"` : ''} title="${escapeHtml(limeHint)}${isPastSeason ? '' : ' · ' + t('limeClickHint')}">
                                 <span class="lime-fill"></span>
-                                <span class="lime-letter">${t('limeLetter')}</span>
+                                <span class="lime-letter" data-letter="${t('limeLetter')}">${t('limeLetter')}</span>
                             </${tag}>`;
                             const rollingHtml = rollingChipHtml(field, origIdx, isPastSeason);
-                            return limeHtml + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
+                            return limeHtml + fertChipHtml(field, origIdx, isPastSeason) + rollingHtml + weedsChipHtml(field, origIdx, isPastSeason);
                         })()}
                     </td>
-                    ${fertPlanCell}
                 </tr>
             `;
         });
     }
     const searching = !!fieldSearchQuery() && fields && fields.length > 0;
     if (searching && !shownCount) {
-        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+        htmlString = `<tr class="fields-search-empty"><td colspan="7">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
+    renderFieldsTimeline(fields);
     renderBulkBar();
     const countEl = document.getElementById('fields-search-count');
     if (countEl) {
@@ -1445,7 +1913,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'weeds', 'weedsManual', 'work', 'workCleared', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation'];
+const FIELD_EXTRA_KEYS = ['id', 'plowRequired', 'stones', 'weeds', 'weedsManual', 'work', 'workFor', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under
@@ -1539,7 +2007,7 @@ function buildFieldEditCard(field, opts) {
 
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
-            <td colspan="8">
+            <td colspan="7">
                 <div class="field-card">
                     <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -1581,8 +2049,9 @@ function buildFieldEditCard(field, opts) {
                             <div class="treatments-cell">
                                 <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}${limePhForCard != null && limePhForCard >= 0.5 ? ' lime-strong' : ''}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
                                     <span class="lime-fill"></span>
-                                    <span class="lime-letter">${t('limeLetter')}</span>
+                                    <span class="lime-letter" data-letter="${t('limeLetter')}">${t('limeLetter')}</span>
                                 </button>
+                                <span class="fc-chip-text">${t('work_lime')}</span>
                             </div>
                         </div>
                     </div>
@@ -1591,22 +2060,19 @@ function buildFieldEditCard(field, opts) {
                             <span class="fc-label" title="${t('catchCropHint')}">${t('thCatchCrop')}</span>
                             <select class="edit-input field-catch-crop" onchange="onCatchCropChange(this)">${catchCropOptions}</select>
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--catch-sow"${field.catchCrop ? '' : ' hidden'}>
                             <span class="fc-label">${t('thCatchSowingMth')}</span>
                             <select class="edit-input field-catch-sow">${catchMonthOptions}</select>
                         </div>
-                    </div>
-                    ${getRotations(farm).length ? `<div class="field-card-row field-card-row--grid field-card-row--rotation">${rotationEditCellsHtml(farm, field)}</div>` : ''}
-                    <div class="field-card-row field-card-row--grid field-card-row--lease">
                         <div class="fc-cell">
                             <span class="fc-label">${t('leaseLabel')}</span>
                             <label class="lease-check"><input type="checkbox" class="field-lease fp-check" ${lease ? 'checked' : ''}> ${t('leaseYes')}</label>
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--lease-detail"${lease ? '' : ' hidden'}>
                             <span class="fc-label">${t('leaseSeasons')}</span>
                             <input type="number" min="1" max="50" step="1" class="edit-input field-lease-seasons" value="${lease ? lease.seasons || '' : ''}" placeholder="–">
                         </div>
-                        <div class="fc-cell">
+                        <div class="fc-cell fc-cell--lease-detail"${lease ? '' : ' hidden'}>
                             <span class="fc-label">${t('leaseThen')}</span>
                             <select class="edit-input field-lease-then">
                                 <option value="return" ${lease && lease.then === 'return' ? 'selected' : ''}>${t('leaseReturn')}</option>
@@ -1644,7 +2110,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
+            <td colspan="7" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
@@ -1663,7 +2129,24 @@ window.onCropChange = function (selectEl) {
 window.onCatchCropChange = function (selectEl) {
     const row = selectEl.closest('tr');
     row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(selectEl.value, null);
+    syncCardOptionalCells(row);
 };
+
+// Edit card: the catch crop's month only with a catch crop, the lease length
+// and "then" only on a leased field.
+function syncCardOptionalCells(row) {
+    const catchSel = row.querySelector('.field-catch-crop');
+    const lease = row.querySelector('.field-lease');
+    const sowCell = row.querySelector('.fc-cell--catch-sow');
+    if (sowCell && catchSel) sowCell.hidden = !catchSel.value;
+    row.querySelectorAll('.fc-cell--lease-detail').forEach(c => { c.hidden = !(lease && lease.checked); });
+}
+
+if (fieldsBody) fieldsBody.addEventListener('change', e => {
+    if (!e.target.classList || !e.target.classList.contains('field-lease')) return;
+    const row = e.target.closest('tr');
+    if (row) syncCardOptionalCells(row);
+});
 
 // Toggles between "Plowed" and "No-till" for a field — mutually exclusive,
 // like a radio pair: selecting one clears the other, clicking the already
@@ -1942,7 +2425,7 @@ async function loadFieldsFromGame() {
     const farm = allFarms.find(f => f.id === currentFarmId);
     if (!farm || isEditMode) return;
     useSaveFarm(farm);
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) { await showNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
 
     const byId = {};
@@ -1972,7 +2455,7 @@ async function loadFieldsFromGame() {
             }
         }
         // Sown: the planned crop is what's growing there in the game.
-        if (field.crop && field.state !== 'Planted' && games.every(g => g.sown && cropOrderKey(saveFruitToCropKey(g.fruitType)) === cropOrderKey(field.crop))) {
+        if (field.crop && field.state !== 'Planted' && games.every(g => saveFieldGrowsCrop(g, field.crop))) {
             field.state = 'Planted';
             syncSowStep(field);
             sown++;
@@ -2009,11 +2492,15 @@ function readLeaseInputs(row, farm) {
     if (!on || !on.checked) return null;
     let prev = null;
     try { prev = JSON.parse(row.dataset.extra || '{}').lease || null; } catch (e) { /* none */ }
-    const seasons = parseInt(row.querySelector('.field-lease-seasons').value, 10);
+    return leaseFromValues(prev, farm, row.querySelector('.field-lease-seasons').value, row.querySelector('.field-lease-then').value);
+}
+
+function leaseFromValues(prev, farm, seasonsValue, thenValue) {
+    const seasons = parseInt(seasonsValue, 10);
     const out = {
         since: prev && prev.since ? prev.since : (farm.currentSeason || 1),
         seasons: seasons > 0 ? seasons : null,
-        then: row.querySelector('.field-lease-then').value === 'buy' ? 'buy' : 'return'
+        then: thenValue === 'buy' ? 'buy' : 'return'
     };
     // A lease read from Field Leasing keeps the game's numbers (next sync refreshes them).
     if (prev && prev.source === 'game') ['source', 'months', 'minMonths', 'monthlyFee'].forEach(k => { out[k] = prev[k]; });
@@ -2178,9 +2665,6 @@ function collectEditedFields(farm) {
         });
         const added = fields[fields.length - 1];
         if (!added.id) added.id = newFieldId();
-        const rotation = readRotationInputs(row, farm, added.rotation);
-        if (rotation) added.rotation = rotation;
-        else delete added.rotation;
 
         const sizeInput = row.querySelector('.field-size-input');
         if (sizeInput && sizeInput.value) {
@@ -2202,8 +2686,16 @@ function editTableSnapshot(farm) {
 
 function setEditModeUi(on) {
     isEditMode = on;
+    if (editSeasonBtn) editSeasonBtn.title = on ? '' : t('editFieldsHint');
+    if (on) hideUndoToast();
     if (editSeasonBtn) {
-        editSeasonBtn.innerText = t(on ? 'saveChanges' : 'edit');
+        const label = editSeasonBtn.querySelector('.edit-main-label');
+        const icon = editSeasonBtn.querySelector('i');
+        if (label) {
+            label.dataset.i18n = on ? 'saveChanges' : 'edit';
+            label.textContent = t(label.dataset.i18n);
+        }
+        if (icon) icon.className = 'fa-solid ' + (on ? 'fa-check' : 'fa-pen');
         editSeasonBtn.classList.toggle('is-saving', on);
     }
     const cancelBtn = document.getElementById('cancel-edit-btn');
@@ -2211,14 +2703,13 @@ function setEditModeUi(on) {
     const loadBtn = document.getElementById('load-fields-btn');
     if (loadBtn && on) loadBtn.hidden = true;
     // Starting a new season mid-edit would throw the edits away.
-    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : 'inline-block';
-    // Cycles are assigned in the edit cards meanwhile.
-    const rotationBtn = document.getElementById('rotation-btn');
-    if (rotationBtn) rotationBtn.hidden = on;
+    if (newSeasonBtn) newSeasonBtn.style.display = on ? 'none' : '';
     // Edit lists every field, so the search steps aside until it's done.
     const searchWrap = document.getElementById('fields-search-wrap');
     if (searchWrap) searchWrap.hidden = on;
     if (!on) editSnapshot = null;
+    // Edit cards live in the table, whichever view was open.
+    updateFieldsViewUi();
     // The Today panel stays out of the way while editing.
     if (typeof renderTodayPanel === 'function') renderTodayPanel();
     document.querySelectorAll('.season-nav-btn').forEach(b => {

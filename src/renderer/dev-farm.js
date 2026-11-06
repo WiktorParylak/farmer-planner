@@ -5,7 +5,8 @@
 //              crops with hectares left unassigned, a catch crop, grassland
 //              with cuts, two leases (return / buy), a field with an empty work
 //              list, every lime state (limed this season with an undo history,
-//              limed earlier, low pH, never limed, a crop that takes no lime);
+//              limed earlier, low pH, never limed, a crop that takes no lime),
+//              a no-till field the game wants ploughed (ploughing required);
 //   animals  — five barns: cows (lactating, pregnant, heifers, calves), pigs
 //              short of grain, an empty chicken coop, sheep and goats with low
 //              health, horses; troughs with and without a capacity entered;
@@ -13,6 +14,10 @@
 //              capacity);
 //   history  — two archived seasons and 32 in-game months for the charts;
 //   notes    — this month, several months, checklist, no checklist;
+//   weather  — rain later today;
+//   market   — price curves for its crops and inputs, three great demands;
+//   productions — a grain mill running, a biogas plant on silage and slurry,
+//              an oil mill switched off (the crop generator plans for the two);
 //   rotation — three cycles, a field on its cycle, one off it, grassland in
 //              its last season, an empty field the cycle fills in.
 // No savegame path, so nothing is ever synced over it.
@@ -54,8 +59,8 @@ function devFields() {
             work: [{ step: "harvest", done: true }, { step: "plow", done: true }, { step: "lime", done: true },
                 { step: "sow", done: false }, { step: "fertilize", done: false }]
         }),
-        // Sowing month already passed; never limed; weeds to spray.
-        // Off its rotation: the cycle wants wheat after canola.
+        // Sowing month already passed; never limed; weeds marked, but not sown yet,
+        // so "What to do today" doesn't list them. Off its rotation: the cycle wants wheat after canola.
         devField("2", 3.4, "Barley", "SEPTEMBER", "To Plant", null, { weeds: "needed", rotation: { id: "rot_dev_canola", step: 1, stepSeason: 1 } }),
         // Two farmlands in one field; planted, rolled, fertilized.
         devField("3-4", 7.8, "Canola", "AUGUST", "Planted", "noTill", {
@@ -91,10 +96,13 @@ function devFields() {
             limeAppliedSeason: 2, limePh: 0.95, manure: true, work: []
         }),
         // Low pH from an old liming.
-        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55 }),
-        devField("14", 3.1, "Oat", "MARCH", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true }),
+        devField("13", 0.85, "Sunflower", "APRIL", "To Plant", "noTill", { limeAppliedSeason: 1, limePh: 0.55, plowRequired: true, stones: 0.08 }),
+        // Sown, weeds to spray ("What to do today" lists it).
+        devField("14", 3.1, "Oat", "MARCH", "Planted", "noTill", { limeAppliedSeason: 2, limePh: 0.8, fertilizer: true, weeds: "needed" }),
         // A field bought but not planned yet; its rotation fills in wheat when the planner opens (October).
-        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } })
+        devField("15", 1.75, "", "", "To Plant", null, { rotation: { id: "rot_dev_norfolk", step: 0, stepSeason: 1 } }),
+        // Nothing planned and no cycle: giving it one fills in the step's crop.
+        devField("16", 0.9, "", "", "To Plant", null, {})
     ];
 }
 
@@ -181,6 +189,56 @@ function devArchivedSeasons() {
 
 // One row per in-game month from year 1 MARCH to now. Money and the herd grow
 // with a little wobble so the trend charts have something to show.
+// A log as field-log.js writes it: last year's work and this autumn's, with one
+// crop lost, grass cut twice and the summary of last year still to be looked at.
+function devFieldLog() {
+    const y1 = DEV_YEAR - 1, y2 = DEV_YEAR;
+    const e = (y, m, d, id, type, crop, ha) => ({ y, m, d, day: ((y - 1) * 12 + DEV_MONTHS.indexOf(m)) * 3 + d, id, type, crop, ha });
+    return {
+        since: { y: y1, m: 'MARCH', d: 1 },
+        year: y2,
+        summaryDue: y1,
+        day: 23,
+        daysPerPeriod: 3,
+        fields: {},
+        events: [
+            e(y1, 'MARCH', 2, '6', 'fertilize', null, 4.0),
+            e(y1, 'APRIL', 1, '10', 'cultivate', null, 6.2),
+            e(y1, 'APRIL', 2, '10', 'sow', 'Maize', 6.2),
+            e(y1, 'MAY', 3, '6', 'mow', 'Grass', 4.0),
+            e(y1, 'JUNE', 1, '14', 'withered', 'Oat', 3.1),
+            e(y1, 'JULY', 1, '1', 'harvest', 'Wheat', 8.4),
+            e(y1, 'JULY', 3, '6', 'mow', 'Grass', 4.0),
+            e(y1, 'AUGUST', 1, '1', 'stubble', null, 8.4),
+            e(y1, 'AUGUST', 2, '3', 'plow', null, 4.1),
+            e(y1, 'AUGUST', 3, '3', 'sow', 'Canola', 4.1),
+            e(y1, 'OCTOBER', 2, '10', 'harvest', 'Maize', 6.2),
+            e(y2, 'MARCH', 1, '3', 'fertilize', null, 4.1),
+            e(y2, 'MARCH', 3, '3', 'lime', null, 4.1),
+            e(y2, 'JULY', 2, '3', 'harvest', 'Canola', 4.1),
+            e(y2, 'AUGUST', 1, '3', 'mulch', null, 4.1),
+            e(y2, 'SEPTEMBER', 1, '1', 'sow', 'Wheat', 8.4)
+        ]
+    };
+}
+
+// Silos, a fermented bunker silo, a manure heap (level not in saves) and a shed, as readFarmStorageFromSave gives them.
+function devStorage() {
+    return {
+        places: [
+            { id: 'dev-silo', name: 'Grain silo', kind: 'silo', state: null, fills: { WHEAT: 42000, BARLEY: 18000, CANOLA: 9000 } },
+            { id: 'dev-silo2', name: 'Silo extension', kind: 'silo', state: null, fills: {} },
+            { id: 'dev-bunker', name: 'Bunker silo', kind: 'bunker', state: 'fermented', fills: { SILAGE: 240000 } },
+            { id: 'dev-heap', name: 'Manure heap', kind: 'heap', state: null, fills: {} },
+            { id: 'dev-shed', name: 'Bale shed', kind: 'shed', state: null, fills: { STRAW: 60000 } }
+        ],
+        totals: {
+            WHEAT: { silo: 42000 }, BARLEY: { silo: 18000 }, CANOLA: { silo: 9000 }, SILAGE: { bunker: 240000, bale: 28000 },
+            STRAW: { bale: 60000 }, MINERAL_FEED: { pallet: 1500 }, SEEDS: { pallet: 2000 }
+        }
+    };
+}
+
 function devMonthlyHistory() {
     const rows = [];
     const last = (DEV_YEAR - 1) * 12 + DEV_MONTH_INDEX;
@@ -207,10 +265,114 @@ function devMonthlyHistory() {
                 EGG: Math.round(3600 * k),
                 WOOL: Math.round(900 * k),
                 GOATMILK: period > 12 ? Math.round(1200 * k) : 0
-            }
+            },
+            // Income and costs of the last ten months only, as when the farm
+            // started collecting them with 0.11.0 (three days per month).
+            financeDays: period > last - 10 ? devFinanceDays(period, k) : undefined
         });
     }
     return rows;
+}
+
+// The days of one month as farms.xml <finances> files them: costs negative,
+// harvest money in summer and autumn, a tractor bought and an old one sold.
+function devFinanceDays(period, k) {
+    const m = period % 12;                       // 0 = March
+    const harvest = [0, 0, 0.3, 1, 1.2, 0.6, 0.8, 0.2, 0, 0, 0, 0][m];
+    const sowing = [1, 0.8, 0.2, 0, 0.4, 0.9, 0.3, 0, 0, 0, 0, 0.5][m];
+    const out = {};
+    for (let d = 0; d < 3; d++) {
+        const day = period * 3 + 1 + d;
+        const cats = {
+            harvestIncome: Math.round(38000 * harvest * (1 + 0.3 * Math.sin(day))),
+            soldMilk: Math.round((2600 + 3400 * k) * (1 + 0.1 * Math.cos(day))),
+            soldProducts: Math.round(1800 + 900 * Math.sin(day * 0.7)),
+            missionIncome: d === 1 ? Math.round(4200 + 1500 * Math.sin(period)) : 0,
+            purchaseSeeds: -Math.round(9000 * sowing),
+            purchaseFertilizer: -Math.round(5200 * sowing + 600),
+            purchaseFuel: -Math.round(1400 + 1800 * harvest),
+            vehicleRunningCost: -Math.round(900 + 700 * k),
+            propertyMaintenance: -Math.round(350 + 250 * k),
+            wagePayment: -Math.round(600 + 2400 * harvest),
+            loanInterest: -Math.round(180 - 60 * k),
+            productionCosts: -260
+        };
+        if (m === 1 && d === 0) cats.newVehiclesCost = -185000;
+        if (m === 5 && d === 2) cats.soldVehicles = 42000;
+        Object.keys(cats).forEach(c => { if (!cats[c]) delete cats[c]; });
+        out[day] = cats;
+    }
+    return out;
+}
+
+// Productions as readProductionsFromSave returns them (feed.js).
+function devProductions() {
+    const recipe = (id, inputs, outputs, cyclesPerMonth, enabled) => ({
+        id, cyclesPerMonth, enabled,
+        inputs: inputs.map(([fillType, amount]) => ({ fillType, amount })),
+        outputs: outputs.map(([fillType, amount]) => ({ fillType, amount })),
+        costPerMonth: id === 'canola' ? undefined : 240
+    });
+    const prod = (id, kind, name, recipes, stock) => ({
+        id, kind, name, nameTitles: null, fillTypeTitles: {}, mod: '',
+        products: [...new Set(recipes.flatMap(r => r.outputs.map(o => o.fillType)))],
+        recipes, stock, capacity: { _default: 200000 }
+    });
+    return [
+        prod('dev-grainmill', 'production', 'Grain Mill', [recipe('flour', [['WHEAT', 1000]], [['FLOUR', 800]], 8, true)], { WHEAT: 6000 }),
+        prod('dev-biogas', 'biogas', 'Biogas Plant', [
+            recipe('silage', [['SILAGE', 2000], ['LIQUIDMANURE', 1000]], [['METHANE', 1200], ['DIGESTATE', 1500]], 4, true)
+        ], { SILAGE: 10000 }),
+        prod('dev-oilmill', 'production', 'Oil Mill', [recipe('canola', [['CANOLA', 1000]], [['OIL_CANOLA', 450]], 6, false)], {})
+    ];
+}
+
+// The game's yield multiplier as the link mod measures it (base game values
+// differ per fruit only for grass, which ignores ploughing and rolling).
+function devHarvestScale() {
+    const probe = { full: 1, spray0: 0.55, spray05: 0.775, plow0: 0.85, lime0: 0.85, weed0: 0.8, stubble0: 0.975, roller0: 0.975 };
+    const out = {};
+    ['WHEAT', 'BARLEY', 'OAT', 'CANOLA', 'MAIZE', 'SUNFLOWER', 'SOYBEAN', 'SUGARBEET', 'POTATO'].forEach(f => { out[f] = Object.assign({}, probe); });
+    out.GRASS = Object.assign({}, probe, { plow0: 1, roller0: 1 });
+    return out;
+}
+
+// Game fields as readSaveFields returns them, for the crops in the ground:
+// 3 is fully worked, 4 lacks lime and half its fertilizer, 14 was not mulched.
+function devSaveFields() {
+    const g = (id, fruitType, areaHa, levels) => Object.assign({
+        id, areaHa, fruitType, plannedFruit: fruitType, growthState: 4, sown: true, sprayType: 'FERTILIZER', groundType: 'SOWN',
+        weedState: 0, sprayLevel: 2, limeLevel: 1, plowLevel: 1, stubbleShredLevel: 1, rollerLevel: 1, stoneShare: 0
+    }, levels);
+    return [
+        g('3', 'CANOLA', 4.1, {}),
+        g('4', 'CANOLA', 3.7, { sprayLevel: 1, limeLevel: 0 }),
+        g('6', 'GRASS', 4.0, { sprayLevel: 1, plowLevel: 0, rollerLevel: 0 }),
+        g('14', 'OAT', 3.1, { stubbleShredLevel: 0 })
+    ];
+}
+
+// Prices for "Yields and prices" (shape of readSaveMarket in market.js): a
+// seasonal curve per crop and input, high after harvest, and three great
+// demands — one running, one for a crop of the farm, one for something else.
+function devMarket() {
+    const base = { WHEAT: 330, BARLEY: 300, CANOLA: 640, MAIZE: 290, SOYBEAN: 720, POTATO: 260, SUGARBEET: 180,
+        SUNFLOWER: 600, OAT: 380, GRASS: 45, RICE: 1100, OILSEEDRADISH: 250, SEEDS: 900, FERTILIZER: 1600, LIME: 230 };
+    // Harvest month of each curve (period index from March): the price is lowest there.
+    const low = { WHEAT: 4, BARLEY: 3, CANOLA: 4, MAIZE: 7, SOYBEAN: 6, POTATO: 6, SUGARBEET: 7, SUNFLOWER: 6, OAT: 4, RICE: 6 };
+    const prices = {};
+    Object.keys(base).forEach(ft => {
+        const swing = ft in low ? 0.18 : 0.04;
+        prices[ft] = DEV_MONTHS.map((m, i) => Math.round(base[ft] * (1 + swing * -Math.cos((i - (low[ft] || 0)) / 12 * 2 * Math.PI))));
+    });
+    return {
+        prices,
+        demands: [
+            { fillType: "CANOLA", multiplier: 1.3, startDay: 23, startHour: 6, hours: 12, running: true, station: "Grain elevator" },
+            { fillType: "WHEAT", multiplier: 1.2, startDay: 24, startHour: 18, hours: 18, running: false, station: "Mill" },
+            { fillType: "STRAW_PELLETS", multiplier: 1.3, startDay: 26, startHour: 8, hours: 12, running: false, station: "Bale shop" }
+        ]
+    };
 }
 
 function devNotes(pl) {
@@ -239,6 +401,11 @@ function devNotes(pl) {
 
 function buildDevFarm({ pl }) {
     const buildings = devAnimalBuildings();
+    // One barn short of straw and working below par, the others fine.
+    buildings.forEach((b, i) => {
+        b.productivity = i === 0 ? 0.62 : 1;
+        b.production.push({ fillType: 'STRAW', level: i === 0 ? 400 : 90000 });
+    });
     const totals = devTotals(buildings);
     const farm = {
         id: DEV_FARM_ID,
@@ -255,9 +422,28 @@ function buildDevFarm({ pl }) {
         month: DEV_MONTHS[DEV_MONTH_INDEX],
         dayInPeriod: 2,
         daysPerPeriod: 3,
+        gameDay: 23,
+        dayMinutes: 600,
+        // Rain from 16:00 for 3 hours (two entries in a row), then sun.
+        forecast: [
+            { type: "SUN", startDay: 23, startMin: 360, minutes: 600 },
+            { type: "RAIN", startDay: 23, startMin: 960, minutes: 120 },
+            { type: "RAIN", startDay: 23, startMin: 1080, minutes: 60 },
+            { type: "CLOUDY", startDay: 23, startMin: 1140, minutes: 300 }
+        ],
+        devMarket: devMarket(),
+        // What the link mod would report: the game's yield multiplier per fruit
+        // and the state of the game fields growing a crop now (losses in
+        // "Yields and prices" and the field view).
+        harvestScale: devHarvestScale(),
+        devSaveFields: devSaveFields(),
+        // Ploughing required, so field 13 (no-till) has to be ploughed first.
+        gameRules: { plowingRequired: true, stones: true, weeds: true, lime: true },
         yearNumber: DEV_YEAR,
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,
+        // A crop that came off this season, ahead of the rest of the farm.
+        finishedCrops: [devField("13", 0.85, "Pea", "MARCH", "Planted", "noTill", { finishedSeason: DEV_SEASON, finishedMonth: "JULY" })],
         fieldSizes: { "5": 5 },
         // Crop rotation: three cycles; fields 1, 2, 3-4, 6 and 15 use them.
         rotations: [
@@ -285,6 +471,15 @@ function buildDevFarm({ pl }) {
             "dev-cowbarn": { __ALL_FEED__: 120000 },
             "dev-sheeppasture": { __ALL_FEED__: 20000 }
         },
+        feedPlan: {
+            customFeeds: [{
+                id: 'devpicks', animalType: 'CHICKEN', name: 'Layer mix', efficiency: 100,
+                ingredients: [
+                    { category: 'GRAIN', pct: 70 },
+                    { category: 'PROTEIN', pct: 30, fillTypes: ['BEETROOT', 'BREAD', 'MAIZE'] }
+                ]
+            }]
+        },
         feedStock: {
             SILAGE: { bunker: 240000, bale: 28000 },
             DRYGRASS_WINDROW: { bale: 36000 },
@@ -306,6 +501,8 @@ function buildDevFarm({ pl }) {
             { id: "save:dev-mixer1", name: "Siloking TruckLine Premium 2.0", capacity: 24000, source: "save" },
             { id: "save:dev-mixer2", name: "Kuhn Profile 1880", capacity: null, source: "save" }
         ],
+        productions: devProductions(),
+        storage: devStorage(),
         supplyRates: {
             defaultOverridesCleaned: true,
             fieldSoil: {
@@ -324,6 +521,7 @@ function buildDevFarm({ pl }) {
     };
     return {
         farm,
+        fieldLog: devFieldLog(),
         seasons: devArchivedSeasons(),
         monthly: devMonthlyHistory(),
         notes: devNotes(pl)

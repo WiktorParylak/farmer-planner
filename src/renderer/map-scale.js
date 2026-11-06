@@ -3,15 +3,19 @@
 // size and objects stay; only the pixels per metre double. Nothing in the mods
 // folder is touched: the originals are copied to <data>/maps/<map>/backup/<stamp>/
 // and the scaled files go to <data>/maps/<map>/scaled/<stamp>/ — the player
-// copies them into the mod. A classic <script> after tramlines.js; the heavy
-// work runs in map-scale-worker.js (own process).
+// copies them into the mod. A save made on the map holds its own copies of the
+// layers: they can be scaled the same way, and the save is only read. A classic
+// <script> after tramlines.js; the heavy work runs in map-scale-worker.js (own process).
 
 const { overrideDir: msOverrideDir, modAssistantFolders: msModAssistantFolders } = require('./mod-locator');
 
-const MS_GROUPS = ['dem', 'gdm', 'grle', 'png'];
+const MS_GROUPS = ['dem', 'gdm', 'grle', 'pf', 'png'];
 const MS_BIG = 16384;     // past this a layer is unusually large for the game
 
 const ms = {
+    source: 'map',           // what gets scaled: 'map' | 'save'
+    saves: [],               // from tlListSaves()
+    saveDir: '',
     maps: [],
     key: '',                 // "<dir>|<name>" of the picked map
     info: null,              // worker inspect() result
@@ -79,6 +83,10 @@ function msCurrentMap() {
     return ms.maps.find(m => m.dir + '|' + m.name === ms.key) || null;
 }
 
+function msCurrentSave() {
+    return ms.saves.find(s => s.dir === ms.saveDir) || null;
+}
+
 function msOutRoot(map) {
     return path.join(appDataDir, 'maps', tlSafeName(map.title || map.name));
 }
@@ -88,7 +96,7 @@ function msFmtMb(bytes) {
 }
 
 function msGroupOf(f) {
-    return f.dem ? 'dem' : f.kind;
+    return f.dem ? 'dem' : (f.pf ? 'pf' : f.kind);
 }
 
 // ---------- view ----------
@@ -98,6 +106,8 @@ async function msOpen() {
     if (dashboardView) dashboardView.style.display = 'none';
     view.hidden = false;
     ms.result = null; ms.error = '';
+    ms.saves = tlListSaves();
+    if (!msCurrentSave()) ms.saveDir = ms.saves.length ? ms.saves[0].dir : '';
     if (!ms.maps.length) {
         msRender(t('msSearching'));
         try { ms.maps = await msCall('listMaps', { dirs: msModsDirs() }); }
@@ -117,14 +127,15 @@ function msClose() {
 }
 
 async function msInspect() {
-    const map = msCurrentMap();
+    const map = msCurrentMap(), save = msCurrentSave(), fromSave = ms.source === 'save';
     ms.info = null; ms.sel.clear(); ms.result = null;
-    if (!map) { msRender(); return; }
+    if (!(fromSave ? save : map)) { msRender(); return; }
     msRender(t('msReading'));
     try {
-        ms.info = await msCall('inspect', { dir: map.dir, name: map.name });
-        // Everything but the height map starts ticked: a finer terrain mesh is a bigger step.
-        ms.info.files.forEach(f => { if (!f.reason && !f.dem) ms.sel.add(f.rel); });
+        ms.info = await (fromSave ? msCall('inspectSave', { saveDir: save.dir }) : msCall('inspect', { dir: map.dir, name: map.name }));
+        // Everything but the height map starts ticked: a finer terrain mesh is a
+        // bigger step. Precision Farming's maps have a resolution of their own.
+        ms.info.files.forEach(f => { if (!f.reason && !f.dem && !f.pf) ms.sel.add(f.rel); });
         ms.error = '';
     } catch (e) { console.error(e); ms.error = msErrorText(e); }
     msRender();
@@ -162,15 +173,27 @@ function msListHtml() {
 }
 
 function msSideHtml(busy) {
-    const map = msCurrentMap();
+    const fromSave = ms.source === 'save';
+    const map = fromSave ? msCurrentSave() : msCurrentMap();
     const info = ms.info;
-    let html = `<p class="settings-hint">${escapeHtml(t('msHint'))}</p>`;
-    if (!ms.maps.length) {
-        html += `<p class="settings-hint">${escapeHtml(busy ? '' : t('msNoMaps'))}</p>`;
-        return html;
+    const sourceBtn = (src, label) => `<button type="button" class="settings-btn${ms.source === src ? ' is-active' : ''}" data-ms="source" data-source="${src}" aria-pressed="${ms.source === src}"${ms.running ? ' disabled' : ''}>${escapeHtml(t(label))}</button>`;
+    let html = `<div class="tl-row">${sourceBtn('map', 'msSourceMap')}${sourceBtn('save', 'msSourceSave')}</div>
+        <p class="settings-hint">${escapeHtml(t(fromSave ? 'msHintSave' : 'msHint'))}</p>`;
+    if (fromSave) {
+        if (!ms.saves.length) {
+            html += `<p class="settings-hint">${escapeHtml(t('tlNoSaves').replace('{dir}', tlGameDir()))}</p>`;
+            return html;
+        }
+        html += `<label class="ms-field"><span>${escapeHtml(t('msSave'))}</span>
+            <select id="ms-save"${ms.running ? ' disabled' : ''}>${ms.saves.map(s => `<option value="${escapeHtml(s.dir)}"${s.dir === ms.saveDir ? ' selected' : ''}>${escapeHtml(s.name)}${s.title ? ' · ' + escapeHtml(s.title) : ''}</option>`).join('')}</select></label>`;
+    } else {
+        if (!ms.maps.length) {
+            html += `<p class="settings-hint">${escapeHtml(busy ? '' : t('msNoMaps'))}</p>`;
+            return html;
+        }
+        html += `<label class="ms-field"><span>${escapeHtml(t('msMap'))}</span>
+            <select id="ms-map"${ms.running ? ' disabled' : ''}>${ms.maps.map(m => `<option value="${escapeHtml(m.dir + '|' + m.name)}"${m.dir + '|' + m.name === ms.key ? ' selected' : ''}>${escapeHtml(m.title)} (${escapeHtml(m.name)}${m.zip ? '.zip' : ''})</option>`).join('')}</select></label>`;
     }
-    html += `<label class="ms-field"><span>${escapeHtml(t('msMap'))}</span>
-        <select id="ms-map"${ms.running ? ' disabled' : ''}>${ms.maps.map(m => `<option value="${escapeHtml(m.dir + '|' + m.name)}"${m.dir + '|' + m.name === ms.key ? ' selected' : ''}>${escapeHtml(m.title)} (${escapeHtml(m.name)}${m.zip ? '.zip' : ''})</option>`).join('')}</select></label>`;
     if (info && info.sizeM) {
         html += `<p class="ms-mapinfo">${escapeHtml(t('msMapInfo').replace(/\{size\}/g, info.sizeM).replace('{dem}', info.demW).replace('{upp}', info.upp))}</p>`;
     }
@@ -182,7 +205,7 @@ function msSideHtml(busy) {
             <button type="button" class="tl-link" data-ms="all"${ms.running ? ' disabled' : ''}>${escapeHtml(t('msSelectAll'))}</button>
             <button type="button" class="tl-link" data-ms="none"${ms.running ? ' disabled' : ''}>${escapeHtml(t('msSelectNone'))}</button>
         </div>`;
-        if (dem) html += `<p class="settings-hint ms-warn">${escapeHtml(t('msDemNote').replace('{i3d}', info.i3dRel).replace('{from}', info.upp).replace('{to}', info.upp / 2))}</p>`;
+        if (dem) html += `<p class="settings-hint ms-warn">${escapeHtml(fromSave ? t('msSaveDemNote') : t('msDemNote').replace('{i3d}', info.i3dRel).replace('{from}', info.upp).replace('{to}', info.upp / 2))}</p>`;
         html += `<p class="ms-total">${escapeHtml(t('msTotal').replace('{n}', picked.length).replace('{mb}', msFmtMb(bytes)))}</p>`;
         html += ms.running
             ? `<button type="button" class="settings-btn" data-ms="cancel">${escapeHtml(t('msCancel'))}</button>`
@@ -193,14 +216,16 @@ function msSideHtml(busy) {
 }
 
 function msResultHtml() {
-    const r = ms.result, map = msCurrentMap();
+    const r = ms.result, map = msCurrentMap(), save = msCurrentSave();
     if (!r) return '';
     const modPath = map ? path.join(map.dir, map.name + (map.zip ? '.zip' : '')) : '';
     return `<section class="ms-done" role="status">
         <h3 class="ms-group-title"><span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${escapeHtml(t('msDone').replace('{n}', r.files.length))}</span></h3>
-        <p class="settings-hint">${escapeHtml(t(map && map.zip ? 'msDoneZip' : 'msDoneHint').replace('{mod}', modPath))}</p>
+        <p class="settings-hint">${escapeHtml(r.save
+            ? t('msDoneSave').replace('{name}', r.save).replace('{dir}', save ? save.dir : r.save)
+            : t(map && map.zip ? 'msDoneZip' : 'msDoneHint').replace('{mod}', modPath))}</p>
         ${r.i3d ? `<p class="settings-hint ms-warn">${escapeHtml(t('msDoneI3d').replace('{i3d}', r.i3d.rel).replace('{from}', r.i3d.from).replace('{to}', r.i3d.to))}</p>` : ''}
-        <p class="settings-hint ms-warn">${escapeHtml(t('msNewSave'))}</p>
+        ${r.save ? '' : `<p class="settings-hint ms-warn">${escapeHtml(t('msNewSave'))}</p>`}
         <div class="tl-row">
             <button type="button" class="settings-btn" data-ms="open-scaled"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> ${escapeHtml(t('msOpenScaled'))}</button>
             <button type="button" class="settings-btn" data-ms="open-backup"><i class="fa-solid fa-box-archive" aria-hidden="true"></i> ${escapeHtml(t('msOpenBackup'))}</button>
@@ -230,15 +255,19 @@ function msRenderProgress(busy) {
 }
 
 async function msStart() {
-    const map = msCurrentMap();
-    if (!map || !ms.info || ms.running) return;
+    const map = msCurrentMap(), save = msCurrentSave(), fromSave = ms.source === 'save';
+    if (!(fromSave ? save : map) || !ms.info || ms.running) return;
     const files = ms.info.files.filter(f => ms.sel.has(f.rel)).map(f => f.rel);
     if (!files.length) return;
+    // The game rewrites a save's layers while it saves.
+    if (fromSave && await tlGameRunning()) { ms.error = t('msGameRunning'); msRender(); return; }
     ms.running = { i: 0, n: files.length, name: '', frac: 0 };
     ms.result = null; ms.error = '';
     msRender();
     try {
-        ms.result = await msCall('run', { dir: map.dir, name: map.name, files, outRoot: msOutRoot(map) });
+        ms.result = await (fromSave
+            ? msCall('runSave', { saveDir: save.dir, files, outRoot: msOutRoot(save) })
+            : msCall('run', { dir: map.dir, name: map.name, files, outRoot: msOutRoot(map) }));
     } catch (e) {
         console.error(e);
         ms.error = msErrorText(e);
@@ -257,6 +286,7 @@ async function msStart() {
     view.addEventListener('change', e => {
         const el = e.target;
         if (el.id === 'ms-map') { ms.key = el.value; msInspect(); return; }
+        if (el.id === 'ms-save') { ms.saveDir = el.value; msInspect(); return; }
         if (!ms.info || ms.running) return;
         if (el.dataset.group) {
             ms.info.files.filter(f => msGroupOf(f) === el.dataset.group && !f.reason).forEach(f => { if (el.checked) ms.sel.add(f.rel); else ms.sel.delete(f.rel); });
@@ -271,6 +301,7 @@ async function msStart() {
         if (!b) return;
         const act = b.dataset.ms;
         if (act === 'start') msStart();
+        else if (act === 'source' && !ms.running && ms.source !== b.dataset.source) { ms.source = b.dataset.source; ms.error = ''; msInspect(); }
         else if (act === 'cancel') msCall('cancel', {}).catch(() => {});
         else if ((act === 'all' || act === 'none') && ms.info && !ms.running) {
             ms.sel.clear();

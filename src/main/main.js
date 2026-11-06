@@ -56,6 +56,11 @@ ipcMain.on('get-data-dir', (event) => {
   event.returnValue = dataDir;
 });
 
+// The mod manager waits here for a mod the browser downloads from ModHub.
+ipcMain.on('get-downloads-dir', (event) => {
+  try { event.returnValue = app.getPath('downloads'); } catch (e) { event.returnValue = ''; }
+});
+
 // Farm folders only (a direct child of the data folder), so the renderer can't
 // trash or open anything else.
 function farmFolderPath(folderName) {

@@ -11,7 +11,7 @@
 <body>
     <div class="titlebar">
         <div class="titlebar-drag">
-            <img src="../../Assets/Logo.svg" class="titlebar-icon" alt="">
+            <img src="../../Assets/Icon.svg" class="titlebar-icon" alt="">
             <span class="titlebar-title">Farmer Planner</span>
         </div>
         <div class="titlebar-controls">
@@ -20,11 +20,21 @@
             <button id="titlebar-close" class="titlebar-btn titlebar-btn--close" title="Close" data-i18n-title="titlebarClose"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     </div>
+    <div id="splash" class="splash" aria-hidden="true">
+        <div class="splash-field"></div>
+        <div class="splash-stage">
+            <span class="splash-line"></span>
+            <p class="splash-author">BY WIKTOR PARYLAK</p>
+            <span class="splash-glint"></span>
+        </div>
+    </div>
+    <script src="splash.js"></script>
     <div class="app-container">
         <div id="dashboard-view" class="dashboard-view">
             <section class="brand-section">
                 <div class="logo-wrapper">
-                    <img src="../../Assets/Logo.svg" alt="Farmer Planner" class="logo">
+                    <img src="../../Assets/Logo-color.svg" alt="Farmer Planner" class="logo">
+                    <span class="logo-line" aria-hidden="true"></span>
                     <p class="logo-author">BY WIKTOR PARYLAK</p>
                 </div>
             </section>
@@ -47,6 +57,7 @@
                 <div class="start-tools">
                     <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
                     <button type="button" id="mapscale-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i> <span data-i18n="msTitle">Map scaling</span></button>
+                    <button type="button" id="modmanager-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i> <span data-i18n="mmTitle">Mod manager</span></button>
                 </div>
             </section>
         </div>
@@ -54,15 +65,16 @@
             <header class="tl-header">
                 <button type="button" id="tl-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
                 <h1 class="tl-title" data-i18n="tlTitle">Tramlines</h1>
-                <div class="settings-tabs tl-tabs" role="tablist">
-                    <button type="button" class="settings-tab tl-tab is-active" data-tltab="paste" data-i18n="tlTabPaste">Paste into a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="cut" data-i18n="tlTabCut">Save from a save</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="editor" data-i18n="tlTabEditor">Editor</button>
-                    <button type="button" class="settings-tab tl-tab" data-tltab="settings" data-i18n="tlTabSettings">Settings</button>
+                <div class="view-tabs tl-tabs" role="tablist">
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="cut"><i class="fa-solid fa-scissors" aria-hidden="true"></i> <span data-i18n="tlTabCut">Save from a save</span></button>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="editor"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> <span data-i18n="tlTabEditor">Editor</span></button>
+                    <button type="button" class="view-tab tl-tab is-active" role="tab" aria-selected="true" aria-controls="tl-side" data-tltab="paste"><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="tlTabPaste">Paste into a save</span></button>
+                    <span class="view-tabs-sep" aria-hidden="true"></span>
+                    <button type="button" class="view-tab tl-tab" role="tab" aria-selected="false" aria-controls="tl-side" data-tltab="settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> <span data-i18n="tlTabSettings">Settings</span></button>
                 </div>
             </header>
             <div class="tl-body">
-                <aside id="tl-side" class="tl-side"></aside>
+                <aside id="tl-side" class="tl-side" role="tabpanel"></aside>
                 <div class="tl-canvas-wrap">
                     <canvas id="tl-canvas"></canvas>
                     <div id="tl-busy" class="tl-busy" hidden></div>
@@ -79,9 +91,20 @@
                 <div id="ms-list" class="ms-list"></div>
             </div>
         </div>
+        <div id="modmanager-view" class="tramlines-view modmanager-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="mm-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="mmTitle">Mod manager</h1>
+            </header>
+            <div class="tl-body mm-layout">
+                <aside id="mm-side" class="tl-side"></aside>
+                <div id="mm-main" class="mm-main"></div>
+            </div>
+        </div>
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
                 <h1 id="planner-farm-name" class="save-name"></h1>
+                <span id="live-link-badge" class="live-link-badge" role="status" hidden></span>
                 <div class="header-info">
                     <div class="balance">
                         <h3 class="balance-label" data-i18n="balance">BALANCE</h3>
@@ -101,41 +124,49 @@
             <div class="planner-body">
             <nav id="planner-sidebar" class="planner-sidebar">
                 <div class="sidebar-nav">
+                    <div class="sidebar-group-title" data-i18n="navGroupPlanning">Planning</div>
                     <button type="button" class="sidebar-item sidebar-item--plan is-active" data-view="plan" data-i18n-title="navPlan">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-table-cells" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="navPlan">Plan</span>
-                    </button>
-                    <button type="button" class="sidebar-item sidebar-item--finance" data-view="finance" data-i18n-title="hubFinance">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="hubFinance">Finance</span>
-                    </button>
-                    <button type="button" class="sidebar-item sidebar-item--animals" data-view="animals" data-i18n-title="hubAnimals">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="hubAnimals">Animals</span>
-                    </button>
-                    <button type="button" class="sidebar-item sidebar-item--supplies" data-view="supplies" data-i18n-title="hubSupplies">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="hubSupplies">Supplies</span>
-                    </button>
-                    <button type="button" class="sidebar-item sidebar-item--fieldsoil" data-view="fieldsoil" data-i18n-title="hubFieldSoil">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="hubFieldSoil">Field soil type</span>
                     </button>
                     <button type="button" class="sidebar-item sidebar-item--rotation" data-view="rotation" data-i18n-title="rotTitle">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-arrows-spin" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="rotTitle">Crop rotation</span>
                     </button>
+                    <button type="button" class="sidebar-item sidebar-item--yieldforecast" data-view="yieldforecast" data-i18n-title="hubYieldForecast">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubYieldForecast">Yields and prices</span>
+                    </button>
                     <button type="button" class="sidebar-item sidebar-item--notes" data-view="notes" data-i18n-title="hubNotes">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubNotes">Notes</span>
                     </button>
-                    <button type="button" class="sidebar-item sidebar-item--yieldforecast" data-view="yieldforecast" data-i18n-title="hubYieldForecast">
-                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-seedling" aria-hidden="true"></i></span>
-                        <span class="sidebar-item-label" data-i18n="hubYieldForecast">Predicted yields</span>
+                    <div class="sidebar-group-title" data-i18n="navGroupFarm">Farm</div>
+                    <button type="button" class="sidebar-item sidebar-item--animals" data-view="animals" data-i18n-title="hubAnimals">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-paw" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubAnimals">Animals</span>
                     </button>
                     <button type="button" class="sidebar-item sidebar-item--feedplan" data-view="feedplan" data-i18n-title="hubFeedPlan">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFeedPlan">Feed planner</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--storage" data-view="storage" data-i18n-title="hubStorage">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-warehouse" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubStorage">Storage and productions</span>
+                    </button>
+                    <div class="sidebar-group-title" data-i18n="navGroupBuying">Buying and finance</div>
+                    <button type="button" class="sidebar-item sidebar-item--supplies" data-view="supplies" data-i18n-title="hubSupplies">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubSupplies">Supplies</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--finance" data-view="finance" data-i18n-title="hubFinance">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-coins" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubFinance">Finance</span>
+                    </button>
+                    <div class="sidebar-group-title" data-i18n="navGroupHistory">History</div>
+                    <button type="button" class="sidebar-item sidebar-item--seasonsummary" data-view="seasonsummary" data-i18n-title="hubSeasonSummary">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="hubSeasonSummary">Season summary</span>
                     </button>
                 </div>
                 <div class="sidebar-footer">
@@ -159,16 +190,25 @@
                                 <input type="search" id="fields-search" data-i18n-placeholder="fieldsSearchPlaceholder" placeholder="Search fields…" data-i18n-title="fieldsSearchHint" title="Number, name or crop · Ctrl+F" autocomplete="off" spellcheck="false">
                                 <span id="fields-search-count" class="fields-search-count" hidden></span>
                             </label>
+                            <div id="fields-view-switch" class="fields-view-switch" role="group" data-i18n-aria-label="fieldsViewLabel" aria-label="Plan view">
+                                <button type="button" data-view="table" aria-pressed="true"><i class="fa-solid fa-table-list" aria-hidden="true"></i> <span data-i18n="fieldsViewTable">Table</span></button>
+                                <button type="button" data-view="timeline" aria-pressed="false"><i class="fa-solid fa-bars-progress" aria-hidden="true"></i> <span data-i18n="fieldsViewTimeline">Timeline</span></button>
+                            </div>
+                            <div id="timeline-ahead-switch" class="fields-view-switch" role="group" data-i18n-aria-label="timelineAheadLabel" data-i18n-title="timelineAheadLabel" aria-label="Seasons ahead" title="Seasons ahead" hidden>
+                                <button type="button" data-ahead="1" aria-pressed="false">+1</button>
+                                <button type="button" data-ahead="2" aria-pressed="false">+2</button>
+                                <button type="button" data-ahead="3" aria-pressed="false">+3</button>
+                                <button type="button" data-ahead="4" aria-pressed="false">+4</button>
+                            </div>
                             <div class="main-table-header-btns">
-                                <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n="loadFieldsFromGame" data-i18n-title="loadFieldsFromGameHint" hidden>FIELDS FROM GAME</button>
-                                <button type="button" id="rotation-btn" class="edit-season-btn" data-i18n="rotBtn" data-i18n-title="rotBtnHint">ROTATION</button>
-                                <button type="button" class="new-season-btn" data-i18n="newSeason">NEW SEASON</button>
+                                <button type="button" id="load-fields-btn" class="edit-season-btn" data-i18n-title="loadFieldsFromGameHint" hidden><i class="fa-solid fa-file-import" aria-hidden="true"></i> <span data-i18n="loadFieldsFromGame">FIELDS FROM GAME</span></button>
+                                <button type="button" class="new-season-btn"><i class="fa-solid fa-forward" aria-hidden="true"></i> <span data-i18n="newSeason">NEW SEASON</span></button>
                                 <button type="button" id="cancel-edit-btn" class="edit-season-btn cancel-edit-btn" data-i18n="cancelEdit" hidden>CANCEL</button>
-                                <button type="button" id="edit-season-btn" class="edit-season-btn" data-i18n="editSeason">EDIT SEASON</button>
+                                <button type="button" id="edit-season-btn" class="edit-season-btn edit-main-btn" data-i18n-title="editFieldsHint"><i class="fa-solid fa-pen" aria-hidden="true"></i> <span class="edit-main-label" data-i18n="edit">EDIT</span></button>
                             </div>
                         </div>
                         <div id="bulk-bar" class="bulk-bar" hidden></div>
-                        <div class="table-container">
+                        <div class="table-container" id="fields-table-wrap">
                             <table id="fields-table">
                                 <thead>
                                     <tr>
@@ -179,25 +219,35 @@
                                         <th class="is-sortable" data-sort="state" data-i18n="thState">State</th>
                                         <th data-i18n="thTillage">Tillage</th>
                                         <th data-i18n="thSoil">Soil</th>
-                                        <th data-i18n="thFertPlan">Plan</th>
                                     </tr>
                                 </thead>
                                 <tbody id="fields-body">
                                 </tbody>
                             </table>
                         </div>
+                        <div id="fields-timeline" class="table-container fields-timeline" hidden></div>
                         <div class="table-footer-controls">
+                            <div id="treatments-legend" class="treatments-legend" hidden>
+                                <span class="treatments-legend-item"><span class="treatments-legend-key" data-i18n="limeLetter">L</span> <span data-i18n="legendLime">Lime</span></span>
+                                <span class="treatments-legend-item"><span class="treatments-legend-key" data-i18n="fertilizerLetter">F</span> <span data-i18n="legendFert">Fertilizer</span></span>
+                                <span class="treatments-legend-item"><span class="treatments-legend-key"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></span> <span data-i18n="legendRoll">Rolling</span></span>
+                                <span class="treatments-legend-item"><span class="treatments-legend-key"><i class="fa-solid fa-spray-can-sparkles" aria-hidden="true"></i></span> <span data-i18n="legendWeeds">Weeds</span></span>
+                            </div>
                             <span class="footer-label" data-i18n="totalPlantedArea">Total planted area</span>
                             <span id="total-ha-sum">0.00 ha</span>
                             <span id="sown-ha-sum" class="farmland-ha-sum"></span>
                             <span id="farmland-ha-sum" class="farmland-ha-sum" hidden></span>
                         </div>
-                        <section id="today-panel" class="today-panel" hidden></section>
                     </div>
                 </div>
+                <button type="button" id="plan-side-toggle" class="plan-side-toggle" aria-expanded="true" data-i18n-title="planSideToggle" data-i18n-aria-label="planSideToggle">
+                    <span class="plan-side-count" hidden></span>
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
                 <div class="planner-crops">
+                    <section id="today-panel" class="today-panel" hidden></section>
                     <div class="crops-container">
-                        <h1 data-i18n="cropsListTitle">List of all crops that are being farmed</h1>
+                        <h1 class="crops-title"><button type="button" id="crops-toggle" class="crops-toggle" aria-expanded="false"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i> <span data-i18n="cropsListShort">Crops on the farm</span></button></h1>
                         <div class="crops-list-container">
                             <table id="crops-table">
                                 <thead class="crops-header">
@@ -220,6 +270,11 @@
             </section>
             </div>
         </div>
+        <div id="undo-toast" class="undo-toast" role="status" hidden>
+            <span id="undo-toast-text"></span>
+            <button type="button" id="undo-toast-btn" class="undo-toast-btn" title="Ctrl+Z" data-i18n="undoAction">Undo</button>
+        </div>
+
         <div id="settings-modal" class="modal">
             <div class="modal-content">
                 <h3 data-i18n="settingsTitle">Settings</h3>
@@ -256,6 +311,7 @@
                         <span><span data-i18n="autoSyncLabel">Auto-sync with the savegame while playing</span>
                             <small id="auto-sync-hint" data-i18n="autoSyncHint">The game only writes the save on manual save / autosave, so the planner refreshes at each (auto)save — not continuously.</small></span>
                     </label>
+                    <div id="live-link-info" class="settings-field live-link-info" hidden></div>
                     <label class="settings-check">
                         <input type="checkbox" id="farmland-area-toggle">
                         <span><span data-i18n="farmlandAreaLabel">Also show whole land plot area (farmland), not just the field</span>
@@ -277,9 +333,20 @@
                                 <option value="€">€</option>
                                 <option value="$">$</option>
                                 <option value="£">£</option>
+                                <option value="zł">zł</option>
                             </select>
+                            <small id="currency-mod-note" class="settings-hint"></small>
+                        </label>
+                        <label class="settings-field" id="currency-rate-field" hidden>
+                            <span data-i18n="currencyRateLabel">Exchange rate: €1 =</span>
+                            <span class="currency-rate">
+                                <input type="text" inputmode="decimal" id="currency-rate-input" autocomplete="off" value="1">
+                                <span id="currency-rate-unit" class="supply-unit"></span>
+                            </span>
+                            <small class="settings-hint" data-i18n="currencyRateHint">Saves always hold euros. Enter the rate your currency mod uses. At 1, only the symbol changes.</small>
                         </label>
                     </div>
+                    <button type="button" id="open-field-soil-btn" class="settings-btn" data-i18n="fieldSoilOpen">Soils of all fields</button>
                 </section>
 
                 <section class="settings-group" data-settings-tab="mods">
@@ -346,6 +413,11 @@
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
                     <input type="checkbox" id="discord-rpc-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="discordSettingHint">Show your current farm on your Discord profile.</span>
+                </label>
+                <p data-i18n="splashSettingLabel" style="margin-bottom:4px;">Start-up animation</p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="splash-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="splashSettingHint">Play the logo animation when the app starts.</span>
                 </label>
                 <p data-i18n="updateSettingLabel" style="margin-bottom:4px;">Updates</p>
                 <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
@@ -493,6 +565,7 @@
                 <div id="app-dialog-icon" class="app-dialog-icon" aria-hidden="true"></div>
                 <h3 id="app-dialog-title"></h3>
                 <p id="app-dialog-body"></p>
+                <div id="app-dialog-html" class="app-dialog-html" hidden></div>
                 <div class="modal-buttons">
                     <button type="button" id="app-dialog-extra" class="app-dialog-extra" hidden></button>
                     <button type="button" id="app-dialog-cancel" class="modal-cancel-btn"></button>
@@ -578,12 +651,19 @@
     </div>
     <script src="feed.js"></script>
     <script src="supplies.js"></script>
+    <script src="market.js"></script>
+    <script src="storage.js"></script>
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
+    <script src="fields-timeline.js"></script>
+    <script src="field-log.js"></script>
     <script src="rotation.js"></script>
+    <script src="crop-generator.js"></script>
     <script src="today.js"></script>
+    <script src="live-link.js"></script>
     <script src="tramlines.js"></script>
     <script src="map-scale.js"></script>
+    <script src="mod-manager.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

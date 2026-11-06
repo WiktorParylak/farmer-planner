@@ -59,7 +59,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 <td>${fmtL(r.buffered)}</td></tr>`;
         });
         html += `</tbody><tfoot><tr class="supply-total-row">
-            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(seed.total)}</td></tr></tfoot></table>`;
+            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(seed.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.seed, seed.total)}</td></tr></tfoot></table>`;
     } else {
         html += `<p class="hub-panel-note">${t('suppliesAllSown')}</p>`;
     }
@@ -104,7 +104,7 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
             <td>${fmtKg(fert.totals.targetAbs)} N</td>
             <td>${fmtKg(fert.totals.existingAbs)} N</td>
             <td>${fmtKg(fert.totals.orgAbs)} N<span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(fert.totals.orgVolAbs.manure)}</span><span class="supply-sub">${t('suppliesOrgSlurry')} ${fmtL(fert.totals.orgVolAbs.slurry)}</span><span class="supply-sub">${t('suppliesOrgDigestate')} ${fmtL(fert.totals.orgVolAbs.digestate)}</span></td>
-            <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span></td>
+            <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span>${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.fertilizer, fert.totals.mineralLAbs)}</td>
             </tr></tfoot></table>`;
         if (fert.missingPlanCount > 0) {
             html += `<p class="hub-panel-note">${t('suppliesNoPlanNote').replace('{n}', fert.missingPlanCount)}</p>`;
@@ -131,12 +131,13 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
                 <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
                 <td>${fmtL(r.buffered)}</td></tr>`;
         });
-        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}</td></tr></tfoot></table>`;
+        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.lime, lime.total)}</td></tr></tfoot></table>`;
     } else {
         html += `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
     }
 
     html += `<p class="hub-panel-note">${t('suppliesBufferNote').replace('{p}', rates.bufferPct)}</p>`;
+    if (getFarmMarket(farm)) html += `<p class="hub-panel-note">${t('suppliesCostNote')}</p>`;
 
     bodyEl.innerHTML = html;
 }
@@ -241,6 +242,21 @@ window.openFieldFertPlan = function (planKey, soilKey, displayNumber, cropKey, a
     openModal(hubPanelModal);
 };
 
+// Saves one figure of a field's plan (existingN / orgN, kg N/ha); empty or 0 clears it.
+// Used by the plan window and the field view.
+function setFertPlanValue(planKey, key, raw) {
+    const r = getSupplyRates();
+    if (!r.fertPlan) r.fertPlan = {};
+    const entry = { ...(r.fertPlan[planKey] || {}) };
+    const v = String(raw == null ? '' : raw).trim();
+    const n = parseFloat(v);
+    if (v === '' || isNaN(n) || n <= 0) delete entry[key];
+    else entry[key] = n;
+    if (Object.keys(entry).length === 0) delete r.fertPlan[planKey];
+    else r.fertPlan[planKey] = entry;
+    saveSupplyRates(r);
+}
+
 function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area) {
     const rates = getSupplyRates();
     const d = computeFieldFertPlan(planKey, soilKey, cropKey, area, rates);
@@ -299,16 +315,7 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
         const el = bodyEl.querySelector(selector);
         if (!el) return;
         el.addEventListener('change', () => {
-            const r = getSupplyRates();
-            if (!r.fertPlan) r.fertPlan = {};
-            const entry = { ...(r.fertPlan[planKey] || {}) };
-            const v = el.value.trim();
-            const n = parseFloat(v);
-            if (v === '' || isNaN(n) || n <= 0) delete entry[key];
-            else entry[key] = n;
-            if (Object.keys(entry).length === 0) delete r.fertPlan[planKey];
-            else r.fertPlan[planKey] = entry;
-            saveSupplyRates(r);
+            setFertPlanValue(planKey, key, el.value);
             renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, cropKey, area);
         });
     };
@@ -326,8 +333,8 @@ function renderFieldFertPlan(titleEl, bodyEl, planKey, soilKey, displayNumber, c
             if (!m) return;
             m.field[prop] = el.checked;
             saveFarmData(farm);
-            // Refresh the table underneath so the "Nawożenie" button's white /
-            // brown / green state is already right when this modal closes.
+            // Refresh the table underneath so the N chip's empty /
+            // rust / green state is already right when this modal closes.
             if (typeof renderSeasonView === 'function') renderSeasonView();
         });
     };
@@ -573,6 +580,108 @@ function fieldYieldFactor(soilMix) {
     if (!entries.length) return pctOf(defaultSoilId());
     const total = entries.reduce((s, [, p]) => s + p, 0);
     return entries.reduce((s, [id, p]) => s + (p / total) * pctOf(id), 0);
+}
+
+// The one expected yield of a field's crop, shared by Yields and prices, the
+// feed planner, the cuts window and the margins: the crop's litres/ha at full
+// potential × the soil mix's yield potential × today's field moisture when the
+// crop is harvested this month (FS25_MoistureSystem; needs farm). `base` is
+// null for a crop with no known yield — callers show "unknown", litres stay 0.
+// `rate` replaces the crop's own litres/ha (chaff for silage, grass × cuts).
+function fieldExpectedYield(field, idx, crop, rates, farm, rate) {
+    const area = parseFloat(field && field.area) || 0;
+    const base = rate !== undefined ? rate : getCropYieldRate(crop);
+    const soil = fieldYieldFactor(getFieldSoilMix(fertPlanSoilKey(field, idx), rates));
+    const sowing = crop === field.crop ? field.sowingMonth : field.catchSowingMonth;
+    const moist = farm && typeof fieldMoistureInfo === 'function' ? fieldMoistureInfo(field, crop, sowing, farm) : null;
+    const state = farm ? fieldYieldState(farm, field, crop) : null;
+    const factor = soil * (moist && moist.now ? moist.factor : 1) * (state ? state.factor : 1);
+    const perHa = base === null || base === undefined ? null : base * factor;
+    return { base, soil, moist, state, factor, perHa, litres: perHa === null ? 0 : area * perHa };
+}
+
+// --- The game's yield multiplier from the field's state --------------------
+// FS25 scales a harvest by fertilizer, ploughing, lime, mulched stubble and
+// rolling (Cutter -> getHarvestScaleMultiplier). The link mod measures that
+// multiplier for every fruit - all factors at 1, then one factor at a time at 0
+// (fertilizer also at 0.5) - into farm.harvestScale. A growing crop's levels
+// in fields.xml become the same factors; each missing part costs what the game
+// measured. Without the mod's numbers there is no state factor. Weeds are left
+// out: their factor per weed state isn't in the save.
+const HARVEST_MAX_SPRAY_LEVEL = 2;
+const HARVEST_STATE_PARTS = ['spray', 'plow', 'lime', 'stubble', 'roller'];
+
+// The game's multiplier for one game field (levels from readSaveFields):
+// { factor (0..1 of the full yield), parts: { part: loss 0..1 } }, or null.
+function harvestStateOfGameField(scale, g) {
+    if (!scale || !(scale.full > 0)) return null;
+    const full = scale.full;
+    const at = (v, fallback) => (typeof v === 'number' ? v : fallback);
+    const f = Math.max(0, Math.min(1, (g.sprayLevel || 0) / HARVEST_MAX_SPRAY_LEVEL));
+    const s0 = at(scale.spray0, full), s05 = at(scale.spray05, (s0 + full) / 2);
+    const spray = f >= 0.5 ? s05 + (full - s05) * (f - 0.5) / 0.5 : s0 + (s05 - s0) * f / 0.5;
+    const deficit = {
+        spray: full - spray,
+        plow: g.plowLevel > 0 ? 0 : full - at(scale.plow0, full),
+        lime: g.limeLevel > 0 ? 0 : full - at(scale.lime0, full),
+        stubble: g.stubbleShredLevel > 0 ? 0 : full - at(scale.stubble0, full),
+        roller: g.rollerLevel > 0 ? 0 : full - at(scale.roller0, full)
+    };
+    const parts = {};
+    let total = 0;
+    HARVEST_STATE_PARTS.forEach(p => {
+        const loss = Math.max(0, deficit[p]) / full;
+        if (loss > 0.0005) { parts[p] = loss; total += loss; }
+    });
+    return { factor: Math.max(0, 1 - total), parts };
+}
+
+// The save's fields, read once per render burst (every row of a panel asks).
+let harvestSaveCache = { key: null, at: 0, data: null };
+function harvestSaveFields(farm) {
+    // The developer test farm has no save; it brings its own game fields (dev-farm.js).
+    if (farm.devSaveFields) return farm.devSaveFields;
+    const key = farm.id + ':' + farm.saveGamePath;
+    if (harvestSaveCache.key !== key || Date.now() - harvestSaveCache.at > 2000) {
+        const save = typeof readSaveFields === 'function' ? readSaveFields(farm) : null;
+        harvestSaveCache = { key, at: Date.now(), data: save && save.ok ? save.fields : null };
+    }
+    return harvestSaveCache.data;
+}
+
+// The state factor of a planner field whose game fields grow `crop` now
+// (area-weighted over a row joining several), or null.
+function fieldYieldState(farm, field, crop) {
+    if (!farm || !farm.harvestScale || !(farm.saveGamePath || farm.devSaveFields) || !crop || !field) return null;
+    const scale = farm.harvestScale[String(crop).replace(/[_\s]+/g, '').toUpperCase()];
+    if (!scale) return null;
+    const save = harvestSaveFields(farm);
+    if (!save) return null;
+    const ids = new Set(gameFieldIds(field));
+    let area = 0, sum = 0;
+    const parts = {};
+    save.forEach(g => {
+        if (!ids.has(g.id) || !g.sown || saveFruitToCropKey(g.fruitType) !== crop) return;
+        const st = harvestStateOfGameField(scale, g);
+        if (!st) return;
+        const w = g.areaHa > 0 ? g.areaHa : 1;
+        area += w;
+        sum += w * st.factor;
+        Object.entries(st.parts).forEach(([p, loss]) => { parts[p] = (parts[p] || 0) + w * loss; });
+    });
+    if (!area) return null;
+    Object.keys(parts).forEach(p => { parts[p] /= area; });
+    return { factor: sum / area, parts };
+}
+
+// { loss (whole %), short ("-12 %"), parts ("fertilizer -8 %, lime -4 %") } of a state factor.
+function harvestLossText(state) {
+    const pct = v => Math.round(v * 100);
+    const loss = pct(1 - state.factor);
+    const parts = Object.entries(state.parts).sort((a, b) => b[1] - a[1])
+        .filter(([, v]) => pct(v) > 0)
+        .map(([p, v]) => `${t('harvestPart_' + p)} −${pct(v)} %`);
+    return { loss, short: loss > 0 ? `−${loss} %` : '0 %', parts: parts.join(', ') };
 }
 
 // --- Lime by soil type (Precision Farming) --------------------------------

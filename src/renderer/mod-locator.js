@@ -51,6 +51,17 @@ function modAssistantFolders() {
     return [];
 }
 
+// Folders of the mod manager's libraries, set by mod-manager.js.
+let libraryDirs = [];
+function setLibraryDirs(dirs) {
+    libraryDirs = Array.isArray(dirs) ? dirs.slice() : [];
+    cache.clear();
+}
+
+function clearModsDirCache() {
+    cache.clear();
+}
+
 function activeModsOfSave(saveGamePath) {
     try {
         const career = fs.readFileSync(saveGamePath, 'utf-8');
@@ -85,6 +96,7 @@ function modsDirsForSave(saveGamePath) {
     add(overrideDir(gameDir), 'override');
     add(path.join(gameDir, 'mods'), 'default');
     modAssistantFolders().forEach(p => add(p, 'modAssistant'));
+    libraryDirs.forEach(p => add(p, 'library'));
 
     const mods = activeModsOfSave(saveGamePath);
     dirs.forEach((d, i) => { d.order = i; d.score = mods.filter(m => hasMod(d.dir, m)).length; });
@@ -106,4 +118,4 @@ function locateMod(saveGamePath, modName) {
     return modsDirsForSave(saveGamePath).find(dir => hasMod(dir, modName)) || null;
 }
 
-module.exports = { modsDirsForSave, primaryModsDir, locateMod, modAssistantFolders, overrideDir };
+module.exports = { modsDirsForSave, primaryModsDir, locateMod, modAssistantFolders, overrideDir, activeModsOfSave, hasMod, setLibraryDirs, clearModsDirCache };

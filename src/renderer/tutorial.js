@@ -432,6 +432,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('a8', '#import-backup-btn'),
             tutInfo('a13', '#tramlines-btn'),
             tutInfo('a14', '#mapscale-btn'),
+            tutInfo('a15', '#modmanager-btn'),
             tutInfo('a9', () => { const item = tutDemoItem(); return item ? item.querySelector('.delete-btn-circle') : null; }),
             tutClick('a12', () => { const item = tutDemoItem(); return item ? item.querySelector('.select-btn') : null; },
                 () => tutPlannerShown() && currentFarmId === tut.demoId)
@@ -467,10 +468,10 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('c12', () => tq('#fields-body .work-open')),
             tutInfo('c7', () => [tq('#fields-body .tillage-chip'), tq('#fields-body .rolling-toggle')]),
             tutInfo('c8', () => tqa('#fields-body .treatment-chip--lime')),
+            tutInfo('c16', () => tqa('#fields-body .treatment-chip--fert')),
             tutInfo('c13', () => tqa('#fields-body .weeds-toggle')),
-            tutInfo('c9', () => tqa('#fields-body .fertplan-open-btn')),
             tutInfo('c10', ['#total-ha-sum', '#sown-ha-sum']),
-            tutInfo('c15', '#rotation-btn')
+            tutInfo('c15', '.sidebar-item--rotation')
         ]
     },
     {
@@ -500,15 +501,14 @@ const TUTORIAL_CHAPTERS = [
         id: 'e',
         prepare: tutOpenDemoPlanner,
         steps: [
-            tutClick('e1', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.fertplan-open-btn') : null; },
-                () => tutModalOpen('hub-panel-modal')),
-            tutInfo('e2', () => tqa('#fertplan-modal-body .details-category').slice(0, 3)),
-            tutInput('e3', '#fertplan-modal-body .fertplan-existing-input', () => tutNumValue(tq('#fertplan-modal-body .fertplan-existing-input')) > 0, '40'),
-            tutInput('e4', '#fertplan-modal-body .fertplan-org-input', () => tutNumValue(tq('#fertplan-modal-body .fertplan-org-input')) > 0, '30'),
-            tutInfo('e5', () => tqa('#fertplan-modal-body .details-category').slice(3).concat(tqa('#fertplan-modal-body .fertplan-status'))),
-            tutClick('e6', '#fertplan-modal-body .fertplan-fertilizer-check', () => { const el = tq('#fertplan-modal-body .fertplan-fertilizer-check'); return !!el && el.checked; }),
-            tutClick('e7', '#close-hub-panel-btn', () => !tutModalOpen('hub-panel-modal')),
-            tutInfo('e8', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.fertplan-open-btn') : null; })
+            tutClick('e1', () => { const row = tutFieldRow('1'); return row ? row.querySelector('.field-open') : null; },
+                () => tutModalOpen('field-modal')),
+            tutInfo('e2', '#field-modal-body .field-view-fert-target', { enter: () => { fieldViewTab = 'soil'; renderFieldModal(); } }),
+            tutInput('e3', '#field-modal-body .field-view-fert[data-key="existingN"]', () => tutNumValue(tq('#field-modal-body .field-view-fert[data-key="existingN"]')) > 0, '40'),
+            tutInput('e4', '#field-modal-body .field-view-fert[data-key="orgN"]', () => tutNumValue(tq('#field-modal-body .field-view-fert[data-key="orgN"]')) > 0, '30'),
+            tutInfo('e5', '#field-modal-body .field-view-fert-result'),
+            tutClick('e6', '#field-modal-body .field-view-fert-done[data-prop="fertilizer"]', () => { const el = tq('#field-modal-body .field-view-fert-done[data-prop="fertilizer"]'); return !!el && el.checked; }),
+            tutClick('e7', '#field-modal-close', () => !tutModalOpen('field-modal'))
         ]
     },
     {
@@ -552,7 +552,7 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('h1', '#planner-sidebar'),
             hubOpen('h3', 'finance'),
             tutInfo('h4', () => { const parts = tqa('#hub-panel-body .fin-kpis, #hub-panel-body .fin-card.trend-card, #hub-panel-body .fin-chart'); return parts.length ? parts : tq('#hub-panel-body'); }),
-            hubOpen('h6', 'fieldsoil'),
+            tutInfo('h6', '#hub-panel-body', { enter: () => showPlannerView('fieldsoil') }),
             tutInput('h7', '#hub-panel-body .supply-soil-input[data-soil-field="1"]', () => {
                 const el = tq('#hub-panel-body .supply-soil-input[data-soil-field="1"]');
                 const saved = getSupplyRates().fieldSoil['1'];
@@ -643,7 +643,7 @@ const TUTORIAL_CHAPTERS = [
                 const plan = getFeedPlan(getCurrentFarm());
                 return tutNumValue(tutFeed('.mixer-cap-input')) > 0 || parseFloat(plan.mixer.capacity['save:demo-mixer']) > 0;
             }, '20000'),
-            tutClick('m7', () => tutFeed('.mixer-auto'), () => getFeedPlan(getCurrentFarm()).mixer.load.length > 0),
+            tutClick('m7', () => tutFeed('.mixer-auto'), () => Object.values(getFeedPlan(getCurrentFarm()).mixer.loads || {}).some(l => l.length > 0)),
             tutInfo('m8', () => tutFeed('.mixer-load')),
             tutInfo('m9', () => tutFeed('.mixer-summary')),
             tutInfo('m10', () => { if (!tutFeed('.feed-ing-grid')) return null; return tqa('#hub-panel-body .feed-need-summary, #hub-panel-body .feed-ing-grid'); }),
@@ -1014,6 +1014,7 @@ function startTutorial() {
     tutCloseModals();
     tutGoToDashboard();
     tut.active = true;
+    updateFieldsViewUi();    // the tutorial points at the table
     if (tutorialOverlay) tutorialOverlay.style.display = 'block';
     clearInterval(tut.timer);
     // Keeps the spotlight glued to its target through fade-ins, re-renders
@@ -1026,6 +1027,8 @@ function endTutorial() {
     if (!tut.active) return;
     tutLeaveStep();
     tut.active = false;
+    renderTodayPanel();
+    renderSeasonView();
     tut.mode = null;
     clearInterval(tut.timer);
     if (tutorialOverlay) tutorialOverlay.style.display = 'none';

@@ -1,10 +1,12 @@
 {
   "name": "farmer-planner",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
-    "build": "electron-builder && node tools/build-installer.js"
+    "test": "node tests/run.js logic",
+    "test:screens": "node tests/run.js screens",
+    "build": "node tools/build-link-mod.js && electron-builder && node tools/build-installer.js"
   },
   "build": {
     "appId": "com.farmerplanner.app",
@@ -23,14 +25,24 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": false
     },
+    "extraResources": [
+      {
+        "from": "build-cache/link-mod/FS25_FarmerPlannerLink.zip",
+        "to": "FS25_FarmerPlannerLink.zip"
+      }
+    ],
     "files": [
       "**/*",
       "!FS25_CropDependentRolling${/*}",
       "!.claude${/*}",
       "!docs${/*}",
       "!tools${/*}",
+      "!tests${/*}",
+      "!test-output${/*}",
       "!CLAUDE.md",
+      "!TODO.md",
       "!installer${/*}",
+      "!link-mod${/*}",
       "!build-cache${/*}",
       "!promo-*.png",
       "!**/*.pdf",

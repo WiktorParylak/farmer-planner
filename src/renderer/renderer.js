@@ -132,7 +132,8 @@ function formatFillType(fillType) {
     if (!fillType) return fillType;
     const dict = PRODUCTION_FILLTYPE_TRANSLATIONS[currentLang];
     if (dict && dict[fillType]) return dict[fillType];
-    return fillType.charAt(0) + fillType.slice(1).toLowerCase();
+    const words = fillType.replace(/_/g, ' ').toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function t(key) {
@@ -319,6 +320,8 @@ if (appSettingsBtn && appSettingsModal) {
         if (discordRpcToggle) discordRpcToggle.checked = isDiscordRpcEnabled();
         const updToggle = document.getElementById('update-check-toggle');
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
+        const splashToggle = document.getElementById('splash-toggle');
+        if (splashToggle) splashToggle.checked = getSetting('farmer_planner_splash') !== '0';
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         const devSetting = document.getElementById('dev-farm-setting');
@@ -358,7 +361,7 @@ function devFarmExists() {
 }
 
 function createDevFarm() {
-    const { farm, seasons, monthly, notes } = buildDevFarm({ pl: currentLang === 'pl' });
+    const { farm, seasons, monthly, notes, fieldLog } = buildDevFarm({ pl: currentLang === 'pl' });
     const dir = devFarmDir();
     try {
         fs.mkdirSync(path.join(dir, 'seasons'), { recursive: true });
@@ -371,6 +374,7 @@ function createDevFarm() {
     saveFarmData(farm, { touch: false });
     saveMonthlyHistory(farm, monthly);
     saveNotes(farm, notes);
+    saveFieldLog(farm, fieldLog);
 }
 
 function removeDevFarm() {
@@ -612,6 +616,109 @@ function monthlyRowFingerprint(row) {
     });
 }
 
+// --- Income and costs by category (farms.xml <finances>) ---------------------
+// The game keeps the money flows of its Finances screen per in-game day:
+// <farm farmId><finances><stats day="0"> is today, day="1" yesterday … up to
+// four days back, each with one element per category (costs negative). Every
+// sync files those days under their month (row.financeDays in monthly.json),
+// so the months add up even though the save only remembers the last few days.
+// Groups for the Finance panel; anything else a mod adds counts as "other".
+const FIN_GROUPS = [
+    { id: 'crops', keys: ['harvestIncome', 'soldProducts', 'soldBales', 'soldWood'] },
+    { id: 'animals', keys: ['soldMilk', 'soldWool', 'soldAnimals'] },
+    { id: 'biogas', keys: ['incomeBga'] },
+    { id: 'missions', keys: ['missionIncome'] },
+    { id: 'property', keys: ['propertyIncome'] },
+    { id: 'seeds', keys: ['purchaseSeeds', 'purchaseFertilizer', 'purchaseSaplings'] },
+    { id: 'fuel', keys: ['purchaseFuel'] },
+    { id: 'machines', keys: ['vehicleRunningCost', 'vehicleLeasingCost'] },
+    { id: 'buildings', keys: ['propertyMaintenance'] },
+    { id: 'production', keys: ['productionCosts'] },
+    { id: 'wages', keys: ['wagePayment'] },
+    { id: 'interest', keys: ['loanInterest'] },
+    { id: 'lease', keys: ['statisticFieldLease'] },
+    { id: 'drying', keys: ['dryingCharge'] },
+    { id: 'purchases', keys: ['purchaseWater', 'purchaseBales', 'purchasePallets'] }
+];
+// Buying and selling machines, buildings, land and animals: shown apart, not
+// part of the month's operating profit.
+const FIN_INVEST_KEYS = ['newVehiclesCost', 'soldVehicles', 'newHandtoolsCost', 'soldHandtools', 'constructionCost',
+    'soldBuildings', 'fieldPurchase', 'fieldSelling', 'newAnimalsCost'];
+// Taking or paying back a loan, and "other" (money codes, cheats): outside the profit.
+const FIN_OUTSIDE_KEYS = ['loan', 'other'];
+
+// { gameDay: { category: amount } } of the farm's last days, non-zero only.
+function readSaveFinanceDays(saveFolder, currentDay) {
+    const out = {};
+    if (!currentDay) return out;
+    const p = path.join(saveFolder, 'farms.xml');
+    if (!fs.existsSync(p)) return out;
+    try {
+        const text = fs.readFileSync(p, 'utf-8');
+        const farm = [...text.matchAll(/<farm\s[^>]*farmId="(\d+)"[^>]*>([\s\S]*?)<\/farm>/g)].find(m => m[1] === SAVE_FARM_ID);
+        const fin = farm && (farm[2].match(/<finances>([\s\S]*?)<\/finances>/) || [])[1];
+        if (!fin) return out;
+        for (const m of fin.matchAll(/<stats\s+day="(\d+)">([\s\S]*?)<\/stats>/g)) {
+            const day = currentDay - parseInt(m[1], 10);
+            if (day < 1) continue;
+            const cats = {};
+            for (const c of m[2].matchAll(/<([A-Za-z0-9_]+)>\s*(-?[\d.]+(?:e[+-]?\d+)?)\s*<\/\1>/g)) {
+                const v = parseFloat(c[2]);
+                if (isFinite(v) && Math.abs(v) >= 0.5) cats[c[1]] = Math.round(v);
+            }
+            out[day] = cats;
+        }
+    } catch (e) {
+        console.error('readSaveFinanceDays failed', e);
+    }
+    return out;
+}
+
+// One month's (or a year's) categories -> income, costs, operating profit,
+// investments and what stays outside, plus the net of each group.
+function finSummary(cats) {
+    const groups = {};
+    let income = 0, cost = 0, invest = 0, outside = 0;
+    const groupOf = {};
+    FIN_GROUPS.forEach(g => g.keys.forEach(k => { groupOf[k] = g.id; }));
+    Object.keys(cats || {}).forEach(k => {
+        const v = cats[k] || 0;
+        if (FIN_OUTSIDE_KEYS.includes(k)) { outside += v; return; }
+        if (FIN_INVEST_KEYS.includes(k)) { invest += v; return; }
+        const id = groupOf[k] || 'other';
+        groups[id] = (groups[id] || 0) + v;
+        if (v > 0) income += v; else cost -= v;
+    });
+    return { income, cost, profit: income - cost, invest, outside, groups };
+}
+
+// Adds category maps together.
+function finAddCats(into, cats) {
+    Object.keys(cats || {}).forEach(k => { into[k] = (into[k] || 0) + cats[k]; });
+    return into;
+}
+
+// Files the save's last days under their months (rows by period). Returns
+// true when a row changed. A day before the first month logged is dropped.
+function mergeFinanceDays(rows, farm, gameData) {
+    const days = gameData.financeDays;
+    const perPeriod = parseInt(gameData.daysPerPeriod, 10) || 1;
+    if (!days || !Object.keys(days).length) return false;
+    const offset = parseInt(farm.monthlyPeriodOffset, 10) || 0;
+    let changed = false;
+    Object.keys(days).forEach(d => {
+        const day = parseInt(d, 10);
+        const period = Math.floor((day - 1) / perPeriod) + offset;
+        const row = rows.find(r => r.period === period);
+        if (!row) return;
+        const fd = row.financeDays || (row.financeDays = {});
+        if (JSON.stringify(fd[day] || null) === JSON.stringify(days[d])) return;
+        fd[day] = days[d];
+        changed = true;
+    });
+    return changed;
+}
+
 // Builds the row for the current in-game month from freshly-read save data
 // (gameData) merged onto `farm`.
 function buildMonthlyRow(farm, gameData) {
@@ -665,18 +772,22 @@ function recordMonthlySnapshot(farm, gameData) {
         saveFarmData(farm, { touch: false });
     }
 
+    let dirty = false;
     if (!last || row.period > last.period) {
         rows.push(row);
-        saveMonthlyHistory(farm, rows);
+        dirty = true;
     } else if (row.period === last.period) {
         if (monthlyRowFingerprint(row) !== monthlyRowFingerprint(last)) {
             // keep the original recordedAt so it still marks when the month began
             row.recordedAt = last.recordedAt;
             row.updatedAt = new Date().toISOString();
+            if (last.financeDays) row.financeDays = last.financeDays;
             rows[rows.length - 1] = row;
-            saveMonthlyHistory(farm, rows);
+            dirty = true;
         }
     }
+    if (mergeFinanceDays(rows, farm, gameData)) dirty = true;
+    if (dirty) saveMonthlyHistory(farm, rows);
 }
 
 // New career (or another savegame) behind a farm with a monthly history:
@@ -742,6 +853,19 @@ function getMonthlyHistory(farm) {
         rows[i].productionEstTotal = est
             ? Object.entries(est).filter(([ft]) => !FEED_UNSCALED_OUTPUT.includes(ft)).reduce((a, [, v]) => a + v, 0)
             : null;
+        // Income and costs of the month, from the days filed under it (null = none recorded).
+        const fd = rows[i].financeDays;
+        if (fd && Object.keys(fd).length) {
+            rows[i].finance = Object.values(fd).reduce((acc, c) => finAddCats(acc, c), {});
+            const sum = finSummary(rows[i].finance);
+            rows[i].income = sum.income;
+            rows[i].cost = sum.cost;
+            rows[i].profit = sum.profit;
+            rows[i].invest = sum.invest;
+        } else {
+            rows[i].finance = null;
+            rows[i].income = rows[i].cost = rows[i].profit = rows[i].invest = null;
+        }
     }
     return rows;
 }
@@ -1051,8 +1175,8 @@ function wireBarnPanel(bodyEl) {
 // =============================================================
 const FIN_LOCALE = () => ({ pl: 'pl-PL', de: 'de-DE' }[currentLang] || 'en-US');
 function finMoney(v) {
-    const n = Math.round(v).toLocaleString(FIN_LOCALE());
-    return CURRENCY === '€' ? `${n} €` : `${CURRENCY}${n}`;
+    const n = Math.round(v * CURRENCY_RATE).toLocaleString(FIN_LOCALE());
+    return CURRENCY_PREFIX ? `${CURRENCY}${n}` : `${n} ${CURRENCY}`;
 }
 
 // Money amounts: farm.balance is a number now, but farms, archives and the
@@ -1087,31 +1211,154 @@ function parseDecimal(v) {
 
 // Currency symbol of the open farm: chosen in Settings, or the game's own
 // setting (gameSettings.xml <units><money>: 1 euro, 2 dollar, 3 pound).
-// Only the symbol changes — amounts in the save are the same.
+// The save always holds euros. A currency mod converts them on screen in the
+// game, so a chosen currency other than € takes a rate typed in by the player
+// (farm.currencyRates, €1 = rate; 1 changes only the symbol).
 const GAME_MONEY_UNITS = { '1': '€', '2': '$', '3': '£' };
+const CURRENCY_PREFIXED = ['$', '£'];
 let CURRENCY = '€';
+let CURRENCY_RATE = 1;
+let CURRENCY_PREFIX = false;
 
-function readGameCurrency(saveGamePath) {
+function readGameMoneyUnit(saveGamePath) {
     try {
         const gameDir = path.dirname(path.dirname(saveGamePath));
         const gs = fs.readFileSync(path.join(gameDir, 'gameSettings.xml'), 'utf-8');
         const m = gs.match(/<units>[\s\S]*?<money>\s*(\d+)\s*<\/money>/);
-        return m ? (GAME_MONEY_UNITS[m[1]] || null) : null;
+        return m ? m[1] : null;
     } catch (e) {
         return null;
     }
 }
 
-function currencyOf(farm) {
-    if (farm && farm.currency && farm.currency !== 'auto') return farm.currency;
-    return (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+function readGameCurrency(saveGamePath) {
+    return GAME_MONEY_UNITS[readGameMoneyUnit(saveGamePath)] || null;
+}
+
+// Additional Currencies (FS25_additionalCurrencies, active in the save): what
+// the game shows, read the way the mod's script does. modSettings/<mod>/settings.xml
+// holds the currency's number and the converter switch (no file: the game's
+// money unit, converter on). 1-3 are the game's €, $, £ with the factors on the
+// list's root; 4 and up are the list's entries in order. The list is the
+// player's additionalCurrencies.xml there, else currencies.xml in the mod.
+// null = not in the save or unreadable. Cached until one of the files changes.
+const ADDITIONAL_CURRENCIES_MOD = 'FS25_additionalCurrencies';
+let currencyModCache = { key: null, value: null };
+
+function readAdditionalCurrencies(saveGamePath) {
+    if (!saveGamePath) return null;
+    const dir = path.join(path.dirname(path.dirname(saveGamePath)), 'modSettings', ADDITIONAL_CURRENCIES_MOD);
+    const settingsFile = path.join(dir, 'settings.xml'), customFile = path.join(dir, 'additionalCurrencies.xml');
+    const stamp = p => { try { const s = fs.statSync(p); return s.mtimeMs + ':' + s.size; } catch (e) { return ''; } };
+    const gameSettings = path.join(path.dirname(path.dirname(saveGamePath)), 'gameSettings.xml');
+    const key = [saveGamePath, ...[saveGamePath, gameSettings, settingsFile, customFile].map(stamp)].join('|');
+    if (currencyModCache.key !== key) currencyModCache = { key, value: parseAdditionalCurrencies(saveGamePath, settingsFile, customFile) };
+    return currencyModCache.value;
+}
+
+function parseAdditionalCurrencies(saveGamePath, settingsFile, customFile) {
+    try {
+        if (!activeModsInSave(saveGamePath).has(ADDITIONAL_CURRENCIES_MOD)) return null;
+        const list = fs.existsSync(customFile)
+            ? fs.readFileSync(customFile, 'utf-8')
+            : String(modFiles.readModFile(modFiles.findModsDirs(saveGamePath), `$moddir$${ADDITIONAL_CURRENCIES_MOD}/currencies.xml`) || '');
+        const doc = new DOMParser().parseFromString(list.replace(/^\uFEFF/, ''), 'text/xml');
+        const root = doc.querySelector('currencies');
+        if (!root || doc.querySelector('parsererror')) return null;
+        const factorOf = (el, name, fallback) => { const v = parseFloat(el.getAttribute(name)); return v > 0 ? v : fallback; };
+        const entries = [...root.querySelectorAll('currency')];
+        const currencies = [
+            { symbol: '€', prefix: false, factor: factorOf(root, 'euroFactor', 1) },
+            { symbol: '$', prefix: true, factor: factorOf(root, 'dolarFactor', 1.34) },
+            { symbol: '£', prefix: true, factor: factorOf(root, 'poundFactor', 0.79) },
+            ...entries.map(el => ({
+                // A symbol that points at the mod's texts can't be read here.
+                symbol: /^\$l10n/.test(el.getAttribute('symbol') || '') ? '' : plainModText(el.getAttribute('symbol')).replace(/&/g, '').trim(),
+                prefix: el.getAttribute('prefixSymbol') !== 'false',
+                factor: factorOf(el, 'factor', 1)
+            }))
+        ];
+        let state = parseInt(readGameMoneyUnit(saveGamePath), 10) || 1;
+        let converter = true;
+        if (fs.existsSync(settingsFile)) {
+            const settings = fs.readFileSync(settingsFile, 'utf-8');
+            const number = parseInt((settings.match(/<currency>\s*(-?\d+)\s*<\/currency>/) || [])[1], 10);
+            if (number >= 1 && number <= currencies.length) state = number;
+            const on = (settings.match(/<converter>\s*(true|false)\s*<\/converter>/) || [])[1];
+            if (on) converter = on === 'true';
+        }
+        const chosen = currencies[state - 1];
+        if (!chosen || !chosen.symbol) return null;
+        return { symbol: chosen.symbol, prefix: chosen.prefix, rate: converter ? chosen.factor : 1, converter, factor: chosen.factor };
+    } catch (e) {
+        console.warn('Additional Currencies unreadable', e);
+        return null;
+    }
+}
+
+// What the mod does for this farm, unless switched off in the mods list.
+function currencyModOf(farm) {
+    if (!farm || !farm.saveGamePath || disabledModsOf(farm).has('additionalCurrencies')) return null;
+    return readAdditionalCurrencies(farm.saveGamePath);
+}
+
+function currencyModText(mod) {
+    if (mod.factor === 1) return mod.symbol;
+    if (!mod.converter) return t('currencyModNoConverter').replace('{symbol}', mod.symbol);
+    return t('currencyModRate').replace(/\{symbol\}/g, mod.symbol)
+        .replace('{rate}', mod.rate.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 4 }));
+}
+
+// Symbol, rate and place of the symbol: a currency chosen in Settings first,
+// then the currency mod, then the game's own setting.
+function resolveCurrency(farm) {
+    const chosen = farm && farm.currency;
+    if (chosen && chosen !== 'auto') return { symbol: chosen, rate: currencyRateOf(farm), prefix: CURRENCY_PREFIXED.includes(chosen) };
+    const mod = currencyModOf(farm);
+    if (mod) return mod;
+    const symbol = (farm && farm.saveGamePath && readGameCurrency(farm.saveGamePath)) || '€';
+    return { symbol, rate: 1, prefix: CURRENCY_PREFIXED.includes(symbol) };
+}
+
+// The rate field in Settings shows only for a chosen currency other than €.
+function currencyHasRate(currency) {
+    return !!currency && currency !== 'auto' && currency !== '€';
+}
+
+function currencyRateOf(farm) {
+    const chosen = farm && farm.currency;
+    if (!currencyHasRate(chosen)) return 1;
+    const rate = parseFloat(farm.currencyRates && farm.currencyRates[chosen]);
+    return rate > 0 ? rate : 1;
+}
+
+function refreshCurrencyRateField(farm) {
+    const select = document.getElementById('currency-select');
+    const field = document.getElementById('currency-rate-field');
+    const input = document.getElementById('currency-rate-input');
+    if (!select || !field || !input) return;
+    const currency = select.value;
+    field.hidden = !currencyHasRate(currency);
+    const rate = farm && farm.currencyRates ? parseFloat(farm.currencyRates[currency]) : NaN;
+    input.value = (rate > 0 ? rate : 1).toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 6, useGrouping: false });
+    document.getElementById('currency-rate-unit').textContent = currency;
+    const note = document.getElementById('currency-mod-note');
+    const mod = currency === 'auto' ? currencyModOf(farm) : null;
+    if (note) note.textContent = mod ? `Additional Currencies: ${currencyModText(mod)}` : '';
 }
 
 function useCurrency(farm) {
-    CURRENCY = currencyOf(farm);
+    const currency = resolveCurrency(farm);
+    CURRENCY = currency.symbol;
+    CURRENCY_RATE = currency.rate;
+    CURRENCY_PREFIX = currency.prefix;
 }
 function finCompact(v) {
     return new Intl.NumberFormat(FIN_LOCALE(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+// A money value on a chart: in the chosen currency, the symbol at the end of the axis.
+function finChartMoney(v, end) {
+    return finCompact(v * CURRENCY_RATE) + (end ? ' ' + CURRENCY : '');
 }
 function finSigned(v) {
     return (v > 0 ? '+' : v < 0 ? '−' : '') + finMoney(Math.abs(v));
@@ -1188,9 +1435,11 @@ function buildTrendChart(rows, width, series, opts = {}) {
     const valid = v => v !== null && v !== undefined && isFinite(v);
     const vals = [];
     series.forEach(s => rows.forEach(r => { if (valid(r[s.key])) vals.push(r[s.key]); }));
-    const ticks = opts.domain
+    // Ticks are worked out in the unit shown (opts.scale), so they stay round.
+    const scale = opts.scale || 1;
+    const ticks = (opts.domain
         ? finTicks(opts.domain[0], opts.domain[1])
-        : finTicks(Math.min(0, ...vals), Math.max(...vals, 1));
+        : finTicks(Math.min(0, ...vals) * scale, Math.max(...vals, 1) * scale)).map(v => v / scale);
     const minV = ticks[0], maxV = ticks[ticks.length - 1];
     const x = i => padL + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1));
     const y = v => padT + plotH - (Math.min(maxV, Math.max(minV, v)) - minV) / (maxV - minV) * plotH;
@@ -1336,12 +1585,12 @@ function trendLegendHtml(items) {
 }
 
 // Per-season values as columns (≤24px, 4px rounded top, value above).
-function buildSeasonBars(history, key, width, format, ariaLabel) {
+function buildSeasonBars(history, key, width, format, ariaLabel, scale = 1) {
     const W = Math.max(360, Math.min(Math.round(width), 120 + history.length * 90)), H = 220;
     const padL = 64, padR = 16, padT = 26, padB = 30;
     const plotW = W - padL - padR, plotH = H - padT - padB;
     const vals = history.map(h => h[key] || 0);
-    const ticks = finTicks(Math.min(0, ...vals), Math.max(...vals, 1), 3);
+    const ticks = finTicks(Math.min(0, ...vals) * scale, Math.max(...vals, 1) * scale, 3).map(v => v / scale);
     const minV = ticks[0], maxV = ticks[ticks.length - 1];
     const y = v => padT + plotH - (v - minV) / (maxV - minV) * plotH;
     const band = plotW / history.length, bw = Math.min(24, band * 0.5);
@@ -1382,29 +1631,84 @@ function renderFinancePanel(bodyEl, farm) {
         const hasLoan = monthly.some(r => r.loan > 0);
         const series = [{ key: 'balance', label: t('detailBalance'), cls: 'balance' }];
         if (hasLoan) series.push({ key: 'loan', label: t('detailCredit'), cls: 'loan', dashed: true });
-        const opts = { format: (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
+        const opts = { format: finChartMoney, scale: CURRENCY_RATE, formatFull: finMoney, deltaFull: finSigned, ariaLabel: t('finChartMonthly') };
         html += trendCardHtml('fin-balance', t('finChartMonthly'), hasLoan ? trendLegendHtml(series) : '', '',
             w => buildTrendChart(monthly, w, series, opts), width);
     }
     if (history.length > 1) {
         html += `<section class="fin-card fin-chart">
             <div class="fin-card-head"><h4>${t('finChartSeasons')}</h4></div>
-            ${buildSeasonBars(history, 'balance', width, (v, end) => finCompact(v) + (end ? ' ' + CURRENCY : ''), t('finChartSeasons'))}
+            ${buildSeasonBars(history, 'balance', width, finChartMoney, t('finChartSeasons'), CURRENCY_RATE)}
         </section>`;
     }
     if (monthly.length <= 1 && history.length <= 1) html += `<p class="hub-panel-note">${t('hubChartNeedsMoreMonths')}</p>`;
+    html += finFlowsHtml(monthly, width);
 
     if (monthly.length) {
         const rowsHtml = monthly.slice().reverse().map((r, idx, arr) => {
             const prev = arr[idx + 1];
-            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td></tr>`;
+            const flow = v => v === null || v === undefined ? '–' : finMoney(v);
+            return `<tr><td>${escapeHtml(translateMonth(r.month))}</td><td class="is-text">${r.gameYear}</td><td class="num">${finMoney(r.balance)}</td><td class="num">${finMoney(r.loan || 0)}</td><td class="num">${prev ? finSigned(r.balance - prev.balance) : '–'}</td>`
+                + `<td class="num">${flow(r.income)}</td><td class="num">${flow(r.cost)}</td><td class="num">${r.profit === null || r.profit === undefined ? '–' : finSigned(r.profit)}</td></tr>`;
         }).join('');
         html += `<details class="fin-card fin-table-wrap"><summary>${t('finShowTable')}</summary>
-            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th></tr></thead>
+            <table class="data-table fin-table"><thead><tr><th>${t('finColMonth')}</th><th class="is-text">${t('finColYear')}</th><th class="num">${t('detailBalance')}</th><th class="num">${t('detailCredit')}</th><th class="num">${t('finColChange')}</th><th class="num">${t('finIncome')}</th><th class="num">${t('finCosts')}</th><th class="num">${t('finProfit')}</th></tr></thead>
             <tbody>${rowsHtml}</tbody></table></details>`;
     }
     bodyEl.innerHTML = `<div class="fin-view">${html}</div>`;
     activateTrendCharts(bodyEl);
+}
+
+// --- Income and costs: chart of the months + the latest month by group ------
+const FIN_INCOME_GROUPS = ['crops', 'animals', 'biogas', 'missions', 'property'];
+
+function finFlowsHtml(monthly, width) {
+    const withFlows = monthly.filter(r => r.finance);
+    if (!withFlows.length) {
+        return `<section class="fin-card fin-flows"><div class="fin-card-head"><h4>${t('finFlowsTitle')}</h4></div>
+            <p class="hub-panel-note">${t('finFlowsNone')}</p></section>`;
+    }
+    let html = '';
+    if (withFlows.length > 1) {
+        const first = monthly.indexOf(withFlows[0]);
+        const rows = monthly.slice(first);
+        const series = [
+            { key: 'income', label: t('finIncome'), cls: 'balance' },
+            { key: 'cost', label: t('finCosts'), cls: 'loan' },
+            { key: 'profit', label: t('finProfit'), cls: 'animals', dashed: true }
+        ];
+        const opts = { format: finChartMoney, scale: CURRENCY_RATE, formatFull: finMoney, ariaLabel: t('finFlowsChart') };
+        html += trendCardHtml('fin-flows', t('finFlowsChart'), trendLegendHtml(series), '', w => buildTrendChart(rows, w, series, opts), width);
+    }
+
+    // The latest month with flows, next to its game year so far.
+    const last = withFlows[withFlows.length - 1];
+    const yearCats = withFlows.filter(r => r.gameYear === last.gameYear).reduce((acc, r) => finAddCats(acc, r.finance), {});
+    const month = finSummary(last.finance), year = finSummary(yearCats);
+    const ids = [...new Set([...Object.keys(month.groups), ...Object.keys(year.groups)])];
+    const isIncome = id => FIN_INCOME_GROUPS.includes(id) || (id === 'other' && (year.groups.other || 0) > 0);
+    const order = list => list.sort((a, b) => Math.abs(year.groups[b] || 0) - Math.abs(year.groups[a] || 0));
+    const cell = v => `<td class="num">${v ? finMoney(Math.abs(v)) : '–'}</td>`;
+    const groupRows = list => list.map(id => `<tr><td>${t('finGroup_' + id)}</td>${cell(month.groups[id])}${cell(year.groups[id])}</tr>`).join('');
+    const sumRow = (label, a, b, cls) => `<tr class="fin-flows-sum${cls ? ' ' + cls : ''}"><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`;
+    const signed = v => v ? finSigned(v) : '–';
+    let body = groupRows(order(ids.filter(isIncome)))
+        + sumRow(t('finIncomeTotal'), finMoney(month.income), finMoney(year.income))
+        + groupRows(order(ids.filter(id => !isIncome(id))))
+        + sumRow(t('finCostsTotal'), finMoney(month.cost), finMoney(year.cost))
+        + sumRow(t('finProfit'), finSigned(month.profit), finSigned(year.profit), month.profit < 0 ? 'is-loss' : 'is-gain');
+    body += `<tr class="fin-flows-apart"><td>${t('finInvest')}<span class="supply-sub">${t('finInvestHint')}</span></td><td class="num">${signed(month.invest)}</td><td class="num">${signed(year.invest)}</td></tr>`;
+    if (month.outside || year.outside) {
+        body += `<tr class="fin-flows-apart"><td>${t('finOutside')}<span class="supply-sub">${t('finOutsideHint')}</span></td><td class="num">${signed(month.outside)}</td><td class="num">${signed(year.outside)}</td></tr>`;
+    }
+    html += `<section class="fin-card fin-flows">
+        <div class="fin-card-head"><h4>${t('finFlowsTitle')}</h4></div>
+        <table class="data-table fin-table fin-flows-table"><thead><tr><th>${t('finColGroup')}</th>
+            <th class="num">${escapeHtml(translateMonth(last.month))}</th><th class="num">${t('finYear').replace('{y}', last.gameYear)}</th></tr></thead>
+            <tbody>${body}</tbody></table>
+        <p class="hub-panel-note">${t('finFlowsNote')}</p>
+    </section>`;
+    return html;
 }
 
 // --- Animals overview: KPI tiles + trend charts ---------------------------
@@ -1727,6 +2031,26 @@ window.openHubPanel = function (type) {
                 });
                 card += `</section>`;
 
+                // --- How the barn is doing: productivity, straw, water ---
+                const care = barnCareInfo(building);
+                const careClass = v => (v < 3 ? 'feed-days--critical' : (v < 7 ? 'feed-days--warning' : 'feed-days--ok'));
+                const careDays = v => (v === null ? '' : `<span class="barn-stat-days ${careClass(v)}">${t('todayFeedDays').replace('{n}', Math.max(0, Math.floor(v)))}</span>`);
+                card += `<section class="barn-panel barn-panel--care">
+                    <h4 class="barn-section-title">${t('barnCareTitle')}</h4>
+                    <div class="barn-stat-list">`;
+                if (care.productivity !== null) {
+                    card += `<div class="barn-stat">
+                        <span class="barn-stat-icon barn-stat-icon--product" aria-hidden="true"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span>
+                        <span class="barn-stat-label">${t('barnProductivity')}</span>
+                        <span class="barn-stat-value">${Math.round(care.productivity * 100)}%</span>
+                    </div>`;
+                }
+                if (care.straw.daily > 0) card += statRow('STRAW', formatFillType('STRAW'), `${num(care.straw.level)} l${careDays(care.straw.days)}`);
+                if (care.water.level !== null) card += statRow('WATER', formatFillType('WATER'), `${num(care.water.level)} l${careDays(care.water.days)}`);
+                card += `</div>`;
+                if (care.water.level === null && care.water.daily > 0) card += `<p class="barn-empty">${t('barnWaterNotSaved')}</p>`;
+                card += `</section>`;
+
                 // --- Daily need ---
                 card += `<section class="barn-panel barn-panel--need">
                     <h4 class="barn-section-title">${t('hubDailyNeed')}</h4>`;
@@ -1783,11 +2107,12 @@ window.openHubPanel = function (type) {
                 }
 
                 // --- Stored in the building right now ---
-                if (building.production.length > 0) {
+                const storedHere = building.production.filter(p => p.fillType !== 'STRAW' && p.fillType !== 'WATER');
+                if (storedHere.length > 0) {
                     card += `<section class="barn-panel barn-panel--stored">
                         <h4 class="barn-section-title">${t('hubStoredProduction')}</h4>
                         <div class="barn-stat-list">`;
-                    building.production.forEach(p => {
+                    storedHere.forEach(p => {
                         card += statRow(p.fillType, formatFillType(p.fillType), `${num(p.level)} l`);
                     });
                     card += `</div></section>`;
@@ -1902,6 +2227,10 @@ window.openHubPanel = function (type) {
         renderNotesPanel(titleEl, bodyEl, modalEl);
     } else if (type === 'yieldforecast') {
         renderYieldForecastPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'storage') {
+        renderStoragePanel(titleEl, bodyEl);
+    } else if (type === 'seasonsummary') {
+        renderSeasonSummaryPanel(titleEl, bodyEl);
     } else if (type === 'rotation') {
         renderRotationPanel(titleEl, bodyEl);
     } else if (type === 'feedplan') {
@@ -1992,7 +2321,8 @@ let fieldSoilImportMsg = '';
 // "Load soils from the game": fills rates.fieldSoil for every field whose
 // number(s) exist on the map. A combined field ("168-169", "69-70-71") gets
 // the pixel-weighted mix of its parts. Returns the status line (HTML-safe text).
-function importFieldSoilFromGame(farm) {
+// onlyKey: just that field (the field view's button).
+function importFieldSoilFromGame(farm, onlyKey) {
     const res = readFieldSoilFromSave(farm && farm.saveGamePath);
     if (!res.ok) {
         const reasons = t('fieldSoilImportReasons') || {};
@@ -2014,6 +2344,7 @@ function importFieldSoilFromGame(farm) {
     let filled = 0;
     const missing = [], areaOff = [];
     Object.keys(areaByKey).forEach(key => {
+        if (onlyKey && key !== onlyKey) return;
         const ids = key.split(/[^0-9]+/).filter(Boolean).map(s => String(parseInt(s, 10)));
         if (!ids.length) return;
         const parts = ids.map(id => res.fields[id]);
@@ -2040,6 +2371,11 @@ function importFieldSoilFromGame(farm) {
     });
     saveSupplyRates(rates);
 
+    if (onlyKey) {
+        if (!filled) return t('fieldViewSoilNotFound').replace('{n}', escapeHtml(onlyKey));
+        return t('fieldViewSoilImported').replace('{map}', escapeHtml(res.mapTitle || res.modName || ''))
+            + (areaOff.length ? ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', '))) : '');
+    }
     let msg = t('fieldSoilImportDone').replace('{n}', filled).replace('{map}', escapeHtml(res.mapTitle || res.modName || ''));
     if (missing.length) msg += ' ' + t('fieldSoilImportMissing').replace('{list}', escapeHtml(missing.join(', ')));
     if (areaOff.length) msg += ' ' + t('fieldSoilImportArea').replace('{list}', escapeHtml(areaOff.join(', ')));
@@ -2061,8 +2397,9 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const isPast = season < currentSeason;
 
     const rates = getSupplyRates();
-    const data = buildYieldForecastRows(loadSeasonFields(farm, season), rates, isPast ? null : farm);
+    const data = buildYieldForecastRows(seasonCropRows(farm, season), rates, isPast ? null : farm);
     const showMoisture = !isPast && !!MOISTURE_DATA;
+    const showLoss = !isPast && data.rows.some(r => r.state);
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
     const arrow = (dir, enabled) => enabled
@@ -2081,26 +2418,58 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    html += `<table class="data-table supply-table"><thead><tr>
-        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
+    // Prices and margin: this season only, from the save's price curve.
+    const margin = isPast ? null : buildCropMarginRows(farm, seasonCropRows(farm, season), rates, data.rows);
+    const money = v => v === null || v === undefined ? '–' : finMoney(v);
+    html += `<table class="data-table supply-table yield-table"><thead><tr>
+        <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
+        ${margin ? `<th>${t('yieldColPrice')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
+    let revenueTotal = 0, costTotal = 0, revenueKnown = false;
     data.rows.forEach(r => {
         const flag = r.known ? '' : ` <span class="supply-flag" title="${t('yieldForecastUnknownFlag')}">?</span>`;
         const m = r.moisture;
         const moistureCell = !showMoisture ? ''
             : `<td class="moisture-cell">${m ? moistureCellHtml(m.sum / m.area, m.def, m.nowArea ? m.nowFactor / m.nowArea : 1, m.nowArea > 0) : '–'}</td>`;
+        let lossCell = '';
+        if (showLoss) {
+            const s = r.state;
+            const st = s ? { factor: s.sum / s.area, parts: Object.fromEntries(Object.entries(s.parts).map(([p, v]) => [p, v / s.area])) } : null;
+            const txt = st ? harvestLossText(st) : null;
+            lossCell = !txt ? '<td>–</td>'
+                : `<td class="yield-loss${txt.loss > 0 ? ' is-loss' : ' is-ok'}">${txt.short}${txt.parts ? `<small class="yield-loss-parts">${escapeHtml(txt.parts)}</small>` : ''}</td>`;
+        }
+        let marginCells = '';
+        if (margin) {
+            const c = margin.byCrop[r.crop] || {};
+            if (c.revenue !== null && c.revenue !== undefined) { revenueTotal += c.revenue; revenueKnown = true; }
+            if (c.costPerHa !== null && c.costPerHa !== undefined) costTotal += c.costPerHa * r.area;
+            const costFlag = c.costPerHa !== null && c.costPerHa !== undefined && !c.costKnown ? ` <span class="supply-flag" title="${t('yieldCostPartialFlag')}">?</span>` : '';
+            const mCls = c.marginPerHa === null || c.marginPerHa === undefined ? '' : c.marginPerHa < 0 ? ' yield-margin--loss' : ' yield-margin--gain';
+            marginCells = `<td>${money(c.price)}</td>
+                <td>${money(c.revenue)}</td>
+                <td>${money(c.costPerHa)}${costFlag}</td>
+                <td class="yield-margin${mCls}">${money(c.marginPerHa)}</td>`;
+        }
         html += `<tr><td>${translateCropName(r.crop)}${flag}</td>
-            <td>${r.area.toFixed(2)} ha</td>${moistureCell}
-            <td>${num(r.litres)} l</td></tr>`;
+            <td>${r.area.toFixed(2)} ha</td>${moistureCell}${lossCell}
+            <td>${num(r.litres)} l</td>${marginCells}</tr>`;
     });
+    const area = data.rows.reduce((sum, r) => sum + r.area, 0);
     html += `</tbody><tfoot><tr class="supply-total-row">
-        <td colspan="${showMoisture ? 3 : 2}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td></tr></tfoot></table>`;
+        <td colspan="${2 + (showMoisture ? 1 : 0) + (showLoss ? 1 : 0)}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
+        ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
+            <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
+    if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
+    else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t(fs.existsSync(farm.saveGamePath) ? 'yieldNoPricesNote' : 'yieldNoSaveNote')}</p>`;
+    if (margin) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
     }
     html += `<p class="hub-panel-note">${t('yieldForecastNote')}</p>`;
     if (showMoisture) html += `<p class="hub-panel-note">${t('yieldMoistureNote')}</p>`;
+    if (showLoss) html += `<p class="hub-panel-note">${t('yieldLossNote')}</p>`;
 
     bodyEl.innerHTML = html;
     wireArrows();
@@ -2807,12 +3176,51 @@ function cropAgronomyFromDoc(doc) {
     const seeding = doc.querySelector('seeding');
     const rolling = seeding ? seeding.getAttribute('needsRolling') : null;
     if (rolling === 'true' || rolling === 'false') out.needsRolling = rolling === 'true';
+    // Growth states (fields.xml growthState = the foliageState's 1-based
+    // position) that mean the crop has been harvested.
+    const cutStates = [];
+    doc.querySelectorAll('foliageState').forEach((el, i) => { if (el.getAttribute('isCut') === 'true') cutStates.push(i + 1); });
+    if (cutStates.length) out.cutStates = cutStates;
+    // The other states the field log tells apart (field-log.js).
+    const states = [...doc.querySelectorAll('foliageState')];
+    const positions = test => states.reduce((list, el, i) => (test(el) ? [...list, i + 1] : list), []);
+    const ready = positions(el => el.getAttribute('isHarvestReady') === 'true' || el.getAttribute('name') === 'harvestReady');
+    const withered = positions(el => el.getAttribute('isWithered') === 'true');
+    const rolledCut = positions(el => el.getAttribute('isRolledCut') === 'true');
+    const regrow = positions(el => el.getAttribute('regrowthStart') === 'true');
+    if (ready.length) out.readyStates = ready;
+    if (withered.length) out.witheredStates = withered;
+    if (rolledCut.length) out.rolledCutStates = rolledCut;
+    if (regrow.length) out.regrowState = regrow[0];
     return Object.keys(out).length ? out : null;
+}
+
+// Whether a crop in fields.xml is harvested (true), still standing (false),
+// or unknown — its fruit file wasn't read (null).
+function saveCropHarvested(fruitType, growthState) {
+    const a = CROP_AGRONOMY[cropOrderKey(saveFruitToCropKey(fruitType))];
+    if (!a || !Array.isArray(a.cutStates)) return null;
+    return a.cutStates.includes(growthState);
+}
+
+// Whether this game field grows the crop now: its stubble keeps the crop's name
+// in fields.xml, so a harvested one doesn't count. Unknown states count as growing.
+// The save has one point of the field; the link mod's cutShare knows how much is cut.
+function saveFieldGrowsCrop(g, crop) {
+    if (!g.sown || cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(crop)) return false;
+    if (g.cutShare != null) return g.cutShare < LIVE_HARVEST_DONE;
+    return saveCropHarvested(g.fruitType, g.growthState) !== true;
 }
 
 // Base game agronomy (data/default-agronomy.json, from the game's own crop
 // files) with the open farm's map crops on top — see loadFarmConfigs.
 let DEFAULT_AGRONOMY = {};
+let DEFAULT_HARVEST_WINDOWS = {};   // crop -> sowing month -> last harvest month
+try {
+    DEFAULT_HARVEST_WINDOWS = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-harvest-windows.json'), 'utf-8')) || {};
+} catch (e) {
+    console.error('Could not load default-harvest-windows.json', e);
+}
 try {
     DEFAULT_AGRONOMY = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'default-agronomy.json'), 'utf-8')) || {};
 } catch (e) {
@@ -2823,10 +3231,18 @@ let CROP_AGRONOMY = {};   // cropOrderKey -> { seed, yield, straw }
 function buildCropAgronomy(mapCrops) {
     const out = {};
     Object.keys(DEFAULT_AGRONOMY).forEach(k => { out[cropOrderKey(k)] = { ...DEFAULT_AGRONOMY[k] }; });
+    Object.keys(DEFAULT_HARVEST_WINDOWS).forEach(k => { out[cropOrderKey(k)] = { ...(out[cropOrderKey(k)] || {}), harvestUntil: DEFAULT_HARVEST_WINDOWS[k] }; });
     (mapCrops || []).forEach(c => {
         if (c.agronomy) out[cropOrderKey(c.name)] = { ...(out[cropOrderKey(c.name)] || {}), ...c.agronomy };
     });
     return out;
+}
+
+// The last month a crop sown in this month can be harvested, when it has more
+// than one ('' otherwise).
+function cropHarvestUntil(crop, sowingMonth) {
+    const a = CROP_AGRONOMY[cropOrderKey(crop || '')];
+    return (a && a.harvestUntil && a.harvestUntil[sowingMonth]) || '';
 }
 
 function cropAgronomy(crop, key) {
@@ -2950,17 +3366,23 @@ function buildYieldForecastRows(fields, rates, farm = null) {
     fields.forEach((f, i) => {
         const area = parseFloat(f.area) || 0;
         if (area <= 0) return;
-        const soilMix = getFieldSoilMix(fertPlanSoilKey(f, i), rates);
         // Main crop and catch crop are two harvests off the same hectares.
         [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
-            const rate = getCropYieldRate(crop);
-            const known = rate !== null;
-            const moist = farm ? fieldMoistureInfo(f, crop, crop === f.crop ? f.sowingMonth : f.catchSowingMonth, farm) : null;
-            const litres = known ? area * rate * fieldYieldFactor(soilMix) * (moist && moist.now ? moist.factor : 1) : 0;
+            const y = fieldExpectedYield(f, i, crop, rates, farm);
+            const known = y.base !== null;
+            const moist = y.moist;
+            const litres = y.litres;
 
-            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null };
+            const entry = byCrop.get(crop) || { crop, area: 0, litres: 0, known: true, moisture: null, state: null };
             entry.area += area;
             entry.litres += litres;
+            if (y.state) {
+                // Area-weighted loss of the fields that grow it now (the link mod's numbers).
+                const s = entry.state || (entry.state = { area: 0, sum: 0, parts: {} });
+                s.area += area;
+                s.sum += area * y.state.factor;
+                Object.entries(y.state.parts).forEach(([p, v]) => { s.parts[p] = (s.parts[p] || 0) + area * v; });
+            }
             if (moist) {
                 // Area-weighted: moisture of all its fields, factor of those harvested now.
                 const m = entry.moisture || (entry.moisture = { def: moist.def, area: 0, sum: 0, nowArea: 0, nowFactor: 0 });
@@ -3040,20 +3462,29 @@ function saveFruitToCropKey(raw) {
 //   farmland.xml            -> which farmlandIds belong to farm 1
 //   precisionFarming.xml    -> real field area (m², from the <tillage> block)
 //   fields.xml             -> planned crop + current spray/lime level per field
-// Returns { ok, fields:[...], hasArea }; fails quietly (ok:false) when the
+// Returns { ok, fields:[...], hasArea, live }; fails quietly (ok:false) when the
 // save folder or its files are missing. weedState feeds syncWeedsFromSave.
-function readSaveFields(farm) {
+// While the game runs with the link mod, the fields owned and their state come
+// from the mod (same attributes, see live-link.js), with stoneShare and cutShare.
+// opts.saved = what the game really saved: for anything that changes the farm's
+// fields, because the plan follows the save, never the live copy. stoneShare
+// still comes from the mod, the save has no such thing.
+function readSaveFields(farm, opts = {}) {
     if (!farm || !farm.saveGamePath) return { ok: false, reason: 'nopath' };
     const dir = path.dirname(farm.saveGamePath);
+    const live = typeof liveLinkSource === 'function' ? liveLinkSource(farm) : null;
+    const useLive = live && !opts.saved;
     const fieldsPath = path.join(dir, 'fields.xml');
     const farmlandPath = path.join(dir, 'farmland.xml');
     if (!fs.existsSync(fieldsPath) || !fs.existsSync(farmlandPath)) return { ok: false, reason: 'nofiles' };
 
     try {
-        const flText = fs.readFileSync(farmlandPath, 'utf-8');
-        const owned = new Set();
-        for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
-            if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
+        const owned = new Set(useLive ? Object.keys(live.rows) : []);
+        if (!useLive) {
+            const flText = fs.readFileSync(farmlandPath, 'utf-8');
+            for (const m of flText.matchAll(/<farmland\s+id="(\d+)"\s+farmId="(\d+)"/g)) {
+                if (m[2] === gameFarmIdOf(farm)) owned.add(m[1]);
+            }
         }
 
         const areaById = {};
@@ -3072,7 +3503,10 @@ function readSaveFields(farm) {
         for (const m of fxText.matchAll(/<field\s+id="(\d+)"[^>]*\/>/g)) {
             const id = m[1];
             if (!owned.has(id)) continue;
-            const tag = m[0];
+            // A live row without state: the mod couldn't read it, the save still knows.
+            const liveTag = useLive ? live.rows[id] : '';
+            const tag = liveTag && liveTag.includes('fruitType=') ? liveTag : m[0];
+            const cutShare = parseFloat(attrOf(tag, 'cutShare'));
             const fruitType = attrOf(tag, 'fruitType');
             const growthState = parseInt(attrOf(tag, 'growthState')) || 0;
             out.push({
@@ -3083,11 +3517,22 @@ function readSaveFields(farm) {
                 growthState,
                 sown: fruitType !== 'UNKNOWN' && fruitType !== '' && fruitType !== 'FALLOW' && growthState > 0,
                 sprayLevel: parseInt(attrOf(tag, 'sprayLevel')) || 0,
+                sprayType: attrOf(tag, 'sprayType'),
                 limeLevel: parseInt(attrOf(tag, 'limeLevel')) || 0,
-                weedState: parseInt(attrOf(tag, 'weedState')) || 0
+                groundType: attrOf(tag, 'groundType'),
+                weedState: parseInt(attrOf(tag, 'weedState')) || 0,
+                // One sample of the field (FieldState): plowLevel 0 = needs ploughing
+                // (when the game asks for it), stubbleShredLevel 1 = stubble mulched.
+                plowLevel: parseInt(attrOf(tag, 'plowLevel')) || 0,
+                stubbleShredLevel: parseInt(attrOf(tag, 'stubbleShredLevel')) || 0,
+                rollerLevel: parseInt(attrOf(tag, 'rollerLevel')) || 0,
+                // Share of the field still under stones (0..1), only from the link mod.
+                stoneShare: live && live.stones[id] !== undefined ? live.stones[id] : null,
+                // How much of a ripe field is cut (0..1), only from the link mod.
+                cutShare: isFinite(cutShare) ? cutShare : null
             });
         }
-        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0 };
+        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive };
     } catch (e) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
@@ -3146,6 +3591,14 @@ function migrateFarmFolderToId(oldFolderName, farmData) {
 // still get their own copy (they change it and save it, or drop it).
 const FARM_FILE_CACHE = new Map();   // jsonPath -> { mtimeMs, size, data }
 
+// Work lists from before field.workFor (also in backups and undo files, or a
+// crop taken back) belong to the crops on the field now.
+function stampFieldWorkCrops(farm) {
+    (farm.fields || []).forEach(f => {
+        if (Array.isArray(f.work) && f.workFor === undefined) f.workFor = workCropsKey(f);
+    });
+}
+
 function readFarmFile(jsonPath) {
     const st = fs.statSync(jsonPath);
     const hit = FARM_FILE_CACHE.get(jsonPath);
@@ -3153,6 +3606,7 @@ function readFarmFile(jsonPath) {
     const content = fs.readFileSync(jsonPath, 'utf-8');
     if (content.trim() === '') return null;
     const data = JSON.parse(content);
+    stampFieldWorkCrops(data);
     FARM_FILE_CACHE.set(jsonPath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(data) });
     return data;
 }
@@ -3173,6 +3627,7 @@ function getAllFarms() {
                         if (data.id && data.folderName !== data.id) {
                             data = migrateFarmFolderToId(folder, data);
                         }
+                        localizeSavePath(data);
                         farms.push(data);
                     }
                 }
@@ -3184,22 +3639,125 @@ function getAllFarms() {
     return farms;
 }
 
+// A farm folder copied or synced from another computer keeps that computer's
+// save path (Documents\My Games\... on one, OneDrive\Dokumenty\My Games\... on the other).
+// When it doesn't exist here, the same path from "My Games" on is tried in this
+// computer's Documents (the folder holding the farms); it works both ways.
+const SAVE_PATH_LOCAL_CACHE = new Map();
+function localizeSavePath(farm) {
+    const p = farm && farm.saveGamePath;
+    if (!p) return;
+    if (!SAVE_PATH_LOCAL_CACHE.has(p)) {
+        let local = p;
+        if (!fs.existsSync(p)) {
+            const parts = p.split(/[\\/]+/);
+            const i = parts.findIndex(s => s.toLowerCase() === 'my games');
+            const candidate = i >= 0 ? path.join(path.dirname(appDataDir), ...parts.slice(i)) : null;
+            if (candidate && fs.existsSync(candidate)) local = candidate;
+        }
+        SAVE_PATH_LOCAL_CACHE.set(p, local);
+    }
+    farm.saveGamePath = SAVE_PATH_LOCAL_CACHE.get(p);
+}
+
 // touch: false for writes that aren't the user's own edits (savegame sync,
 // migrations), so "Last edited" on the farm list stays meaningful.
-function saveFarmData(farmData, { touch = true } = {}) {
+// undo: false for a change that also rewrites files next to data.json (new
+// season, importing map data), which going back to the old data.json wouldn't
+// put right. restoring: this save is Undo itself.
+// undoStep: the save can be taken back (by default: a change the player made).
+// keepUndo: a save that is not a step but leaves the steps alone (the app's
+// own bookkeeping, nothing the player would want back).
+function saveFarmData(farmData, { touch = true, undo = true, restoring = false, undoStep = touch && undo, keepUndo = false } = {}) {
     if (!farmData.folderName) return;
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
     if (touch) farmData.lastEdited = new Date().toISOString();
+    stampFieldWorkCrops(farmData);
 
+    const cached = FARM_FILE_CACHE.get(filePath);
+    const before = cached ? cached.data : null;
     try {
         fs.writeFileSync(filePath, JSON.stringify(farmData, null, 2), 'utf-8');
         // Keep the cache in step so the next read doesn't parse the file again.
         const st = fs.statSync(filePath);
         FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
+        if (!restoring) trackFarmUndo(farmData, before, undoStep, keepUndo);
     }
     catch (err) { console.error('saveFarmData failed', err); showNotice(t('noticeErrorTitle'), t('saveDataError'), true); }
 }
+
+// --- Undo ------------------------------------------------------------------
+// Everything about a farm's plan is in its data.json, so going back a step is
+// putting the file back as it was. Only saves you caused count (touch): one that
+// came from the game clears the steps, since going back over it would lose it.
+// A cached copy is never handed out or changed, so the stack can keep it as is.
+const FARM_UNDO_MAX = 30;
+const FARM_UNDO_MERGE_MS = 400;     // saves of one click are one step
+const UNDO_TOAST_MS = 8000;
+let farmUndoStack = [];
+let farmUndoLastAt = 0;
+let undoToastTimer = null;
+
+function farmContent(farm) {
+    return JSON.stringify({ ...farm, lastEdited: null });
+}
+
+function trackFarmUndo(farmData, before, byUser, keepUndo) {
+    if (before && farmContent(before) === farmContent(farmData)) return;
+    if (!byUser && keepUndo && farmData.id === currentFarmId) return;
+    if (!byUser || !before || farmData.id !== currentFarmId || tut.active) { clearFarmUndo(); return; }
+    const now = Date.now();
+    if (!farmUndoStack.length || now - farmUndoLastAt > FARM_UNDO_MERGE_MS) {
+        farmUndoStack.push({ farmId: farmData.id, data: before });
+        if (farmUndoStack.length > FARM_UNDO_MAX) farmUndoStack.shift();
+    }
+    farmUndoLastAt = now;
+    showUndoToast(t('undoSaved'));
+}
+
+function clearFarmUndo() {
+    farmUndoStack = [];
+    hideUndoToast();
+}
+
+function hideUndoToast() {
+    clearTimeout(undoToastTimer);
+    const el = document.getElementById('undo-toast');
+    if (el) el.hidden = true;
+}
+
+function showUndoToast(text) {
+    const el = document.getElementById('undo-toast');
+    if (!el) return;
+    document.getElementById('undo-toast-text').textContent = text;
+    document.getElementById('undo-toast-btn').hidden = !farmUndoStack.length;
+    el.hidden = false;
+    clearTimeout(undoToastTimer);
+    undoToastTimer = setTimeout(hideUndoToast, UNDO_TOAST_MS);
+}
+
+function undoLastFarmChange() {
+    if (isEditMode || !farmUndoStack.length) return;
+    const step = farmUndoStack.pop();
+    if (step.farmId !== currentFarmId) { clearFarmUndo(); return; }
+    saveFarmData(structuredClone(step.data), { touch: false, restoring: true });
+    if (document.getElementById('field-modal').style.display === 'flex') renderFieldModal();
+    if (document.getElementById('work-modal').style.display === 'flex') renderWorkModal();
+    renderSeasonView();
+    if (currentPlannerView && currentPlannerView !== 'plan') openHubPanel(currentPlannerView);
+    showUndoToast(t('undoDone'));
+}
+
+document.getElementById('undo-toast-btn').addEventListener('click', undoLastFarmChange);
+// Ctrl+Z inside a text box keeps undoing the typing.
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+    if (e.target.closest && e.target.closest('input:not([type="checkbox"]), textarea, [contenteditable]')) return;
+    if (!farmUndoStack.length) return;
+    e.preventDefault();
+    undoLastFarmChange();
+});
 
 // Absolute path to a farm's own data folder (named after its id).
 function farmDir(farm) {
@@ -3293,8 +3851,9 @@ function loadFarmConfigs(farm) {
 
     try {
         if (fs.existsSync(cropsPath)) {
-            const imported = JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {};
+            const imported = dropOutdatedCropCalendars(cropsPath, JSON.parse(fs.readFileSync(cropsPath, 'utf-8')) || {});
             Object.keys(imported).forEach(cropName => {
+                if (cropName === '_calendarVersion') return;
                 CROP_CALENDAR[cropName] = { ...(CROP_CALENDAR[cropName] || {}), ...imported[cropName] };
                 // A manually imported crop is on the map even if the mod's
                 // list couldn't be read or doesn't name it.
@@ -3451,6 +4010,25 @@ function formatCropName(rawName) {
 // game's own growth-state machine, one period (~one month) at a time.
 // Returns null if the file isn't a recognizable crop growth definition —
 // map folders are full of unrelated XML files, so this must fail quietly.
+// An imported calendar wins over the map's, so one saved with an older way of
+// counting growth (harvest too early) would stay wrong for good. Crops the map
+// or the base game know go back to their fresh calendars; the old file is kept
+// next to it. Crops known only from the import stay until they are imported again.
+const CROP_CALENDAR_VERSION = 2;
+function dropOutdatedCropCalendars(cropsPath, imported) {
+    if (imported._calendarVersion >= CROP_CALENDAR_VERSION) return imported;
+    const known = new Set(Object.keys(CROP_CALENDAR).map(cropOrderKey));
+    const kept = { _calendarVersion: CROP_CALENDAR_VERSION };
+    Object.keys(imported).forEach(cropName => {
+        if (!known.has(cropOrderKey(cropName))) kept[cropName] = imported[cropName];
+    });
+    try {
+        fs.copyFileSync(cropsPath, cropsPath.replace(/\.json$/, '.before-calendar-v2.json'));
+        fs.writeFileSync(cropsPath, JSON.stringify(kept, null, 2), 'utf-8');
+    } catch (e) { console.error('Could not update crops_config.json', e); }
+    return kept;
+}
+
 function parseCropGrowthXml(xmlText) {
     let doc;
     try {
@@ -3508,48 +4086,49 @@ function parseCropGrowthXml(xmlText) {
     const sowStartState = hasInvisibleRule ? 'invisible' : (seasonalEl.getAttribute('initialState') || 'invisible');
 
     const calendar = {};
+    const harvestUntil = {};
 
     for (let sowIdx = 0; sowIdx < 12; sowIdx++) {
         if (!periodData[sowIdx].plantingAllowed) continue;
 
         let state = sowStartState;
         let harvestIdx = null;
+        let firstStep = 0;
 
-        // Walk forward period by period (wrapping across the year boundary,
-        // up to 2 full years as a safety cap). Within each period, keep
-        // chaining every matching growth rule until none apply (or harvest
-        // is reached) before moving to the next period — a period's
-        // <update> list is often a full multi-step chain meant to resolve
-        // within that same ~month (e.g. grass: invisible -> greenSmall ->
-        // greenMiddle -> harvestReady all inside one period), not one step
-        // per period.
-        outer:
+        // Crops grow once per period: as a period ends, a field takes one step by
+        // that period's rules (the rules of one period are a table for every
+        // state, not a chain), so a step shows from the next period on, and the
+        // period it is sown in counts. Checked against the fields of real saves.
         for (let step = 0; step < 24; step++) {
             const idx = (sowIdx + step) % 12;
-
-            for (let inner = 0; inner < 20; inner++) {
-                const rule = periodData[idx].updates.find(u => u.from === state);
-                if (!rule) break;
-                state = rule.to;
-                if (harvestStateNames.has(state)) {
-                    harvestIdx = idx;
-                    break outer;
-                }
-            }
-
+            const rule = periodData[idx].updates.find(u => u.from === state);
+            if (!rule) continue;
+            state = rule.to;
             if (harvestStateNames.has(state)) {
-                harvestIdx = idx;
+                harvestIdx = (idx + 1) % 12;
+                firstStep = step + 1;
                 break;
             }
         }
 
         if (harvestIdx !== null) {
             calendar[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[harvestIdx];
+            // The last month it can be harvested: the one whose end takes it
+            // out of the ready states. One that stays ready has no last month.
+            for (let step = firstStep; step < firstStep + 12; step++) {
+                const idx = (sowIdx + step) % 12;
+                const rule = periodData[idx].updates.find(u => u.from === state);
+                if (!rule) continue;
+                state = rule.to;
+                if (harvestStateNames.has(state)) continue;
+                if (idx !== harvestIdx) harvestUntil[FS_PERIOD_TO_MONTH[sowIdx]] = FS_PERIOD_TO_MONTH[idx];
+                break;
+            }
         }
     }
 
     if (Object.keys(calendar).length === 0) return null;
-    return { name: formatCropName(rawName), calendar, agronomy: cropAgronomyFromDoc(doc) };
+    return { name: formatCropName(rawName), calendar, agronomy: { ...cropAgronomyFromDoc(doc), harvestUntil } };
 }
 
 // Takes a FileList (from a <input webkitdirectory> folder picker, which the
@@ -3727,6 +4306,7 @@ function buildCropsCalendarFromFiles(fileList) {
     // XML files in a map folder that just aren't crop/animal definitions at
     // all (vehicles, placeables, etc.), which is normal and not logged.
     const readErrors = [];
+    const brokenAnimalFiles = [];
 
     Array.from(fileList).forEach(file => {
         if (!/\.xml$/i.test(file.name)) return;
@@ -3755,6 +4335,13 @@ function buildCropsCalendarFromFiles(fileList) {
                 Object.assign(animalNeeds, parsedAnimals);
                 animalDefsFound++;
                 animalFiles.push(absPath);
+            } else if (/<animals?[\s>]/.test(text) && /<subType\s/.test(text)) {
+                // Looks like animal definitions but isn't valid XML — the
+                // game rejects such a file too (and AFC falls back to other
+                // curves), so it's reported instead of silently skipped.
+                const err = new DOMParser().parseFromString(text, 'text/xml').querySelector('parsererror');
+                const line = err ? (err.textContent.match(/line (\d+)/) || [])[1] : null;
+                brokenAnimalFiles.push({ name: file.name, line: line || '?' });
             }
         } catch (err) {
             readErrors.push({ name: file.name, reason: err.message || String(err) });
@@ -3762,7 +4349,7 @@ function buildCropsCalendarFromFiles(fileList) {
         }
     });
 
-    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors };
+    return { combined, animalNeeds, xmlCount, cropsFound, animalDefsFound, animalFiles, readErrors, brokenAnimalFiles };
 }
 
 // The player's farm inside the savegame. Single player is always farmId 1;
@@ -3784,11 +4371,13 @@ const SUPPORTED_MODS = [
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
     { id: 'cropRolling', name: 'Crop Dependent Rolling', modNames: ['FS25_CropDependentRolling'] },
     { id: 'moisture', name: 'Moisture System', modNames: ['FS25_MoistureSystem'] },
+    { id: 'additionalCurrencies', name: 'Additional Currencies', modNames: [ADDITIONAL_CURRENCIES_MOD] },
     { id: 'els', name: 'Enhanced Loan System', modNames: [], modPattern: /EnhancedLoan/i, saveFile: 'els_loans.xml' }
 ];
 let SAVE_ACTIVE_MODS = new Set();      // modName list of the farm's savegame
 let SAVE_DISABLED_MODS = new Set();    // app mod ids switched off for the farm
 let SAVE_LINKED = false;
+let SAVE_RECIPE_BOOK = {};             // production recipes by placeable file, from the link mod
 
 function activeModsInSave(saveGamePath) {
     try {
@@ -3833,6 +4422,7 @@ function useSaveFarm(farm) {
     SAVE_LINKED = (farm && farm.saveGamePath) || false;
     SAVE_ACTIVE_MODS = SAVE_LINKED ? activeModsInSave(farm.saveGamePath) : new Set();
     SAVE_DISABLED_MODS = disabledModsOf(farm);
+    SAVE_RECIPE_BOOK = (farm && farm.productionRecipes) || {};
 }
 
 // Farms in a savegame's farms.xml: [{ id, name, money }]. [] if unreadable.
@@ -3864,7 +4454,7 @@ function resolveGameFarmId(farm) {
 }
 
 function readGameSave(pathToFile) {
-    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
+    const result = { balance: null, month: null, loan: null, equipment: null, animals: null, animalBreakdown: null, animalProduction: null, animalBuildings: null, feedStock: null, feedBales: null, mixerWagons: null, gameRules: null, forecast: null, financeDays: null, dayMinutes: null, daysPerPeriod: null, playTime: null, gameDay: null, dayInPeriod: null, gamePeriod: null, gameYear: null };
     if (!pathToFile || !fs.existsSync(pathToFile)) return result;
 
     const saveFolder = path.dirname(pathToFile);
@@ -3877,6 +4467,14 @@ function readGameSave(pathToFile) {
 
     try {
         const careerText = fs.readFileSync(pathToFile, 'utf-8');
+        // Game settings that switch whole mechanics on or off (null = not in the save).
+        const rule = tag => { const v = findValueInRawText(careerText, tag); return v === null ? null : v === 'true'; };
+        result.gameRules = {
+            plowingRequired: rule('plowingRequiredEnabled'),
+            stones: rule('stonesEnabled'),
+            weeds: rule('weedsEnabled'),
+            lime: rule('limeRequired')
+        };
         let envText = "";
         const envPath = path.join(saveFolder, 'environment.xml');
         if (fs.existsSync(envPath)) {
@@ -4005,6 +4603,17 @@ function readGameSave(pathToFile) {
             // so it's the natural gap-free x-axis for the monthly history.
             const gamePeriod = Math.floor((currentDay - 1) / daysPerPeriod);
             result.gameDay = currentDay;
+            const dayTime = parseFloat(findValueInRawText(envText, 'dayTime'));
+            if (isFinite(dayTime)) result.dayMinutes = Math.round(dayTime);
+            // The weather forecast: <forecast><instance typeName="RAIN" startDay
+            // startDayTime (ms) duration (ms)>, in order. Same day count as currentDay.
+            const fc = (envText.match(/<forecast>([\s\S]*?)<\/forecast>/) || [])[1] || '';
+            result.forecast = [...fc.matchAll(/<instance\s[^>]*>/g)].map(m => {
+                const a = name => (m[0].match(new RegExp('\\s' + name + '="([^"]*)"')) || [])[1];
+                return { type: String(a('typeName') || '').toUpperCase(), startDay: parseInt(a('startDay'), 10),
+                    startMin: Math.round((parseFloat(a('startDayTime')) || 0) / 60000), minutes: Math.round((parseFloat(a('duration')) || 0) / 60000) };
+            }).filter(f => f.type && isFinite(f.startDay));
+            result.financeDays = readSaveFinanceDays(saveFolder, currentDay);
             result.dayInPeriod = ((currentDay - 1) % daysPerPeriod) + 1;
             result.gamePeriod = gamePeriod;
             result.gameYear = Math.floor(gamePeriod / 12) + 1;
@@ -4046,6 +4655,9 @@ function readGameSave(pathToFile) {
                     name: placeable.getAttribute('filename') || '',
                     clusters: [], food: [], production: []
                 };
+                const husbandryEl = placeable.querySelector('husbandry');
+                const productivity = husbandryEl ? parseFloat(husbandryEl.getAttribute('globalProductionFactor')) : NaN;
+                if (isFinite(productivity)) building.productivity = productivity;
                 let buildingHasAnimals = false;
 
                 placeable.querySelectorAll('animal').forEach(animal => {
@@ -4108,12 +4720,15 @@ function readGameSave(pathToFile) {
 
         try { result.feedStock = readFeedStockFromSave(saveFolder); }
         catch (e) { console.error('Could not read feed stock from savegame', e); }
+        try { result.storage = readFarmStorageFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
+        catch (e) { console.error('Could not read storage from savegame', e); }
         try { result.feedBales = readFeedBalesFromSave(saveFolder); }
         catch (e) { console.error('Could not read bales from savegame', e); }
         try { result.mixerWagons = readMixerWagonsFromSave(saveFolder, modFiles.findModsDirs(pathToFile)); }
         catch (e) { console.error('Could not read mixer wagons from savegame', e); }
         try {
-            result.feedMixers = readFeedMixersFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            result.productions = readProductionsFromSave(saveFolder, modFiles.findModsDirs(pathToFile));
+            result.feedMixers = feedMixersFromProductions(result.productions);
             // What sits in a mixer (finished feed and the crops waiting to be
             // mixed) is feed on the farm too.
             if (result.feedStock) {
@@ -4146,6 +4761,7 @@ function readGameSave(pathToFile) {
 window.openPlanner = function (id) {
     let farm = getAllFarms().find(f => f.id === id);
     if (farm) {
+        clearFarmUndo();
         currentFarmId = farm.id;
         animalPictures.lookupFarmId = undefined;   // save path may have changed
         clearFieldSearch();
@@ -4167,6 +4783,7 @@ window.openPlanner = function (id) {
 
         viewedSeason = farm.currentSeason || 1;
         showPlannerView('plan');   // renders the season table
+        dropCarriedMarks(getCurrentFarm());
         maybeSuggestNewSeason(getCurrentFarm());
         maybeFillFromRotation(getCurrentFarm());
 
@@ -4186,13 +4803,16 @@ window.openPlanner = function (id) {
 // A state you set by hand (chip or work planner) wins until the game saves a
 // different weedState for that field: the save may still show live weeds
 // because the game hasn't saved since spraying, or because its per-field
-// value lags behind. Returns true if any field changed.
+// value lags behind. Fields not sown yet are skipped: their weeds belong to
+// whatever grows there now (last crop, grass, stubble), and cultivating or
+// sowing clears them anyway. Returns true if any field changed.
 function syncWeedsFromSave(farm) {
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) return false;
     const byId = weedStatesById(save);
     let changed = false;
     (farm.fields || []).forEach(field => {
+        if (field.state !== 'Planted') return;
         const ids = gameFieldIds(field);
         if (field.weedsManual !== undefined) {
             if (field.weedsManual === weedStatesKey(ids, byId)) return;
@@ -4205,6 +4825,127 @@ function syncWeedsFromSave(farm) {
         // Dead weeds after hoeing are still "weeded mechanically".
         if (next === 'done' && field.weeds === 'hoed') return;
         if (field.weeds !== next) { field.weeds = next; changed = true; }
+    });
+    return changed;
+}
+
+// Field work done in the game, from fields.xml (read only). The work list
+// (fields-table.js, withSowFromState) shows these steps as done:
+// - sow: the planned crop grows on every game field of the row -> state "Planted";
+// - cultivate / plow: the ground is cultivated (seedbed, stubble tillage) or
+//   ploughed now, or the planned crop is already sown;
+// - roll: the ground shows roller lines / a rolled seedbed;
+// - fertilize / manure / lime: the field's spray or lime level went up since the
+//   last read (levels carry over from earlier seasons, so only a rise counts).
+//   Every game field of a row has to get it before it counts once.
+// One-off steps are flags (workDetected.cultivate = true), repeatable ones
+// counts (workDetected.fertilize = 2). New season clears both.
+const SAVE_GROUND_CULTIVATED = ['CULTIVATED', 'SEEDBED', 'ROLLED_SEEDBED', 'STUBBLE_TILLAGE', 'PLOWED'];
+const SAVE_GROUND_ROLLED = ['ROLLED_SEEDBED', 'ROLLER_LINES'];
+const SAVE_SPRAY_NATURAL = ['LIQUID_MANURE', 'MANURE', 'DIGESTATE'];
+const SAVE_STONES_MIN_SHARE = 0.005;   // below half a percent of the field: no stones to collect
+function syncWorkFromSave(farm) {
+    const save = readSaveFields(farm, { saved: true });
+    if (!save.ok) return false;
+    const byId = {};
+    save.fields.forEach(g => { byId[g.id] = g; });
+    let changed = false;
+    (farm.fields || []).forEach((field, idx) => {
+        const ids = gameFieldIds(field);
+        const games = ids.map(id => byId[id]);
+        if (!games.length || games.some(g => !g)) return;
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]);
+        // Ground worked before New season belongs to the season archived: the
+        // first read after it remembers each game field's ground, and only a
+        // ground that changed since then counts as this season's work.
+        if (field.groundBaseline) {
+            field.groundSeen = Object.fromEntries(games.map(g => [g.id, g.groundType]));
+            delete field.groundBaseline;
+        }
+        if (field.groundSeen) {
+            games.forEach(g => { if (g.id in field.groundSeen && field.groundSeen[g.id] !== g.groundType) delete field.groundSeen[g.id]; });
+            if (!Object.keys(field.groundSeen).length) delete field.groundSeen;
+        }
+        const groundIsNew = !field.groundSeen || games.every(g => !(g.id in field.groundSeen));
+        const det = { ...(field.workDetected || {}) };
+        const rise = { ...(field.workRise || {}) };
+        const seen = { ...(field.workSeen || {}) };
+        const grows = !!field.crop && games.every(g => saveFieldGrowsCrop(g, field.crop));
+        const levelsOf = g => ({ s: g.sprayLevel, l: g.limeLevel, p: g.plowLevel, m: g.stubbleShredLevel });
+        // Another crop still stands in the game (last season's, not harvested
+        // yet): nothing on the field is this plan's work. Only the levels are
+        // remembered, so fertilizing the old crop never counts for the new one,
+        // and work read from the game before is dropped (manual ticks stay).
+        const otherCropStanding = !!field.crop && !grows && games.some(g => g.sown
+            && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.crop)
+            && saveCropHarvested(g.fruitType, g.growthState) === false);
+        if (otherCropStanding) {
+            games.forEach(g => { seen[g.id] = levelsOf(g); });
+            field.workSeen = seen;
+            delete field.workDetected;
+            delete field.workRise;
+            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+            return;
+        }
+        if (grows && field.state !== 'Planted') field.state = 'Planted';
+        if (field.crop && !isCutCrop(field.crop)) {
+            const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
+            if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
+            if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
+            // With ploughing required in the game settings, a field whose plough
+            // counter ran out has to be ploughed before sowing, even no-till.
+            const mustPlow = !grows && field.state !== 'Planted' && !!(farm.gameRules && farm.gameRules.plowingRequired)
+                && games.some(g => g.plowLevel === 0);
+            if (mustPlow) field.plowRequired = true; else delete field.plowRequired;
+            if (allGround(SAVE_GROUND_ROLLED)) {
+                det.roll = true;
+                if (field.rolling) field.rollingDone = true;
+            }
+            // Stones (only the link mod measures them): a field not sown yet with
+            // stones on it gets a Collect stones step (field.stones = the share),
+            // which ticks itself off once they are gone.
+            const shares = games.map(g => g.stoneShare);
+            if (!grows && field.state !== 'Planted' && shares.every(v => typeof v === 'number')
+                && !(farm.gameRules && farm.gameRules.stones === false)) {
+                const share = Math.max(...shares);
+                if (share >= SAVE_STONES_MIN_SHARE) {
+                    field.stones = Math.round(share * 1000) / 1000;
+                    delete det.stones;
+                } else if (field.stones !== undefined) {
+                    field.stones = 0;
+                    det.stones = true;
+                }
+            }
+        }
+        // Rises of the spray / lime level, per game field.
+        games.forEach(g => {
+            const last = seen[g.id];
+            if (last && field.crop) {
+                if (g.sprayLevel > last.s) {
+                    const step = SAVE_SPRAY_NATURAL.includes(g.sprayType) ? 'manure' : 'fertilize';
+                    rise[step] = [...new Set([...(rise[step] || []), g.id])];
+                }
+                if (g.limeLevel > last.l) rise.lime = [...new Set([...(rise.lime || []), g.id])];
+                if (last.p === 0 && g.plowLevel > 0) rise.plow = [...new Set([...(rise.plow || []), g.id])];
+                if (last.m === 0 && g.stubbleShredLevel > 0) rise.mulch = [...new Set([...(rise.mulch || []), g.id])];
+            }
+            seen[g.id] = levelsOf(g);
+        });
+        Object.keys(rise).forEach(step => {
+            if (!ids.every(id => rise[step].includes(id))) return;
+            delete rise[step];
+            if (step === 'manure') field.manure = true;
+            if (step === 'fertilize') field.fertilizer = true;
+            // Manure counts for a Manure step when the list has one left, else for Fertilize.
+            const list = fieldWork(field) || suggestedWork(field, idx, farm);
+            const key = step === 'manure' && !list.some(w => w.step === 'manure') ? 'fertilize' : step;
+            if (det[key] !== true) det[key] = (typeof det[key] === 'number' ? det[key] : 0) + 1;
+        });
+        field.workSeen = seen;
+        if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
+        if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
+        syncSowStep(field);
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
     });
     return changed;
 }
@@ -4229,7 +4970,7 @@ function weedStatesKey(ids, byId) {
 // said at that moment, so syncWeedsFromSave leaves the choice alone until the
 // game saves something new for this field.
 function markWeedsManual(farm, field) {
-    const save = readSaveFields(farm);
+    const save = readSaveFields(farm, { saved: true });
     if (!save.ok) return;
     field.weedsManual = weedStatesKey(gameFieldIds(field), weedStatesById(save));
 }
@@ -4274,12 +5015,17 @@ function applyGameSaveToFarm(farm) {
         farm[key] = gameData[key];
         changed = true;
     };
-    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons'].forEach(setIfMoved);
+    ['animalBreakdown', 'animalProduction', 'animalBuildings', 'feedStock', 'feedBales', 'mixerWagons', 'gameRules', 'forecast', 'storage'].forEach(setIfMoved);
     if (gameData.feedMixers !== undefined && JSON.stringify(gameData.feedMixers) !== JSON.stringify(farm.feedMixers || [])) { farm.feedMixers = gameData.feedMixers; changed = true; }
+    if (gameData.productions !== undefined && JSON.stringify(gameData.productions) !== JSON.stringify(farm.productions || [])) { farm.productions = gameData.productions; changed = true; }
     if (gameData.daysPerPeriod !== null && gameData.daysPerPeriod !== farm.daysPerPeriod) { farm.daysPerPeriod = gameData.daysPerPeriod; changed = true; }
     if (gameData.dayInPeriod !== null && gameData.dayInPeriod !== farm.dayInPeriod) { farm.dayInPeriod = gameData.dayInPeriod; changed = true; }
+    // Day count and time of day, for what is due in hours (great demands, weather).
+    if (gameData.gameDay !== null && gameData.gameDay !== farm.gameDay) { farm.gameDay = gameData.gameDay; changed = true; }
+    if (gameData.dayMinutes !== null && gameData.dayMinutes !== farm.dayMinutes) { farm.dayMinutes = gameData.dayMinutes; changed = true; }
     if (gameData.playTime !== null && gameData.playTime !== farm.playTime) { farm.playTime = gameData.playTime; changed = true; }
 
+    if (syncWorkFromSave(farm)) changed = true;
     if (syncWeedsFromSave(farm)) changed = true;
     if (syncLeasesFromSave(farm)) changed = true;
 
@@ -4289,6 +5035,7 @@ function applyGameSaveToFarm(farm) {
     // call every read — it only writes when the month rolls over or a value in
     // the current month actually moved.
     recordMonthlySnapshot(farm, gameData);
+    if (recordFieldLog(farm, gameData)) changed = true;
 
     return changed;
 }
@@ -4326,7 +5073,7 @@ function refreshPlannerHeader(farm) {
 // the moment the game writes a new (auto)save, without the user reopening the farm.
 const AUTO_SYNC_INTERVAL_MS = 10000;
 const AUTO_SYNC_FILES = [
-    'careerSavegame.xml', 'environment.xml', 'farms.xml',
+    'careerSavegame.xml', 'environment.xml', 'farms.xml', 'fields.xml', 'farmland.xml', 'economy.xml',
     'vehicles.xml', 'placeables.xml', 'items.xml', 'els_loans.xml', 'bankCredit.xml', 'leaseDeals.xml', 'fieldLeasingAgreements.xml'
 ];
 
@@ -4363,6 +5110,7 @@ function computeSaveSignature(saveFilePath) {
 }
 
 function stopAutoSync() {
+    if (typeof stopLiveLink === 'function') stopLiveLink();
     if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
     autoSyncFarmId = null;
     autoSyncSavePath = null;
@@ -4379,6 +5127,7 @@ function startAutoSync(farmId) {
     autoSyncSavePath = farm.saveGamePath;
     autoSyncSeenSig = computeSaveSignature(farm.saveGamePath); // current state = already imported
     autoSyncTimer = setInterval(runAutoSyncTick, AUTO_SYNC_INTERVAL_MS);
+    if (typeof startLiveLink === 'function') startLiveLink(farmId);
 }
 
 function runAutoSyncTick() {
@@ -4429,7 +5178,7 @@ function showAutoSyncToast(text, ms = 2500) {
     }, ms);
 }
 
-if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
+if (exitBtn) exitBtn.addEventListener('click', async () => { if (!(await discardEditsIfConfirmed())) return; clearFarmUndo(); stopAutoSync(); clearFarmConfigs(); plannerView.style.display = 'none'; dashboardView.style.display = 'flex'; currentFarmId = null; renderFarmList(getAllFarms()); updateDiscordPresence(); });
 
 // Fields of one season: the archive (seasons/season_N.json) for a past
 // season, the live farm.fields for the current one. [] if the archive is
@@ -4445,6 +5194,13 @@ function loadSeasonFields(farm, seasonNum) {
         console.error(e);
         return [];
     }
+}
+
+// Every crop of a season, for totals: its archive, or this season's crops on the
+// fields and those already off them (after the live rows, whose indexes count).
+function seasonCropRows(farm, seasonNum) {
+    const fields = loadSeasonFields(farm, seasonNum);
+    return farm && seasonNum >= (farm.currentSeason || 1) ? [...fields, ...(farm.finishedCrops || [])] : fields;
 }
 
 window.renderSeasonView = function () {
@@ -4483,7 +5239,7 @@ window.renderSeasonView = function () {
         });
     }
 
-    const displayStyle = isPastSeason ? 'none' : 'inline-block';
+    const displayStyle = isPastSeason ? 'none' : '';
     if (editSeasonBtn) editSeasonBtn.style.display = displayStyle;
     if (loadFieldsBtn) loadFieldsBtn.hidden = isPastSeason || isEditMode || !farm.saveGamePath;
     if (newSeasonBtn) newSeasonBtn.style.display = isEditMode ? 'none' : displayStyle;
@@ -4600,7 +5356,8 @@ document.querySelectorAll('#crops-table [data-sort]').forEach(th => {
 // Resolves true on the main button, 'extra' on the optional third button
 // (left, e.g. "Undo liming"), false on Cancel, a click on the backdrop or
 // Escape. Without cancelText it's a one-button notice.
-function showDialog({ title, body, confirmText, cancelText = null, extraText = null, danger = false, icon = 'fa-seedling' }) {
+// bodyHtml: markup built by the app (escaped) in place of the plain text body.
+function showDialog({ title, body, bodyHtml = null, confirmText, cancelText = null, extraText = null, danger = false, icon = 'fa-seedling' }) {
     const modal = document.getElementById('app-dialog');
     if (!modal) return Promise.resolve(window.confirm(body));
     const content = modal.querySelector('.app-dialog-content');
@@ -4611,6 +5368,11 @@ function showDialog({ title, body, confirmText, cancelText = null, extraText = n
 
     document.getElementById('app-dialog-title').textContent = title;
     document.getElementById('app-dialog-body').textContent = body || '';
+    document.getElementById('app-dialog-body').hidden = !body && !!bodyHtml;
+    const htmlEl = document.getElementById('app-dialog-html');
+    htmlEl.innerHTML = bodyHtml || '';
+    htmlEl.hidden = !bodyHtml;
+    content.classList.toggle('is-wide', !!bodyHtml);
     iconEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
     iconEl.classList.toggle('is-danger', danger);
     content.classList.toggle('is-danger', danger);
@@ -4684,6 +5446,57 @@ function cropKeepsLime(crop) {
     return isCutCrop(crop) || NO_LIME_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }
 
+// Clears a field for the next season (runNewSeason). seasonNum: the season whose
+// harvest this is, for the lime pH backfill.
+function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
+    // Read before the crop is cleared.
+    const keepsLime = cropKeepsLime(field.crop);
+    if (isPerennialCrop(field.crop)) {
+        // Grassland stays sown for years: keep the crop, sowing
+        // month and tillage; only this season's work is cleared.
+        field.state = "Planted";
+    } else {
+        field.crop = "";
+        field.sowingMonth = "";
+        field.state = "To Plant";
+        field.tillage = null;
+    }
+    field.catchCrop = "";
+    field.catchSowingMonth = "";
+    field.rolling = false;
+    field.rollingDone = false;
+    field.cuts = [];
+    // limeAppliedSeason is intentionally left untouched — it's
+    // display-only metadata now (see limePh below for the actual
+    // decaying value).
+    // One harvest = one "New Season" click: decay this field's pH
+    // by one step (soil-mix-weighted). resolveLimePh backfills a
+    // field that predates this model instead of resetting it.
+    const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
+    const resolvedPh = resolveLimePh(field, seasonNum, soilMix);
+    // consumesLime="false" crops (grassland, oilseed radish, rice)
+    // don't lower pH when harvested; everything else does.
+    const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
+    field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
+    field.manure = false;
+    field.fertilizer = false;
+    field.weeds = null;
+    delete field.weedsManual;
+    delete field.work;
+    delete field.workFor;
+    delete field.workCleared;
+    // Work found in the save belongs to the season just archived
+    // (workSeen stays: the levels to compare the next read with).
+    delete field.workDetected;
+    delete field.workRise;
+    // ...and so does the ground as it is now (see syncWorkFromSave).
+    delete field.groundSeen;
+    field.groundBaseline = true;
+    // Undo only covers the season the liming was made in.
+    delete field.limePrev;
+    delete field.plannedFrom;
+}
+
 if (newSeasonBtn) newSeasonBtn.addEventListener('click', () => runNewSeason());
 
 // New season: archive the current one, clear the fields for the next. Keeps
@@ -4699,9 +5512,9 @@ async function runNewSeason({ intro = '' } = {}) {
         if (!startFarm) return;
         const seasonNow = parseInt(startFarm.currentSeason) || 1;
         const fill = s => s.replace(/\{c\}/g, seasonNow).replace(/\{n\}/g, seasonNow + 1);
-        // Fields with a crop rotation get their next crop (asked here in 'ask' mode).
+        // Fields that move on with the season take their next crop (asked here in 'ask' mode).
         const rotationMode = rotationFillMode(startFarm);
-        const rotationCount = rotationMode === 'off' ? 0 : rotationFieldCount(startFarm);
+        const rotationCount = rotationMode === 'off' ? 0 : seasonEndFinishIndexes(startFarm).filter(i => fieldRotationInfo(startFarm, startFarm.fields[i])).length;
         const rotationText = rotationCount ? '\n\n' + t('rotNewSeasonInfo').replace('{n}', rotationCount) : '';
         const confirmNew = await showDialog({
             title: fill(t('newSeasonTitle')),
@@ -4725,6 +5538,18 @@ async function runNewSeason({ intro = '' } = {}) {
             const seasonsDirPath = path.join(appDataDir, farm.folderName, 'seasons');
             if (!fs.existsSync(seasonsDirPath)) fs.mkdirSync(seasonsDirPath, { recursive: true });
 
+            // Taken before anything moves: the undo puts all of it back.
+            const undoFields = JSON.parse(JSON.stringify(farm.fields || []));
+            const undoFertPlan = JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}));
+            const undoFinished = JSON.parse(JSON.stringify(farm.finishedCrops || []));
+            // Normalized first: a plan's steps must not depend on the season number from here on.
+            farm.fields.forEach(field => normalizePlanAhead(field, currentSeasonNum));
+            const rotationFilled = [];
+            seasonEndFinishIndexes(farm).forEach(i => {
+                if (finishFieldCrop(farm, i, fillFromRotation)) rotationFilled.push(farm.fields[i]);
+            });
+            const seasonRows = farm.finishedCrops || [];
+
             const archivePath = path.join(seasonsDirPath, `season_${currentSeasonNum}.json`);
             // An archive for this season number already exists (e.g. left over
             // after an undo or a manual copy) — keep it under another name
@@ -4735,8 +5560,9 @@ async function runNewSeason({ intro = '' } = {}) {
             // Everything needed to take this new season back.
             const undoData = {
                 season: currentSeasonNum,
-                fields: JSON.parse(JSON.stringify(farm.fields || [])),
-                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {})),
+                fields: undoFields,
+                fertPlan: undoFertPlan,
+                finishedCrops: undoFinished,
                 seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
                 createdAt: new Date().toISOString()
             };
@@ -4745,63 +5571,20 @@ async function runNewSeason({ intro = '' } = {}) {
             const archiveData = {
                 season: currentSeasonNum,
                 dateArchived: new Date().toISOString(),
-                fields: JSON.parse(JSON.stringify(farm.fields)),
+                // The crops that came off in this season. What still grows belongs to the season it comes off in.
+                fields: JSON.parse(JSON.stringify(seasonRows)),
                 balance: farm.balance,
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
                 avgHealth: archivedAvgHealth,
-                fertPlan: JSON.parse(JSON.stringify((farm.supplyRates && farm.supplyRates.fertPlan) || {}))
+                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {}))
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
-            const supplyRatesForLime = getSupplyRates();
-            farm.fields.forEach((field, i) => {
-                // Read before the crop is cleared.
-                const keepsLime = cropKeepsLime(field.crop);
-                if (isPerennialCrop(field.crop)) {
-                    // Grassland stays sown for years: keep the crop, sowing
-                    // month and tillage; only this season's work is cleared.
-                    field.state = "Planted";
-                } else {
-                    field.crop = "";
-                    field.sowingMonth = "";
-                    field.state = "To Plant";
-                    field.tillage = null;
-                }
-                field.catchCrop = "";
-                field.catchSowingMonth = "";
-                field.rolling = false;
-                field.rollingDone = false;
-                field.cuts = [];
-                // limeAppliedSeason is intentionally left untouched — it's
-                // display-only metadata now (see limePh below for the actual
-                // decaying value).
-                // One harvest = one "New Season" click: decay this field's pH
-                // by one step (soil-mix-weighted). resolveLimePh backfills a
-                // field that predates this model instead of resetting it.
-                const soilMix = getFieldSoilMix(fertPlanSoilKey(field, i), supplyRatesForLime);
-                const resolvedPh = resolveLimePh(field, currentSeasonNum, soilMix);
-                // consumesLime="false" crops (grassland, oilseed radish, rice)
-                // don't lower pH when harvested; everything else does.
-                const limeDrop = keepsLime ? 0 : fieldLimePhDrop(soilMix);
-                field.limePh = (resolvedPh == null) ? null : Math.max(0, resolvedPh - limeDrop);
-                field.manure = false;
-                field.fertilizer = false;
-                field.weeds = null;
-                delete field.weedsManual;
-                delete field.work;
-                delete field.workCleared;
-                // Undo only covers the season the liming was made in.
-                delete field.limePrev;
-            });
-            // Fertilization plans ("N already in the soil", natural N) belong to
-            // the season just archived — a new crop on the same field starts clean.
-            if (farm.supplyRates) farm.supplyRates.fertPlan = {};
-
-            const rotationFilled = advanceRotationsForNewSeason(farm, currentSeasonNum + 1, fillFromRotation);
+            farm.finishedCrops = [];
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
-            saveFarmData(farm);
+            saveFarmData(farm, { undo: false });
             fs.writeFileSync(path.join(seasonsDirPath, 'undo_new_season.json'), JSON.stringify(undoData, null, 2), 'utf-8');
             refreshUndoSeasonButton(farm);
 
@@ -4867,9 +5650,10 @@ async function undoLastNewSeason() {
         farm.fields = undo.fields;
         if (!farm.supplyRates) farm.supplyRates = {};
         farm.supplyRates.fertPlan = undo.fertPlan || {};
+        farm.finishedCrops = undo.finishedCrops || [];
         farm.currentSeason = undo.season;
         farm.seasonStartedGameYear = undo.seasonStartedGameYear;
-        saveFarmData(farm);
+        saveFarmData(farm, { undo: false });
         const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${undo.season}.json`);
         if (fs.existsSync(archivePath)) fs.rmSync(archivePath);
         fs.rmSync(undoSeasonPath(farm));
@@ -4887,9 +5671,9 @@ async function undoLastNewSeason() {
 const undoSeasonBtn = document.getElementById('undo-season-btn');
 if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeason());
 
-// A year went by in the game since this season started — offer a new season
-// once per in-game year (farm.seasonHintYear). The first sync only notes the
-// year the season is in.
+// Time for a new season (seasonEndInfo, today.js) — offer it,
+// once per season (farm.seasonHintSeason). The first sync only notes the year
+// the season is in.
 function maybeSuggestNewSeason(farm) {
     if (!farm || !farm.saveGamePath || isEditMode) return;
     const year = parseInt(farm.yearNumber, 10);
@@ -4899,11 +5683,25 @@ function maybeSuggestNewSeason(farm) {
         saveFarmData(farm, { touch: false });
         return;
     }
-    if (year <= farm.seasonStartedGameYear || farm.seasonHintYear === year) return;
-    farm.seasonHintYear = year;
+    const season = parseInt(farm.currentSeason, 10) || 1;
+    if (farm.seasonHintSeason === season) return;
+    const info = seasonEndInfo(farm);
+    if (!info.ready) return;
+    farm.seasonHintSeason = season;
     saveFarmData(farm, { touch: false });
-    const intro = t('newSeasonYearHint').replace('{y}', year).replace('{s}', farm.seasonStartedGameYear);
+    const intro = t('newSeasonReadyHint').replace('{why}', info.why).replace('{n}', season + 1);
     setTimeout(() => runNewSeason({ intro }), 600);
+}
+
+// Farms from before crops stopped carrying over to the next season may still
+// have the marks: the crop stays on the field as an ordinary crop of this season.
+function dropCarriedMarks(farm) {
+    if (!farm) return;
+    const marked = (farm.fields || []).filter(f => f.carriedFrom || f.carriedCrop);
+    if (!marked.length) return;
+    marked.forEach(f => { delete f.carriedFrom; delete f.carriedCrop; });
+    saveFarmData(farm, { touch: false });
+    renderSeasonView();
 }
 
 if (resetSeasonsBtn) {
@@ -4941,7 +5739,8 @@ if (resetSeasonsBtn) {
         }
 
         farm.currentSeason = 1;
-        saveFarmData(farm);
+        farm.finishedCrops = [];
+        saveFarmData(farm, { undo: false });
 
         viewedSeason = 1;
         setEditModeUi(false);
@@ -4988,6 +5787,10 @@ function renderAnimalModsInfo(farm) {
         }
         if (def.id === 'moisture' && inSave && MOISTURE_DATA && farm.id === currentFarmId) {
             detail += ' · ' + t('moistureModLine').replace('{pct}', formatMoisturePct(MOISTURE_DATA.moisture));
+        }
+        if (def.id === 'additionalCurrencies' && inSave) {
+            const mod = readAdditionalCurrencies(farm.saveGamePath);
+            if (mod) detail += ' · ' + currencyModText(mod);
         }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
             <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
@@ -5111,6 +5914,9 @@ function farmlandAreaForKey(key) {
     return ids.reduce((s, id) => s + FARMLAND_INFO.areas[id], 0);
 }
 
+const currencySelectEl = document.getElementById('currency-select');
+if (currencySelectEl) currencySelectEl.addEventListener('change', () => refreshCurrencyRateField(getCurrentFarm()));
+
 if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
         const farm = getAllFarms().find(f => f.id === currentFarmId);
@@ -5128,6 +5934,7 @@ if (settingsBtn) {
             modsDirInfo.title = dirs.join('\n');
         }
         renderAnimalModsInfo(farm);
+        renderLiveLinkSettings(farm);
         renderGameFarmChoice(farm);
         refreshUndoSeasonButton(farm);
         showSettingsTab('save');
@@ -5137,6 +5944,7 @@ if (settingsBtn) {
         if (grassLimitInput) grassLimitInput.value = grasslandSeasonLimit(farm);
         const currencySelect = document.getElementById('currency-select');
         if (currencySelect) currencySelect.value = (farm && farm.currency) || 'auto';
+        refreshCurrencyRateField(farm);
         if (cropsFolderInput) cropsFolderInput.value = farm ? (farm.cropsSourceLabel || "") : "";
         if (animalDefsFolderInput) animalDefsFolderInput.value = farm ? (farm.animalDefsSourceLabel || "") : "";
         // Manual import is rarely needed: folded unless this farm already uses it.
@@ -5261,6 +6069,7 @@ if (saveSettingsBtn) {
             let animalDefsFound = 0;
             let animalFiles = [];
             let readErrors = [];
+            let brokenAnimalFiles = [];
 
             if (pendingCropFiles && pendingCropFiles.length > 0) {
                 const r = buildCropsCalendarFromFiles(pendingCropFiles);
@@ -5271,6 +6080,7 @@ if (saveSettingsBtn) {
                 animalDefsFound += r.animalDefsFound;
                 animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
+                brokenAnimalFiles = brokenAnimalFiles.concat(r.brokenAnimalFiles);
             }
             if (pendingAnimalDefFiles && pendingAnimalDefFiles.length > 0) {
                 const r = buildCropsCalendarFromFiles(pendingAnimalDefFiles);
@@ -5281,6 +6091,7 @@ if (saveSettingsBtn) {
                 animalDefsFound += r.animalDefsFound;
                 animalFiles = animalFiles.concat(r.animalFiles);
                 readErrors = readErrors.concat(r.readErrors);
+                brokenAnimalFiles = brokenAnimalFiles.concat(r.brokenAnimalFiles);
             }
 
             const cropCount = Object.keys(combined).length;
@@ -5307,7 +6118,7 @@ if (saveSettingsBtn) {
                             try { existing = JSON.parse(fs.readFileSync(generatedPath, 'utf-8')) || {}; }
                             catch (e) { /* corrupt existing file — start fresh from this scan */ }
                         }
-                        const merged = { ...existing };
+                        const merged = { ...existing, _calendarVersion: CROP_CALENDAR_VERSION };
                         Object.keys(combined).forEach(cropName => {
                             merged[cropName] = { ...(merged[cropName] || {}), ...combined[cropName] };
                         });
@@ -5340,7 +6151,7 @@ if (saveSettingsBtn) {
                     }
                 }
 
-                saveFarmData(importFarm);
+                saveFarmData(importFarm, { undo: false });
                 loadFarmConfigs(importFarm);
                 // Reflect the fresh crop list in the planner behind the modal.
                 if (currentFarmId && plannerView && plannerView.style.display !== 'none' && !isEditMode) {
@@ -5348,6 +6159,9 @@ if (saveSettingsBtn) {
                 }
             }
 
+            brokenAnimalFiles.forEach(f => {
+                summaryParts.push(t('importAnimalsBrokenXml').replace('{file}', f.name).replace('{line}', f.line));
+            });
             if (readErrors.length > 0) {
                 summaryParts.push(t('importReadErrors').replace('{n}', readErrors.length));
             }
@@ -5377,6 +6191,13 @@ if (saveSettingsBtn) {
             const farm = getCurrentFarm();
             if (currencySelect && farm && (farm.currency || 'auto') !== currencySelect.value) {
                 farm.currency = currencySelect.value;
+                saveFarmData(farm);
+                refreshPlannerHeader(farm);
+            }
+            const rateInput = document.getElementById('currency-rate-input');
+            const rate = rateInput ? parseDecimal(rateInput.value) : NaN;
+            if (farm && currencyHasRate(farm.currency) && rate > 0 && rate !== currencyRateOf(farm)) {
+                farm.currencyRates = { ...(farm.currencyRates || {}), [farm.currency]: rate };
                 saveFarmData(farm);
                 refreshPlannerHeader(farm);
             }
@@ -5427,6 +6248,7 @@ if (saveSettingsBtn) {
                     saveFarmData(farm);
                     loadFarmConfigs(farm);
                     refreshFarmlandInfo(farm);
+                    refreshPlannerHeader(farm);
                     if (plannerView && plannerView.style.display !== 'none' && !isEditMode) renderSeasonView();
                 }
             }
@@ -5494,6 +6316,11 @@ if (saveSettingsBtn) {
     });
 }
 
+const openFieldSoilBtn = document.getElementById('open-field-soil-btn');
+if (openFieldSoilBtn) openFieldSoilBtn.addEventListener('click', () => {
+    closeModal(settingsModal);
+    showPlannerView('fieldsoil');
+});
 if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => closeModal(settingsModal));
 
 // =============================================================
@@ -6142,6 +6969,13 @@ if (updateCheckToggle) {
         setSetting(CONFIG_KEY_UPDATE_CHECK, updateCheckToggle.checked ? '1' : '0');
     });
 }
+// Start-up animation (splash.js reads the same setting before the app loads).
+const splashToggle = document.getElementById('splash-toggle');
+if (splashToggle) {
+    splashToggle.addEventListener('change', () => {
+        setSetting('farmer_planner_splash', splashToggle.checked ? '1' : '0');
+    });
+}
 const checkUpdatesBtn = document.getElementById('check-updates-btn');
 if (checkUpdatesBtn) {
     checkUpdatesBtn.addEventListener('click', async () => {
@@ -6153,20 +6987,30 @@ if (checkUpdatesBtn) {
 
 // ---------- what's new after an update ----------
 // The version the app last ran is kept in settings; after an update the
-// CHANGELOG.md sections in between are shown once (in English, as on the
-// website's Versions page).
+// CHANGELOG.md sections in between are shown once. A version that has a
+// section in the app language's own file (CHANGELOG.pl.md) is shown from
+// there; the others in English, as on the website's Versions page.
 const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
 const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
 
-// [{ version, lines }] for every "## X.Y.Z — date" (or "— unreleased") section.
-function readChangelogSections() {
+function changelogFileSections(file) {
     let text = '';
-    try { text = fs.readFileSync(CHANGELOG_PATH, 'utf8'); } catch (e) { return []; }
+    try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
     return text.split(/^## /m).slice(1).map(section => {
         const [heading, ...lines] = section.split(/\r?\n/);
         const m = heading.trim().match(/^(\d+\.\d+\.\d+)\b/);
         return m ? { version: m[1], lines } : null;
     }).filter(Boolean);
+}
+
+// [{ version, lines, english }] for every "## X.Y.Z — date" (or "— unreleased")
+// section of the English changelog, in the app language where translated.
+function readChangelogSections() {
+    const local = currentLang === 'en' ? [] : changelogFileSections(CHANGELOG_PATH.replace(/\.md$/, '.' + currentLang + '.md'));
+    return changelogFileSections(CHANGELOG_PATH).map(s => {
+        const own = local.find(l => l.version === s.version);
+        return own ? { ...own, english: false } : { ...s, english: currentLang !== 'en' };
+    });
 }
 
 // The small Markdown subset CHANGELOG.md uses: "**New**" labels, "- " lists
@@ -6221,7 +7065,7 @@ function showWhatsNew(since) {
 
     document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
     const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
-    document.getElementById('whats-new-lead').textContent = [lead, currentLang === 'en' ? '' : t('whatsNewEnglish')].filter(Boolean).join(' ');
+    document.getElementById('whats-new-lead').textContent = [lead, sections.some(s => s.english) ? t('whatsNewEnglish') : ''].filter(Boolean).join(' ');
     document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
     const body = document.getElementById('whats-new-body');
     body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');
