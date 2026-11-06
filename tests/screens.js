@@ -29,7 +29,8 @@ const VIEWS = {
     'finance': `document.querySelector('.sidebar-item[data-view="finance"]').click()`,
     'season-summary': `document.querySelector('.sidebar-item[data-view="seasonsummary"]').click()`,
     'field-soil-list': `showPlannerView('fieldsoil')`,
-    'settings': `document.getElementById('settings-btn').click()`
+    'settings': `document.getElementById('settings-btn').click()`,
+    'mod-manager': `FT.fakeMods(); exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`
 };
 
 // What's wrong on the screen as it is now. Runs in the page.
@@ -104,7 +105,7 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
                 await wait(250);
                 const { issues, cut } = await js(CHECK);
                 // Looking at a screen must not change the farm.
-                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen') issues.push('opening it changed the fields');
+                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && name !== 'mod-manager') issues.push('opening it changed the fields');
                 consoleErrors.filter(e => !/ResizeObserver loop/.test(e)).forEach(e => issues.push('console error: ' + e));
                 // The first capture after a change can return the frame before it.
                 win.webContents.invalidate();

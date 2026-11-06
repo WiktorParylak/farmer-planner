@@ -57,6 +57,7 @@
                 <div class="start-tools">
                     <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
                     <button type="button" id="mapscale-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i> <span data-i18n="msTitle">Map scaling</span></button>
+                    <button type="button" id="modmanager-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i> <span data-i18n="mmTitle">Mod manager</span></button>
                 </div>
             </section>
         </div>
@@ -88,6 +89,16 @@
             <div class="tl-body ms-body">
                 <aside id="ms-side" class="tl-side"></aside>
                 <div id="ms-list" class="ms-list"></div>
+            </div>
+        </div>
+        <div id="modmanager-view" class="tramlines-view modmanager-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="mm-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="mmTitle">Mod manager</h1>
+            </header>
+            <div class="tl-body mm-layout">
+                <aside id="mm-side" class="tl-side"></aside>
+                <div id="mm-main" class="mm-main"></div>
             </div>
         </div>
         <div class="planner-view" id="planner-view">
@@ -652,6 +663,7 @@
     <script src="live-link.js"></script>
     <script src="tramlines.js"></script>
     <script src="map-scale.js"></script>
+    <script src="mod-manager.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

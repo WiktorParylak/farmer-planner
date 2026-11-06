@@ -58,6 +58,15 @@ window.FT = (() => {
         await wait(40);
     }
 
+    // A few unzipped mods in the test game folder, for the mod manager's picture.
+    function fakeMods() {
+        const dir = path.join(tlGameDir(), 'mods');
+        [['FS25_FrontLoader', 'Front loader', '1.2.0.0'], ['FS25_Seeder (1)', 'Seeder', '1.0.0.0'], ['FS25_BigTrailer', 'Big trailer', '2.0.1.0']].forEach(([name, title, version]) => {
+            fs.mkdirSync(path.join(dir, name), { recursive: true });
+            fs.writeFileSync(path.join(dir, name, 'modDesc.xml'), `<modDesc descVersion="97"><author>Green Valley</author><version>${version}</version><title><en>${title}</en></title></modDesc>`);
+        });
+    }
+
     function copy(value) {
         return JSON.parse(JSON.stringify(value));
     }
@@ -85,6 +94,7 @@ window.FT = (() => {
     }
 
     async function backToPlan() {
+        if (!document.getElementById('modmanager-view').hidden) mmClose();
         document.querySelectorAll('.modal').forEach(m => { m.style.display = 'none'; });
         if (isEditMode) {
             document.getElementById('cancel-edit-btn').click();
@@ -104,5 +114,5 @@ window.FT = (() => {
         await wait(100);
     }
 
-    return { freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
+    return { fakeMods, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
 })();

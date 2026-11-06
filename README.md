@@ -53,6 +53,7 @@
 - Notes pinned to months, with tags and a checklist.
 - Tramlines: save the tramlines of your fields from one save and paste them into another save of the same map.
 - Map scaling: double the resolution of a map mod's density maps, info layers and height map. The app writes the scaled files and a backup of the originals to its own folder; you copy them into the mod yourself.
+- Mod manager: keep mod libraries like FSG Mod Assistant's collections, switch the game between them, see each mod with its icon and version, find broken or duplicate mods, compare a library with a save, copy, move and add mods, and check ModHub for updates.
 
 ## Animals and feed, worked out
 
@@ -79,7 +80,7 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 ## Questions
 
 **Does it change my savegame?**
-No. Farmer Planner only reads game files, with one exception you start yourself: the tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm` and clears the weeds under them in `densityMap_weed.gdm`. It only does that with the game closed, copies the files to `farmer_planner_backup` first, checks the new files before they replace the old ones, and can restore the last backup. The optional Farmer Planner Link mod also only reads the game: it writes its own files to `modSettings/FS25_FarmerPlannerLink` and nothing else.
+No. Farmer Planner only reads game files, with two exceptions you start yourself. The tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm` and clears the weeds under them in `densityMap_weed.gdm`. It only does that with the game closed, copies the files to `farmer_planner_backup` first, checks the new files before they replace the old ones, and can restore the last backup. The optional Farmer Planner Link mod also only reads the game: it writes its own files to `modSettings/FS25_FarmerPlannerLink` and nothing else. The mod manager changes only the mods folder setting in `gameSettings.xml` when you activate a library, with the game closed and after a copy of the file, and moves mods only inside your library folders (deleting goes to the Recycle Bin).
 
 **Which maps and mods does it support?**
 Any map: the crops and calendar are read from the map mod your savegame uses. It also understands Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit, Enhanced Loan System and Additional Currencies.

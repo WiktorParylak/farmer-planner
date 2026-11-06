@@ -52,6 +52,7 @@
 - Plony i ceny: przewidywany zbiór, cena w tym miesiącu, przychód i marża na hektar, krzywa cen w roku i podwyższony popyt; z dzisiejszą wilgotnością pól z moda Moisture System.
 - Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
 - Ścieżki technologiczne: zapisz ścieżki z pól jednego zapisu i wklej je do innego zapisu tej samej mapy.
+- Menedżer modów: trzymaj biblioteki modów jak kolekcje FSG Mod Assistant, przełączaj między nimi grę, oglądaj każdy mod z ikoną i wersją, znajduj uszkodzone i zdublowane mody, porównuj bibliotekę z zapisem, kopiuj, przenoś i dodawaj mody oraz sprawdzaj aktualizacje na ModHubie.
 
 ## Zwierzęta i pasza policzone
 
@@ -78,7 +79,7 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 ## Pytania
 
 **Czy zmienia mój zapis gry?**
-Nie. Farmer Planner tylko czyta pliki gry, z jednym wyjątkiem, który uruchamiasz sam: narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu i usuwa chwasty pod nimi w `densityMap_weed.gdm`. Robi to tylko przy zamkniętej grze, najpierw kopiuje pliki do `farmer_planner_backup`, sprawdza nowe pliki, zanim podmieni stare, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej.
+Nie. Farmer Planner tylko czyta pliki gry, z dwoma wyjątkami, które uruchamiasz sam. Narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu i usuwa chwasty pod nimi w `densityMap_weed.gdm`. Robi to tylko przy zamkniętej grze, najpierw kopiuje pliki do `farmer_planner_backup`, sprawdza nowe pliki, zanim podmieni stare, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej. Menedżer modów przy aktywacji biblioteki zmienia w `gameSettings.xml` tylko ustawienie folderu modów, przy zamkniętej grze i po kopii pliku, a mody przenosi tylko w Twoich folderach bibliotek (usuwanie trafia do Kosza).
 
 **Jakie mapy i mody obsługuje?**
 Każdą mapę: uprawy i kalendarz są czytane z moda mapy, której używa zapis. Rozumie też Precision Farming, AnimalFoodCalculator, EnhancedAnimalSystem, Animal Package (vanilla edition), Moisture System, Crop Dependent Rolling, Bank And Credit, Enhanced Loan System i Additional Currencies.
