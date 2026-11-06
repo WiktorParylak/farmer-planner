@@ -765,9 +765,9 @@ async function mmAwaitDownload(mod, since, label) {
     throw Object.assign(new Error('Timeout'), { code: 'MM_DOWNLOAD_TIMEOUT' });
 }
 
-// For each mod: the ModHub download opens in the browser, and once the zip
-// is in Downloads it takes the old version's place (that one goes to the
-// Recycle Bin).
+// For each mod: its ModHub page opens in the browser, the player presses
+// Download, and once the zip is in Downloads it takes the old version's place
+// (that one goes to the Recycle Bin).
 async function mmUpdate(mods) {
     const lib = mmCurrentLib();
     if (!mods.length || mm.busy || await mmLockedByGame(lib)) return;
@@ -792,9 +792,10 @@ async function mmUpdate(mods) {
         mm.busy = { text: label, frac: null, cancel: true };
         mmRender();
         try {
-            const link = await mmCore.modHubDownloadLink(h.id, mod.name);
+            // The mod's page, not the zip: ModHub only hands the file out to
+            // its own Download button.
             const since = Date.now();
-            await require('electron').shell.openExternal(link);
+            await require('electron').shell.openExternal(h.url + '&title=fs2025');
             const zip = await mmAwaitDownload(mod, since, label);
             if (!zip) break;
             mm.busy = { text: t('mmInstalling').replace('{name}', mmTitle(mod)), frac: null };

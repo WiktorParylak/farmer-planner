@@ -224,10 +224,6 @@ test('mod manager: ModHub versions are compared number by number', () => {
 });
 
 test('mod manager: an update from ModHub replaces the old version, and only with the same mod', async () => {
-    const page = '<a href="https://cdn27.giants-software.com/modHub/storage/00303450/FS25_Good.zip">Download</a> https://cdn1.giants-software.com/modHub/storage/1/FS25_Other.zip';
-    assert.strictEqual(mmT.findDownloadLink(page, 'fs25_good'), 'https://cdn27.giants-software.com/modHub/storage/00303450/FS25_Good.zip');
-    assert.strictEqual(mmT.findDownloadLink(page, 'FS25_Missing'), null);
-
     const lib = mmFixture();
     const downloads = path.join(mmRoot, 'downloads');
     fs.mkdirSync(downloads);

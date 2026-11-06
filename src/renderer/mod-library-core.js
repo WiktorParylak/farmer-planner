@@ -446,10 +446,10 @@ function iconCacheName(mod) {
 // ---------- ModHub ----------
 // FSG Mod Assistant's list of ModHub mods (jtsage.dev, rebuilt daily):
 // { mods: { "FS25_Name": "<id>" }, version: { "<id>": "1.0.0.0" } }.
-// Only these hosts are ever asked: the ModHub list and ModHub's pages.
-// ModHub's zips come from the Giants CDN, which refuses downloads by
-// programs, so the player's browser fetches those (see modHubDownloadLink).
-const ALLOWED_HOSTS = /(^|\.)(jtsage\.dev|farming-simulator\.com)$/i;
+// Only the ModHub list is fetched. ModHub's zips are downloaded by the player
+// on the mod's page in their browser (the Giants CDN refuses anything else);
+// mod-manager.js then picks the zip up from Downloads.
+const ALLOWED_HOSTS = /(^|\.)jtsage\.dev$/i;
 
 // GET over https, following redirects -> Buffer.
 function httpGet(url, redirects = 5) {
@@ -521,21 +521,6 @@ function modHubInfo(mod, hub) {
     };
 }
 
-// The zip a ModHub page offers: https://cdnNN.giants-software.com/modHub/storage/<id>/<Mod>.zip
-function findDownloadLink(html, modName) {
-    const links = [...String(html).matchAll(/https:\/\/cdn\d*\.giants-software\.com\/modHub\/storage\/\d+\/([A-Za-z0-9_]+)\.zip/g)];
-    const hit = links.find(m => m[1].toLowerCase() === String(modName).toLowerCase());
-    return hit ? hit[0] : null;
-}
-
-// The download link of a mod's current ModHub version, read from its page.
-async function modHubDownloadLink(hubId, modName) {
-    const page = await httpGet('https://www.farming-simulator.com/mod.php?mod_id=' + encodeURIComponent(hubId) + '&title=fs2025');
-    const url = findDownloadLink(page.toString('utf8'), modName);
-    if (!url) throw Object.assign(new Error('No download link'), { code: 'MM_HUB_NO_FILE', extra: { name: modName } });
-    return url;
-}
-
 // The browser saved "<Mod>.zip" (or "<Mod> (1).zip" next to an older one) in
 // `dir` after `sinceMs`, complete: the newest such file whose zip directory
 // reads, or null while it is still coming.
@@ -595,5 +580,5 @@ module.exports = {
     copyMod, moveMod, renameMod,
     readModIcon, iconCacheName,
     loadModHub, compareVersions, modHubInfo,
-    findDownloadLink, modHubDownloadLink, findDownloadedZip, replaceModWithZip
+    findDownloadedZip, replaceModWithZip
 };
