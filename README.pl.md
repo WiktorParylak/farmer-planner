@@ -52,7 +52,7 @@
 - Plony i ceny: przewidywany zbiór, cena w tym miesiącu, przychód i marża na hektar, krzywa cen w roku i podwyższony popyt; z dzisiejszą wilgotnością pól z moda Moisture System.
 - Notatki przypięte do miesięcy, z tagami i listą do odhaczania.
 - Ścieżki technologiczne: zapisz ścieżki z pól jednego zapisu i wklej je do innego zapisu tej samej mapy.
-- Menedżer modów: trzymaj biblioteki modów jak kolekcje FSG Mod Assistant, przełączaj między nimi grę, oglądaj każdy mod z ikoną i wersją, znajduj uszkodzone i zdublowane mody, porównuj bibliotekę z zapisem, kopiuj, przenoś i dodawaj mody oraz sprawdzaj aktualizacje na ModHubie.
+- Menedżer modów: trzymaj biblioteki modów jak kolekcje FSG Mod Assistant, przełączaj między nimi grę, oglądaj każdy mod z ikoną i wersją, znajduj uszkodzone i zdublowane mody, porównuj bibliotekę z zapisem, kopiuj, przenoś i dodawaj mody oraz aktualizuj je z ModHuba.
 
 ## Zwierzęta i pasza policzone
 

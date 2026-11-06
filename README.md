@@ -53,7 +53,7 @@
 - Notes pinned to months, with tags and a checklist.
 - Tramlines: save the tramlines of your fields from one save and paste them into another save of the same map.
 - Map scaling: double the resolution of a map mod's density maps, info layers and height map. The app writes the scaled files and a backup of the originals to its own folder; you copy them into the mod yourself.
-- Mod manager: keep mod libraries like FSG Mod Assistant's collections, switch the game between them, see each mod with its icon and version, find broken or duplicate mods, compare a library with a save, copy, move and add mods, and check ModHub for updates.
+- Mod manager: keep mod libraries like FSG Mod Assistant's collections, switch the game between them, see each mod with its icon and version, find broken or duplicate mods, compare a library with a save, copy, move and add mods, and update them from ModHub.
 
 ## Animals and feed, worked out
 

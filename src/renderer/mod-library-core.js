@@ -446,22 +446,43 @@ function iconCacheName(mod) {
 // ---------- ModHub ----------
 // FSG Mod Assistant's list of ModHub mods (jtsage.dev, rebuilt daily):
 // { mods: { "FS25_Name": "<id>" }, version: { "<id>": "1.0.0.0" } }.
-function fetchJson(url) {
+// Only these hosts are ever asked: the ModHub list and ModHub's pages.
+// ModHub's zips come from the Giants CDN, which refuses downloads by
+// programs, so the player's browser fetches those (see modHubDownloadLink).
+const ALLOWED_HOSTS = /(^|\.)(jtsage\.dev|farming-simulator\.com)$/i;
+
+// GET over https, following redirects -> Buffer.
+function httpGet(url, redirects = 5) {
     return new Promise((resolve, reject) => {
-        const req = require('https').get(url, { headers: { 'User-Agent': 'FarmerPlanner', 'Cache-Control': 'no-cache' }, timeout: 20000 }, res => {
+        let u;
+        try { u = new URL(url); } catch (e) { reject(Object.assign(e, { code: 'MM_MODHUB_NET' })); return; }
+        if (u.protocol !== 'https:' || !ALLOWED_HOSTS.test(u.hostname)) {
+            reject(Object.assign(new Error('Host not allowed: ' + u.hostname), { code: 'MM_MODHUB_NET' }));
+            return;
+        }
+        const req = require('https').get(u, { headers: { 'User-Agent': 'FarmerPlanner', 'Cache-Control': 'no-cache' }, timeout: 30000 }, res => {
+            if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
+                res.resume();
+                httpGet(new URL(res.headers.location, u).href, redirects - 1).then(resolve, reject);
+                return;
+            }
             if (res.statusCode !== 200) { res.resume(); reject(Object.assign(new Error('HTTP ' + res.statusCode), { code: 'MM_MODHUB_HTTP' })); return; }
             const chunks = [];
             res.on('data', c => chunks.push(c));
-            res.on('end', () => {
-                try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-                catch (e) { reject(Object.assign(e, { code: 'MM_MODHUB_DATA' })); }
-            });
-            res.on('error', reject);
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+            res.on('error', e => reject(Object.assign(e, { code: 'MM_MODHUB_NET' })));
         });
         req.on('timeout', () => req.destroy(Object.assign(new Error('Timeout'), { code: 'MM_MODHUB_NET' })));
-        req.on('error', e => reject(Object.assign(e, { code: e.code && e.code.startsWith('MM_') ? e.code : 'MM_MODHUB_NET' })));
+        req.on('error', e => reject(Object.assign(e, { code: e.code && String(e.code).startsWith('MM_') ? e.code : 'MM_MODHUB_NET' })));
     });
 }
+
+async function fetchJson(url) {
+    const buf = await httpGet(url);
+    try { return JSON.parse(buf.toString('utf8')); }
+    catch (e) { throw Object.assign(e, { code: 'MM_MODHUB_DATA' }); }
+}
+
 
 async function loadModHub(cacheFile, force) {
     try {
@@ -500,6 +521,71 @@ function modHubInfo(mod, hub) {
     };
 }
 
+// The zip a ModHub page offers: https://cdnNN.giants-software.com/modHub/storage/<id>/<Mod>.zip
+function findDownloadLink(html, modName) {
+    const links = [...String(html).matchAll(/https:\/\/cdn\d*\.giants-software\.com\/modHub\/storage\/\d+\/([A-Za-z0-9_]+)\.zip/g)];
+    const hit = links.find(m => m[1].toLowerCase() === String(modName).toLowerCase());
+    return hit ? hit[0] : null;
+}
+
+// The download link of a mod's current ModHub version, read from its page.
+async function modHubDownloadLink(hubId, modName) {
+    const page = await httpGet('https://www.farming-simulator.com/mod.php?mod_id=' + encodeURIComponent(hubId) + '&title=fs2025');
+    const url = findDownloadLink(page.toString('utf8'), modName);
+    if (!url) throw Object.assign(new Error('No download link'), { code: 'MM_HUB_NO_FILE', extra: { name: modName } });
+    return url;
+}
+
+// The browser saved "<Mod>.zip" (or "<Mod> (1).zip" next to an older one) in
+// `dir` after `sinceMs`, complete: the newest such file whose zip directory
+// reads, or null while it is still coming.
+function findDownloadedZip(dir, modName, sinceMs) {
+    const re = new RegExp('^' + modName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '( \\(\\d+\\))?\\.zip$', 'i');
+    let best = null;
+    let names = [];
+    try { names = fs.readdirSync(dir); } catch { return null; }
+    names.filter(n => re.test(n)).forEach(n => {
+        const p = path.join(dir, n);
+        try {
+            const st = fs.statSync(p);
+            if (st.mtimeMs < sinceMs - 2000 || !st.size) return;
+            if (!best || st.mtimeMs > best.mtime) best = { path: p, mtime: st.mtimeMs, size: st.size };
+        } catch { /* gone */ }
+    });
+    if (!best) return null;
+    try { if (!readZipDirectory(best.path)) return null; } catch { return null; }
+    return best;
+}
+
+// Puts `zipPath` (a new version of `mod`) in the mod's place; the old copy
+// goes to `trash`. Nothing is replaced unless the zip is a mod, has the same
+// name and isn't older. The zip itself is copied, not moved.
+async function replaceModWithZip(mod, zipPath, trash) {
+    const check = checkModZip(zipPath);
+    if (!check.ok) throw Object.assign(new Error(check.reason), { code: 'MM_HUB_MISMATCH' });
+    if (check.mod.version && mod.version && compareVersions(check.mod.version, mod.version) < 0) {
+        throw Object.assign(new Error(check.mod.version + ' < ' + mod.version), { code: 'MM_HUB_MISMATCH' });
+    }
+    const libDir = path.dirname(mod.path);
+    const dest = path.join(libDir, mod.name + '.zip');
+    // The new zip lands next to the old one first, so a failed copy
+    // leaves the library as it was.
+    const staged = await copyMod(zipPath, libDir, mod.name + '.zip.fp-new');
+    let oldGone = false;
+    try {
+        // The old copy (a zip, or an unzipped folder of the same mod).
+        await trash(mod.path);
+        oldGone = true;
+        if (fs.existsSync(dest)) await trash(dest);
+        fs.renameSync(staged, dest);
+    } catch (e) {
+        // Once the old one is in the Recycle Bin the new one stays, to be renamed by hand.
+        if (!oldGone) { try { fs.unlinkSync(staged); } catch { /* gone */ } }
+        throw e;
+    }
+    return { version: check.mod.version, path: dest };
+}
+
 module.exports = {
     VALID_MOD_NAME, FS25_STEAM_URL,
     sameDir, readLibraries, writeLibraries, addLibraries, newLibraryId, readFsgCollections,
@@ -508,5 +594,6 @@ module.exports = {
     readOverride, withOverride, setOverride,
     copyMod, moveMod, renameMod,
     readModIcon, iconCacheName,
-    loadModHub, compareVersions, modHubInfo
+    loadModHub, compareVersions, modHubInfo,
+    findDownloadLink, modHubDownloadLink, findDownloadedZip, replaceModWithZip
 };

@@ -223,6 +223,43 @@ test('mod manager: ModHub versions are compared number by number', () => {
     assert.strictEqual(mmT.modHubInfo({ name: 'FS25_Other', version: '1' }, hub), null);
 });
 
+test('mod manager: an update from ModHub replaces the old version, and only with the same mod', async () => {
+    const page = '<a href="https://cdn27.giants-software.com/modHub/storage/00303450/FS25_Good.zip">Download</a> https://cdn1.giants-software.com/modHub/storage/1/FS25_Other.zip';
+    assert.strictEqual(mmT.findDownloadLink(page, 'fs25_good'), 'https://cdn27.giants-software.com/modHub/storage/00303450/FS25_Good.zip');
+    assert.strictEqual(mmT.findDownloadLink(page, 'FS25_Missing'), null);
+
+    const lib = mmFixture();
+    const downloads = path.join(mmRoot, 'downloads');
+    fs.mkdirSync(downloads);
+    const since = Date.now();
+    assert.strictEqual(mmT.findDownloadedZip(downloads, 'FS25_Good', since), null, 'nothing yet');
+    fs.writeFileSync(path.join(downloads, 'FS25_Good (1).zip'), 'half a file');
+    assert.strictEqual(mmT.findDownloadedZip(downloads, 'FS25_Good', since), null, 'an unfinished zip is not taken');
+    fs.writeFileSync(path.join(downloads, 'FS25_Good (1).zip'), mmZip({ 'modDesc.xml': mmModDesc('1.1.0.0') }));
+    const found = mmT.findDownloadedZip(downloads, 'FS25_Good', since);
+    assert.ok(found && found.path.endsWith('FS25_Good (1).zip'), 'the browser\'s "(1)" name is found');
+
+    // The old version is an unzipped folder: it goes to the bin, the zip takes its place.
+    const { mods } = await mmT.scanLibrary(lib);
+    const old = mods.find(m => m.file === 'FS25_Unzipped');
+    fs.writeFileSync(path.join(downloads, 'FS25_Unzipped.zip'), mmZip({ 'modDesc.xml': mmModDesc('1.3.0.0') }));
+    const trashed = [];
+    const trash = async p => { trashed.push(path.basename(p)); fs.rmSync(p, { recursive: true, force: true }); };
+    const r = await mmT.replaceModWithZip(old, path.join(downloads, 'FS25_Unzipped.zip'), trash);
+    assert.strictEqual(r.version, '1.3.0.0');
+    assert.deepStrictEqual(trashed, ['FS25_Unzipped']);
+    assert.ok(fs.existsSync(path.join(lib, 'FS25_Unzipped.zip')) && !fs.existsSync(path.join(lib, 'FS25_Unzipped')));
+    assert.ok(fs.existsSync(path.join(downloads, 'FS25_Unzipped.zip')), 'the download stays where the browser put it');
+    assert.ok(!fs.readdirSync(lib).some(f => f.endsWith('.fp-new')), 'no leftovers');
+
+    // An older or broken zip replaces nothing.
+    const good = mods.find(m => m.file === 'FS25_Good.zip');
+    fs.writeFileSync(path.join(downloads, 'older.zip'), mmZip({ 'modDesc.xml': mmModDesc('0.9.0.0') }));
+    await assert.rejects(mmT.replaceModWithZip(good, path.join(downloads, 'older.zip'), trash), e => e.code === 'MM_HUB_MISMATCH');
+    await assert.rejects(mmT.replaceModWithZip(good, path.join(lib, 'FS25_Broken.zip'), trash), e => e.code === 'MM_HUB_MISMATCH');
+    assert.ok(fs.existsSync(good.path), 'the old one is still there');
+});
+
 test('mod manager: the view lists the game folder and a new library', async () => {
     const gameDir = tlGameDir();
     fs.mkdirSync(path.join(gameDir, 'mods'), { recursive: true });

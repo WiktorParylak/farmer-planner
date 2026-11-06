@@ -11030,3 +11030,18 @@ button.mm-badge {
   .mm-mod { grid-template-columns: auto 40px minmax(0, 1fr) auto; }
   .mm-mod-size { display: none; }
 }
+
+.mm-badge.is-update-btn {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.mm-badge.is-update-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mm-update-all {
+  margin-right: auto;
+}

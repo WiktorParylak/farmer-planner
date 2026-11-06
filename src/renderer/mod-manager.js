@@ -24,7 +24,8 @@ const mm = {
     saveDir: '',             // savegame for the comparison
     hub: null,               // ModHub list (mod-library-core loadModHub)
     hubBusy: false,
-    busy: null,              // { text, frac } while files are copied
+    busy: null,              // { text, frac, cancel } while files are copied or a download is awaited
+    cancelled: false,        // Cancel pressed while waiting for a download
     error: '',
     iconRun: 0
 };
@@ -220,7 +221,10 @@ function mmVisibleMods() {
 function mmBadgesHtml(mod) {
     const badges = mod.problems.map(p => `<span class="mm-badge is-problem" title="${escapeHtml(t('mmProbHint_' + p))}">${escapeHtml(t('mmProb_' + p))}</span>`);
     const h = mmCore.modHubInfo(mod, mm.hub);
-    if (h && h.newer) badges.push(`<button type="button" class="mm-badge is-update" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">${escapeHtml(t('mmUpdateAvailable').replace('{v}', h.latest))}</button>`);
+    if (h && h.newer) {
+        badges.push(`<button type="button" class="mm-badge is-update" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">${escapeHtml(t('mmUpdateAvailable').replace('{v}', h.latest))}</button>`);
+        badges.push(`<button type="button" class="mm-badge is-update-btn" data-mm="update" data-file="${escapeHtml(mod.file)}"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdate'))}</button>`);
+    }
     else if (h) badges.push(`<button type="button" class="mm-badge is-hub" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">ModHub</button>`);
     if (mod.multiplayer) badges.push(`<span class="mm-badge" title="${escapeHtml(t('mmMultiplayer'))}"><i class="fa-solid fa-users" aria-hidden="true"></i></span>`);
     return badges.join('');
@@ -246,7 +250,9 @@ function mmPickBarHtml() {
     const n = mm.picked.size;
     const targets = mmAllLibs().filter(l => l.id !== mm.sel);
     const off = !n || mm.busy ? ' disabled' : '';
+    const updates = mmUpdatable().length;
     return `<div class="tl-row mm-pickbar">
+        ${updates ? `<button type="button" class="edit-season-btn mm-update-all" data-mm="update-all"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdateAll').replace('{n}', updates))}</button>` : ''}
         <label class="tl-check"><input type="checkbox" class="fp-check" data-mm-all${n && n === mmVisibleMods().length ? ' checked' : ''}> ${escapeHtml(t('mmSelected').replace('{n}', n))}</label>
         ${targets.length ? `<select id="mm-target" aria-label="${escapeHtml(t('mmTarget'))}">${targets.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`).join('')}</select>
         <button type="button" class="settings-btn" data-mm="copy"${off}><i class="fa-solid fa-copy" aria-hidden="true"></i> ${escapeHtml(t('mmCopyTo'))}</button>
@@ -355,7 +361,9 @@ function mmRenderStatus() {
     if (!el) return;
     if (mm.busy) {
         el.hidden = false;
-        el.innerHTML = `<span>${escapeHtml(mm.busy.text)}</span><span class="ms-bar"><span style="width:${Math.round((mm.busy.frac || 0) * 100)}%"></span></span>`;
+        el.innerHTML = `<span>${escapeHtml(mm.busy.text)}</span>`
+            + (mm.busy.frac == null ? '' : `<span class="ms-bar"><span style="width:${Math.round(mm.busy.frac * 100)}%"></span></span>`)
+            + (mm.busy.cancel ? `<button type="button" class="settings-btn" data-mm="cancel-wait">${escapeHtml(t('cancel'))}</button>` : '');
     } else if (mm.scanning) {
         el.hidden = false;
         el.textContent = mm.scanning.n ? t('mmScanning').replace('{i}', mm.scanning.i).replace('{n}', mm.scanning.n) : t('mmReading');
@@ -730,6 +738,83 @@ async function mmCheckHub() {
     }
 }
 
+// Mods in the picked library with a newer version on ModHub.
+function mmUpdatable() {
+    if (!mm.scan || !mm.hub) return [];
+    return mm.scan.mods.filter(m => { const h = mmCore.modHubInfo(m, mm.hub); return h && h.newer; });
+}
+
+const MM_DOWNLOAD_WAIT_MS = 10 * 60000;
+
+// ModHub's files come only through a browser: the player's browser downloads
+// the zip, and this waits for it to appear, complete, in the Downloads folder.
+async function mmAwaitDownload(mod, since, label) {
+    const dir = ipcRenderer.sendSync('get-downloads-dir');
+    if (!dir) throw Object.assign(new Error('Downloads'), { code: 'MM_NO_DOWNLOADS' });
+    let last = null;
+    while (Date.now() - since < MM_DOWNLOAD_WAIT_MS) {
+        if (mm.cancelled) return null;
+        const found = mmCore.findDownloadedZip(dir, mod.name, since);
+        // Same size twice in a row: the browser is done writing it.
+        if (found && last && found.path === last.path && found.size === last.size) return found.path;
+        last = found;
+        mm.busy.text = label + ' ' + t('mmWaitingDownload').replace('{dir}', dir);
+        mmRenderStatus();
+        await new Promise(r => setTimeout(r, 1000));
+    }
+    throw Object.assign(new Error('Timeout'), { code: 'MM_DOWNLOAD_TIMEOUT' });
+}
+
+// For each mod: the ModHub download opens in the browser, and once the zip
+// is in Downloads it takes the old version's place (that one goes to the
+// Recycle Bin).
+async function mmUpdate(mods) {
+    const lib = mmCurrentLib();
+    if (!mods.length || mm.busy || await mmLockedByGame(lib)) return;
+    if (mods.length > 1) {
+        const ok = await showConfirm({
+            title: t('mmUpdateAll').replace('{n}', mods.length),
+            body: t('mmUpdateAllBody').replace('{n}', mods.length) + '\n\n'
+                + mods.slice(0, 10).map(m => `${mmTitle(m)}: ${m.version || '–'} → ${mmCore.modHubInfo(m, mm.hub).latest}`).join('\n')
+                + (mods.length > 10 ? '\n…' : ''),
+            confirmText: t('mmUpdate'),
+            icon: 'fa-download'
+        });
+        if (!ok) return;
+    }
+    const done = [], errors = [];
+    mm.cancelled = false;
+    for (let i = 0; i < mods.length && !mm.cancelled; i++) {
+        const mod = mods[i];
+        const h = mmCore.modHubInfo(mod, mm.hub);
+        if (!h) continue;
+        const label = t('mmDownloading').replace('{name}', mmTitle(mod)).replace('{i}', i + 1).replace('{n}', mods.length);
+        mm.busy = { text: label, frac: null, cancel: true };
+        mmRender();
+        try {
+            const link = await mmCore.modHubDownloadLink(h.id, mod.name);
+            const since = Date.now();
+            await require('electron').shell.openExternal(link);
+            const zip = await mmAwaitDownload(mod, since, label);
+            if (!zip) break;
+            mm.busy = { text: t('mmInstalling').replace('{name}', mmTitle(mod)), frac: null };
+            mmRenderStatus();
+            const r = await mmCore.replaceModWithZip(mod, zip, mmTrash);
+            done.push(`${mmTitle(mod)}: ${mod.version || '–'} → ${r.version || h.latest}`);
+        } catch (e) {
+            console.error(e);
+            errors.push(mmTitle(mod) + ': ' + mmErrorText(e));
+        }
+    }
+    mm.busy = null;
+    if (!done.length && !errors.length) { mmRender(); return; }
+    await mmRescan();
+    await showNotice(t('mmUpdate'),
+        (done.length ? t('mmUpdateDone').replace('{n}', done.length) + '\n' + done.join('\n') : '')
+        + (errors.length ? (done.length ? '\n\n' : '') + errors.join('\n') : ''),
+        !done.length);
+}
+
 // ---------- wiring ----------
 (function wireModManager() {
     const view = document.getElementById('modmanager-view');
@@ -758,6 +843,9 @@ async function mmCheckHub() {
         else if (act === 'open-folder') require('electron').shell.openPath(mmCurrentLib().dir);
         else if (act === 'hub') mmCheckHub();
         else if (act === 'hub-open') require('electron').shell.openExternal(b.dataset.url);
+        else if (act === 'update') mmUpdate(mm.scan ? mm.scan.mods.filter(m => m.file === b.dataset.file) : []);
+        else if (act === 'update-all') mmUpdate(mmUpdatable());
+        else if (act === 'cancel-wait') mm.cancelled = true;
         else if (act === 'copy' || act === 'move') {
             const target = mmAllLibs().find(l => l.id === document.getElementById('mm-target').value);
             if (target && picked().length) mmTransfer(picked(), target, act === 'move');
