@@ -1175,22 +1175,27 @@ body {
   position: relative;
 }
 
+/* Bottom right of the window: up in the header it covered the balance, month
+   and year; the undo toast sits bottom centre. */
 .auto-sync-toast {
-  position: absolute;
-  top: 8px;
-  right: 0;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2800;
+  max-width: min(440px, 36vw);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 6px 14px;
+  border-radius: var(--radius-large);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   background: var(--color-primary);
   color: #fff;
   font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(6px);
   transition: opacity var(--motion) var(--ease-out),
     transform var(--motion) var(--ease-out);
   pointer-events: none;
@@ -1207,6 +1212,7 @@ body {
   height: 7px;
   border-radius: 50%;
   background: #cfe8c9;
+  flex-shrink: 0;
 }
 
 /* Live data from the link mod (live-link.js), right after the farm name:
@@ -4640,6 +4646,20 @@ select:focus-visible,
   .sidebar-item-icon {
     width: 32px;
     height: 32px;
+  }
+
+  /* The Notes count sits on the icon's corner, so the icon stays in line
+     with the others. */
+  .sidebar-badge {
+    position: absolute;
+    top: 0;
+    left: calc(50% + 6px);
+    min-width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
   }
 }
 

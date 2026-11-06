@@ -51,6 +51,9 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Stan moda Link mówił za mało**: *Ustawienia farmy → Zapis* mówią teraz, gdy mod przesyła dane, ale automatyczna synchronizacja farmy jest wyłączona, gdy gra używa starszego moda i gdy mod nie współpracuje z aplikacją.
 - **Dane na żywo z innej mapy**: gra na innej mapie w slocie zapisu farmy nie jest już czytana jako dane tej farmy.
 - Przyciski narzędzi na ekranie startowym nie spadają już pod dolną krawędź małego okna.
+- **Ikona Notatek nie w linii**: w wąskim oknie licznik Notatek nie przesuwa już ikony w lewo względem pozostałych na pasku bocznym; stoi w rogu ikony.
+- **Komunikat płodozmianu zasłaniał miesiąc**: komunikaty takie jak *Poza płodozmianem…* pokazują się teraz w prawym dolnym rogu, a nie na nagłówku.
+- **Cofanie znikało zaraz po otwarciu farmy**: sprawdzenie płodozmianu chwilę po otwarciu farmy nie kasuje już historii cofania, a pola uzupełnione z płodozmianu też można cofnąć.
 
 - **Nie wykrywano działającej gry**: narzędzie ścieżek szukało `FarmingSimulator2025.exe`, a gra działa jako `FarmingSimulator2025Game.exe`, więc wklejanie i przywracanie mogły ruszyć przy otwartej grze, która potem nadpisałaby wynik przy zapisie. Teraz przy działającej grze obie operacje są odrzucane.
 - **Lasso gubiło narożniki i zostawiało dziury**: kliknięcie z lekkim ruchem myszy przepadało i ucinało róg kształtu, a kształt przecinający sam siebie i nakładające się obrysy w jednym zestawie zostawiały dziury.

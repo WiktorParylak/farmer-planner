@@ -77,6 +77,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Link mod status told too little**: *Farm settings → Savegame* now says when the mod sends data but automatic sync is off for the farm, when the game runs an older mod, and when the mod and the app don't work together.
 - **Live data from another map**: a game on another map in the farm's save slot is no longer read as that farm's data.
 - The tool buttons on the start screen no longer fall off the bottom of a small window.
+- **Notes icon out of line**: in a narrow window the Notes count no longer pushes its icon left of the others in the sidebar; it sits on the icon's corner.
+- **Rotation message covered the month**: messages like *Outside the rotation…* now show in the bottom right corner instead of over the header.
+- **Undo lost right after opening a farm**: the rotation check that runs a moment after a farm opens no longer clears what you can undo, and the fields it fills in from the rotation can be undone too.
 
 - **The game running wasn't detected**: the tramlines tool looked for `FarmingSimulator2025.exe`, but the game runs as `FarmingSimulator2025Game.exe`, so pasting or restoring could go ahead with the game open, and the game would then overwrite the result when saving. Both are now refused while the game runs.
 - **Lasso lost corners and left holes**: a click where the mouse moved slightly was dropped, cutting a corner off the shape; a shape that crossed itself, and overlapping outlines in one set, left holes.

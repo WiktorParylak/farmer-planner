@@ -141,6 +141,28 @@ test('editing: undo takes every change back, one at a time', async () => {
     assert.strictEqual(document.querySelector('.field-view-number').value, '2');
 });
 
+test('editing: a change right after opening a farm can still be undone', async () => {
+    // As freshFarm, but changing a field before the rotation check 900 ms in.
+    document.querySelectorAll('.modal').forEach(m => { m.style.display = 'none'; });
+    removeDevFarm();
+    createDevFarm();
+    openPlanner(DEV_FARM_ID);
+    clearFarmUndo();
+    const farm = getCurrentFarm();
+    farm.rotationFillKey = null;
+    const idx = idxOf('2');
+    const area = farm.fields[idx].area;
+    farm.fields[idx].area = '9';
+    saveFarmData(farm);
+    assert.strictEqual(farmUndoStack.length, 1);
+    await wait(1300);
+    assert.ok(getCurrentFarm().rotationFillKey, 'the rotation check ran');
+    assert.ok(farmUndoStack.length >= 1, 'the change is still there to undo');
+    while (farmUndoStack.length) undoLastFarmChange();
+    assert.strictEqual(getCurrentFarm().fields[idx].area, area);
+    hideUndoToast();
+});
+
 test('editing: opening panels is not a change', async () => {
     await freshFarm();
     for (const view of ['finance', 'animals', 'supplies', 'rotation', 'storage', 'yieldforecast', 'feedplan', 'notes', 'seasonsummary', 'plan']) {

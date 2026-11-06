@@ -535,7 +535,8 @@ function maybeFillFromRotation(farm, tries = 0) {
         if (live.rotationFillKey === key) return;
         live.rotationFillKey = key;
         const fields = rotationMonthCandidates(live);
-        if (!fields.length) { saveFarmData(live, { touch: false }); return; }
+        // Only "this month is checked": no step, and the player's steps stay.
+        if (!fields.length) { saveFarmData(live, { touch: false, keepUndo: true }); return; }
         let fill = true;
         if (rotationFillMode(live) === 'ask') {
             const preview = fields.map(f => `${f.number}: ${translateCropName(fieldRotationInfo(live, f).slot.crop)}`).join(', ');
@@ -549,7 +550,9 @@ function maybeFillFromRotation(farm, tries = 0) {
             }
             f.rotation.filled = season;
         });
-        saveFarmData(live, { undo: false });
+        // Crops put on the fields are a step of their own, so they can be taken
+        // back and what the player did right before stays undoable.
+        saveFarmData(live, fill ? { undoStep: true } : { undoStep: false, keepUndo: true });
         if (fill) {
             if (!isEditMode) renderSeasonView();
             showAutoSyncToast(t('rotMonthFilled').replace('{list}', rotationFilledList(fields)), 6000);

@@ -3665,7 +3665,10 @@ function localizeSavePath(farm) {
 // undo: false for a change that also rewrites files next to data.json (new
 // season, importing map data), which going back to the old data.json wouldn't
 // put right. restoring: this save is Undo itself.
-function saveFarmData(farmData, { touch = true, undo = true, restoring = false } = {}) {
+// undoStep: the save can be taken back (by default: a change the player made).
+// keepUndo: a save that is not a step but leaves the steps alone (the app's
+// own bookkeeping, nothing the player would want back).
+function saveFarmData(farmData, { touch = true, undo = true, restoring = false, undoStep = touch && undo, keepUndo = false } = {}) {
     if (!farmData.folderName) return;
     const filePath = path.join(appDataDir, farmData.folderName, 'data.json');
 
@@ -3679,7 +3682,7 @@ function saveFarmData(farmData, { touch = true, undo = true, restoring = false }
         // Keep the cache in step so the next read doesn't parse the file again.
         const st = fs.statSync(filePath);
         FARM_FILE_CACHE.set(filePath, { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(farmData) });
-        if (!restoring) trackFarmUndo(farmData, before, touch && undo);
+        if (!restoring) trackFarmUndo(farmData, before, undoStep, keepUndo);
     }
     catch (err) { console.error('saveFarmData failed', err); showNotice(t('noticeErrorTitle'), t('saveDataError'), true); }
 }
@@ -3700,8 +3703,9 @@ function farmContent(farm) {
     return JSON.stringify({ ...farm, lastEdited: null });
 }
 
-function trackFarmUndo(farmData, before, byUser) {
+function trackFarmUndo(farmData, before, byUser, keepUndo) {
     if (before && farmContent(before) === farmContent(farmData)) return;
+    if (!byUser && keepUndo && farmData.id === currentFarmId) return;
     if (!byUser || !before || farmData.id !== currentFarmId || tut.active) { clearFarmUndo(); return; }
     const now = Date.now();
     if (!farmUndoStack.length || now - farmUndoLastAt > FARM_UNDO_MERGE_MS) {
