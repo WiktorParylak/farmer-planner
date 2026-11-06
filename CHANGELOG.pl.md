@@ -2,7 +2,7 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
-## 0.11.0 — unreleased
+## 0.11.0 — 2026-11-06
 
 **Nowe**
 - **Plan jako oś czasu**: *Tabela / Oś czasu* nad listą pól pokazuje plan jako jeden wiersz na pole, od marca do lutego, z paskiem od siewu do zbioru w kolorze stanu pola, poplonami pod uprawą główną, pokosami na użytkach zielonych i zaznaczonym bieżącym miesiącem. Sięga do czterech sezonów w przód według płodozmianu każdego pola, razem z poplonami, a każda uprawa jest siana dopiero po zejściu poprzedniej z pola. Zmiana widoku lub liczby sezonów płynnie przesuwa jeden w drugi. Wyszukiwanie i sortowanie działają jak w tabeli, a kliknięcie otwiera pole. Edycja nadal odbywa się w tabeli.

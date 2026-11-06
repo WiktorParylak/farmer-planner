@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.11.0 — unreleased
+## 0.11.0 — 2026-11-06
 
 **New**
 - **Plan as a timeline**: *Table / Timeline* above the fields shows the plan as one row per field, March to February, with a bar from sowing to harvest coloured by the field's state, catch crops under the main crop, cuts on grassland and the current month marked. It goes up to four seasons ahead from each field's rotation, catch crops included, with each crop sown only once the one before is off the field. Switching between the views or the number of seasons slides one into the other. Search and sorting carry over, and a click opens the field. Editing still happens in the table.

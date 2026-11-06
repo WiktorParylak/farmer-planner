@@ -1788,6 +1788,8 @@ const UI = {
     tut_a13_x: "Der Knopf Fahrgassen unter der Hofliste öffnet das Fahrgassen-Werkzeug: sichere die Fahrgassen eines Feldes aus einem Spielstand in eine Bibliothek und füge sie in einen anderen Spielstand derselben Karte ein (bei geschlossenem Spiel — die Kartendatei wird vorher gesichert).",
     tut_a14_t: "Karte skalieren",
     tut_a14_x: "Karte skalieren verdoppelt die Auflösung der Density Maps, Info Layer und Höhenkarte eines Karten-Mods. Du wählst die Dateien; die App schreibt die skalierten Dateien und eine Sicherung der Originale in ihren eigenen Ordner und rührt den Mods-Ordner nie an, also kopierst du das Ergebnis selbst in den Mod.",
+    tut_a15_t: "Mod-Manager",
+    tut_a15_x: "Der Mod-Manager hält deine Mods in Bibliotheken, also eigenen Ordnern wie die Sammlungen im FSG Mod Assistant. Er zeigt Icon und Version jedes Mods, weist auf Probleme hin, vergleicht eine Bibliothek mit einem Spielstand und sucht im ModHub nach Updates. Das Aktivieren einer Bibliothek ändert in der gameSettings.xml nur die Einstellung des Mod-Ordners und nur bei geschlossenem Spiel.",
     tut_i10_t: "Grünland & Währung",
     tut_i10_x: "Nach wie vielen Saisons Grünland umgebrochen werden soll (die Tabelle hebt es hervor) und die Währung — die des Spiels oder eine eigene, mit Wechselkurs, falls ein Mod das Geld im Spiel umrechnet. Bei einem Mehrspieler-Spielstand erscheint hier auch die Auswahl deines Hofs.",
     tut_i11_t: "Gefahrenbereich",
