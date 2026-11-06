@@ -98,7 +98,13 @@ test('mod manager: a library scan reads modDesc and finds what is wrong', async 
     assert.strictEqual(by('Bad Name.zip').suggestedName, 'Bad_Name');
     assert.ok(by('FS25_Pack.zip').problems.includes('pack'));
     assert.ok(by('FS25_Broken.zip').problems.includes('corrupt'));
-    assert.deepStrictEqual(by('FS25_Unzipped').problems, ['folder', 'noDescVersion']);
+    assert.deepStrictEqual(by('FS25_Unzipped').problems, ['noDescVersion'], 'an unzipped (edited) mod is not a problem in itself');
+    // A zip next to the player's edited folder of the same mod.
+    fs.writeFileSync(path.join(lib, 'FS25_Unzipped.zip'), mmZip({ 'modDesc.xml': mmModDesc('1.0.0.0') }));
+    const both = (await mmT.scanLibrary(lib)).mods;
+    assert.deepStrictEqual(both.find(m => m.file === 'FS25_Unzipped.zip').problems, ['zipAndFolder']);
+    assert.ok(both.find(m => m.file === 'FS25_Unzipped').problems.includes('zipAndFolder'));
+    fs.unlinkSync(path.join(lib, 'FS25_Unzipped.zip'));
     fs.writeFileSync(path.join(lib, 'FS25_Quotes.zip'), mmZip({ 'modDesc.xml': mmModDesc('1.0.0.0', '', "'") }));
     const quotes = (await mmT.scanLibrary(lib)).mods.find(m => m.file === 'FS25_Quotes.zip');
     assert.strictEqual(quotes.descVersion, 97, "descVersion='97' in single quotes counts");

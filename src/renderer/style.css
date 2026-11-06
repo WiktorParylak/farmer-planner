@@ -11045,3 +11045,9 @@ button.mm-badge {
 .mm-update-all {
   margin-right: auto;
 }
+
+.mm-badge.is-info {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-alt);
+  color: var(--color-ink);
+}

@@ -234,16 +234,22 @@ function findProblems(mods) {
             m.problems.push(/\(\d+\)\s*$|-\s*(copy|kopia)/i.test(m.name) ? 'copyName' : 'badName');
             m.suggestedName = suggestModName(m.name);
         }
-        if (!m.isZip && m.hasModDesc) m.problems.push('folder');
+        // An unzipped folder is no problem in itself: it's usually a mod the
+        // player edited. The view marks it, nothing more.
         if (m.hasModDesc && m.descVersion == null) m.problems.push('noDescVersion');
         const key = (m.suggestedName || m.name).toLowerCase();
         if (!byName.has(key)) byName.set(key, []);
         byName.get(key).push(m);
     });
-    // The same mod twice: zip and folder, or "X.zip" next to "X (1).zip".
+    // The same mod twice: "X.zip" next to "X (1).zip", or a zip next to the
+    // player's unzipped (edited) copy. The game loads only one of them.
     byName.forEach(list => {
         if (list.length < 2) return;
-        list.forEach(m => { m.problems.push('duplicate'); m.duplicateOf = list.filter(o => o !== m).map(o => o.file); });
+        const zipAndFolder = list.length === 2 && list.some(m => m.isZip) && list.some(m => !m.isZip && m.hasModDesc);
+        list.forEach(m => {
+            m.problems.push(zipAndFolder ? 'zipAndFolder' : 'duplicate');
+            m.duplicateOf = list.filter(o => o !== m).map(o => o.file);
+        });
     });
     return mods;
 }

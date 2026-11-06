@@ -220,10 +220,12 @@ function mmVisibleMods() {
 
 function mmBadgesHtml(mod) {
     const badges = mod.problems.map(p => `<span class="mm-badge is-problem" title="${escapeHtml(t('mmProbHint_' + p))}">${escapeHtml(t('mmProb_' + p))}</span>`);
+    if (!mod.isZip && mod.hasModDesc) badges.unshift(`<span class="mm-badge is-info" title="${escapeHtml(t('mmUnzippedHint'))}">${escapeHtml(t('mmUnzipped'))}</span>`);
     const h = mmCore.modHubInfo(mod, mm.hub);
     if (h && h.newer) {
         badges.push(`<button type="button" class="mm-badge is-update" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">${escapeHtml(t('mmUpdateAvailable').replace('{v}', h.latest))}</button>`);
-        badges.push(`<button type="button" class="mm-badge is-update-btn" data-mm="update" data-file="${escapeHtml(mod.file)}"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdate'))}</button>`);
+        // An unzipped mod is usually edited by the player: an update would wipe that.
+        if (mod.isZip) badges.push(`<button type="button" class="mm-badge is-update-btn" data-mm="update" data-file="${escapeHtml(mod.file)}"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdate'))}</button>`);
     }
     else if (h) badges.push(`<button type="button" class="mm-badge is-hub" data-mm="hub-open" data-url="${escapeHtml(h.url)}" title="${escapeHtml(t('mmOpenModHub'))}">ModHub</button>`);
     // modDesc can say multiplayer, but the game only sends zips to other players.
@@ -289,7 +291,7 @@ function mmProblemsHtml() {
     return `<div class="mm-mods">${mods.map(m => `<div class="mm-problem">
         <span class="mm-mod-main">
             <span class="mm-mod-title">${escapeHtml(m.file)}</span>
-            ${m.problems.map(p => `<span class="mm-problem-line"><span class="mm-badge is-problem">${escapeHtml(t('mmProb_' + p))}</span> ${escapeHtml(t('mmProbHint_' + p))}${p === 'duplicate' && m.duplicateOf ? ' ' + escapeHtml(m.duplicateOf.join(', ')) : ''}</span>`).join('')}
+            ${m.problems.map(p => `<span class="mm-problem-line"><span class="mm-badge is-problem">${escapeHtml(t('mmProb_' + p))}</span> ${escapeHtml(t('mmProbHint_' + p))}${(p === 'duplicate' || p === 'zipAndFolder') && m.duplicateOf ? ' ' + escapeHtml(m.duplicateOf.join(', ')) : ''}</span>`).join('')}
         </span>
         <span class="tl-row">
             ${m.suggestedName ? `<button type="button" class="settings-btn" data-mm="rename" data-file="${escapeHtml(m.file)}"${mm.busy ? ' disabled' : ''}>${escapeHtml(t('mmRenameTo').replace('{name}', m.suggestedName + (m.isZip ? '.zip' : '')))}</button>` : ''}
@@ -742,7 +744,7 @@ async function mmCheckHub() {
 // Mods in the picked library with a newer version on ModHub.
 function mmUpdatable() {
     if (!mm.scan || !mm.hub) return [];
-    return mm.scan.mods.filter(m => { const h = mmCore.modHubInfo(m, mm.hub); return h && h.newer; });
+    return mm.scan.mods.filter(m => { const h = mmCore.modHubInfo(m, mm.hub); return m.isZip && h && h.newer; });
 }
 
 const MM_DOWNLOAD_WAIT_MS = 10 * 60000;
