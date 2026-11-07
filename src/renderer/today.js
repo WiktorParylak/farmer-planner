@@ -135,7 +135,7 @@ function todayFieldGroups(farm) {
         // a group above already covers it or the crop is off the field.
         if (!cut && !tasks.finish) {
             const { next } = nextWorkStep(field, idx, farm);
-            if (next && !['sow', 'harvest'].includes(next.step) && !tasks[next.step] && fieldJobDue(field, next.step, month)) tasks.work = t('work_' + next.step);
+            if (next && !['sow', 'harvest'].includes(next.step) && !tasks[next.step] && fieldJobDue(field, next.step, month)) tasks.work = workStepLabel(field, next);
         }
         const keys = TODAY_PRIORITY.filter(k => tasks[k]);
         if (!keys.length) return;
@@ -187,17 +187,19 @@ function fieldHarvestState(field, month, saveById, yearPassed) {
 }
 
 // live: may follow the link mod, for what is only shown. A new season files crops
-// away, so it goes by the save.
+// away, so it goes by the save. yearPassed: the game has reached the July after
+// this season's (seasonStartYearOf).
 function seasonHarvestContext(farm, live) {
-    const year = parseInt(farm.yearNumber, 10), started = parseInt(farm.seasonStartedGameYear, 10);
+    const month = getFarmCurrentMonth(farm);
+    const now = seasonStartYearOf(farm.yearNumber, month), started = parseInt(farm.seasonStartYear, 10);
     return {
-        month: getFarmCurrentMonth(farm),
+        month,
         saveById: farm.saveGamePath ? (live ? todayLiveFieldsById(farm) : todaySaveFieldsById(farm)) : null,
-        yearPassed: !!farm.saveGamePath && year > 0 && started > 0 && year > started
+        yearPassed: !!farm.saveGamePath && now > 0 && started > 0 && now > started
     };
 }
 
-// When to start a new season: a year has gone by in the game. It only moves the
+// When to start a new season: July has come round in the game. It only moves the
 // season number on and files what came off the fields. why: the reason to show.
 function seasonEndInfo(farm) {
     const ctx = seasonHarvestContext(farm);
