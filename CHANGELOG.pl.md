@@ -7,6 +7,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Zmiany**
 - **Sezon trwa od lipca do czerwca**: sezon to teraz rok siewny, więc rzepak siany w sierpniu i soja w następnym kwietniu należą do tego samego sezonu. Oś czasu zaczyna każdy sezon od lipca, a nad nim jest numer sezonu i pod spodem dwa lata gry, które obejmuje (*rok 6/7*); siew wiosenny zaplanowany latem nie ląduje już w następnym roku. Z zapisem gry aplikacja proponuje nowy sezon, gdy w grze zacznie się lipiec, a nie przy zmianie roku gry w marcu. Sezon zaczęty przed lipcem to ten, który nadchodzi. Farmy z wcześniejszych wersji liczą bieżący sezon od ostatniego lipca, więc aktualizacja o nic nie pyta.
 - **Lista prac podzielona na uprawy**: przy międzyplonie lista prac pola ma dwie części z własnymi nagłówkami, *Uprawa: …* i *Międzyplon: …*, w kolejności wykonywania. Część międzyplonu zaczyna się nowym krokiem *Siew poplonu*, na który przychodzi pora w jego miesiącu siewu, a siew uprawy głównej nazywa się *Siew uprawy*. W oknie edycji listy krok przesunięty za nagłówek przechodzi do tej części, a *Dodaj krok* pyta, do której części go dodać. Własne listy ze starszych wersji są dalej pokazywane bez nagłówków.
+- **Co nowego po hotfixie**: po aktualizacji do hotfixa okno *Co nowego* pokazuje zmiany wersji, którą poprawia, a po nich zmiany samego hotfixa pod nagłówkiem *0.11.1 – HOTFIX*.
 
 ## 0.11.0 — 2026-11-06
 

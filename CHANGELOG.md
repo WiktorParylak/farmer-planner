@@ -7,6 +7,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Changed**
 - **A season runs from July to June**: a season is now a sowing year, so canola sown in August and soy the April after belong to the same season. The timeline starts each season in July and heads it with the season number and, under it, the two game years it spans (*year 6/7*); a spring sowing planned in summer no longer shows up in the next year. With a savegame the app offers a new season once July comes in the game, not when the game's year turns over in March. A season started before July is the one that follows. Farms from earlier versions count their current season from the last July, so the update asks for nothing.
 - **Work list split by crop**: with a catch crop, a field's work list has two parts under their own headings, *Crop: …* and *Catch crop: …*, in the order they are done. The catch crop part starts with a new *Sow the catch crop* step, due from its sowing month, and the main crop's sowing reads *Sow the crop*. In the work window a step moved past a heading joins that part, and *Add step* asks which part it goes to. Lists of your own from earlier versions keep showing without headings.
+- **What's new after a hotfix**: after updating to a hotfix, the *What's new* window shows the changes of the version it fixes, with the hotfix's own changes after them under *0.11.1 – HOTFIX*.
 
 ## 0.11.0 — 2026-11-06
 

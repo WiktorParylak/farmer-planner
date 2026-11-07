@@ -57,6 +57,7 @@ const UI = {
     updateCheckNow: "Jetzt prüfen",
     updateCurrentVersion: "Installiert: {v}",
     whatsNewTitle: "Neu in Version {v}",
+    whatsNewHotfix: "{v} – HOTFIX",
     whatsNewLead: "Farmer Planner wurde von Version {old} auf {v} aktualisiert.",
     whatsNewEnglish: "Versionen ohne deutsche Beschreibung stehen auf Englisch, wie auf der Website.",
     whatsNewWebsite: "Auf der Website ansehen",

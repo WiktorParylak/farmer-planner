@@ -7024,6 +7024,20 @@ if (checkUpdatesBtn) {
 const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
 const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
 
+// A hotfix ("hotfixOf": "0.11.0" in package.json) is shown with the version
+// it fixes: that one's list is still the news, the hotfix's own changes come
+// after it. Only for a later version of the same X.Y, so a field left behind
+// in the next version does nothing.
+function hotfixBaseFor(version, base) {
+    const minor = v => String(v).split('.').slice(0, 2).join('.');
+    return base && minor(base) === minor(version) && compareVersions(version, base) > 0 ? String(base) : null;
+}
+
+const APP_HOTFIX_OF = (() => {
+    try { return hotfixBaseFor(APP_VERSION, JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8')).hotfixOf); }
+    catch (e) { return null; }
+})();
+
 function changelogFileSections(file) {
     let text = '';
     try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
@@ -7087,19 +7101,32 @@ function changelogHtml(lines) {
 }
 
 // Sections newer than `since` (exclusive) up to the running version; since
-// = null -> just the running version.
+// = null -> just the running version. A hotfix also brings the version it
+// fixes, and its own section (hotfix: true) goes last.
+function whatsNewSections(since, version = APP_VERSION, hotfixOf = APP_HOTFIX_OF) {
+    const sections = readChangelogSections().filter(s => compareVersions(s.version, version) <= 0
+        && ((hotfixOf && compareVersions(s.version, hotfixOf) >= 0)
+            || (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, version) === 0)));
+    if (!hotfixOf) return sections;
+    const own = sections.filter(s => s.version === version).map(s => ({ ...s, hotfix: true }));
+    return [...sections.filter(s => s.version !== version), ...own];
+}
+
+function whatsNewVersionLabel(version, hotfix) {
+    return hotfix ? t('whatsNewHotfix').replace('{v}', version) : version;
+}
+
 function showWhatsNew(since) {
     const modal = document.getElementById('whats-new-modal');
-    const sections = readChangelogSections().filter(s => compareVersions(s.version, APP_VERSION) <= 0
-        && (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, APP_VERSION) === 0));
+    const sections = whatsNewSections(since);
     if (!modal || !sections.length) return Promise.resolve(false);
 
-    document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
+    document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', whatsNewVersionLabel(APP_VERSION, !!APP_HOTFIX_OF));
     const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
     document.getElementById('whats-new-lead').textContent = [lead, sections.some(s => s.english) ? t('whatsNewEnglish') : ''].filter(Boolean).join(' ');
     document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
     const body = document.getElementById('whats-new-body');
-    body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');
+    body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(whatsNewVersionLabel(s.version, s.hotfix))}</h4>` : '') + changelogHtml(s.lines)).join('');
     body.scrollTop = 0;
 
     const okBtn = document.getElementById('whats-new-ok');

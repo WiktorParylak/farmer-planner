@@ -1,6 +1,7 @@
 {
   "name": "farmer-planner",
   "version": "0.11.0",
+  "hotfixOf": "0.11.0",
   "main": "src/main/main.js",
   "scripts": {
     "start": "node tools/start.js",
