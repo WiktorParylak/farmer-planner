@@ -41,9 +41,68 @@ test('work: a catch crop sown before the harvest comes first, after it comes las
     const before = field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(-1) });
     const after = field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(1) });
     assert.strictEqual(catchCropComesFirst(before), true);
-    assert.strictEqual(steps(before, OCT)[0], 'fertilize');
+    assert.strictEqual(steps(before, OCT)[0], 'sowCatch');
     assert.strictEqual(catchCropComesFirst(after), false);
     assert.strictEqual(steps(after, OCT).at(-1), 'harvestWrap');
+});
+
+test('work: a catch crop gets its own part, starting with its sowing', () => {
+    const harvest = CROP_CALENDAR.Wheat.OCTOBER;
+    const at = n => ALL_MONTHS[(ALL_MONTHS.indexOf(harvest) + n + 12) % 12];
+    [field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(-1) }), field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(1) })].forEach(f => {
+        const list = suggestedWork(f, 0, OCT);
+        const catchPart = list.filter(w => w.part === 'catch').map(w => w.step);
+        assert.deepStrictEqual(catchPart, ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap']);
+        // One block each: the parts never interleave.
+        const changes = list.filter((w, i) => i && (w.part || '') !== (list[i - 1].part || '')).length;
+        assert.strictEqual(changes, 1);
+        assert.ok(list.some(w => w.step === 'sow' && !w.part));
+    });
+    assert.ok(suggestedWork(field(), 0, OCT).every(w => !w.part), 'no catch crop, no parts');
+});
+
+test('work: with a catch crop the list has a heading per crop and says whose sowing it is', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const list = suggestedWork(f, 0, OCT);
+    const html = workListItemsHtml(f, list, w => `<li>${workStepLabel(f, w)}</li>`);
+    const box = document.createElement('ul');
+    box.innerHTML = html;
+    const heads = [...box.querySelectorAll('.work-part-head')].map(li => li.textContent);
+    assert.deepStrictEqual(heads, [
+        t('workPartMain').replace('{crop}', translateCropName('Wheat')),
+        t('workPartCatch').replace('{crop}', translateCropName('Oilseedradish'))
+    ]);
+    assert.ok(box.textContent.includes(t('work_sowMain')) && box.textContent.includes(t('work_sowCatch')));
+    assert.strictEqual(workStepLabel(field(), { step: 'sow' }), t('work_sow'));
+    const own = [{ step: 'sow', done: false }, { step: 'mow', done: false }];
+    assert.ok(!workListItemsHtml(f, own, () => '<li></li>').includes('work-part-head'), 'an older list has no headings');
+});
+
+test('work: sowing the catch crop leaves the field state alone and waits for its month', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const work = suggestedWork(f, 0, OCT);
+    const i = work.findIndex(w => w.step === 'sowCatch');
+    setWorkStepDone(work, i, true, f, OCT);
+    assert.strictEqual(f.state, 'To Plant');
+    assert.strictEqual(withSowFromState(f, work)[i].done, true);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'JULY'), false);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'AUGUST'), true);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'SEPTEMBER'), true);
+});
+
+test('work: a step moved past a heading joins that part, a new one goes at the end of its part', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const work = [{ step: 'sow', done: false }, { step: 'weeds', done: false }, { step: 'sowCatch', done: false, part: 'catch' }, { step: 'mow', done: false, part: 'catch' }];
+    moveWorkStep(work, 2, -1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['sow', 'weeds', 'sowCatch', 'mow*']);
+    moveWorkStep(work, 0, 1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['weeds', 'sow', 'sowCatch', 'mow*']);
+    moveWorkStep(work, 3, -1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['weeds', 'sow', 'sowCatch', 'mow']);
+    const list = [{ step: 'sow', done: false }, { step: 'mow', done: false, part: 'catch' }];
+    addWorkStep(list, 'fertilize', '', f);
+    addWorkStep(list, 'bale', 'catch', f);
+    assert.deepStrictEqual(list.map(w => w.step + (w.part ? '*' : '')), ['sow', 'fertilize', 'mow*', 'bale*']);
 });
 
 test('work: a list of your own only counts for the crops it was made for', () => {

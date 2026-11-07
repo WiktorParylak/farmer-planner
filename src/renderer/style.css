@@ -5487,6 +5487,28 @@ select:focus-visible,
   text-decoration: line-through;
 }
 
+/* With a catch crop: a heading over each crop's steps, in both work lists. */
+.field-view-work-list li.work-part-head,
+.work-list li.work-part-head {
+  display: block;
+  margin: 10px 0 2px;
+  padding: 0;
+  color: var(--color-ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field-view-work-list li.work-part-head:first-child,
+.work-list li.work-part-head:first-child {
+  margin-top: 0;
+}
+
+.work-list li.work-part-head {
+  margin-left: -22px;
+}
+
 .note-edit-month-option {
   display: flex;
   align-items: center;

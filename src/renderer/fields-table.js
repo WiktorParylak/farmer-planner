@@ -581,7 +581,7 @@ function renderFieldModal() {
         // The work list itself, ticked off right here; reorder / add / remove in the work window.
         const list = withSowFromState(field, fieldWork(field) || suggestedWork(field, idx, farm));
         work.push((list.length
-            ? `<ul class="field-view-work-list">${list.map((w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label></li>`).join('')}</ul>`
+            ? `<ul class="field-view-work-list">${workListItemsHtml(field, list, (w, i) => `<li class="${w.done ? 'is-done' : ''}"><label><input type="checkbox" class="field-view-work-check fp-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(workStepLabel(field, w))}${workStepTagHtml(field, w)}</label></li>`)}</ul>`
             : `<p class="settings-hint">${t('workEmpty')}</p>`)
             + `<p class="settings-hint">${t(fieldWork(field) ? 'workIntro' : 'workIntroSuggested')}</p>
             <button type="button" class="settings-btn field-view-work"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${t('workEditList')}</button>`);
@@ -836,7 +836,9 @@ window.openFieldModal = function (idx, tab) {
 // the crop uses lime up; no weeds step on a ploughed field.
 // A list of your own belongs to the crops it was made for (field.workFor): plan
 // another crop or catch crop, however that happens, and the suggestion is back.
-const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'stones', 'sow', 'roll', 'weeds'];
+// With a catch crop the list has two parts, each under its own heading: the
+// catch crop's steps carry part: 'catch', the main crop's none.
+const WORK_STEPS = ['merge', 'fertilize', 'manure', 'lime', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch', 'cultivate', 'plow', 'stones', 'sow', 'sowCatch', 'roll', 'weeds'];
 // Done on the ground before sowing, so still done when another crop is planned instead.
 const GROUND_WORK_STEPS = ['cultivate', 'plow', 'stones', 'lime'];
 
@@ -872,9 +874,10 @@ function catchCropComesFirst(field) {
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
     const steps = [];
-    const catchSteps = ['fertilize', 'mow', 'bale', 'harvestWrap'];
+    const catchSteps = ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap'];
     const catchFirst = field.catchCrop && catchCropComesFirst(field);
     if (catchFirst) steps.push(...catchSteps);
+    const mainFrom = steps.length;
     const sow = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
     const cur = ALL_MONTHS.indexOf(((farm && farm.month) || '').toUpperCase());
     // Months until the sowing month (0 = this month), wrapping round the year.
@@ -897,9 +900,58 @@ function suggestedWork(field, idx, farm) {
     }
     steps.push('fertilize');
     if (!plowed && rules.weeds !== false) steps.push('weeds');
+    const mainTo = steps.length;
     if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
-    const groundDone = fieldWork(field) ? [] : (field.work || []).filter(w => w.done && GROUND_WORK_STEPS.includes(w.step)).map(w => w.step);
-    return steps.map(step => ({ step, done: groundDone.includes(step) }));
+    const groundDone = fieldWork(field) ? [] : (field.work || []).filter(w => w.done && !w.part && GROUND_WORK_STEPS.includes(w.step)).map(w => w.step);
+    return steps.map((step, i) => {
+        if (field.catchCrop && (i < mainFrom || i >= mainTo)) return { step, done: false, part: 'catch' };
+        return { step, done: groundDone.includes(step) };
+    });
+}
+
+// A step's name: with a catch crop, sowing says whose.
+function workStepLabel(field, w) {
+    return t(w.step === 'sow' && field.catchCrop ? 'work_sowMain' : 'work_' + w.step);
+}
+
+// The list's items, with a heading wherever the part changes ("Crop: wheat",
+// "Catch crop: oilseed radish"). Lists made before the parts have none.
+function workListItemsHtml(field, list, itemHtml) {
+    const parts = !!field.catchCrop && list.some(w => w.part === 'catch');
+    let html = '', prev = null;
+    list.forEach((w, i) => {
+        const part = w.part === 'catch' ? 'catch' : 'main';
+        if (parts && part !== prev) {
+            const crop = translateCropName(part === 'catch' ? field.catchCrop : field.crop);
+            html += `<li class="work-part-head">${escapeHtml(t(part === 'catch' ? 'workPartCatch' : 'workPartMain').replace('{crop}', crop))}</li>`;
+        }
+        prev = part;
+        html += itemHtml(w, i);
+    });
+    return html;
+}
+
+// Moves a step one place: within its part a swap, across a heading it joins
+// the part next to it and stays where it is.
+function moveWorkStep(work, i, dir) {
+    const j = i + dir;
+    if (!work[i] || !work[j]) return;
+    if ((work[i].part || '') === (work[j].part || '')) { [work[i], work[j]] = [work[j], work[i]]; return; }
+    if (work[j].part) work[i].part = work[j].part;
+    else delete work[i].part;
+}
+
+// A new step goes at the end of its part ('catch' or '' for the main crop).
+function addWorkStep(work, step, part, field) {
+    const item = part ? { step, done: false, part } : { step, done: false };
+    let at = -1;
+    work.forEach((w, i) => { if ((w.part || '') === part) at = i; });
+    if (at < 0) {
+        // The part's first step: before the other part if it comes first.
+        const first = part ? catchCropComesFirst(field) : !catchCropComesFirst(field);
+        at = first ? -1 : work.length - 1;
+    }
+    work.splice(at + 1, 0, item);
 }
 
 // The field's own list, or null when it never had one or it was made for other
@@ -958,6 +1010,11 @@ function fieldJobDue(field, step, month) {
     if (!month) return true;
     const sow = (field.sowingMonth || '').toUpperCase();
     if (step === 'sow') return sow === month || isSowingOverdue(field, month);
+    // The catch crop goes in from its month on (up to half a year late).
+    if (step === 'sowCatch') {
+        const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf((field.catchSowingMonth || '').toUpperCase());
+        return to < 0 || from < 0 || (from - to + 12) % 12 < 6;
+    }
     if (step === 'harvest') return fieldInHarvestWindow(field, month);
     if (field.state === 'Planted' || fieldWork(field) || isSowingOverdue(field, month)) return true;
     const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf(sow);
@@ -983,7 +1040,7 @@ function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
     const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
     const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm));
     const hint = t('workBadgeHint') + (due ? '' : ' ' + t('workLaterHint'));
-    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(t('work_' + next.step))}${count}</span></button></div>`;
+    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(workStepLabel(field, next))}${count}</span></button></div>`;
 }
 
 // A small tag after a step the game itself asks for (ploughing required), or
@@ -1013,14 +1070,23 @@ function renderWorkModal() {
     const list = withSowFromState(field, own || suggestedWork(field, workFieldIdx, farm));
     const listEl = document.getElementById('work-list');
     listEl.innerHTML = list.length ? '' : `<li class="work-item work-item--empty">${escapeHtml(t('workListEmpty'))}</li>`;
-    listEl.innerHTML += list.map((w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
-        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(t('work_' + w.step))}${workStepTagHtml(field, w)}</label>
+    listEl.innerHTML += workListItemsHtml(field, list, (w, i) => `<li class="work-item${w.done ? ' is-done' : ''}">
+        <label><input type="checkbox" class="work-check" data-i="${i}" ${w.done ? 'checked' : ''}> ${escapeHtml(workStepLabel(field, w))}${workStepTagHtml(field, w)}</label>
         <span class="work-item-btns">
             <button type="button" class="work-move" data-i="${i}" data-dir="-1" ${i ? '' : 'disabled'} aria-label="${t('workUp')}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             <button type="button" class="work-move" data-i="${i}" data-dir="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${t('workDown')}"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
             <button type="button" class="work-remove" data-i="${i}" aria-label="${t('workRemove')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        </span></li>`).join('');
-    document.getElementById('work-add-select').innerHTML = WORK_STEPS.filter(s => s !== 'roll' || cropNeedsRolling(field.crop)).map(s => `<option value="${s}">${t('work_' + s)}</option>`).join('');
+        </span></li>`);
+    // With a catch crop a new step goes in the part picked for it.
+    const options = (part, steps) => steps.map(s => `<option value="${part}:${s}">${escapeHtml(workStepLabel(field, { step: s }))}</option>`).join('');
+    const mainSteps = WORK_STEPS.filter(s => s !== 'sowCatch' && (s !== 'roll' || cropNeedsRolling(field.crop)));
+    const catchSteps = ['sowCatch', 'fertilize', 'manure', 'mow', 'bale', 'harvestWrap', 'harvest', 'mulch'];
+    const group = (part, key, steps) => `<optgroup label="${escapeHtml(t(key).replace('{crop}', translateCropName(part ? field.catchCrop : field.crop)))}">${options(part, steps)}</optgroup>`;
+    document.getElementById('work-add-select').innerHTML = field.catchCrop
+        ? (catchCropComesFirst(field)
+            ? group('catch', 'workPartCatch', catchSteps) + group('', 'workPartMain', mainSteps)
+            : group('', 'workPartMain', mainSteps) + group('catch', 'workPartCatch', catchSteps))
+        : options('', mainSteps);
 }
 
 // Any change turns the shown list (suggested or own) into the field's own list.
@@ -1096,16 +1162,15 @@ window.openWorkModal = function (idx) {
     listEl.addEventListener('click', e => {
         const mv = e.target.closest('.work-move');
         if (mv) {
-            const i = +mv.dataset.i, j = i + (+mv.dataset.dir);
-            updateWorkField(work => { [work[i], work[j]] = [work[j], work[i]]; });
+            updateWorkField(work => moveWorkStep(work, +mv.dataset.i, +mv.dataset.dir));
             return;
         }
         const rm = e.target.closest('.work-remove');
         if (rm) updateWorkField(work => { work.splice(+rm.dataset.i, 1); });
     });
     document.getElementById('work-add-btn').addEventListener('click', () => {
-        const step = document.getElementById('work-add-select').value;
-        if (step) updateWorkField(work => { work.push({ step, done: false }); });
+        const [part, step] = document.getElementById('work-add-select').value.split(':');
+        if (step) updateWorkField((work, field) => addWorkStep(work, step, part, field));
     });
     document.getElementById('work-suggest-btn').addEventListener('click', () => {
         updateWorkField((work, field, farm) => { work.splice(0, work.length, ...suggestedWork(field, workFieldIdx, farm)); });
@@ -1375,7 +1440,7 @@ function stepFieldWork(idx, dir, unsow) {
     changeFieldWork(farm, field, idx, (work, f, fm) => setWorkStepDone(work, i, dir > 0, f, fm));
     saveFarmData(farm);
     renderSeasonView();
-    showAutoSyncToast(t(dir > 0 ? 'workStepDoneToast' : 'workStepUndoneToast').replace('{job}', t('work_' + list[i].step)));
+    showAutoSyncToast(t(dir > 0 ? 'workStepDoneToast' : 'workStepUndoneToast').replace('{job}', workStepLabel(field, list[i])));
 }
 
 // Right-click on the N chip: the field's full fertilization plan.
