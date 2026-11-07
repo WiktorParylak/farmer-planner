@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.11.1 — unreleased
+## 0.11.1 — 2026-11-07
 
 **Changed**
 - **A season runs from July to June**: a season is now a sowing year, so canola sown in August and soy the April after belong to the same season. The timeline starts each season in July and heads it with the season number and, under it, the two game years it spans (*year 6/7*); a spring sowing planned in summer no longer shows up in the next year. With a savegame the app offers a new season once July comes in the game, not when the game's year turns over in March. A season started before July is the one that follows. Farms from earlier versions count their current season from the last July, so the update asks for nothing.
