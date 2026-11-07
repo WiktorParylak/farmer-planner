@@ -1,5 +1,5 @@
-// The plan as a timeline: one row per field, the game's years (March to February)
-// across, a bar from the sowing month to the harvest month, this season's plan
+// The plan as a timeline: one row per field, the seasons (July to June, see
+// SEASON_MONTHS) across, a bar from the sowing month to the harvest month, this season's plan
 // and then what the field's rotation brings, catch crops too. It only shows the
 // plan: the table stays the place to edit it, so edit mode and the tutorial
 // always use the table. A click on a bar opens the field, like its number does.
@@ -47,11 +47,11 @@ function updateFieldsViewUi() {
 }
 
 function timelineMonthPos(month) {
-    return FS_PERIOD_TO_MONTH.indexOf(String(month || '').toUpperCase());
+    return SEASON_MONTHS.indexOf(String(month || '').toUpperCase());
 }
 
-// Months are counted from March of the viewed year (0), and run on over the
-// following years: 14 = May of the year after. A bar is { from, to } with `to`
+// Months are counted from July of the viewed season (0), and run on over the
+// following seasons: 14 = September of the season after. A bar is { from, to } with `to`
 // exclusive, either end may lie off the axis.
 
 // The first time this calendar month comes round, at `after` or later.
@@ -80,7 +80,7 @@ function timelineCropBar(crop, sowingMonth, from, dayStep) {
 }
 
 // Where this season's main crop starts. A crop sown earlier may lie before the
-// axis, and one not sown yet whose month has gone by this year comes next year.
+// axis, and one not sown yet whose month has gone by this season comes next season.
 function timelineStart(field, sowPos, nowPos, currentMonth) {
     if (nowPos < 0) return sowPos;
     if (field.state === 'Planted') return sowPos > nowPos ? sowPos - 12 : sowPos;
@@ -144,14 +144,14 @@ function timelinePlanBars(farm, field, months, nowPos, currentMonth, isPastSeaso
         const crop = e.crops[0];
         if (!crop) continue;
         const source = { generated: !!e.generated };
-        // Grassland that stays on simply goes on for another year.
+        // Grassland that stays on simply goes on for another season.
         if (last && isPerennialCrop(crop) && cropOrderKey(last.crop) === cropOrderKey(crop)) {
             last.to += 12;
             cursor = Math.max(cursor, last.to);
             continue;
         }
         const wanted = e.generated ? (e.sowingMonth || rotationDefaultSowMonth(crop)) : rotationSowMonth(e.slot);
-        const cursorMonth = FS_PERIOD_TO_MONTH[Math.floor(cursor) % 12];
+        const cursorMonth = SEASON_MONTHS[Math.floor(cursor) % 12];
         const month = rotationSowMonthAfter(crop, wanted, cursorMonth, !e.generated && rotationSlotChoosesMonth(e.slot));
         const pos = timelineMonthPos(month);
         if (pos < 0) continue;
@@ -260,6 +260,28 @@ function timelineAheadYears() {
     return n >= 1 && n <= TIMELINE_MAX_AHEAD ? n : TIMELINE_DEFAULT_AHEAD;
 }
 
+// The game year a season began in: this season's from the farm, a past one's
+// from its archive (kept since 0.11.1), else counted back a year a season.
+function timelineSeasonStartYear(farm, season) {
+    const current = (farm && farm.currentSeason) || 1;
+    const now = farmSeasonStartYear(farm);
+    if (season < current && farm && farm.folderName) {
+        try {
+            const data = JSON.parse(fs.readFileSync(path.join(appDataDir, farm.folderName, 'seasons', `season_${season}.json`), 'utf-8'));
+            if (parseInt(data.seasonStartYear, 10) > 0) return parseInt(data.seasonStartYear, 10);
+        } catch (e) { /* no archive: counted back */ }
+    }
+    return now > 0 ? now + season - current : null;
+}
+
+// One season across the head: its number, and under it the two game years it spans.
+function timelineSeasonHeadHtml(season, startYear) {
+    const years = startYear > 0 && season > 0
+        ? `<span class="timeline-year-span">${escapeHtml(t('timelineSeasonYears').replace('{a}', startYear).replace('{b}', startYear + 1))}</span>`
+        : '';
+    return `<span class="timeline-year-season">${escapeHtml(`${t('season')} ${season}`)}</span>${years}`;
+}
+
 function renderFieldsTimeline(fields) {
     updateFieldsViewUi();
     const box = document.getElementById('fields-timeline');
@@ -270,17 +292,17 @@ function renderFieldsTimeline(fields) {
     const isPastSeason = viewedSeason < ((farm && farm.currentSeason) || 1);
     const nowPos = isPastSeason ? -1 : timelineMonthPos(currentMonth);
     const list = fields || [];
-    // A past season gets its own year and the next, where its winter crops end.
+    // A past season gets its own season and the next, where its winter crops end.
     const ahead = isPastSeason ? 1 : timelineAheadYears();
     const years = ahead + 1, months = years * 12;
     const nowBand = nowPos < 0 ? '' : `<span class="timeline-now" style="left:${nowPos / months * 100}%;width:${100 / months}%"></span>`;
 
-    const firstYear = parseInt(farm && farm.yearNumber, 10) || 1;
-    const yearLabel = y => (isPastSeason ? (y ? '' : `${t('season')} ${viewedSeason}`) : t('timelineYear').replace('{n}', firstYear + y));
+    const firstStart = timelineSeasonStartYear(farm, viewedSeason);
     let yearHead = '', head = '';
     for (let y = 0; y < years; y++) {
-        yearHead += `<th scope="colgroup" colspan="12" class="timeline-year">${escapeHtml(yearLabel(y))}</th>`;
-        head += FS_PERIOD_TO_MONTH.map((m, i) => `<th scope="col" class="timeline-month${i === 0 && y ? ' is-year-start' : ''}${y === 0 && i === nowPos ? ' is-now' : ''}" title="${escapeHtml(timelineMonthName(m))}">${escapeHtml(translateMonth(m).slice(0, 3))}</th>`).join('');
+        const label = timelineSeasonHeadHtml(viewedSeason + y, firstStart > 0 ? firstStart + y : null);
+        yearHead += `<th scope="colgroup" colspan="12" class="timeline-year">${label}</th>`;
+        head += SEASON_MONTHS.map((m, i) => `<th scope="col" class="timeline-month${i === 0 && y ? ' is-year-start' : ''}${y === 0 && i === nowPos ? ' is-now' : ''}" title="${escapeHtml(timelineMonthName(m))}">${escapeHtml(translateMonth(m).slice(0, 3))}</th>`).join('');
     }
 
     const rows = sortFieldsForDisplay(list, currentMonth)

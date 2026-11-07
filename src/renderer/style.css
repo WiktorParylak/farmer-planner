@@ -10170,14 +10170,28 @@ button.field-open.has-callout .field-number-chip {
 
 .timeline-table th.timeline-year {
   box-sizing: border-box;
-  height: 32px;
+  height: 44px;
   padding: 0;
   border-left: 2px solid var(--color-border-strong);
   letter-spacing: 0.04em;
 }
 
+.timeline-year-season,
+.timeline-year-span {
+  display: block;
+}
+
+.timeline-year-span {
+  margin-top: 1px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  opacity: 0.8;
+}
+
 .timeline-table thead th.timeline-month {
-  top: 32px;
+  top: 44px;
 }
 
 .timeline-table th.timeline-month.is-year-start {

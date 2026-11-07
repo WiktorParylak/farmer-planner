@@ -1538,8 +1538,7 @@ function grasslandAge(field, history, seasonNum, limit) {
 // Sowing window = the run of months in the crop calendar that holds the
 // planned month. Overdue: not sown and the window already ended in this
 // sowing year, which runs July..June — so in July an April sowing is next
-// spring's, not a missed one.
-const SOWING_YEAR_START = ALL_MONTHS.indexOf('JULY');
+// spring's, not a missed one (SOWING_YEAR_START, renderer.js).
 function isSowingOverdue(field, currentMonth) {
     if (!field.crop || field.state === 'Planted' || !currentMonth) return false;
     const cal = CROP_CALENDAR[field.crop];

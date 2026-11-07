@@ -104,3 +104,72 @@ test('season: an undo left from another season is not offered', async () => {
     fs.writeFileSync(undoSeasonPath(farm), JSON.stringify({ season: farm.currentSeason + 5, fields: [] }));
     assert.strictEqual(readUndoSeason(farm), null);
 });
+
+test('season: a season runs July to June across two game years', () => {
+    assert.strictEqual(seasonStartYearOf(6, 'AUGUST'), 6);
+    assert.strictEqual(seasonStartYearOf(6, 'JULY'), 6);
+    assert.strictEqual(seasonStartYearOf(6, 'FEBRUARY'), 6);
+    assert.strictEqual(seasonStartYearOf(7, 'MARCH'), 6);
+    assert.strictEqual(seasonStartYearOf(7, 'JUNE'), 6);
+    assert.strictEqual(seasonStartYearOf(1, 'MARCH'), 1, 'a game\'s first spring belongs to the first season');
+    assert.strictEqual(seasonStartYearOf(0, 'MAY'), null);
+});
+
+test('season: a new season is due in July, not when the game year turns in March', () => {
+    const farm = { saveGamePath: path.join(appDataDir, 'no-save', 'careerSavegame.xml'), seasonStartYear: 6, yearNumber: 7, month: 'MARCH' };
+    assert.strictEqual(seasonEndInfo(farm).ready, false, 'March of the next game year');
+    farm.month = 'JUNE';
+    assert.strictEqual(seasonEndInfo(farm).ready, false, 'June');
+    farm.month = 'JULY';
+    assert.strictEqual(seasonEndInfo(farm).ready, true, 'July');
+});
+
+test('season: a farm from before 0.11.1 counts its season from now, without asking for a new one', () => {
+    const farm = { yearNumber: 7, month: 'APRIL', seasonStartedGameYear: 6 };
+    assert.strictEqual(farmSeasonStartYear(farm), 6);
+    farm.saveGamePath = path.join(appDataDir, 'no-save', 'careerSavegame.xml');
+    assert.strictEqual(seasonEndInfo(farm).ready, false);
+});
+
+test('season: a new season keeps the year it began in, started early it is the next one', async () => {
+    const farm = await freshFarm();
+    const start = farm.seasonStartYear;
+    farm.month = 'MAY';   // before July: the season still running began the July before
+    saveFarmData(farm, { undo: false });
+    await newSeason();
+    const now = getCurrentFarm();
+    assert.strictEqual(now.seasonStartYear, start + 1);
+    const archive = JSON.parse(fs.readFileSync(archivePath(farm, farm.currentSeason), 'utf-8'));
+    assert.strictEqual(archive.seasonStartYear, start);
+    const done = undoLastNewSeason();
+    await answerDialog('confirm');
+    await answerDialog('confirm');
+    await done;
+    assert.strictEqual(getCurrentFarm().seasonStartYear, start);
+});
+
+test('season: the timeline runs July to June, a spring sowing stays in the season', async () => {
+    const farm = await freshFarm();
+    farm.month = 'AUGUST';
+    const soy = field({ crop: 'Soybean', sowingMonth: 'APRIL' });
+    const canola = field({ number: '2', crop: 'Canola', sowingMonth: 'AUGUST' });
+    const [soyBar] = timelinePlanBars(farm, soy, 36, timelineMonthPos('AUGUST'), 'AUGUST', false);
+    const [canolaBar] = timelinePlanBars(farm, canola, 36, timelineMonthPos('AUGUST'), 'AUGUST', false);
+    assert.strictEqual(timelineMonthPos('JULY'), 0);
+    assert.ok(soyBar.from >= 0 && soyBar.from < 12, 'soy in April is in this season, at ' + soyBar.from);
+    assert.ok(canolaBar.from < soyBar.from, 'canola in August comes first');
+});
+
+test('season: the timeline heads each season with its game years', async () => {
+    const farm = await freshFarm();
+    setSetting('fieldsView', 'timeline');
+    fieldsViewMode = null;
+    renderSeasonView();
+    const heads = [...document.querySelectorAll('#fields-timeline th.timeline-year')].map(th => th.textContent.trim());
+    setSetting('fieldsView', 'table');
+    fieldsViewMode = null;
+    renderSeasonView();
+    const s = farm.currentSeason, y = farm.seasonStartYear;
+    assert.ok(heads[0].includes(`${t('season')} ${s}`) && heads[0].includes(`${y}/${y + 1}`), heads[0]);
+    assert.ok(heads[1].includes(`${t('season')} ${s + 1}`) && heads[1].includes(`${y + 1}/${y + 2}`), heads[1]);
+});

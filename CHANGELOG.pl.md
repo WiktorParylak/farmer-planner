@@ -2,6 +2,11 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
+## 0.11.1 — unreleased
+
+**Zmiany**
+- **Sezon trwa od lipca do czerwca**: sezon to teraz rok siewny, więc rzepak siany w sierpniu i soja w następnym kwietniu należą do tego samego sezonu. Oś czasu zaczyna każdy sezon od lipca, a nad nim jest numer sezonu i pod spodem dwa lata gry, które obejmuje (*rok 6/7*); siew wiosenny zaplanowany latem nie ląduje już w następnym roku. Z zapisem gry aplikacja proponuje nowy sezon, gdy w grze zacznie się lipiec, a nie przy zmianie roku gry w marcu. Sezon zaczęty przed lipcem to ten, który nadchodzi. Farmy z wcześniejszych wersji liczą bieżący sezon od ostatniego lipca, więc aktualizacja o nic nie pyta.
+
 ## 0.11.0 — 2026-11-06
 
 **Nowe**
