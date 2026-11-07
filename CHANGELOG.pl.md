@@ -9,6 +9,9 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Lista prac podzielona na uprawy**: przy międzyplonie lista prac pola ma dwie części z własnymi nagłówkami, *Uprawa: …* i *Międzyplon: …*, w kolejności wykonywania. Część międzyplonu zaczyna się nowym krokiem *Siew poplonu*, na który przychodzi pora w jego miesiącu siewu, a siew uprawy głównej nazywa się *Siew uprawy*. W oknie edycji listy krok przesunięty za nagłówek przechodzi do tej części, a *Dodaj krok* pyta, do której części go dodać. Własne listy ze starszych wersji są dalej pokazywane bez nagłówków.
 - **Co nowego po hotfixie**: po aktualizacji do hotfixa okno *Co nowego* pokazuje zmiany wersji, którą poprawia, a po nich zmiany samego hotfixa pod nagłówkiem *0.11.1 – HOTFIX*.
 
+**Poprawki**
+- **Pędzel w edytorze ścieżek**: przy dużym przybliżeniu pierścień pędzla nie znika już, zostawiając cienki krzyżyk; pędzel za duży na kursor myszy jest rysowany jako pierścień nad mapą, który idzie za myszą.
+
 ## 0.11.0 — 2026-11-06
 
 **Nowe**

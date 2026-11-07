@@ -9334,6 +9334,25 @@ button.field-open.has-callout .field-number-chip {
   cursor: grab;
 }
 
+/* The editor's brush when it's too big for a cursor image: a ring over the map. */
+.tl-brush-ring {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1.5px #000;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.tl-brush-ring.is-erase {
+  border: 1.5px dashed #f08a6c;
+}
+
+.tl-brush-ring[hidden] {
+  display: none;
+}
+
 .tl-busy {
   position: absolute;
   inset: auto 12px 12px auto;

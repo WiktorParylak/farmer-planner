@@ -9,6 +9,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Work list split by crop**: with a catch crop, a field's work list has two parts under their own headings, *Crop: …* and *Catch crop: …*, in the order they are done. The catch crop part starts with a new *Sow the catch crop* step, due from its sowing month, and the main crop's sowing reads *Sow the crop*. In the work window a step moved past a heading joins that part, and *Add step* asks which part it goes to. Lists of your own from earlier versions keep showing without headings.
 - **What's new after a hotfix**: after updating to a hotfix, the *What's new* window shows the changes of the version it fixes, with the hotfix's own changes after them under *0.11.1 – HOTFIX*.
 
+**Fixed**
+- **Brush in the tramline editor**: zoomed far in, the brush ring no longer disappears into a thin crosshair; a brush too big for a mouse cursor is drawn as a ring over the map that follows the mouse.
+
 ## 0.11.0 — 2026-11-06
 
 **New**
