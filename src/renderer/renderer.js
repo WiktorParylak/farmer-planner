@@ -4393,6 +4393,8 @@ const SUPPORTED_MODS = [
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
     { id: 'manureForAll', name: 'Manure For All', modNames: ['FS25_ManureForAll'] },
     { id: 'deepTillage', name: 'Deep Tillage: No Weeds After Sowing', modNames: ['FS25_SubsoilerNoWeeds'] },
+    // Only recognised: the app reads tanks and productions from the save anyway.
+    { id: 'autoMilk', name: 'Automatic Milk Distribution', modNames: ['FS25_AutomaticMilkDistribution'], detectOnly: true },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
@@ -5830,7 +5832,7 @@ function renderAnimalModsInfo(farm) {
             if (mod) detail += ' · ' + currencyModText(mod);
         }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
-            <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
+            ${def.detectOnly ? '' : `<input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>`}
             <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
     });
     SAVE_ACTIVE_MODS = prevActive;

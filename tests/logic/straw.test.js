@@ -1,6 +1,13 @@
 // Straw in barns: which buildings have it at all, and what Manure For All adds.
 const strawCow = { subType: 'COW_HOLSTEIN', numAnimals: 10, age: 24, health: 100 };
 
+test('mods: a mod that is only recognised has no switch in the settings', () => {
+    renderAnimalModsInfo({});
+    const row = name => [...document.querySelectorAll('#animal-mods-info .animal-mod-row')].find(r => r.textContent.includes(name));
+    assert.ok(row('Automatic Milk Distribution') && !row('Automatic Milk Distribution').querySelector('.supported-mod-toggle'));
+    assert.ok(row('Manure For All').querySelector('.supported-mod-toggle'));
+});
+
 test('straw: a building uses straw with a section or the fill type', () => {
     assert.strictEqual(placeableUsesStraw('<husbandry><straw capacity="100"/></husbandry>'), true);
     assert.strictEqual(placeableUsesStraw('<storage fillTypes="MILK STRAW"/>'), true);

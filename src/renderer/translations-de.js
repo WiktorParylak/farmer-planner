@@ -1669,6 +1669,7 @@ const UI = {
     modDesc_eas: "Milch und Futter nach Laktation nach dem Kalben",
     modDesc_manureForAll: "Stroh und Mist für jedes Tier, im Verhältnis des Mods zu seinem Futter",
     modDesc_deepTillage: "kein Unkrautschritt auf Feldern, die auf gegrubbertem Boden gesät wurden",
+    modDesc_autoMilk: "vom Mod bewegte Milch erscheint nach dem nächsten Speichern in Tanks und Produktionen",
     modDesc_animalPackage: "Futterkurven, wenn AnimalFoodCalculator dem Animal Package folgt",
     modDesc_bankCredit: "Bankkredite und Monatsrate",
     modDesc_hirePurchasing: "auf Raten gekaufte Fahrzeuge — die Restschuld zählt als Kredit",
