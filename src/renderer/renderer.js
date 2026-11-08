@@ -7033,10 +7033,14 @@ function hotfixBaseFor(version, base) {
     return base && minor(base) === minor(version) && compareVersions(version, base) > 0 ? String(base) : null;
 }
 
-const APP_HOTFIX_OF = (() => {
-    try { return hotfixBaseFor(APP_VERSION, JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8')).hotfixOf); }
+function appPackageVersionField(name) {
+    try { return hotfixBaseFor(APP_VERSION, JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'))[name]); }
     catch (e) { return null; }
-})();
+}
+
+const APP_HOTFIX_OF = appPackageVersionField('hotfixOf');
+// Like hotfixOf it widens What's new down to that version, without marking this one a hotfix.
+const APP_WHATS_NEW_FROM = appPackageVersionField('whatsNewFrom');
 
 function changelogFileSections(file) {
     let text = '';
@@ -7103,9 +7107,10 @@ function changelogHtml(lines) {
 // Sections newer than `since` (exclusive) up to the running version; since
 // = null -> just the running version. A hotfix also brings the version it
 // fixes, and its own section (hotfix: true) goes last.
-function whatsNewSections(since, version = APP_VERSION, hotfixOf = APP_HOTFIX_OF) {
+function whatsNewSections(since, version = APP_VERSION, hotfixOf = APP_HOTFIX_OF, from = APP_WHATS_NEW_FROM) {
+    const first = hotfixOf || from;
     const sections = readChangelogSections().filter(s => compareVersions(s.version, version) <= 0
-        && ((hotfixOf && compareVersions(s.version, hotfixOf) >= 0)
+        && ((first && compareVersions(s.version, first) >= 0)
             || (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, version) === 0)));
     if (!hotfixOf) return sections;
     const own = sections.filter(s => s.version === version).map(s => ({ ...s, hotfix: true }));

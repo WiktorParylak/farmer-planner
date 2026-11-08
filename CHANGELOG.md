@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.11.2 — unreleased
+
+**Changed**
+- ***What's new* shows the whole 0.11 series**: the window lists 0.11.2, 0.11.1 and 0.11.0, newest first, after the update and from the *What's new* button.
+
 ## 0.11.1 — 2026-11-07
 
 **Changed**

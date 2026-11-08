@@ -14,6 +14,13 @@ test('whats new: a hotfix shows the version it fixes, then its own changes', () 
     assert.strictEqual(whatsNewVersionLabel('0.11.1', true), t('whatsNewHotfix').replace('{v}', '0.11.1'));
 });
 
+test('whats new: a version can show its whole series, newest first, without being a hotfix', () => {
+    [whatsNewSections('0.11.1', '0.11.2', null, '0.11.0'), whatsNewSections(null, '0.11.2', null, '0.11.0')].forEach(list => {
+        assert.deepStrictEqual(list.map(s => s.version), ['0.11.2', '0.11.1', '0.11.0']);
+        assert.ok(list.every(s => !s.hotfix));
+    });
+});
+
 test('whats new: a hotfix mark left in the next version does nothing', () => {
     assert.strictEqual(hotfixBaseFor('0.11.1', '0.11.0'), '0.11.0');
     assert.strictEqual(hotfixBaseFor('0.12.0', '0.11.0'), null);
