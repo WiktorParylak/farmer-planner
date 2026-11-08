@@ -442,6 +442,7 @@ function buildDevFarm({ pl }) {
         yearNumber: DEV_YEAR,
         currentSeason: DEV_SEASON,
         seasonStartedGameYear: DEV_YEAR,
+        seasonStartYear: DEV_YEAR,
         // A crop that came off this season, ahead of the rest of the farm.
         finishedCrops: [devField("13", 0.85, "Pea", "MARCH", "Planted", "noTill", { finishedSeason: DEV_SEASON, finishedMonth: "JULY" })],
         fieldSizes: { "5": 5 },

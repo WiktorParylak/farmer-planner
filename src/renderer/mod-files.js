@@ -32,13 +32,15 @@ function readZipDirectory(zipPath) {
         for (let n = 0; n < count && p + 46 <= cd.length; n++) {
             if (cd.readUInt32LE(p) !== 0x02014b50) break;
             const method = cd.readUInt16LE(p + 10);
+            const crc = cd.readUInt32LE(p + 16);
             const compSize = cd.readUInt32LE(p + 20);
+            const entrySize = cd.readUInt32LE(p + 24);
             const nameLen = cd.readUInt16LE(p + 28);
             const extraLen = cd.readUInt16LE(p + 30);
             const commentLen = cd.readUInt16LE(p + 32);
             const localOffset = cd.readUInt32LE(p + 42);
             const name = cd.toString('utf8', p + 46, p + 46 + nameLen).replace(/\\/g, '/');
-            entries.set(name.toLowerCase(), { name, method, compSize, localOffset });
+            entries.set(name.toLowerCase(), { name, method, compSize, localOffset, crc, size: entrySize });
             p += 46 + nameLen + extraLen + commentLen;
         }
         return entries;

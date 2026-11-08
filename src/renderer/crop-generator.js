@@ -78,7 +78,7 @@ function genResourceIcon(res) {
 // Crops that can be sown as a main crop and have a yield and a calendar.
 function genCropPool(settings) {
     return AVAILABLE_CROPS.filter(c => CROP_CALENDAR[c] && getCropYieldRate(c) !== null
-        && !(isCatchCropChoice(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c)
+        && !(isCatchOnlyCrop(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c)
         && !settings.excluded.includes(c));
 }
 
@@ -671,7 +671,7 @@ function buildCropGeneratorYears(farm) {
 
 // Every crop the generator could use, ticked or not.
 function genAllCrops() {
-    return AVAILABLE_CROPS.filter(c => CROP_CALENDAR[c] && getCropYieldRate(c) !== null && !(isCatchCropChoice(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c));
+    return AVAILABLE_CROPS.filter(c => CROP_CALENDAR[c] && getCropYieldRate(c) !== null && !(isCatchOnlyCrop(c) && !isPerennialCrop(c)) && !MARKET_UNSOLD_CROPS.includes(c));
 }
 
 function genCropPickerHtml(s) {

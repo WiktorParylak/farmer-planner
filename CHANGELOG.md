@@ -2,6 +2,35 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.11.2 — 2026-11-08
+
+**New**
+- **Zip and unzip mods**: every row in the mod manager has an icon that turns a zip into a folder or a folder into a zip, under the same name. The result is checked file by file before it replaces the original, and the original goes to the Recycle Bin.
+- **More catch crops**: buckwheat, clover, alfalfa, silage maize, carrot, beetroot, parsnip, beans and green beans can be a field's catch crop, on maps that have them, in any month their calendar allows, including the month the main crop comes off. In a crop rotation they go in from that month on. Their part of the work list ends with a harvest, or with mowing for clover and alfalfa, and the harvest shows up when the catch crop is ready.
+- **A catch crop stays until it comes off**: a catch crop sown after the harvest used to be wiped by *New season*. Now the field keeps its main crop and catch crop together until the catch crop is off, and only then do *New season* and *Harvested: next crop* move it on. The button in the field view can still move it on sooner.
+- **Manure For All**: with this mod in the save, sheep, goats, chickens and any other animal without straw and manure get them, in the mod's own proportion to their feed. It shows on the barn cards, in the monthly output, in the feed planner and in the crop generator's straw need, and can be switched off in the farm's *Mods* settings.
+- **Deep Tillage: No Weeds After Sowing**: with this mod in the save, a field on cultivated ground has no weeds step in its work list and its weeds chip is greyed out, as after ploughing. Ground left by a disc harrow, and weeds the save really shows, keep the step.
+- **Automatic Milk Distribution** is recognised in the farm's *Mods* settings. Milk it moves shows in the barn tanks and productions after the next save.
+
+**Changed**
+- ***What's new* shows the whole 0.11 series**: the window lists 0.11.2, 0.11.1 and 0.11.0, newest first, after the update and from the *What's new* button.
+- **Field window, *Crop* tab**: the settings are grouped under *Main crop*, *Catch crop* and *Crop rotation*, and the state and tillage are two-way switches instead of dropdowns. Clicking the active tillage clears it.
+
+**Fixed**
+- **Installer**: the setup and uninstall windows have the new logo and round-ended buttons instead of ovals.
+- **Timeline**: only the bars of this season's plan open the field window. Crops projected for later seasons keep their tooltip, since the window describes this season alone.
+- **No false "out of straw" warning**: barns built without straw, such as the small cow, horse and pig barns, no longer warn about it.
+
+## 0.11.1 — 2026-11-07
+
+**Changed**
+- **A season runs from July to June**: a season is now a sowing year, so canola sown in August and soy the April after belong to the same season. The timeline starts each season in July and heads it with the season number and, under it, the two game years it spans (*year 6/7*); a spring sowing planned in summer no longer shows up in the next year. With a savegame the app offers a new season once July comes in the game, not when the game's year turns over in March. A season started before July is the one that follows. Farms from earlier versions count their current season from the last July, so the update asks for nothing.
+- **Work list split by crop**: with a catch crop, a field's work list has two parts under their own headings, *Crop: …* and *Catch crop: …*, in the order they are done. The catch crop part starts with a new *Sow the catch crop* step, due from its sowing month, and the main crop's sowing reads *Sow the crop*. In the work window a step moved past a heading joins that part, and *Add step* asks which part it goes to. Lists of your own from earlier versions keep showing without headings.
+- **What's new after a hotfix**: after updating to a hotfix, the *What's new* window shows the changes of the version it fixes, with the hotfix's own changes after them under *0.11.1 – HOTFIX*.
+
+**Fixed**
+- **Brush in the tramline editor**: zoomed far in, the brush ring no longer disappears into a thin crosshair; a brush too big for a mouse cursor is drawn as a ring over the map that follows the mouse.
+
 ## 0.11.0 — 2026-11-06
 
 **New**

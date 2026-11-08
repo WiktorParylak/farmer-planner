@@ -220,14 +220,15 @@ function applyRotationSlot(field, slot, afterMonth) {
     field.catchSowingMonth = field.catchCrop ? rotationCatchSowMonth(field.crop, field.sowingMonth, field.catchCrop) : '';
 }
 
-// A catch crop goes in after the main crop's harvest: the first month after it
-// that the catch crop's calendar allows.
+// A catch crop goes in after the main crop's harvest: the first month its
+// calendar allows from then on. A crop with a short window (carrot, buckwheat)
+// can go in the month of the harvest, or it would wait most of a year.
 function rotationCatchSowMonth(crop, sowMonth, catchCrop) {
     const cal = CROP_CALENDAR[catchCrop];
     const harvest = crop && CROP_CALENDAR[crop] && CROP_CALENDAR[crop][sowMonth];
     const from = ALL_MONTHS.indexOf(harvest);
     if (!cal || from < 0) return rotationDefaultSowMonth(catchCrop);
-    for (let k = 1; k <= 12; k++) {
+    for (let k = isCatchOnlyCrop(catchCrop) ? 1 : 0; k <= 12; k++) {
         const m = ALL_MONTHS[(from + k) % 12];
         if (cal[m]) return m;
     }
@@ -453,14 +454,16 @@ function undoFieldFinish(farm, idx) {
 }
 
 // Which fields move on when a season ends: crops already off the field, and
-// grassland, whose year is up. Crops growing or still to be sown stay on.
+// grassland, whose year is up. Crops growing or still to be sown stay on, and
+// so does a harvested crop with its catch crop still to come off.
 function seasonEndFinishIndexes(farm) {
     const ctx = seasonHarvestContext(farm);
     const out = [];
     (farm.fields || []).forEach((field, i) => {
         const info = fieldRotationInfo(farm, field);
         const moves = field.crop
-            ? (isCutCrop(field.crop) || isPerennialCrop(field.crop) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested')
+            ? (isCutCrop(field.crop) || isPerennialCrop(field.crop)
+                || (fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested' && !fieldCatchStillOn(field, ctx.month, ctx.saveById)))
             : !!(field.nextCrop || (info && !info.slot.crop));
         if (moves) out.push(i);
     });

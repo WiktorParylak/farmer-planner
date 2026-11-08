@@ -18,6 +18,8 @@ const VIEWS = {
     'field-soil': `openFieldModal(0, 'soil')`,
     'field-history': `openFieldModal(0, 'history')`,
     'field-shared-leased': `openFieldModal(getCurrentFarm().fields.findIndex(f => f.lease), 'crop')`,
+    'field-work-catch': `openFieldModal(getCurrentFarm().fields.findIndex(f => f.catchCrop), 'work')`,
+    'work-window-catch': `openWorkModal(getCurrentFarm().fields.findIndex(f => f.catchCrop))`,
     'work-window': `openWorkModal(0)`,
     'rotation': `document.querySelector('.sidebar-item[data-view="rotation"]').click()`,
     'yields-prices': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click()`,

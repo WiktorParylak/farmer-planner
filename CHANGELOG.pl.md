@@ -2,6 +2,35 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
+## 0.11.2 — 2026-11-08
+
+**Nowe**
+- **Pakowanie i rozpakowywanie modów**: każdy wiersz w menedżerze modów ma ikonę, która zamienia zip w folder albo folder w zip pod tą samą nazwą. Wynik jest sprawdzany plik po pliku, zanim zastąpi oryginał, a oryginał trafia do Kosza.
+- **Więcej międzyplonów**: gryka, koniczyna, lucerna, kukurydza na kiszonkę, marchew, burak czerwony, pasternak, fasola i fasolka szparagowa mogą być międzyplonem na polu, na mapach, które je mają, w każdym miesiącu z ich kalendarza, także w miesiącu zbioru uprawy głównej. W płodozmianie są siane od tego miesiąca. Ich część listy prac kończy się zbiorem, a przy koniczynie i lucernie koszeniem, i zbiór pojawia się, gdy międzyplon jest gotowy.
+- **Międzyplon zostaje do swojego zbioru**: międzyplon siany po zbiorze był kasowany przez *Nowy sezon*. Teraz pole trzyma uprawę główną i międzyplon razem, aż międzyplon zejdzie z pola, i dopiero wtedy *Nowy sezon* oraz *Po zbiorze: następna uprawa* przenoszą je dalej. Przycisk w oknie pola nadal pozwala zrobić to wcześniej.
+- **Manure For All**: z tym modem w zapisie owce, kozy, kury i inne zwierzęta bez słomy i obornika dostają je w proporcji moda do ich paszy. Widać to na kartach budynków, w produkcji na miesiąc, w planerze pasz i w zapotrzebowaniu na słomę w generatorze upraw, a w ustawieniach farmy, w zakładce *Mody*, można to wyłączyć.
+- **Deep Tillage: No Weeds After Sowing**: z tym modem w zapisie pole na kultywowanej glebie nie ma na liście prac kroku *Chwasty*, a jego znacznik chwastów jest wyszarzony jak po orce. Gleba po bronie talerzowej i chwasty faktycznie widoczne w zapisie zachowują ten krok.
+- **Automatic Milk Distribution** jest rozpoznawany w ustawieniach farmy, w zakładce *Mody*. Mleko przewiezione przez mod widać w zbiornikach i produkcjach po następnym zapisie.
+
+**Zmiany**
+- ***Co nowego* pokazuje całą serię 0.11**: okno wymienia 0.11.2, 0.11.1 i 0.11.0, od najnowszej, po aktualizacji i po kliknięciu przycisku *Co nowego*.
+- **Okno pola, zakładka *Uprawa***: ustawienia są pogrupowane pod nagłówkami *Uprawa główna*, *Międzyplon* i *Płodozmian*, a stan oraz orka/bezorka to przełączniki zamiast list rozwijanych. Kliknięcie aktywnej opcji orki/bezorki ją czyści.
+
+**Poprawki**
+- **Instalator**: okna instalacji i deinstalacji mają nowe logo i przyciski z zaokrąglonymi końcami zamiast owali.
+- **Oś czasu**: okno pola otwierają tylko paski planu tego sezonu. Uprawy przewidywane na kolejne sezony mają nadal podpowiedź, bo okno opisuje wyłącznie ten sezon.
+- **Bez fałszywego ostrzeżenia o braku słomy**: budynki bez słomy, takie jak mała obora, stajnia i chlew, nie ostrzegają już o jej braku.
+
+## 0.11.1 — 2026-11-07
+
+**Zmiany**
+- **Sezon trwa od lipca do czerwca**: sezon to teraz rok siewny, więc rzepak siany w sierpniu i soja w następnym kwietniu należą do tego samego sezonu. Oś czasu zaczyna każdy sezon od lipca, a nad nim jest numer sezonu i pod spodem dwa lata gry, które obejmuje (*rok 6/7*); siew wiosenny zaplanowany latem nie ląduje już w następnym roku. Z zapisem gry aplikacja proponuje nowy sezon, gdy w grze zacznie się lipiec, a nie przy zmianie roku gry w marcu. Sezon zaczęty przed lipcem to ten, który nadchodzi. Farmy z wcześniejszych wersji liczą bieżący sezon od ostatniego lipca, więc aktualizacja o nic nie pyta.
+- **Lista prac podzielona na uprawy**: przy międzyplonie lista prac pola ma dwie części z własnymi nagłówkami, *Uprawa: …* i *Międzyplon: …*, w kolejności wykonywania. Część międzyplonu zaczyna się nowym krokiem *Siew poplonu*, na który przychodzi pora w jego miesiącu siewu, a siew uprawy głównej nazywa się *Siew uprawy*. W oknie edycji listy krok przesunięty za nagłówek przechodzi do tej części, a *Dodaj krok* pyta, do której części go dodać. Własne listy ze starszych wersji są dalej pokazywane bez nagłówków.
+- **Co nowego po hotfixie**: po aktualizacji do hotfixa okno *Co nowego* pokazuje zmiany wersji, którą poprawia, a po nich zmiany samego hotfixa pod nagłówkiem *0.11.1 – HOTFIX*.
+
+**Poprawki**
+- **Pędzel w edytorze ścieżek**: przy dużym przybliżeniu pierścień pędzla nie znika już, zostawiając cienki krzyżyk; pędzel za duży na kursor myszy jest rysowany jako pierścień nad mapą, który idzie za myszą.
+
 ## 0.11.0 — 2026-11-06
 
 **Nowe**

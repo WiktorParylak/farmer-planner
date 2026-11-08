@@ -3549,6 +3549,30 @@ const ALL_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JUL
 const FS_PERIODS = ["EARLY_SPRING", "MID_SPRING", "LATE_SPRING", "EARLY_SUMMER", "MID_SUMMER", "LATE_SUMMER", "EARLY_AUTUMN", "MID_AUTUMN", "LATE_AUTUMN", "EARLY_WINTER", "MID_WINTER", "LATE_WINTER"];
 const FS_PERIOD_TO_MONTH = ["MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER", "JANUARY", "FEBRUARY"];
 
+// A season of the plan is a sowing year, July to June: canola sown in August
+// and soy the April after belong to one season. The game's own year turns over
+// in March, so a season spans two of them ("year 6/7").
+const SEASON_MONTHS = ["JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE"];
+const SOWING_YEAR_START = ALL_MONTHS.indexOf('JULY');
+
+// The game year the season of this game year and month began in: March to
+// June still belong to the season that began the July before. A game's first
+// spring has no July before it, so it counts to the first season.
+function seasonStartYearOf(year, month) {
+    const y = parseInt(year, 10);
+    if (!(y > 0)) return null;
+    const p = FS_PERIOD_TO_MONTH.indexOf(String(month || '').toUpperCase());
+    return Math.max(1, p >= 0 && p < FS_PERIOD_TO_MONTH.indexOf('JULY') ? y - 1 : y);
+}
+
+// The game year this farm's current season began in: kept when a season
+// starts (runNewSeason), else (farms from before 0.11.1) the season the game
+// is in now.
+function farmSeasonStartYear(farm) {
+    const kept = parseInt(farm && farm.seasonStartYear, 10);
+    return kept > 0 ? kept : seasonStartYearOf(farm && farm.yearNumber, getFarmCurrentMonth(farm));
+}
+
 // =============================================================
 // SECTION 4: FILE SYSTEM & DATA HELPERS
 // =============================================================
@@ -3903,6 +3927,7 @@ function loadFarmConfigs(farm) {
             if (parsed) Object.keys(parsed).forEach(st => applyInputs(st, parsed[st]));
         });
     }
+    if (modEnabled('manureForAll')) applyManureForAll(ANIMAL_NEEDS_DATA);
 }
 
 // Crop keys the planner offers: the map's list when known (only those with a
@@ -4366,6 +4391,10 @@ const SUPPORTED_MODS = [
     { id: 'afc', name: 'AnimalFoodCalculator', modNames: ['FS25_AnimalFoodCalculator'] },
     { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
+    { id: 'manureForAll', name: 'Manure For All', modNames: ['FS25_ManureForAll'] },
+    { id: 'deepTillage', name: 'Deep Tillage: No Weeds After Sowing', modNames: ['FS25_SubsoilerNoWeeds'] },
+    // Only recognised: the app reads tanks and productions from the save anyway.
+    { id: 'autoMilk', name: 'Automatic Milk Distribution', modNames: ['FS25_AutomaticMilkDistribution'], detectOnly: true },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
@@ -4655,6 +4684,7 @@ function readGameSave(pathToFile) {
                     name: placeable.getAttribute('filename') || '',
                     clusters: [], food: [], production: []
                 };
+                if (barnUsesNoStraw(building.name, pathToFile)) building.noStraw = true;
                 const husbandryEl = placeable.querySelector('husbandry');
                 const productivity = husbandryEl ? parseFloat(husbandryEl.getAttribute('globalProductionFactor')) : NaN;
                 if (isFinite(productivity)) building.productivity = productivity;
@@ -4854,7 +4884,7 @@ function syncWorkFromSave(farm) {
         const ids = gameFieldIds(field);
         const games = ids.map(id => byId[id]);
         if (!games.length || games.some(g => !g)) return;
-        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]);
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]);
         // Ground worked before New season belongs to the season archived: the
         // first read after it remembers each game field's ground, and only a
         // ground that changed since then counts as this season's work.
@@ -4876,19 +4906,25 @@ function syncWorkFromSave(farm) {
         // yet): nothing on the field is this plan's work. Only the levels are
         // remembered, so fertilizing the old crop never counts for the new one,
         // and work read from the game before is dropped (manual ticks stay).
+        // The field's own catch crop is not another crop: the plan's work stays.
         const otherCropStanding = !!field.crop && !grows && games.some(g => g.sown
             && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.crop)
+            && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.catchCrop || '')
             && saveCropHarvested(g.fruitType, g.growthState) === false);
         if (otherCropStanding) {
             games.forEach(g => { seen[g.id] = levelsOf(g); });
             field.workSeen = seen;
             delete field.workDetected;
             delete field.workRise;
-            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]) !== before) changed = true;
             return;
         }
         if (grows && field.state !== 'Planted') field.state = 'Planted';
         if (field.crop && !isCutCrop(field.crop)) {
+            // After the harvest the ground says nothing about this crop's sowing any more.
+            if (grows || field.state !== 'Planted') {
+                if (deepTilledFrom(games, grows)) field.deepTilled = true; else delete field.deepTilled;
+            }
             const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
             if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
             if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
@@ -4945,7 +4981,7 @@ function syncWorkFromSave(farm) {
         if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
         if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
         syncSowStep(field);
-        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]) !== before) changed = true;
     });
     return changed;
 }
@@ -5482,6 +5518,7 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     field.fertilizer = false;
     field.weeds = null;
     delete field.weedsManual;
+    delete field.deepTilled;
     delete field.work;
     delete field.workFor;
     delete field.workCleared;
@@ -5564,12 +5601,14 @@ async function runNewSeason({ intro = '' } = {}) {
                 fertPlan: undoFertPlan,
                 finishedCrops: undoFinished,
                 seasonStartedGameYear: farm.seasonStartedGameYear ?? null,
+                seasonStartYear: farm.seasonStartYear ?? null,
                 createdAt: new Date().toISOString()
             };
             const archivedAvgHealth = avgHealthFromBuildings(farm.animalBuildings);
 
             const archiveData = {
                 season: currentSeasonNum,
+                seasonStartYear: farmSeasonStartYear(farm),
                 dateArchived: new Date().toISOString(),
                 // The crops that came off in this season. What still grows belongs to the season it comes off in.
                 fields: JSON.parse(JSON.stringify(seasonRows)),
@@ -5584,6 +5623,9 @@ async function runNewSeason({ intro = '' } = {}) {
             farm.finishedCrops = [];
             farm.currentSeason = currentSeasonNum + 1;
             farm.seasonStartedGameYear = parseInt(farm.yearNumber, 10) || null;
+            // Started before July: the season that follows, not the one still running.
+            const prevStart = parseInt(farm.seasonStartYear, 10) || 0;
+            farm.seasonStartYear = Math.max(seasonStartYearOf(farm.yearNumber, getFarmCurrentMonth(farm)) || 0, prevStart + 1) || null;
             saveFarmData(farm, { undo: false });
             fs.writeFileSync(path.join(seasonsDirPath, 'undo_new_season.json'), JSON.stringify(undoData, null, 2), 'utf-8');
             refreshUndoSeasonButton(farm);
@@ -5653,6 +5695,7 @@ async function undoLastNewSeason() {
         farm.finishedCrops = undo.finishedCrops || [];
         farm.currentSeason = undo.season;
         farm.seasonStartedGameYear = undo.seasonStartedGameYear;
+        farm.seasonStartYear = undo.seasonStartYear ?? null;
         saveFarmData(farm, { undo: false });
         const archivePath = path.join(appDataDir, farm.folderName, 'seasons', `season_${undo.season}.json`);
         if (fs.existsSync(archivePath)) fs.rmSync(archivePath);
@@ -5673,13 +5716,14 @@ if (undoSeasonBtn) undoSeasonBtn.addEventListener('click', () => undoLastNewSeas
 
 // Time for a new season (seasonEndInfo, today.js) — offer it,
 // once per season (farm.seasonHintSeason). The first sync only notes the year
-// the season is in.
+// the season began in; so does the first one after 0.11.1, which counted
+// seasons from March (seasonStartedGameYear) and now counts them from July.
 function maybeSuggestNewSeason(farm) {
     if (!farm || !farm.saveGamePath || isEditMode) return;
-    const year = parseInt(farm.yearNumber, 10);
+    const year = seasonStartYearOf(farm.yearNumber, getFarmCurrentMonth(farm));
     if (!(year > 0)) return;
-    if (!(parseInt(farm.seasonStartedGameYear, 10) > 0)) {
-        farm.seasonStartedGameYear = year;
+    if (!(parseInt(farm.seasonStartYear, 10) > 0)) {
+        farm.seasonStartYear = year;
         saveFarmData(farm, { touch: false });
         return;
     }
@@ -5793,7 +5837,7 @@ function renderAnimalModsInfo(farm) {
             if (mod) detail += ' · ' + currencyModText(mod);
         }
         html += `<label class="animal-mod-row${inSave ? '' : ' is-inactive'}">
-            <input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>
+            ${def.detectOnly ? '' : `<input type="checkbox" class="supported-mod-toggle" data-mod="${def.id}" ${disabled.has(def.id) ? '' : 'checked'} ${inSave ? '' : 'disabled'}>`}
             <span><strong>${escapeHtml(def.name)}</strong><span class="mod-status ${inSave ? 'mod-status--on' : 'mod-status--off'}">${t(inSave ? 'modStatusActive' : 'modStatusMissing')}</span> — ${escapeHtml(detail)}</span></label>`;
     });
     SAVE_ACTIVE_MODS = prevActive;
@@ -6993,6 +7037,24 @@ if (checkUpdatesBtn) {
 const CONFIG_KEY_LAST_VERSION = 'farmer_planner_last_version';
 const CHANGELOG_PATH = path.join(__dirname, '..', '..', 'CHANGELOG.md');
 
+// A hotfix ("hotfixOf": "0.11.0" in package.json) is shown with the version
+// it fixes: that one's list is still the news, the hotfix's own changes come
+// after it. Only for a later version of the same X.Y, so a field left behind
+// in the next version does nothing.
+function hotfixBaseFor(version, base) {
+    const minor = v => String(v).split('.').slice(0, 2).join('.');
+    return base && minor(base) === minor(version) && compareVersions(version, base) > 0 ? String(base) : null;
+}
+
+function appPackageVersionField(name) {
+    try { return hotfixBaseFor(APP_VERSION, JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'))[name]); }
+    catch (e) { return null; }
+}
+
+const APP_HOTFIX_OF = appPackageVersionField('hotfixOf');
+// Like hotfixOf it widens What's new down to that version, without marking this one a hotfix.
+const APP_WHATS_NEW_FROM = appPackageVersionField('whatsNewFrom');
+
 function changelogFileSections(file) {
     let text = '';
     try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
@@ -7056,19 +7118,33 @@ function changelogHtml(lines) {
 }
 
 // Sections newer than `since` (exclusive) up to the running version; since
-// = null -> just the running version.
+// = null -> just the running version. A hotfix also brings the version it
+// fixes, and its own section (hotfix: true) goes last.
+function whatsNewSections(since, version = APP_VERSION, hotfixOf = APP_HOTFIX_OF, from = APP_WHATS_NEW_FROM) {
+    const first = hotfixOf || from;
+    const sections = readChangelogSections().filter(s => compareVersions(s.version, version) <= 0
+        && ((first && compareVersions(s.version, first) >= 0)
+            || (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, version) === 0)));
+    if (!hotfixOf) return sections;
+    const own = sections.filter(s => s.version === version).map(s => ({ ...s, hotfix: true }));
+    return [...sections.filter(s => s.version !== version), ...own];
+}
+
+function whatsNewVersionLabel(version, hotfix) {
+    return hotfix ? t('whatsNewHotfix').replace('{v}', version) : version;
+}
+
 function showWhatsNew(since) {
     const modal = document.getElementById('whats-new-modal');
-    const sections = readChangelogSections().filter(s => compareVersions(s.version, APP_VERSION) <= 0
-        && (since ? compareVersions(s.version, since) > 0 : compareVersions(s.version, APP_VERSION) === 0));
+    const sections = whatsNewSections(since);
     if (!modal || !sections.length) return Promise.resolve(false);
 
-    document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', APP_VERSION);
+    document.getElementById('whats-new-title').textContent = t('whatsNewTitle').replace('{v}', whatsNewVersionLabel(APP_VERSION, !!APP_HOTFIX_OF));
     const lead = since ? t('whatsNewLead').replace('{old}', since).replace('{v}', APP_VERSION) : '';
     document.getElementById('whats-new-lead').textContent = [lead, sections.some(s => s.english) ? t('whatsNewEnglish') : ''].filter(Boolean).join(' ');
     document.getElementById('whats-new-lead').style.display = document.getElementById('whats-new-lead').textContent ? '' : 'none';
     const body = document.getElementById('whats-new-body');
-    body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(s.version)}</h4>` : '') + changelogHtml(s.lines)).join('');
+    body.innerHTML = sections.map(s => (sections.length > 1 ? `<h4>${escapeHtml(whatsNewVersionLabel(s.version, s.hotfix))}</h4>` : '') + changelogHtml(s.lines)).join('');
     body.scrollTop = 0;
 
     const okBtn = document.getElementById('whats-new-ok');

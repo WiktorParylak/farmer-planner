@@ -298,17 +298,39 @@ const tlToMap = (sx, sy) => [tl.view.x0 + sx / tl.view.scale, tl.view.y0 + sy / 
 
 // Editor cursor: a ring the size of the brush at the current zoom — solid
 // with a dot to paint, dashed with a cross to erase. Ctrl (pick a colour)
-// and brushes too big for a cursor image fall back to a crosshair.
+// falls back to a crosshair. A ring too big for a cursor image (Chromium
+// drops those) is drawn over the map instead (#tl-brush-ring, following the
+// mouse), with only the dot or cross as the cursor.
+const TL_CURSOR_MAX = 120;
+let tlMouse = null;   // the mouse over the map, in CSS px of the map's box
+
+function tlUpdateBrushRing(d, erase) {
+    const ring = document.getElementById('tl-brush-ring');
+    if (!ring) return;
+    const show = d > TL_CURSOR_MAX && !!tlMouse;
+    ring.hidden = !show;
+    if (!show) return;
+    ring.classList.toggle('is-erase', erase);
+    ring.style.width = ring.style.height = d + 'px';
+    ring.style.left = tlMouse[0] + 'px';
+    ring.style.top = tlMouse[1] + 'px';
+}
+
 function tlUpdateCursor(ctrl) {
     const c = tlCanvas();
     if (!c) return;
     const ed = tl.editor;
-    if (tl.tab !== 'editor' || !ed || !tl.view || ctrl) { c.style.cursor = tl.tab === 'editor' && ed ? 'crosshair' : ''; return; }
+    if (tl.tab !== 'editor' || !ed || !tl.view || ctrl) {
+        c.style.cursor = tl.tab === 'editor' && ed ? 'crosshair' : '';
+        tlUpdateBrushRing(0, false);
+        return;
+    }
     const d = Math.max(6, Math.round(tlSettings().brush * tl.view.scale / (window.devicePixelRatio || 1)));
-    if (d > 120) { c.style.cursor = 'crosshair'; return; }
-    const size = d + 4, h = size / 2, r = d / 2;
     const erase = ed.mode === 'erase';
-    const ring = (stroke, width, dash) => `<circle cx="${h}" cy="${h}" r="${r}" fill="none" stroke="${stroke}" stroke-width="${width}"${dash ? ' stroke-dasharray="3 2"' : ''}/>`;
+    tlUpdateBrushRing(d, erase);
+    const big = d > TL_CURSOR_MAX;
+    const size = big ? 12 : d + 4, h = size / 2, r = d / 2;
+    const ring = (stroke, width, dash) => big ? '' : `<circle cx="${h}" cy="${h}" r="${r}" fill="none" stroke="${stroke}" stroke-width="${width}"${dash ? ' stroke-dasharray="3 2"' : ''}/>`;
     const mark = erase
         ? `<path d="M${h - 3} ${h - 3}L${h + 3} ${h + 3}M${h + 3} ${h - 3}L${h - 3} ${h + 3}" stroke="#000" stroke-width="3"/><path d="M${h - 3} ${h - 3}L${h + 3} ${h + 3}M${h + 3} ${h - 3}L${h - 3} ${h + 3}" stroke="#fff" stroke-width="1.2"/>`
         : `<circle cx="${h}" cy="${h}" r="1.5" fill="#fff" stroke="#000" stroke-width="0.8"/>`;
@@ -946,6 +968,12 @@ function tlEditorOpenKeepView(name) {
         drag = { sx, sy, x0: tl.view.x0, y0: tl.view.y0, moved: false, button: e.button, paint: painting ? { saved: new Map() } : null };
         if (painting) { const [mx, my] = tlToMap(sx, sy); tlEditorStamp(mx, my, drag.paint); tlDraw(); }
     });
+    c.addEventListener('mousemove', e => {
+        const r = c.getBoundingClientRect();
+        tlMouse = [e.clientX - r.left, e.clientY - r.top];
+        if (tl.tab === 'editor' && tl.editor) tlUpdateCursor(e.ctrlKey);
+    });
+    c.addEventListener('mouseleave', () => { tlMouse = null; tlUpdateBrushRing(0, false); });
     window.addEventListener('mousemove', e => {
         if (!drag || view.hidden) return;
         const [sx, sy] = pos(e);

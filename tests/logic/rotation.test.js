@@ -52,6 +52,68 @@ test('rotation: a catch crop goes in after the main harvest', () => {
     assert.ok(gap >= 1, `${month} comes after the harvest in ${harvest}`);
 });
 
+test('rotation: a quick crop can follow in the month of the harvest, green cover the month after', () => {
+    const saved = { Wheat: CROP_CALENDAR.Wheat, Carrot: CROP_CALENDAR.Carrot, Oilseedradish: CROP_CALENDAR.Oilseedradish };
+    try {
+        CROP_CALENDAR.Wheat = { OCTOBER: 'JULY' };
+        CROP_CALENDAR.Carrot = { JULY: 'NOVEMBER' };
+        CROP_CALENDAR.Oilseedradish = { JULY: 'OCTOBER', AUGUST: 'NOVEMBER' };
+        assert.strictEqual(rotationCatchSowMonth('Wheat', 'OCTOBER', 'Carrot'), 'JULY');
+        assert.strictEqual(rotationCatchSowMonth('Wheat', 'OCTOBER', 'Oilseedradish'), 'AUGUST');
+    } finally {
+        Object.assign(CROP_CALENDAR, saved);
+    }
+});
+
+function withCatchCalendars(fn) {
+    const names = ['Wheat', 'Carrot', 'Oilseedradish', 'Clover', 'Buckwheat'];
+    const saved = names.map(n => CROP_CALENDAR[n]);
+    try {
+        CROP_CALENDAR.Wheat = { OCTOBER: 'JULY' };
+        CROP_CALENDAR.Carrot = { JULY: 'NOVEMBER' };
+        CROP_CALENDAR.Oilseedradish = { AUGUST: 'NOVEMBER' };
+        CROP_CALENDAR.Clover = { JULY: 'SEPTEMBER' };
+        CROP_CALENDAR.Buckwheat = { JULY: 'AUGUST' };
+        return fn();
+    } finally {
+        names.forEach((n, i) => { CROP_CALENDAR[n] = saved[i]; });
+    }
+}
+
+test('rotation: a catch crop keeps the field until it has come off', () => withCatchCalendars(() => {
+    const f = extra => field({ state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY', ...extra });
+    ['JULY', 'OCTOBER', 'NOVEMBER'].forEach(m => assert.strictEqual(fieldCatchStillOn(f(), m, null), true, m));
+    assert.strictEqual(fieldCatchStillOn(f(), 'DECEMBER', null), false);
+    assert.strictEqual(fieldCatchStillOn(f({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' }), 'JULY', null), true, 'not sown yet');
+    assert.strictEqual(fieldCatchStillOn(f({ catchCrop: 'Clover' }), 'SEPTEMBER', null), true);
+    assert.strictEqual(fieldCatchStillOn(f({ catchCrop: 'Carrot', catchSowingMonth: 'JUNE' }), 'JULY', null), false, 'sown before the harvest');
+    assert.strictEqual(fieldCatchStillOn(field({ state: 'Planted' }), 'JULY', null), false, 'no catch crop');
+}));
+
+test('rotation: with the save, a catch crop gone from the field frees it from its harvest month', () => withCatchCalendars(() => {
+    const f = field({ state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY' });
+    const id = gameFieldIds(f)[0];
+    assert.strictEqual(fieldCatchStillOn(f, 'NOVEMBER', { [id]: { sown: false } }), false);
+    assert.strictEqual(fieldCatchStillOn(f, 'OCTOBER', { [id]: { sown: false } }), true, 'before its harvest it may just not be sown yet');
+}));
+
+test('rotation: a new season leaves a field with its catch crop still to come off', () => withCatchCalendars(() => {
+    const plain = field({ state: 'Planted' });
+    const withCatch = field({ number: '2', state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY' });
+    const catchDone = field({ number: '3', state: 'Planted', catchCrop: 'Buckwheat', catchSowingMonth: 'JULY' });
+    const farm = { month: 'AUGUST', currentSeason: 1, fields: [plain, withCatch, catchDone] };
+    assert.deepStrictEqual(seasonEndFinishIndexes(farm), [0]);
+    assert.deepStrictEqual(seasonEndFinishIndexes({ ...farm, month: 'SEPTEMBER' }), [0, 2]);
+}));
+
+test('rotation: once its catch crop is off, a field kept past the sowing month can move on', () => withCatchCalendars(() => {
+    const f = field({ state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY' });
+    const empty = { [gameFieldIds(f)[0]]: { sown: false } };
+    assert.strictEqual(fieldHarvestState(f, 'DECEMBER', empty, false), 'harvested');
+    assert.strictEqual(fieldCatchStillOn(f, 'DECEMBER', empty), false);
+    assert.strictEqual(fieldHarvestState(field({ state: 'Planted' }), 'DECEMBER', empty, false), 'growing', 'without a catch crop nothing changes');
+}));
+
 test('rotation: the generator\'s plan goes first and its later crops move up', () => {
     const f = field({
         crop: '', rotation: { id: 'r', step: 0 },

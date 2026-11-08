@@ -602,7 +602,61 @@ function clusterDailyNeed(c, needType) {
 // mod's own storage shows one, so level stays null otherwise. Nothing the game
 // doesn't tell is guessed: a barn without a known need has no days.
 const BARN_LOW_DAYS = 3, BARN_LOW_HEALTH = 75, BARN_LOW_PRODUCTIVITY = 0.75;
-function barnCareInfo(building) {
+
+// FS25_ManureForAll (scripts/core/RmManureRatios.lua, RmCurveInjector.lua): an
+// animal without a straw or manure curve gets its food curve times these.
+const MANURE_FOR_ALL_RATIOS = {
+    COW_WATERBUFFALO: { straw: 0.25, manure: 0.85 },
+    COW: { straw: 0.25, manure: 0.55 },
+    PIG: { straw: 0.35, manure: 0.60 },
+    SHEEP: { straw: 0.40, manure: 0.35 },
+    HORSE: { straw: 0.20, manure: 0.50 },
+    CHICKEN: { straw: 1.00, manure: 2.00 }
+};
+const MANURE_FOR_ALL_FALLBACK = { straw: 0.25, manure: 0.50 };
+
+function applyManureForAll(needs) {
+    const empty = curve => !curve || !curve.length;
+    Object.keys(needs).forEach(subType => {
+        const def = needs[subType];
+        if (empty(def.food)) return;
+        const ratio = MANURE_FOR_ALL_RATIOS[subType] || MANURE_FOR_ALL_RATIOS[animalTypeOf(subType)] || MANURE_FOR_ALL_FALLBACK;
+        const scaled = k => def.food.map(p => ({ ...p, value: p.value * k }));
+        if (empty(def.straw)) def.straw = scaled(ratio.straw);
+        if (!def.production) def.production = {};
+        if (empty(def.production.MANURE)) def.production.MANURE = scaled(ratio.manure);
+    });
+}
+
+// Whether a building's XML gives it straw: a <straw> section, or STRAW among
+// the fill types of its storage (mod barns without that section).
+function placeableUsesStraw(xml) {
+    const text = String(xml || '');
+    return /<straw\b/.test(text)
+        || [...text.matchAll(/\bfillTypes\s*=\s*"([^"]*)"/g)].some(m => m[1].split(/\s+/).includes('STRAW'));
+}
+
+// Base barns without straw: the ones under the game's data/placeables with no
+// <straw> section (the app can't read the game's install folder when it runs).
+const BASE_NO_STRAW_BARNS = ['cowBarnSmall', 'horseBarnSmall', 'pigBarnSmall']
+    .map(n => `data/placeables/brandless/animalhusbandries/${n}/${n}.xml`.toLowerCase());
+const barnNoStrawCache = new Map();
+
+// A building that has no straw at all, by the filename the save gives it. One
+// that can't be read counts as having some.
+function barnUsesNoStraw(filename, saveGamePath) {
+    const file = String(filename || '').replace(/\\/g, '/');
+    if (BASE_NO_STRAW_BARNS.includes(file.toLowerCase())) return true;
+    if (!/^\$moddir\$/i.test(file)) return false;
+    if (!barnNoStrawCache.has(file)) {
+        let bytes = null;
+        try { bytes = modFiles.readModFile(modFiles.findModsDirs(saveGamePath), file); } catch (e) { console.warn(e); }
+        barnNoStrawCache.set(file, !!bytes && !placeableUsesStraw(bytes.toString('utf-8')));
+    }
+    return barnNoStrawCache.get(file);
+}
+
+function barnCareInfo(building, manureForAll = modEnabled('manureForAll')) {
     const clusters = building.clusters || [];
     const known = clusters.length > 0 && clusters.every(c => ANIMAL_NEEDS_DATA[c.subType]);
     const stored = fillType => (building.production || []).find(p => p.fillType === fillType);
@@ -617,7 +671,9 @@ function barnCareInfo(building) {
     const heads = clusters.reduce((s, c) => s + c.numAnimals, 0);
     const health = heads ? clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : null;
     const productivity = typeof building.productivity === 'number' ? building.productivity : null;
-    const straw = supply('STRAW'), water = supply('WATER');
+    // Manure For All gives every barn a straw storage.
+    const straw = building.noStraw && !manureForAll ? { daily: 0, level: null, days: null } : supply('STRAW');
+    const water = supply('WATER');
     const issues = [];
     if (straw.days !== null && straw.days < BARN_LOW_DAYS) issues.push({ key: 'straw', days: straw.days });
     if (water.days !== null && water.days < BARN_LOW_DAYS) issues.push({ key: 'water', days: water.days });

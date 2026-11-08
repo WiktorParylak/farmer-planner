@@ -124,6 +124,27 @@ test('editing: a lease can be set up and removed in the field window', async () 
     assert.strictEqual(getCurrentFarm().fields[idx].lease, null);
 });
 
+test('editing: the crop tab is grouped, and state and tillage are switches', async () => {
+    await freshFarm();
+    const idx = idxOf('2');
+    openFieldModal(idx, 'crop');
+    const heads = Array.from(document.querySelectorAll('#field-modal-body .field-view-section > h4')).map(h => h.textContent);
+    [t('fieldViewCrop'), t('thCatchCrop'), t('rotTitle')].forEach(h => assert.ok(heads.includes(h), h));
+    assert.ok(!document.querySelector('select.field-view-state, select.field-view-tillage'));
+    const press = async (cls, value) => {
+        document.querySelector(`.${cls}[data-value="${value}"]`).click();
+        await wait(60);
+        return getCurrentFarm().fields[idx];
+    };
+    assert.strictEqual((await press('field-view-state', 'Planted')).state, 'Planted');
+    assert.ok(document.querySelector('.field-view-state[data-value="Planted"]').classList.contains('is-active'));
+    assert.strictEqual((await press('field-view-state', 'To Plant')).state, 'To Plant');
+    assert.strictEqual((await press('field-view-state', 'To Plant')).state, 'To Plant', 'the active state stays');
+    assert.strictEqual((await press('field-view-tillage', 'plowed')).tillage, 'plowed');
+    assert.strictEqual((await press('field-view-tillage', 'noTill')).tillage, 'noTill');
+    assert.strictEqual((await press('field-view-tillage', 'noTill')).tillage, null, 'the active tillage clears');
+});
+
 test('editing: undo takes every change back, one at a time', async () => {
     const before = copy((await freshFarm()).fields);
     const idx = idxOf('2');

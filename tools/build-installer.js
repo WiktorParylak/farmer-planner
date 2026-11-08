@@ -97,12 +97,15 @@ async function fonts() {
     return files;
 }
 
-// Assets/Logo.svg (white paths, no transforms) as XAML paths for the window.
+// Assets/Logo-color.svg (no transforms) as XAML paths for the window: a path's
+// own fill, else the fill of the file's .cls-1 class.
 function logoXaml() {
-    const svg = fs.readFileSync(path.join(ROOT, 'Assets', 'Logo.svg'), 'utf8');
-    return [...svg.matchAll(/<path\b[^>]*\sd="([^"]+)"/g)]
-        .map(m => `<Path Fill="White" Data="F1 ${m[1]}"/>`)
-        .join('\n                            ');
+    const svg = fs.readFileSync(path.join(ROOT, 'Assets', 'Logo-color.svg'), 'utf8');
+    const classFill = (svg.match(/\.cls-1\s*\{\s*fill:\s*(#[0-9a-fA-F]+)/) || [])[1];
+    return [...svg.matchAll(/<path\b[^>]*>/g)].map(([tag]) => {
+        const fill = (tag.match(/\sfill="([^"]+)"/) || [])[1] || classFill;
+        return `<Path Fill="${fill}" Data="F1 ${tag.match(/\sd="([^"]+)"/)[1]}"/>`;
+    }).join('\n                            ');
 }
 
 function csc(out, extraArgs) {

@@ -188,6 +188,87 @@ test('mod manager: mods copy, move and rename between libraries', async () => {
     assert.throws(() => mmT.renameMod(mods.find(m => m.file === 'FS25_Good.zip'), 'bad name'), e => e.code === 'MM_BAD_NAME');
 });
 
+function mmFakeTrash() {
+    const list = [];
+    const trash = async p => {
+        list.push(p);
+        const bin = path.join(mmRoot, 'bin');
+        fs.mkdirSync(bin, { recursive: true });
+        fs.renameSync(p, path.join(bin, String(list.length)));
+    };
+    return { list, trash };
+}
+
+test('mod manager: a folder zips and unzips back byte for byte, the original goes to the bin', async () => {
+    const lib = mmFixture();
+    const folder = path.join(lib, 'FS25_Packed');
+    const blob = require('crypto').randomBytes(200000);
+    fs.mkdirSync(path.join(folder, 'maps', 'żółw'), { recursive: true });
+    fs.writeFileSync(path.join(folder, 'modDesc.xml'), mmModDesc('1.5.0.0'));
+    fs.writeFileSync(path.join(folder, 'maps', 'żółw', 'data.bin'), blob);
+    fs.writeFileSync(path.join(folder, 'empty.txt'), '');
+    const { list, trash } = mmFakeTrash();
+    let last = [0, 1];
+    await mmT.packMod(mmT.readModEntry(lib, 'FS25_Packed'), trash, (a, b) => { last = [a, b]; });
+    assert.strictEqual(last[0], last[1], 'progress reaches the end');
+    const zipped = mmT.readModEntry(lib, 'FS25_Packed.zip');
+    assert.deepStrictEqual([zipped.hasModDesc, zipped.corrupt, zipped.version], [true, false, '1.5.0.0']);
+    assert.ok(!fs.existsSync(folder) && !fs.existsSync(path.join(lib, 'FS25_Packed.zip.fp-new')));
+    assert.deepStrictEqual(list, [folder]);
+
+    await mmT.unpackMod(zipped, trash);
+    assert.ok(fs.readFileSync(path.join(folder, 'maps', 'żółw', 'data.bin')).equals(blob));
+    assert.strictEqual(fs.readFileSync(path.join(folder, 'modDesc.xml'), 'utf-8'), mmModDesc('1.5.0.0'));
+    assert.strictEqual(fs.statSync(path.join(folder, 'empty.txt')).size, 0);
+    assert.ok(!fs.existsSync(zipped.path) && !fs.existsSync(folder + '.fp-new'));
+    assert.strictEqual(list.length, 2);
+});
+
+test('mod manager: a zip with a file leaving its folder is refused', async () => {
+    const lib = mmFixture();
+    const file = path.join(lib, 'FS25_Evil.zip');
+    fs.writeFileSync(file, mmZip({ 'modDesc.xml': mmModDesc('1.0.0.0'), '../evil.txt': 'x' }));
+    const { list, trash } = mmFakeTrash();
+    await assert.rejects(mmT.unpackMod(mmT.readModEntry(lib, 'FS25_Evil.zip'), trash), e => e.code === 'MM_ZIP_BAD');
+    assert.ok(fs.existsSync(file) && !fs.existsSync(path.join(lib, 'evil.txt')) && !fs.existsSync(path.join(lib, 'FS25_Evil.fp-new')));
+    assert.deepStrictEqual(list, []);
+});
+
+test('mod manager: a damaged zip stays as it was and leaves nothing behind', async () => {
+    const lib = mmFixture();
+    const file = path.join(lib, 'FS25_Bent.zip');
+    const body = 'MARKER'.repeat(50);
+    const zip = mmZip({ 'modDesc.xml': mmModDesc('1.0.0.0'), 'data.txt': body });
+    zip[zip.indexOf(body) + 10] ^= 0xFF;
+    fs.writeFileSync(file, zip);
+    const { list, trash } = mmFakeTrash();
+    await assert.rejects(mmT.unpackMod(mmT.readModEntry(lib, 'FS25_Bent.zip'), trash), e => e.code === 'MM_ZIP_CHECK');
+    assert.ok(fs.readFileSync(file).equals(zip) && !fs.existsSync(path.join(lib, 'FS25_Bent.fp-new')));
+    assert.deepStrictEqual(list, []);
+});
+
+test('mod manager: zipping refuses a name already taken', async () => {
+    const lib = mmFixture();
+    fs.writeFileSync(path.join(lib, 'FS25_Unzipped.zip'), mmZip({ 'modDesc.xml': mmModDesc('1.0.0.0') }));
+    const { list, trash } = mmFakeTrash();
+    await assert.rejects(mmT.packMod(mmT.readModEntry(lib, 'FS25_Unzipped'), trash), e => e.code === 'MM_EXISTS');
+    await assert.rejects(mmT.unpackMod(mmT.readModEntry(lib, 'FS25_Unzipped.zip'), trash), e => e.code === 'MM_EXISTS');
+    assert.deepStrictEqual(list, []);
+});
+
+test('mod manager: a row offers unzip for a zip, zip for a folder, nothing for a broken zip', () => {
+    const lib = mmFixture();
+    const icon = file => {
+        const box = document.createElement('div');
+        box.innerHTML = mmModRowHtml(mmT.readModEntry(lib, file));
+        const b = box.querySelector('[data-mm="zip-toggle"]');
+        return b ? b.querySelector('i').className : null;
+    };
+    assert.ok(icon('FS25_Good.zip').includes('fa-box-open'));
+    assert.ok(icon('FS25_Unzipped').includes('fa-file-zipper'));
+    assert.strictEqual(icon('FS25_Broken.zip'), null);
+});
+
 test('mod manager: zips to add are checked first', () => {
     const lib = mmFixture();
     assert.deepStrictEqual([

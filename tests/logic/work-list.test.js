@@ -29,6 +29,37 @@ test('work: mechanics switched off in the game get no step', () => {
     assert.deepStrictEqual(steps(field({ stones: 0.1 }), farm), ['cultivate', 'sow', 'fertilize']);
 });
 
+function withActiveMods(names, fn) {
+    const saved = [SAVE_LINKED, SAVE_ACTIVE_MODS, SAVE_DISABLED_MODS];
+    try {
+        SAVE_LINKED = 'careerSavegame.xml';
+        SAVE_ACTIVE_MODS = new Set(names);
+        SAVE_DISABLED_MODS = new Set();
+        fn();
+    } finally {
+        [SAVE_LINKED, SAVE_ACTIVE_MODS, SAVE_DISABLED_MODS] = saved;
+    }
+}
+
+test('work: Deep Tillage reads cultivated ground before sowing and the weeds after it', () => {
+    const ground = (...types) => types.map(groundType => ({ groundType, weedState: 0 }));
+    assert.strictEqual(deepTilledFrom(ground('CULTIVATED', 'CULTIVATED'), false), true);
+    assert.strictEqual(deepTilledFrom(ground('CULTIVATED', 'STUBBLE_TILLAGE'), false), false);
+    assert.strictEqual(deepTilledFrom(ground('SEEDBED'), false), false);
+    assert.strictEqual(deepTilledFrom([{ groundType: 'SOWN', weedState: 0 }], true), true);
+    assert.strictEqual(deepTilledFrom([{ groundType: 'SOWN', weedState: 0 }, { groundType: 'SOWN', weedState: 3 }], true), false);
+});
+
+test('work: with Deep Tillage a field on cultivated ground has no weeds step', () => {
+    const f = extra => field({ deepTilled: true, ...extra });
+    withActiveMods(['FS25_SubsoilerNoWeeds'], () => {
+        assert.ok(!steps(f(), OCT).includes('weeds'));
+        assert.ok(steps(f({ weeds: 'needed' }), OCT).includes('weeds'), 'weeds the save shows keep the step');
+        assert.ok(steps(field(), OCT).includes('weeds'), 'other fields keep it');
+    });
+    withActiveMods([], () => assert.ok(steps(f(), OCT).includes('weeds'), 'without the mod the step stays'));
+});
+
 test('work: joined game fields are merged once', () => {
     assert.strictEqual(steps(field({ number: '10-11' }), OCT)[0], 'merge');
     assert.ok(!steps(field({ number: '10-11' }), { ...OCT, mergedFields: { '10-11': true } }).includes('merge'));
@@ -41,9 +72,96 @@ test('work: a catch crop sown before the harvest comes first, after it comes las
     const before = field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(-1) });
     const after = field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(1) });
     assert.strictEqual(catchCropComesFirst(before), true);
-    assert.strictEqual(steps(before, OCT)[0], 'fertilize');
+    assert.strictEqual(steps(before, OCT)[0], 'sowCatch');
     assert.strictEqual(catchCropComesFirst(after), false);
     assert.strictEqual(steps(after, OCT).at(-1), 'harvestWrap');
+});
+
+test('work: a catch crop gets its own part, starting with its sowing', () => {
+    const harvest = CROP_CALENDAR.Wheat.OCTOBER;
+    const at = n => ALL_MONTHS[(ALL_MONTHS.indexOf(harvest) + n + 12) % 12];
+    [field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(-1) }), field({ catchCrop: 'Oilseedradish', catchSowingMonth: at(1) })].forEach(f => {
+        const list = suggestedWork(f, 0, OCT);
+        const catchPart = list.filter(w => w.part === 'catch').map(w => w.step);
+        assert.deepStrictEqual(catchPart, ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap']);
+        // One block each: the parts never interleave.
+        const changes = list.filter((w, i) => i && (w.part || '') !== (list[i - 1].part || '')).length;
+        assert.strictEqual(changes, 1);
+        assert.ok(list.some(w => w.step === 'sow' && !w.part));
+    });
+    assert.ok(suggestedWork(field(), 0, OCT).every(w => !w.part), 'no catch crop, no parts');
+});
+
+test('work: a catch crop grown for itself is harvested, forage is mown', () => {
+    const part = crop => suggestedWork(field({ catchCrop: crop, catchSowingMonth: 'AUGUST' }), 0, OCT).filter(w => w.part === 'catch').map(w => w.step);
+    assert.deepStrictEqual(part('Carrot'), ['sowCatch', 'fertilize', 'harvest']);
+    assert.deepStrictEqual(part('Clover'), ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap']);
+});
+
+test('work: a catch crop\'s harvest is due in its own window', () => {
+    const saved = { Wheat: CROP_CALENDAR.Wheat, Carrot: CROP_CALENDAR.Carrot };
+    try {
+        CROP_CALENDAR.Wheat = { OCTOBER: 'JULY' };
+        CROP_CALENDAR.Carrot = { JULY: 'NOVEMBER' };
+        const f = field({ state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY' });
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'NOVEMBER', 'catch'), true);
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'JULY', 'catch'), false);
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'JULY'), true);
+    } finally {
+        Object.assign(CROP_CALENDAR, saved);
+    }
+});
+
+test('work: the new catch crops are on the menu and stay main crops in the generator', async () => {
+    await freshFarm();
+    assert.ok(isCatchCropChoice('Carrot') && !isCatchOnlyCrop('Carrot'));
+    assert.ok(cropOptionsHtml('', '-', true).includes('value="Carrot"'));
+    assert.ok(genCropPool({ excluded: [] }).includes('Carrot'));
+    assert.ok(!genCropPool({ excluded: [] }).includes('Oilseedradish'));
+});
+
+test('work: with a catch crop the list has a heading per crop and says whose sowing it is', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const list = suggestedWork(f, 0, OCT);
+    const html = workListItemsHtml(f, list, w => `<li>${workStepLabel(f, w)}</li>`);
+    const box = document.createElement('ul');
+    box.innerHTML = html;
+    const heads = [...box.querySelectorAll('.work-part-head')].map(li => li.textContent);
+    assert.deepStrictEqual(heads, [
+        t('workPartMain').replace('{crop}', translateCropName('Wheat')),
+        t('workPartCatch').replace('{crop}', translateCropName('Oilseedradish'))
+    ]);
+    assert.ok(box.textContent.includes(t('work_sowMain')) && box.textContent.includes(t('work_sowCatch')));
+    assert.strictEqual(workStepLabel(field(), { step: 'sow' }), t('work_sow'));
+    const own = [{ step: 'sow', done: false }, { step: 'mow', done: false }];
+    assert.ok(!workListItemsHtml(f, own, () => '<li></li>').includes('work-part-head'), 'an older list has no headings');
+});
+
+test('work: sowing the catch crop leaves the field state alone and waits for its month', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const work = suggestedWork(f, 0, OCT);
+    const i = work.findIndex(w => w.step === 'sowCatch');
+    setWorkStepDone(work, i, true, f, OCT);
+    assert.strictEqual(f.state, 'To Plant');
+    assert.strictEqual(withSowFromState(f, work)[i].done, true);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'JULY'), false);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'AUGUST'), true);
+    assert.strictEqual(fieldJobDue(f, 'sowCatch', 'SEPTEMBER'), true);
+});
+
+test('work: a step moved past a heading joins that part, a new one goes at the end of its part', () => {
+    const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
+    const work = [{ step: 'sow', done: false }, { step: 'weeds', done: false }, { step: 'sowCatch', done: false, part: 'catch' }, { step: 'mow', done: false, part: 'catch' }];
+    moveWorkStep(work, 2, -1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['sow', 'weeds', 'sowCatch', 'mow*']);
+    moveWorkStep(work, 0, 1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['weeds', 'sow', 'sowCatch', 'mow*']);
+    moveWorkStep(work, 3, -1);
+    assert.deepStrictEqual(work.map(w => w.step + (w.part ? '*' : '')), ['weeds', 'sow', 'sowCatch', 'mow']);
+    const list = [{ step: 'sow', done: false }, { step: 'mow', done: false, part: 'catch' }];
+    addWorkStep(list, 'fertilize', '', f);
+    addWorkStep(list, 'bale', 'catch', f);
+    assert.deepStrictEqual(list.map(w => w.step + (w.part ? '*' : '')), ['sow', 'fertilize', 'mow*', 'bale*']);
 });
 
 test('work: a list of your own only counts for the crops it was made for', () => {
