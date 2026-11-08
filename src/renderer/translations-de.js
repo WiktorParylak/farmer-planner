@@ -1666,6 +1666,7 @@ const UI = {
     modDesc_precisionFarming: "Feldböden aus der Bodenkarte, variable Saatmengen je nach Boden",
     modDesc_afc: "Futter, Wasser und Stroh der Tiere nach Tagen pro Monat skaliert",
     modDesc_eas: "Milch und Futter nach Laktation nach dem Kalben",
+    modDesc_manureForAll: "Stroh und Mist für jedes Tier, im Verhältnis des Mods zu seinem Futter",
     modDesc_animalPackage: "Futterkurven, wenn AnimalFoodCalculator dem Animal Package folgt",
     modDesc_bankCredit: "Bankkredite und Monatsrate",
     modDesc_hirePurchasing: "auf Raten gekaufte Fahrzeuge — die Restschuld zählt als Kredit",

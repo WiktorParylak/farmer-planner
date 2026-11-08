@@ -603,6 +603,31 @@ function clusterDailyNeed(c, needType) {
 // doesn't tell is guessed: a barn without a known need has no days.
 const BARN_LOW_DAYS = 3, BARN_LOW_HEALTH = 75, BARN_LOW_PRODUCTIVITY = 0.75;
 
+// FS25_ManureForAll (scripts/core/RmManureRatios.lua, RmCurveInjector.lua): an
+// animal without a straw or manure curve gets its food curve times these.
+const MANURE_FOR_ALL_RATIOS = {
+    COW_WATERBUFFALO: { straw: 0.25, manure: 0.85 },
+    COW: { straw: 0.25, manure: 0.55 },
+    PIG: { straw: 0.35, manure: 0.60 },
+    SHEEP: { straw: 0.40, manure: 0.35 },
+    HORSE: { straw: 0.20, manure: 0.50 },
+    CHICKEN: { straw: 1.00, manure: 2.00 }
+};
+const MANURE_FOR_ALL_FALLBACK = { straw: 0.25, manure: 0.50 };
+
+function applyManureForAll(needs) {
+    const empty = curve => !curve || !curve.length;
+    Object.keys(needs).forEach(subType => {
+        const def = needs[subType];
+        if (empty(def.food)) return;
+        const ratio = MANURE_FOR_ALL_RATIOS[subType] || MANURE_FOR_ALL_RATIOS[animalTypeOf(subType)] || MANURE_FOR_ALL_FALLBACK;
+        const scaled = k => def.food.map(p => ({ ...p, value: p.value * k }));
+        if (empty(def.straw)) def.straw = scaled(ratio.straw);
+        if (!def.production) def.production = {};
+        if (empty(def.production.MANURE)) def.production.MANURE = scaled(ratio.manure);
+    });
+}
+
 // Whether a building's XML gives it straw: a <straw> section, or STRAW among
 // the fill types of its storage (mod barns without that section).
 function placeableUsesStraw(xml) {

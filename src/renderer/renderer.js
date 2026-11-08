@@ -3927,6 +3927,7 @@ function loadFarmConfigs(farm) {
             if (parsed) Object.keys(parsed).forEach(st => applyInputs(st, parsed[st]));
         });
     }
+    if (modEnabled('manureForAll')) applyManureForAll(ANIMAL_NEEDS_DATA);
 }
 
 // Crop keys the planner offers: the map's list when known (only those with a
@@ -4390,6 +4391,7 @@ const SUPPORTED_MODS = [
     { id: 'afc', name: 'AnimalFoodCalculator', modNames: ['FS25_AnimalFoodCalculator'] },
     { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
+    { id: 'manureForAll', name: 'Manure For All', modNames: ['FS25_ManureForAll'] },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },

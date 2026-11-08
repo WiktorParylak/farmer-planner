@@ -7,6 +7,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Nowe**
 - **Pakowanie i rozpakowywanie modów**: każdy wiersz w menedżerze modów ma ikonę, która zamienia zip w folder albo folder w zip pod tą samą nazwą. Wynik jest sprawdzany plik po pliku, zanim zastąpi oryginał, a oryginał trafia do Kosza.
 - **Więcej międzyplonów**: gryka, koniczyna, lucerna, kukurydza na kiszonkę, marchew, burak czerwony, pasternak, fasola i fasolka szparagowa mogą być międzyplonem na polu, na mapach, które je mają, w każdym miesiącu z ich kalendarza, także w miesiącu zbioru uprawy głównej. W płodozmianie są siane od tego miesiąca. Ich część listy prac kończy się zbiorem, a przy koniczynie i lucernie koszeniem, i zbiór pojawia się, gdy międzyplon jest gotowy.
+- **Manure For All**: z tym modem w zapisie owce, kozy, kury i inne zwierzęta bez słomy i obornika dostają je w proporcji moda do ich paszy. Widać to na kartach budynków, w produkcji na miesiąc, w planerze pasz i w zapotrzebowaniu na słomę w generatorze upraw, a w ustawieniach farmy, w zakładce *Mody*, można to wyłączyć.
 
 **Zmiany**
 - ***Co nowego* pokazuje całą serię 0.11**: okno wymienia 0.11.2, 0.11.1 i 0.11.0, od najnowszej, po aktualizacji i po kliknięciu przycisku *Co nowego*.
