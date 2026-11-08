@@ -871,6 +871,16 @@ function catchCropComesFirst(field) {
     return offset(catchSow) < offset(harvest);
 }
 
+// Deep Tillage (FS25_SubsoilerNoWeeds): sowing on "Cultivated" ground plants no
+// weeds. Before sowing the ground says so, after it the weeds the save shows.
+function deepTilledFrom(games, grows) {
+    return games.every(g => (grows ? g.weedState === 0 : g.groundType === 'CULTIVATED'));
+}
+
+function fieldDeepTilledNoWeeds(field, active = modEnabled('deepTillage')) {
+    return !!(active && field.deepTilled && field.weeds !== 'needed');
+}
+
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
     const steps = [];
@@ -902,7 +912,7 @@ function suggestedWork(field, idx, farm) {
         if (field.rolling && cropNeedsRolling(field.crop)) steps.push('roll');
     }
     steps.push('fertilize');
-    if (!plowed && rules.weeds !== false) steps.push('weeds');
+    if (!plowed && rules.weeds !== false && !fieldDeepTilledNoWeeds(field)) steps.push('weeds');
     const mainTo = steps.length;
     if (field.catchCrop && !catchFirst) steps.push(...catchSteps);
     const groundDone = fieldWork(field) ? [] : (field.work || []).filter(w => w.done && !w.part && GROUND_WORK_STEPS.includes(w.step)).map(w => w.step);
@@ -1675,8 +1685,9 @@ const WEEDS_TITLES = { needed: 'weedsNeeded', done: 'weedsDone', hoed: 'weedsHoe
 function weedsChipHtml(field, idx, isPastSeason) {
     if (isPerennialCrop(field.crop) || isCutCrop(field.crop)) return '';
     const state = WEEDS_STATES.includes(field.weeds) ? field.weeds : '';
-    const skip = field.tillage === 'plowed' && state !== 'done' && state !== 'hoed';
-    const title = t(skip ? 'weedsPlowed' : WEEDS_TITLES[state]);
+    const plowed = field.tillage === 'plowed';
+    const skip = (plowed || fieldDeepTilledNoWeeds(field)) && state !== 'done' && state !== 'hoed';
+    const title = t(skip ? (plowed ? 'weedsPlowed' : 'weedsDeepTilled') : WEEDS_TITLES[state]);
     const cls = `treatment-chip treatment-chip--weeds${state ? ' is-' + state : ''}${skip ? ' is-skip' : ''}`;
     const icon = `<i class="fa-solid ${state === 'hoed' ? 'fa-broom' : 'fa-spray-can-sparkles'}" aria-hidden="true"></i>`;
     if (isPastSeason) return state ? `<span class="${cls}" title="${title}">${icon}</span>` : '';
@@ -1987,7 +1998,7 @@ function cropOptionsHtml(selected, emptyLabel, onlyCatch = false) {
 // Field data the edit card has no inputs for — carried through edit mode as is.
 // Rolling is set with the chip in the table, so it rides along here too; id
 // is the field's stable identity (see ensureFieldIds).
-const FIELD_EXTRA_KEYS = ['id', 'plowRequired', 'stones', 'weeds', 'weedsManual', 'work', 'workFor', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
+const FIELD_EXTRA_KEYS = ['id', 'plowRequired', 'stones', 'weeds', 'weedsManual', 'deepTilled', 'work', 'workFor', 'workCleared', 'workDetected', 'workSeen', 'workRise', 'groundSeen', 'groundBaseline', 'lease', 'areaSource', 'rolling', 'rollingDone', 'limePrev', 'rotation', 'nextCrop', 'planAhead', 'plannedFrom'];
 
 // --- Stable field ids --------------------------------------------------------
 // Soil, field size and name, fertilization plan, feed use and straw are stored under

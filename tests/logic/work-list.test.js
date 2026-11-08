@@ -29,6 +29,37 @@ test('work: mechanics switched off in the game get no step', () => {
     assert.deepStrictEqual(steps(field({ stones: 0.1 }), farm), ['cultivate', 'sow', 'fertilize']);
 });
 
+function withActiveMods(names, fn) {
+    const saved = [SAVE_LINKED, SAVE_ACTIVE_MODS, SAVE_DISABLED_MODS];
+    try {
+        SAVE_LINKED = 'careerSavegame.xml';
+        SAVE_ACTIVE_MODS = new Set(names);
+        SAVE_DISABLED_MODS = new Set();
+        fn();
+    } finally {
+        [SAVE_LINKED, SAVE_ACTIVE_MODS, SAVE_DISABLED_MODS] = saved;
+    }
+}
+
+test('work: Deep Tillage reads cultivated ground before sowing and the weeds after it', () => {
+    const ground = (...types) => types.map(groundType => ({ groundType, weedState: 0 }));
+    assert.strictEqual(deepTilledFrom(ground('CULTIVATED', 'CULTIVATED'), false), true);
+    assert.strictEqual(deepTilledFrom(ground('CULTIVATED', 'STUBBLE_TILLAGE'), false), false);
+    assert.strictEqual(deepTilledFrom(ground('SEEDBED'), false), false);
+    assert.strictEqual(deepTilledFrom([{ groundType: 'SOWN', weedState: 0 }], true), true);
+    assert.strictEqual(deepTilledFrom([{ groundType: 'SOWN', weedState: 0 }, { groundType: 'SOWN', weedState: 3 }], true), false);
+});
+
+test('work: with Deep Tillage a field on cultivated ground has no weeds step', () => {
+    const f = extra => field({ deepTilled: true, ...extra });
+    withActiveMods(['FS25_SubsoilerNoWeeds'], () => {
+        assert.ok(!steps(f(), OCT).includes('weeds'));
+        assert.ok(steps(f({ weeds: 'needed' }), OCT).includes('weeds'), 'weeds the save shows keep the step');
+        assert.ok(steps(field(), OCT).includes('weeds'), 'other fields keep it');
+    });
+    withActiveMods([], () => assert.ok(steps(f(), OCT).includes('weeds'), 'without the mod the step stays'));
+});
+
 test('work: joined game fields are merged once', () => {
     assert.strictEqual(steps(field({ number: '10-11' }), OCT)[0], 'merge');
     assert.ok(!steps(field({ number: '10-11' }), { ...OCT, mergedFields: { '10-11': true } }).includes('merge'));

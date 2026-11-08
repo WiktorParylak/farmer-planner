@@ -4392,6 +4392,7 @@ const SUPPORTED_MODS = [
     { id: 'eas', name: 'EnhancedAnimalSystem', modNames: ['FS25_EnhancedAnimalSystem'] },
     { id: 'animalPackage', name: 'Animal Package (vanilla edition)', modNames: ['FS25_AnimalPackage_vanillaEdition'] },
     { id: 'manureForAll', name: 'Manure For All', modNames: ['FS25_ManureForAll'] },
+    { id: 'deepTillage', name: 'Deep Tillage: No Weeds After Sowing', modNames: ['FS25_SubsoilerNoWeeds'] },
     { id: 'bankCredit', name: 'Bank And Credit', modNames: ['FS25_BankCredit'] },
     { id: 'hirePurchasing', name: 'Hire Purchasing', modNames: ['FS25_HirePurchasing'] },
     { id: 'fieldLeasing', name: 'Field Leasing', modNames: ['FS25_FieldLeasing'] },
@@ -4881,7 +4882,7 @@ function syncWorkFromSave(farm) {
         const ids = gameFieldIds(field);
         const games = ids.map(id => byId[id]);
         if (!games.length || games.some(g => !g)) return;
-        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]);
+        const before = JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]);
         // Ground worked before New season belongs to the season archived: the
         // first read after it remembers each game field's ground, and only a
         // ground that changed since then counts as this season's work.
@@ -4911,11 +4912,12 @@ function syncWorkFromSave(farm) {
             field.workSeen = seen;
             delete field.workDetected;
             delete field.workRise;
-            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+            if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]) !== before) changed = true;
             return;
         }
         if (grows && field.state !== 'Planted') field.state = 'Planted';
         if (field.crop && !isCutCrop(field.crop)) {
+            if (deepTilledFrom(games, grows)) field.deepTilled = true; else delete field.deepTilled;
             const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
             if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
             if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;
@@ -4972,7 +4974,7 @@ function syncWorkFromSave(farm) {
         if (Object.keys(det).length) field.workDetected = det; else delete field.workDetected;
         if (Object.keys(rise).length) field.workRise = rise; else delete field.workRise;
         syncSowStep(field);
-        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline]) !== before) changed = true;
+        if (JSON.stringify([field.state, field.rollingDone, field.manure, field.fertilizer, field.workDetected, field.workSeen, field.workRise, field.plowRequired, field.stones, field.groundSeen, field.groundBaseline, field.deepTilled]) !== before) changed = true;
     });
     return changed;
 }
@@ -5509,6 +5511,7 @@ function clearFieldForNewSeason(field, i, seasonNum, supplyRatesForLime) {
     field.fertilizer = false;
     field.weeds = null;
     delete field.weedsManual;
+    delete field.deepTilled;
     delete field.work;
     delete field.workFor;
     delete field.workCleared;

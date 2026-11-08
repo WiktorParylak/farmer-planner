@@ -25,12 +25,12 @@ test('timeline: only the bars of this season\'s plan open the field window', () 
 test('season: a field is cleared for the next crop', () => {
     const f = field({
         state: 'Planted', tillage: 'plowed', catchCrop: 'Oilseedradish', fertilizer: true, manure: true, weeds: 'done',
-        work: [], workFor: 'x', workCleared: true, workDetected: { sow: true }, limePrev: { season: 1, ph: 1 }, cuts: [{}]
+        work: [], workFor: 'x', workCleared: true, workDetected: { sow: true }, limePrev: { season: 1, ph: 1 }, cuts: [{}], deepTilled: true
     });
     clearFieldForNewSeason(f, 0, 2, getSupplyRates());
     assert.deepStrictEqual([f.crop, f.sowingMonth, f.state, f.tillage, f.catchCrop], ['', '', 'To Plant', null, '']);
     assert.deepStrictEqual([f.fertilizer, f.manure, f.weeds, f.cuts], [false, false, null, []]);
-    ['work', 'workFor', 'workCleared', 'workDetected', 'limePrev'].forEach(k => assert.strictEqual(f[k], undefined, k));
+    ['work', 'workFor', 'workCleared', 'workDetected', 'limePrev', 'deepTilled'].forEach(k => assert.strictEqual(f[k], undefined, k));
 });
 
 test('season: grassland keeps its crop, this season\'s work is cleared', () => {
