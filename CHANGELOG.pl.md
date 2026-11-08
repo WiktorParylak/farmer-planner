@@ -2,7 +2,7 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
-## 0.11.2 — unreleased
+## 0.11.2 — 2026-11-08
 
 **Nowe**
 - **Pakowanie i rozpakowywanie modów**: każdy wiersz w menedżerze modów ma ikonę, która zamienia zip w folder albo folder w zip pod tą samą nazwą. Wynik jest sprawdzany plik po pliku, zanim zastąpi oryginał, a oryginał trafia do Kosza.

@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.11.2 — unreleased
+## 0.11.2 — 2026-11-08
 
 **New**
 - **Zip and unzip mods**: every row in the mod manager has an icon that turns a zip into a folder or a folder into a zip, under the same name. The result is checked file by file before it replaces the original, and the original goes to the Recycle Bin.
