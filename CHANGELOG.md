@@ -7,6 +7,10 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Changed**
 - ***What's new* shows the whole 0.11 series**: the window lists 0.11.2, 0.11.1 and 0.11.0, newest first, after the update and from the *What's new* button.
 
+**Fixed**
+- **Installer**: the setup and uninstall windows have the new logo and round-ended buttons instead of ovals.
+- **Timeline**: only the bars of this season's plan open the field window. Crops projected for later seasons keep their tooltip, since the window describes this season alone.
+
 ## 0.11.1 — 2026-11-07
 
 **Changed**

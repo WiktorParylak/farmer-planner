@@ -7,6 +7,10 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Zmiany**
 - ***Co nowego* pokazuje całą serię 0.11**: okno wymienia 0.11.2, 0.11.1 i 0.11.0, od najnowszej, po aktualizacji i po kliknięciu przycisku *Co nowego*.
 
+**Poprawki**
+- **Instalator**: okna instalacji i deinstalacji mają nowe logo i przyciski z zaokrąglonymi końcami zamiast owali.
+- **Oś czasu**: okno pola otwierają tylko paski planu tego sezonu. Uprawy przewidywane na kolejne sezony mają nadal podpowiedź, bo okno opisuje wyłącznie ten sezon.
+
 ## 0.11.1 — 2026-11-07
 
 **Zmiany**
