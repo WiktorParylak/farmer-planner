@@ -4679,6 +4679,7 @@ function readGameSave(pathToFile) {
                     name: placeable.getAttribute('filename') || '',
                     clusters: [], food: [], production: []
                 };
+                if (barnUsesNoStraw(building.name, pathToFile)) building.noStraw = true;
                 const husbandryEl = placeable.querySelector('husbandry');
                 const productivity = husbandryEl ? parseFloat(husbandryEl.getAttribute('globalProductionFactor')) : NaN;
                 if (isFinite(productivity)) building.productivity = productivity;

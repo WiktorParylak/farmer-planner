@@ -602,7 +602,36 @@ function clusterDailyNeed(c, needType) {
 // mod's own storage shows one, so level stays null otherwise. Nothing the game
 // doesn't tell is guessed: a barn without a known need has no days.
 const BARN_LOW_DAYS = 3, BARN_LOW_HEALTH = 75, BARN_LOW_PRODUCTIVITY = 0.75;
-function barnCareInfo(building) {
+
+// Whether a building's XML gives it straw: a <straw> section, or STRAW among
+// the fill types of its storage (mod barns without that section).
+function placeableUsesStraw(xml) {
+    const text = String(xml || '');
+    return /<straw\b/.test(text)
+        || [...text.matchAll(/\bfillTypes\s*=\s*"([^"]*)"/g)].some(m => m[1].split(/\s+/).includes('STRAW'));
+}
+
+// Base barns without straw: the ones under the game's data/placeables with no
+// <straw> section (the app can't read the game's install folder when it runs).
+const BASE_NO_STRAW_BARNS = ['cowBarnSmall', 'horseBarnSmall', 'pigBarnSmall']
+    .map(n => `data/placeables/brandless/animalhusbandries/${n}/${n}.xml`.toLowerCase());
+const barnNoStrawCache = new Map();
+
+// A building that has no straw at all, by the filename the save gives it. One
+// that can't be read counts as having some.
+function barnUsesNoStraw(filename, saveGamePath) {
+    const file = String(filename || '').replace(/\\/g, '/');
+    if (BASE_NO_STRAW_BARNS.includes(file.toLowerCase())) return true;
+    if (!/^\$moddir\$/i.test(file)) return false;
+    if (!barnNoStrawCache.has(file)) {
+        let bytes = null;
+        try { bytes = modFiles.readModFile(modFiles.findModsDirs(saveGamePath), file); } catch (e) { console.warn(e); }
+        barnNoStrawCache.set(file, !!bytes && !placeableUsesStraw(bytes.toString('utf-8')));
+    }
+    return barnNoStrawCache.get(file);
+}
+
+function barnCareInfo(building, manureForAll = modEnabled('manureForAll')) {
     const clusters = building.clusters || [];
     const known = clusters.length > 0 && clusters.every(c => ANIMAL_NEEDS_DATA[c.subType]);
     const stored = fillType => (building.production || []).find(p => p.fillType === fillType);
@@ -617,7 +646,9 @@ function barnCareInfo(building) {
     const heads = clusters.reduce((s, c) => s + c.numAnimals, 0);
     const health = heads ? clusters.reduce((s, c) => s + (c.health || 0) * c.numAnimals, 0) / heads : null;
     const productivity = typeof building.productivity === 'number' ? building.productivity : null;
-    const straw = supply('STRAW'), water = supply('WATER');
+    // Manure For All gives every barn a straw storage.
+    const straw = building.noStraw && !manureForAll ? { daily: 0, level: null, days: null } : supply('STRAW');
+    const water = supply('WATER');
     const issues = [];
     if (straw.days !== null && straw.days < BARN_LOW_DAYS) issues.push({ key: 'straw', days: straw.days });
     if (water.days !== null && water.days < BARN_LOW_DAYS) issues.push({ key: 'water', days: water.days });

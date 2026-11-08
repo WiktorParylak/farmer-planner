@@ -14,6 +14,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Poprawki**
 - **Instalator**: okna instalacji i deinstalacji mają nowe logo i przyciski z zaokrąglonymi końcami zamiast owali.
 - **Oś czasu**: okno pola otwierają tylko paski planu tego sezonu. Uprawy przewidywane na kolejne sezony mają nadal podpowiedź, bo okno opisuje wyłącznie ten sezon.
+- **Bez fałszywego ostrzeżenia o braku słomy**: budynki bez słomy, takie jak mała obora, stajnia i chlew, nie ostrzegają już o jej braku.
 
 ## 0.11.1 — 2026-11-07
 

@@ -14,6 +14,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Fixed**
 - **Installer**: the setup and uninstall windows have the new logo and round-ended buttons instead of ovals.
 - **Timeline**: only the bars of this season's plan open the field window. Crops projected for later seasons keep their tooltip, since the window describes this season alone.
+- **No false "out of straw" warning**: barns built without straw, such as the small cow, horse and pig barns, no longer warn about it.
 
 ## 0.11.1 — 2026-11-07
 
