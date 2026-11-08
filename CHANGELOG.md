@@ -4,6 +4,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.11.2 — unreleased
 
+**New**
+- **Zip and unzip mods**: every row in the mod manager has an icon that turns a zip into a folder or a folder into a zip, under the same name. The result is checked file by file before it replaces the original, and the original goes to the Recycle Bin.
+
 **Changed**
 - ***What's new* shows the whole 0.11 series**: the window lists 0.11.2, 0.11.1 and 0.11.0, newest first, after the update and from the *What's new* button.
 

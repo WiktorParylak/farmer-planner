@@ -10872,7 +10872,7 @@ button.timeline-bar:hover {
 
 .mm-mod {
   display: grid;
-  grid-template-columns: auto 48px minmax(0, 1fr) auto 6em;
+  grid-template-columns: auto 48px minmax(0, 1fr) auto 6em auto;
   align-items: center;
   gap: 4px 12px;
   padding: 6px 10px;
@@ -10955,6 +10955,30 @@ button.timeline-bar:hover {
 
 .mm-mod-size {
   text-align: right;
+}
+
+.mm-mod-zip {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.mm-mod-zip:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.mm-mod-zip:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .mm-badge {
@@ -11102,7 +11126,7 @@ button.mm-badge {
 
 @media (max-width: 1100px) {
   .mm-layout { grid-template-columns: 1fr; }
-  .mm-mod { grid-template-columns: auto 40px minmax(0, 1fr) auto; }
+  .mm-mod { grid-template-columns: auto 40px minmax(0, 1fr) auto auto; }
   .mm-mod-size { display: none; }
 }
 

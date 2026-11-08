@@ -4,6 +4,9 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 ## 0.11.2 — unreleased
 
+**Nowe**
+- **Pakowanie i rozpakowywanie modów**: każdy wiersz w menedżerze modów ma ikonę, która zamienia zip w folder albo folder w zip pod tą samą nazwą. Wynik jest sprawdzany plik po pliku, zanim zastąpi oryginał, a oryginał trafia do Kosza.
+
 **Zmiany**
 - ***Co nowego* pokazuje całą serię 0.11**: okno wymienia 0.11.2, 0.11.1 i 0.11.0, od najnowszej, po aktualizacji i po kliknięciu przycisku *Co nowego*.
 

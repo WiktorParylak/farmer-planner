@@ -236,6 +236,9 @@ function mmBadgesHtml(mod) {
 function mmModRowHtml(mod) {
     const desc = (mod.description[currentLang] || mod.description.en || '').replace(/\s+/g, ' ').slice(0, 300);
     const icon = mmIcons.get(mmCore.iconCacheName(mod));
+    const zipLabel = t(mod.isZip ? 'mmUnpackMod' : 'mmPackMod');
+    const zipBtn = mod.corrupt ? '<span></span>'
+        : `<button type="button" class="mm-mod-zip" data-mm="zip-toggle" data-file="${escapeHtml(mod.file)}" title="${escapeHtml(zipLabel)}" aria-label="${escapeHtml(zipLabel)}"${mm.busy ? ' disabled' : ''}><i class="fa-solid ${mod.isZip ? 'fa-box-open' : 'fa-file-zipper'}" aria-hidden="true"></i></button>`;
     return `<div class="mm-mod${mm.picked.has(mod.file) ? ' is-picked' : ''}" data-file="${escapeHtml(mod.file)}"${desc ? ` title="${escapeHtml(desc)}"` : ''}>
         <input type="checkbox" class="fp-check" data-pick="${escapeHtml(mod.file)}"${mm.picked.has(mod.file) ? ' checked' : ''} aria-label="${escapeHtml(mmTitle(mod))}">
         <span class="mm-icon" data-icon="${escapeHtml(mod.file)}">${icon ? `<img src="${icon}" alt="">` : '<i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i>'}</span>
@@ -246,6 +249,7 @@ function mmModRowHtml(mod) {
         </span>
         <span class="mm-mod-ver">${escapeHtml(mod.version || '–')}</span>
         <span class="mm-mod-size">${mmFmtMb(mod.size)}</span>
+        ${zipBtn}
     </div>`;
 }
 
@@ -626,6 +630,26 @@ async function mmTransfer(mods, target, move) {
         + (errors.length ? '\n\n' + errors.join('\n') : ''), !!errors.length);
 }
 
+// A zip becomes a folder and a folder a zip, under the same name. The original
+// goes to the Recycle Bin, so no question first.
+async function mmToggleZip(file) {
+    const mod = mm.scan && mm.scan.mods.find(m => m.file === file);
+    if (mm.busy || !mod) return;
+    mm.busy = { text: t(mod.isZip ? 'mmUnpacking' : 'mmPacking').replace('{name}', mod.file), frac: 0 };
+    mmRender();
+    if (await mmLockedByGame(mmCurrentLib())) { mm.busy = null; mmRender(); return; }
+    let error = null;
+    try {
+        await mmCore[mod.isZip ? 'unpackMod' : 'packMod'](mod, mmTrash, (a, b) => { mm.busy.frac = b ? a / b : 1; mmRenderStatus(); });
+    } catch (e) {
+        console.error(e);
+        error = e;
+    }
+    mm.busy = null;
+    await mmRescan();
+    if (error) await showNotice(t('mmTitle'), mod.file + ': ' + mmErrorText(error), true);
+}
+
 async function mmDelete(mods) {
     if (!mods.length || await mmLockedByGame(mmCurrentLib())) return;
     const ok = await showConfirm({
@@ -857,6 +881,7 @@ async function mmUpdate(mods) {
         else if (act === 'delete') mmDelete(picked());
         else if (act === 'delete-one') mmDelete(mm.scan.mods.filter(m => m.file === b.dataset.file));
         else if (act === 'rename') mmRename(b.dataset.file);
+        else if (act === 'zip-toggle') mmToggleZip(b.dataset.file);
         else if (act === 'fetch') mmFetch(b.dataset.name, b.dataset.from);
     });
     view.addEventListener('change', e => {

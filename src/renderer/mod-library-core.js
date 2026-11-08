@@ -6,13 +6,15 @@
 // Writing outside Farmer Planner's own folder, agreed with the user (2026-11-06):
 //   - gameSettings.xml: only the directory/active attributes of
 //     <modsDirectoryOverride>, with the game closed, after a copy of the file;
-//   - the library folders themselves: copy, move, rename, install and delete
-//     mods (delete = Recycle Bin, done by the caller through electron's shell).
+//   - the library folders themselves: copy, move, rename, install, zip, unzip and
+//     delete mods (delete = Recycle Bin, done by the caller through electron's shell).
 // Savegames are only read.
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
+const { pipeline } = require('stream/promises');
 const { readZipDirectory, readZipEntry } = require('./mod-files');
 
 const LIBRARIES_FILE = 'mod-libraries.json';
@@ -420,6 +422,232 @@ function renameMod(mod, newName) {
     return dest;
 }
 
+// ---------- zip / unzip ----------
+// A zip is written and read through streams, so the window doesn't freeze and a
+// big mod doesn't sit in memory. No ZIP64 and no data descriptors: sizes and CRC
+// go into each local header, as in the zips the game ships and loads.
+const ZIP_LIMIT = 0xFFFFFFFF;
+const ZIP_MAX_ENTRIES = 0xFFFF;
+
+function zipError(code, message, extra) {
+    return Object.assign(new Error(message), { code, extra });
+}
+
+function folderFiles(root, rel = '', out = []) {
+    for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+        const name = rel ? rel + '/' + e.name : e.name;
+        if (e.isDirectory()) folderFiles(root, name, out);
+        else if (e.isFile()) out.push(name);
+    }
+    return out;
+}
+
+function dosDateTime(ms) {
+    const d = new Date(ms);
+    return {
+        time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+        date: (Math.max(d.getFullYear() - 1980, 0) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
+    };
+}
+
+async function writeAll(fh, buf, pos) {
+    for (let done = 0; done < buf.length;) {
+        const { bytesWritten } = await fh.write(buf, done, buf.length - done, pos + done);
+        done += bytesWritten;
+    }
+    return pos + buf.length;
+}
+
+// Writes the folder as a zip. onBytes(n) for every n bytes of files read.
+async function writeFolderZip(folder, names, zipPath, onBytes) {
+    const fh = await fs.promises.open(zipPath, 'w');
+    const centrals = [];
+    let pos = 0;
+    try {
+        for (const name of names) {
+            const full = path.join(folder, name);
+            const st = fs.statSync(full);
+            if (st.size > ZIP_LIMIT) throw zipError('MM_ZIP_TOO_BIG', name);
+            const nameBuf = Buffer.from(name, 'utf8');
+            const flags = nameBuf.length !== name.length ? 0x0800 : 0;   // UTF-8 name
+            const method = st.size ? 8 : 0;
+            const { time, date } = dosDateTime(st.mtimeMs);
+            const offset = pos;
+            const head = Buffer.alloc(30);
+            head.writeUInt32LE(0x04034b50, 0);
+            head.writeUInt16LE(20, 4);
+            head.writeUInt16LE(flags, 6);
+            head.writeUInt16LE(method, 8);
+            head.writeUInt16LE(time, 10);
+            head.writeUInt16LE(date, 12);
+            head.writeUInt16LE(nameBuf.length, 26);
+            pos = await writeAll(fh, Buffer.concat([head, nameBuf]), pos);
+            const dataStart = pos;
+            let crc = 0, size = 0;
+            if (method) {
+                await pipeline(fs.createReadStream(full), async function* (src) {
+                    for await (const chunk of src) {
+                        crc = zlib.crc32(chunk, crc);
+                        size += chunk.length;
+                        onBytes(chunk.length);
+                        yield chunk;
+                    }
+                }, zlib.createDeflateRaw(), async src => {
+                    for await (const chunk of src) pos = await writeAll(fh, chunk, pos);
+                });
+            }
+            const compSize = pos - dataStart;
+            if (pos > ZIP_LIMIT || size > ZIP_LIMIT) throw zipError('MM_ZIP_TOO_BIG', name);
+            const sums = Buffer.alloc(12);
+            sums.writeUInt32LE(crc >>> 0, 0);
+            sums.writeUInt32LE(compSize, 4);
+            sums.writeUInt32LE(size, 8);
+            await writeAll(fh, sums, offset + 14);
+            const cen = Buffer.alloc(46);
+            cen.writeUInt32LE(0x02014b50, 0);
+            cen.writeUInt16LE(20, 4);
+            cen.writeUInt16LE(20, 6);
+            cen.writeUInt16LE(flags, 8);
+            cen.writeUInt16LE(method, 10);
+            cen.writeUInt16LE(time, 12);
+            cen.writeUInt16LE(date, 14);
+            sums.copy(cen, 16);
+            cen.writeUInt16LE(nameBuf.length, 28);
+            cen.writeUInt32LE(offset, 42);
+            centrals.push(cen, nameBuf);
+        }
+        const cd = Buffer.concat(centrals);
+        const end = Buffer.alloc(22);
+        end.writeUInt32LE(0x06054b50, 0);
+        end.writeUInt16LE(names.length, 8);
+        end.writeUInt16LE(names.length, 10);
+        end.writeUInt32LE(cd.length, 12);
+        end.writeUInt32LE(pos, 16);
+        pos = await writeAll(fh, Buffer.concat([cd, end]), pos);
+        if (pos > ZIP_LIMIT) throw zipError('MM_ZIP_TOO_BIG', 'zip');
+    } finally {
+        await fh.close();
+    }
+}
+
+// Reads one entry, checks it against the zip's directory and hands the data
+// to `sink` (null = only check).
+async function readZipEntryChecked(zipPath, fh, entry, sink, onBytes) {
+    if ([entry.compSize, entry.size, entry.localOffset].includes(ZIP_LIMIT)) throw zipError('MM_ZIP_TOO_BIG', entry.name);
+    if (entry.method !== 0 && entry.method !== 8) throw zipError('MM_ZIP_CHECK', entry.name);
+    const head = Buffer.alloc(30);
+    await fh.read(head, 0, 30, entry.localOffset);
+    if (head.readUInt32LE(0) !== 0x04034b50) throw zipError('MM_ZIP_CHECK', entry.name);
+    const start = entry.localOffset + 30 + head.readUInt16LE(26) + head.readUInt16LE(28);
+    let crc = 0, size = 0;
+    const consume = async src => {
+        for await (const chunk of src) {
+            crc = zlib.crc32(chunk, crc);
+            size += chunk.length;
+            if (size > entry.size) throw zipError('MM_ZIP_CHECK', entry.name);
+            if (sink) await sink(chunk);
+            if (onBytes) onBytes(chunk.length);
+        }
+    };
+    if (entry.compSize) {
+        const raw = fs.createReadStream(zipPath, { start, end: start + entry.compSize - 1 });
+        try {
+            if (entry.method === 8) await pipeline(raw, zlib.createInflateRaw(), consume);
+            else await pipeline(raw, consume);
+        } catch (e) {
+            throw /^Z_/.test(String(e.code)) ? zipError('MM_ZIP_CHECK', entry.name) : e;
+        }
+    }
+    if ((crc >>> 0) !== entry.crc || size !== entry.size) throw zipError('MM_ZIP_CHECK', entry.name);
+}
+
+// Where an entry lands inside `root`; a name that would leave it is refused.
+function zipEntryTarget(root, name) {
+    const parts = name.split('/');
+    if (name.startsWith('/') || /[\0:*?"<>|]/.test(name) || parts.includes('..')) throw zipError('MM_ZIP_BAD', name);
+    const base = path.resolve(root);
+    const full = path.resolve(base, name);
+    if (full !== base && !full.startsWith(base + path.sep)) throw zipError('MM_ZIP_BAD', name);
+    return full;
+}
+
+// A finished `staged` result takes the mod's place, the mod goes to `trash`.
+async function swapStagedMod(mod, staged, dest, trash) {
+    try {
+        await trash(mod.path);
+    } catch (e) {
+        await fs.promises.rm(staged, { recursive: true, force: true });
+        throw e;
+    }
+    // Once the original is in the Recycle Bin the result stays, to be renamed by hand.
+    fs.renameSync(staged, dest);
+    return dest;
+}
+
+// The folder `mod` becomes <name>.zip; the folder goes to `trash`. Nothing
+// changes unless the finished zip reads back right. onProgress(done, total).
+async function packMod(mod, trash, onProgress) {
+    const dest = path.join(path.dirname(mod.path), mod.name + '.zip');
+    if (fs.existsSync(dest)) throw zipError('MM_EXISTS', 'Exists', { name: path.basename(dest) });
+    const names = folderFiles(mod.path).sort();
+    if (names.length > ZIP_MAX_ENTRIES) throw zipError('MM_ZIP_TOO_BIG', mod.name);
+    const total = names.reduce((s, n) => s + fs.statSync(path.join(mod.path, n)).size, 0) * 2;
+    let done = 0;
+    const onBytes = n => { done += n; if (onProgress) onProgress(done, total); };
+    const staged = dest + '.fp-new';
+    try {
+        await writeFolderZip(mod.path, names, staged, onBytes);
+        const entries = readZipDirectory(staged);
+        if (!entries || entries.size !== names.length) throw zipError('MM_ZIP_CHECK', mod.name);
+        const fh = await fs.promises.open(staged, 'r');
+        try {
+            for (const entry of entries.values()) await readZipEntryChecked(staged, fh, entry, null, onBytes);
+        } finally {
+            await fh.close();
+        }
+    } catch (e) {
+        await fs.promises.rm(staged, { force: true });
+        throw e;
+    }
+    return swapStagedMod(mod, staged, dest, trash);
+}
+
+// The zip `mod` becomes the folder <name>; the zip goes to `trash`. Nothing
+// changes unless every file came out with the size and CRC the zip gives.
+async function unpackMod(mod, trash, onProgress) {
+    const dest = path.join(path.dirname(mod.path), mod.name);
+    if (fs.existsSync(dest)) throw zipError('MM_EXISTS', 'Exists', { name: path.basename(dest) });
+    const entries = readZipDirectory(mod.path);
+    if (!entries) throw zipError('MM_ZIP_CHECK', mod.name);
+    const staged = dest + '.fp-new';
+    const targets = [...entries.values()].map(entry => ({ entry, full: zipEntryTarget(staged, entry.name) }));
+    const total = targets.reduce((s, x) => s + x.entry.size, 0);
+    let done = 0;
+    const onBytes = n => { done += n; if (onProgress) onProgress(done, total); };
+    await fs.promises.rm(staged, { recursive: true, force: true });
+    const zip = await fs.promises.open(mod.path, 'r');
+    try {
+        await fs.promises.mkdir(staged, { recursive: true });
+        for (const { entry, full } of targets) {
+            if (entry.name.endsWith('/')) { await fs.promises.mkdir(full, { recursive: true }); continue; }
+            await fs.promises.mkdir(path.dirname(full), { recursive: true });
+            const out = await fs.promises.open(full, 'w');
+            let pos = 0;
+            try {
+                await readZipEntryChecked(mod.path, zip, entry, async chunk => { pos = await writeAll(out, chunk, pos); }, onBytes);
+            } finally {
+                await out.close();
+            }
+        }
+    } catch (e) {
+        await fs.promises.rm(staged, { recursive: true, force: true });
+        throw e;
+    } finally {
+        await zip.close();
+    }
+    return swapStagedMod(mod, staged, dest, trash);
+}
+
 // ---------- icons ----------
 // The icon file's bytes (DDS, sometimes PNG) or null. modDesc names a .png
 // that ships as .dds; the game swaps the extension the same way.
@@ -583,7 +811,7 @@ module.exports = {
     parseModDesc, readModEntry, scanLibrary, findProblems, suggestModName, checkModZip,
     readSaveMods, compareWithSave,
     readOverride, withOverride, setOverride,
-    copyMod, moveMod, renameMod,
+    copyMod, moveMod, renameMod, packMod, unpackMod,
     readModIcon, iconCacheName,
     loadModHub, compareVersions, modHubInfo,
     findDownloadedZip, replaceModWithZip
