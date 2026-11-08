@@ -492,15 +492,20 @@ function renderFieldModal() {
     // Everything about this field's crop is edited here and saved straight away:
     // crop, catch crop, months, state, tillage and the rotation cycle.
     const sel = (cls, label, options, hint) => `<label class="settings-field"><span${hint ? ` title="${escapeHtml(hint)}"` : ''}>${label}</span><select class="${cls}">${options}</select></label>`;
+    // Two values side by side: [value, text, colour modifier of .tillage-switch-option].
+    const choice = (cls, label, current, options) => `<div class="settings-field"><span>${label}</span><div class="tillage-switch field-view-switch" role="group" aria-label="${escapeHtml(label)}">${options.map(([v, text, mod]) => `<button type="button" class="tillage-switch-option tillage-switch-option--${mod} ${cls}${current === v ? ' is-active' : ''}" data-value="${v}" aria-pressed="${current === v}">${text}</button>`).join('')}</div></div>`;
     const identity = fieldViewIdentityHtml(farm, field, num, name);
     tabs.crop += section(t('fieldViewCrop'), `<div class="field-view-crop-grid">
         ${sel('field-view-crop', t('thCrop'), cropOptionsHtml(field.crop, t('selectPlaceholder')))}
         ${sel('field-view-sow', t('thSowingMth'), field.crop ? generateMonthOptionsHtml(field.crop, field.sowingMonth) : `<option value="">${t('selectCropFirst')}</option>`)}
-        ${sel('field-view-catch', t('thCatchCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
-        ${field.catchCrop ? sel('field-view-catch-sow', t('thCatchSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
-        ${sel('field-view-state', t('thState'), [['To Plant', t('toPlant')], ['Planted', t('planted')]].map(([v, label]) => `<option value="${v}" ${(field.state === 'Planted' ? 'Planted' : 'To Plant') === v ? 'selected' : ''}>${label}</option>`).join(''))}
-        ${sel('field-view-tillage', t('thTillage'), [['', '–'], ['plowed', t('tillagePlowed')], ['noTill', t('tillageNoTill')]].map(([v, label]) => `<option value="${v}" ${(field.tillage || '') === v ? 'selected' : ''}>${label}</option>`).join(''))}
-    </div><div class="field-view-rotation-part">${rotationFieldViewHtml(farm, field)}</div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
+        ${choice('field-view-state', t('thState'), field.state === 'Planted' ? 'Planted' : 'To Plant', [['To Plant', t('toPlant'), 'plowed'], ['Planted', t('planted'), 'notill']])}
+        ${choice('field-view-tillage', t('thTillage'), field.tillage || '', [['plowed', t('tillagePlowed'), 'plowed'], ['noTill', t('tillageNoTill'), 'notill']])}
+    </div><p class="settings-hint">${t('fieldViewCropHint')}</p>${fieldMoistureLineHtml(field, farm)}${fieldHarvestLineHtml(field, idx, farm)}${fieldFinishHtml(farm, field, idx)}`);
+    tabs.crop += section(t('thCatchCrop'), `<div class="field-view-crop-grid">
+        ${sel('field-view-catch', t('thCrop'), cropOptionsHtml(field.catchCrop, t('catchCropNone'), true), t('catchCropHint'))}
+        ${field.catchCrop ? sel('field-view-catch-sow', t('thSowingMth'), generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth)) : ''}
+    </div>`);
+    tabs.crop += section(t('rotTitle'), rotationFieldViewHtml(farm, field));
 
     // Soil (editable — same data as the Field soil type view).
     const mix = (rates.fieldSoil && rates.fieldSoil[soilKey]) || {};
@@ -735,15 +740,6 @@ window.openFieldModal = function (idx, tab) {
             migrateFieldKeys(farm, before, farm.fields);
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
-        } else if (el.classList.contains('field-view-state')) {
-            field.state = el.value;
-            syncSowStep(field);
-            saveFarmData(farm);
-            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
-        } else if (el.classList.contains('field-view-tillage')) {
-            field.tillage = el.value || null;
-            saveFarmData(farm);
-            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-soil')) {
             const r = getSupplyRates();
             const k = fertPlanSoilKey(field, fieldModalIdx);
@@ -786,6 +782,22 @@ window.openFieldModal = function (idx, tab) {
         const idx = fieldModalIdx;
         const field = farm && (farm.fields || [])[idx];
         if (!field) return;
+        const stateBtn = e.target.closest('.field-view-state');
+        if (stateBtn) {
+            field.state = stateBtn.dataset.value;
+            syncSowStep(field);
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
+        // Clicking the active choice clears it, as in Edit.
+        const tillageBtn = e.target.closest('.field-view-tillage');
+        if (tillageBtn) {
+            field.tillage = field.tillage === tillageBtn.dataset.value ? null : tillageBtn.dataset.value;
+            saveFarmData(farm);
+            rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
+            return;
+        }
         const finishBtn = e.target.closest('.field-view-finish, .field-view-finish-undo');
         if (finishBtn) {
             const crop = field.crop;

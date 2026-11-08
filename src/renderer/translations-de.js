@@ -169,7 +169,7 @@ const UI = {
     areaAutoMissing: "Fläche von Feld {fields} unbekannt — bitte eintragen",
     fieldViewFromGame: "aus dem Spiel",
     fieldViewSoil: "Boden",
-    fieldViewCrop: "Feldfrucht",
+    fieldViewCrop: "Hauptfrucht",
     fieldViewCropHint: "Änderungen werden sofort gespeichert. Felder hinzufügen, entfernen und zusammenlegen sowie Änderungen an vielen Feldern gleichzeitig findest du unter Bearbeiten.",
     fieldViewTabCrop: "Feldfrucht",
     fieldViewTabWork: "Arbeiten",

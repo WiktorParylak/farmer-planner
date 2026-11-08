@@ -14,6 +14,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 **Zmiany**
 - ***Co nowego* pokazuje całą serię 0.11**: okno wymienia 0.11.2, 0.11.1 i 0.11.0, od najnowszej, po aktualizacji i po kliknięciu przycisku *Co nowego*.
+- **Okno pola, zakładka *Uprawa***: ustawienia są pogrupowane pod nagłówkami *Uprawa główna*, *Międzyplon* i *Płodozmian*, a stan oraz orka/bezorka to przełączniki zamiast list rozwijanych. Kliknięcie aktywnej opcji orki/bezorki ją czyści.
 
 **Poprawki**
 - **Instalator**: okna instalacji i deinstalacji mają nowe logo i przyciski z zaokrąglonymi końcami zamiast owali.
