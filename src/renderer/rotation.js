@@ -220,14 +220,15 @@ function applyRotationSlot(field, slot, afterMonth) {
     field.catchSowingMonth = field.catchCrop ? rotationCatchSowMonth(field.crop, field.sowingMonth, field.catchCrop) : '';
 }
 
-// A catch crop goes in after the main crop's harvest: the first month after it
-// that the catch crop's calendar allows.
+// A catch crop goes in after the main crop's harvest: the first month its
+// calendar allows from then on. A crop with a short window (carrot, buckwheat)
+// can go in the month of the harvest, or it would wait most of a year.
 function rotationCatchSowMonth(crop, sowMonth, catchCrop) {
     const cal = CROP_CALENDAR[catchCrop];
     const harvest = crop && CROP_CALENDAR[crop] && CROP_CALENDAR[crop][sowMonth];
     const from = ALL_MONTHS.indexOf(harvest);
     if (!cal || from < 0) return rotationDefaultSowMonth(catchCrop);
-    for (let k = 1; k <= 12; k++) {
+    for (let k = isCatchOnlyCrop(catchCrop) ? 1 : 0; k <= 12; k++) {
         const m = ALL_MONTHS[(from + k) % 12];
         if (cal[m]) return m;
     }

@@ -135,7 +135,8 @@ function todayFieldGroups(farm) {
         // a group above already covers it or the crop is off the field.
         if (!cut && !tasks.finish) {
             const { next } = nextWorkStep(field, idx, farm);
-            if (next && !['sow', 'harvest'].includes(next.step) && !tasks[next.step] && fieldJobDue(field, next.step, month)) tasks.work = workStepLabel(field, next);
+            const ownGroup = next && (next.step === 'sow' || (next.step === 'harvest' && next.part !== 'catch'));
+            if (next && !ownGroup && !tasks[next.step] && fieldJobDue(field, next.step, month, next.part)) tasks.work = workStepLabel(field, next);
         }
         const keys = TODAY_PRIORITY.filter(k => tasks[k]);
         if (!keys.length) return;

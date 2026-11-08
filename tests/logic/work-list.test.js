@@ -61,6 +61,34 @@ test('work: a catch crop gets its own part, starting with its sowing', () => {
     assert.ok(suggestedWork(field(), 0, OCT).every(w => !w.part), 'no catch crop, no parts');
 });
 
+test('work: a catch crop grown for itself is harvested, forage is mown', () => {
+    const part = crop => suggestedWork(field({ catchCrop: crop, catchSowingMonth: 'AUGUST' }), 0, OCT).filter(w => w.part === 'catch').map(w => w.step);
+    assert.deepStrictEqual(part('Carrot'), ['sowCatch', 'fertilize', 'harvest']);
+    assert.deepStrictEqual(part('Clover'), ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap']);
+});
+
+test('work: a catch crop\'s harvest is due in its own window', () => {
+    const saved = { Wheat: CROP_CALENDAR.Wheat, Carrot: CROP_CALENDAR.Carrot };
+    try {
+        CROP_CALENDAR.Wheat = { OCTOBER: 'JULY' };
+        CROP_CALENDAR.Carrot = { JULY: 'NOVEMBER' };
+        const f = field({ state: 'Planted', catchCrop: 'Carrot', catchSowingMonth: 'JULY' });
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'NOVEMBER', 'catch'), true);
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'JULY', 'catch'), false);
+        assert.strictEqual(fieldJobDue(f, 'harvest', 'JULY'), true);
+    } finally {
+        Object.assign(CROP_CALENDAR, saved);
+    }
+});
+
+test('work: the new catch crops are on the menu and stay main crops in the generator', async () => {
+    await freshFarm();
+    assert.ok(isCatchCropChoice('Carrot') && !isCatchOnlyCrop('Carrot'));
+    assert.ok(cropOptionsHtml('', '-', true).includes('value="Carrot"'));
+    assert.ok(genCropPool({ excluded: [] }).includes('Carrot'));
+    assert.ok(!genCropPool({ excluded: [] }).includes('Oilseedradish'));
+});
+
 test('work: with a catch crop the list has a heading per crop and says whose sowing it is', () => {
     const f = field({ catchCrop: 'Oilseedradish', catchSowingMonth: 'AUGUST' });
     const list = suggestedWork(f, 0, OCT);

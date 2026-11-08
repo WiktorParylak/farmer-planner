@@ -874,7 +874,10 @@ function catchCropComesFirst(field) {
 // idx: the field's index in farm.fields (for its soil mix, see getLimeStatus).
 function suggestedWork(field, idx, farm) {
     const steps = [];
-    const catchSteps = ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap'];
+    // Green cover and forage are mown and baled, a crop grown for itself is harvested.
+    const catchSteps = isCatchOnlyCrop(field.catchCrop) || isCutCrop(field.catchCrop)
+        ? ['sowCatch', 'fertilize', 'mow', 'bale', 'harvestWrap']
+        : ['sowCatch', 'fertilize', 'harvest'];
     const catchFirst = field.catchCrop && catchCropComesFirst(field);
     if (catchFirst) steps.push(...catchSteps);
     const mainFrom = steps.length;
@@ -1006,7 +1009,7 @@ function syncSowStep(field) {
 // not) and What to do today (lists it only when it is). Sowing and harvest wait
 // for their month. Your own list and a sown field's jobs are always for now; on
 // a field still to be sown the ground work starts the month before its sowing.
-function fieldJobDue(field, step, month) {
+function fieldJobDue(field, step, month, part) {
     if (!month) return true;
     const sow = (field.sowingMonth || '').toUpperCase();
     if (step === 'sow') return sow === month || isSowingOverdue(field, month);
@@ -1015,7 +1018,9 @@ function fieldJobDue(field, step, month) {
         const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf((field.catchSowingMonth || '').toUpperCase());
         return to < 0 || from < 0 || (from - to + 12) % 12 < 6;
     }
-    if (step === 'harvest') return fieldInHarvestWindow(field, month);
+    if (step === 'harvest') {
+        return fieldInHarvestWindow(part === 'catch' ? { ...field, crop: field.catchCrop, sowingMonth: field.catchSowingMonth } : field, month);
+    }
     if (field.state === 'Planted' || fieldWork(field) || isSowingOverdue(field, month)) return true;
     const from = ALL_MONTHS.indexOf(month), to = ALL_MONTHS.indexOf(sow);
     return to < 0 || from < 0 || (to - from + 12) % 12 <= 1;
@@ -1038,7 +1043,7 @@ function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
     const state = `<button type="button" class="state-toggle" data-idx="${idx}" title="${escapeHtml(stateLabel + ' · ' + t('stateToggleHint'))}"><span class="badge ${badgeCls}">${escapeHtml(label)}</span></button>`;
     if (!next) return `<div class="state-pills">${state}</div>`;
     const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
-    const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm));
+    const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm), next.part);
     const hint = t('workBadgeHint') + (due ? '' : ' ' + t('workLaterHint'));
     return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(workStepLabel(field, next))}${count}</span></button></div>`;
 }
@@ -1953,8 +1958,13 @@ function generateMonthOptionsHtml(cropName, selectedMonth) {
 
 // Every crop the farm's map offers, in the game's own menu order — plus the
 // currently selected one, so a field keeps a crop the map no longer lists.
-// Crops that make sense as a catch crop (międzyplon) before the main crop.
-const CATCH_CROPS = ['Greenrye', 'Oilseedradish', 'Grass'];
+// Crops that make sense as a catch crop (międzyplon) before the main crop: the
+// ones grown only as that, and main crops quick enough to fit after a harvest.
+const CATCH_ONLY_CROPS = ['Greenrye', 'Oilseedradish', 'Grass'];
+const CATCH_CROPS = [...CATCH_ONLY_CROPS, 'Buckwheat', 'Clover', 'Alfalfa', 'Silagemaize', 'Carrot', 'Beetroot', 'Parsnip', 'Beans', 'Greenbean'];
+function isCatchOnlyCrop(crop) {
+    return CATCH_ONLY_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
+}
 function isCatchCropChoice(crop) {
     return CATCH_CROPS.some(c => cropOrderKey(c) === cropOrderKey(crop || ''));
 }

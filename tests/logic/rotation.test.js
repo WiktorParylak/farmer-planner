@@ -52,6 +52,19 @@ test('rotation: a catch crop goes in after the main harvest', () => {
     assert.ok(gap >= 1, `${month} comes after the harvest in ${harvest}`);
 });
 
+test('rotation: a quick crop can follow in the month of the harvest, green cover the month after', () => {
+    const saved = { Wheat: CROP_CALENDAR.Wheat, Carrot: CROP_CALENDAR.Carrot, Oilseedradish: CROP_CALENDAR.Oilseedradish };
+    try {
+        CROP_CALENDAR.Wheat = { OCTOBER: 'JULY' };
+        CROP_CALENDAR.Carrot = { JULY: 'NOVEMBER' };
+        CROP_CALENDAR.Oilseedradish = { JULY: 'OCTOBER', AUGUST: 'NOVEMBER' };
+        assert.strictEqual(rotationCatchSowMonth('Wheat', 'OCTOBER', 'Carrot'), 'JULY');
+        assert.strictEqual(rotationCatchSowMonth('Wheat', 'OCTOBER', 'Oilseedradish'), 'AUGUST');
+    } finally {
+        Object.assign(CROP_CALENDAR, saved);
+    }
+});
+
 test('rotation: the generator\'s plan goes first and its later crops move up', () => {
     const f = field({
         crop: '', rotation: { id: 'r', step: 0 },
