@@ -454,14 +454,16 @@ function undoFieldFinish(farm, idx) {
 }
 
 // Which fields move on when a season ends: crops already off the field, and
-// grassland, whose year is up. Crops growing or still to be sown stay on.
+// grassland, whose year is up. Crops growing or still to be sown stay on, and
+// so does a harvested crop with its catch crop still to come off.
 function seasonEndFinishIndexes(farm) {
     const ctx = seasonHarvestContext(farm);
     const out = [];
     (farm.fields || []).forEach((field, i) => {
         const info = fieldRotationInfo(farm, field);
         const moves = field.crop
-            ? (isCutCrop(field.crop) || isPerennialCrop(field.crop) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested')
+            ? (isCutCrop(field.crop) || isPerennialCrop(field.crop)
+                || (fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested' && !fieldCatchStillOn(field, ctx.month, ctx.saveById)))
             : !!(field.nextCrop || (info && !info.slot.crop));
         if (moves) out.push(i);
     });

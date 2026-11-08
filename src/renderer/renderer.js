@@ -4906,8 +4906,10 @@ function syncWorkFromSave(farm) {
         // yet): nothing on the field is this plan's work. Only the levels are
         // remembered, so fertilizing the old crop never counts for the new one,
         // and work read from the game before is dropped (manual ticks stay).
+        // The field's own catch crop is not another crop: the plan's work stays.
         const otherCropStanding = !!field.crop && !grows && games.some(g => g.sown
             && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.crop)
+            && cropOrderKey(saveFruitToCropKey(g.fruitType)) !== cropOrderKey(field.catchCrop || '')
             && saveCropHarvested(g.fruitType, g.growthState) === false);
         if (otherCropStanding) {
             games.forEach(g => { seen[g.id] = levelsOf(g); });
@@ -4919,7 +4921,10 @@ function syncWorkFromSave(farm) {
         }
         if (grows && field.state !== 'Planted') field.state = 'Planted';
         if (field.crop && !isCutCrop(field.crop)) {
-            if (deepTilledFrom(games, grows)) field.deepTilled = true; else delete field.deepTilled;
+            // After the harvest the ground says nothing about this crop's sowing any more.
+            if (grows || field.state !== 'Planted') {
+                if (deepTilledFrom(games, grows)) field.deepTilled = true; else delete field.deepTilled;
+            }
             const allGround = list => groundIsNew && games.every(g => list.includes(g.groundType));
             if (grows || allGround(SAVE_GROUND_CULTIVATED)) det.cultivate = true;
             if (allGround(['PLOWED']) || (grows && field.tillage === 'plowed')) det.plow = true;

@@ -127,7 +127,7 @@ function todayFieldGroups(farm) {
         else if (isSowingOverdue(field, month)) tasks.late = t('work_sow');
         if (planted && !cut && sow && cal[sow] && fieldInHarvestWindow(field, month) && todayGrowsPlannedCrop(field, saveById)) tasks.harvest = todayHarvestText(field, saveById);
         if (isCutCrop(field.crop) && fieldCutDue(field, month) && !todayMownLive(field, saveById)) tasks.mow = t('cutDueNow');
-        if (planted && !cut && fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested') tasks.finish = t('today_finish');
+        if (planted && !cut && fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested' && !fieldCatchStillOn(field, ctx.month, ctx.saveById)) tasks.finish = t('today_finish');
         // Weeds on an unsown field belong to what grows there now, not the planned crop.
         if (planted && field.weeds === 'needed') tasks.weeds = t('work_weeds');
         if (planted && field.rolling && !field.rollingDone) tasks.roll = t('work_roll');
@@ -184,7 +184,28 @@ function fieldHarvestState(field, month, saveById, yearPassed) {
     if (m < 0) return 'growing';
     const sinceSowing = (m - s + 12) % 12;
     const gone = !todayGrowsPlannedCrop(field, saveById);
-    return sinceSowing > w.last || (gone && (sinceSowing >= w.first || yearPassed)) ? 'harvested' : 'growing';
+    // A field held for its catch crop can reach the next sowing month with the main crop long gone.
+    const heldForCatch = !!field.catchCrop && !!field.catchSowingMonth && !catchCropComesFirst(field);
+    return sinceSowing > w.last || (gone && (sinceSowing >= w.first || yearPassed || heldForCatch)) ? 'harvested' : 'growing';
+}
+
+// A catch crop sown after the main harvest keeps the field until it has come off:
+// its last harvest month has gone by or, with the save at hand, the game field no
+// longer grows it from its first one on. Cut crops stay in the ground after a
+// mowing, so only their months count.
+function fieldCatchStillOn(field, month, saveById) {
+    if (!field.catchCrop || !field.catchSowingMonth || catchCropComesFirst(field)) return false;
+    const catchField = { ...field, crop: field.catchCrop, sowingMonth: field.catchSowingMonth };
+    const w = fieldHarvestWindow(catchField);
+    const m = ALL_MONTHS.indexOf(month || '');
+    const h = ALL_MONTHS.indexOf(String((CROP_CALENDAR[field.crop] || {})[(field.sowingMonth || '').toUpperCase()] || '').toUpperCase());
+    if (!w || m < 0 || h < 0) return false;
+    const sinceHarvest = (m - h + 12) % 12;
+    const sowAfter = (ALL_MONTHS.indexOf(field.catchSowingMonth.toUpperCase()) - h + 12) % 12;
+    if (sinceHarvest < sowAfter) return true;
+    const sinceSowing = sinceHarvest - sowAfter;
+    if (sinceSowing > w.last) return false;
+    return isCutCrop(field.catchCrop) || sinceSowing < w.first || todayGrowsPlannedCrop(catchField, saveById);
 }
 
 // live: may follow the link mod, for what is only shown. A new season files crops
