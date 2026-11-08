@@ -8,6 +8,20 @@ async function newSeason() {
     await done;
 }
 
+test('timeline: only the bars of this season\'s plan open the field window', () => {
+    const f = field({ state: 'Planted' });
+    const source = { season: 3, generated: false };
+    const bars = [
+        { crop: 'Wheat', sowingMonth: 'OCTOBER', from: 0, to: 3, lane: 0 },
+        { crop: 'Barley', sowingMonth: 'OCTOBER', from: 12, to: 15, lane: 0, source },
+        { crop: 'Oilseedradish', sowingMonth: 'AUGUST', from: 16, to: 18, lane: 1, source }
+    ];
+    const box = document.createElement('div');
+    box.innerHTML = timelineTrackHtml(bars, f, 0, 0, false, 24);
+    assert.strictEqual(box.querySelectorAll('button.timeline-bar').length, 1);
+    assert.strictEqual(box.querySelectorAll('span.timeline-bar').length, 2);
+});
+
 test('season: a field is cleared for the next crop', () => {
     const f = field({
         state: 'Planted', tillage: 'plowed', catchCrop: 'Oilseedradish', fertilizer: true, manure: true, weeds: 'done',

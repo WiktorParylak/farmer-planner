@@ -249,7 +249,8 @@ function timelineTrackHtml(bars, field, idx, currentMonth, isPastSeason, months)
         let title = timelineCropTitle(bar);
         if (bar.lane === 1) title = t('catchCropShort') + ' · ' + title;
         if (bar.source) title = `${t('season')} ${bar.source.season} · ${t(bar.source.generated ? 'rotByGenerator' : 'rotProjected')} · ${title}`;
-        html += timelineBarHtml(bar, cls, name, title, idx, clickable, months);
+        // The field window is about this season's plan: a projected bar doesn't open it.
+        html += timelineBarHtml(bar, cls, name, title, idx, clickable && !bar.source, months);
     });
     if (field.crop && isCutCrop(field.crop)) html += timelineCutsHtml(field, months);
     return html;
