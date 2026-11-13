@@ -3532,7 +3532,9 @@ function readSaveFields(farm, opts = {}) {
                 cutShare: isFinite(cutShare) ? cutShare : null
             });
         }
-        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive };
+        // mapFieldCount: every field on the map, owned or not ("Fields from game" says how many are yours).
+        const mapFieldCount = (fxText.match(/<field\s+id="\d+"/g) || []).length;
+        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive, mapFieldCount };
     } catch (e) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
@@ -4469,6 +4471,40 @@ function listSaveFarms(pathToFile) {
     } catch (e) {
         return [];
     }
+}
+
+// Multiplayer save: which of its farms is the player's. Asked once, before
+// "Fields from game" takes fields from it — farm 1 picked silently can be
+// someone else's. The choice in Settings counts as an answer too.
+// -> true to go on, false when cancelled.
+async function confirmGameFarm(farm) {
+    const farms = listSaveFarms(farm.saveGamePath);
+    if (farms.length < 2 || farm.gameFarmConfirmed) return true;
+    const current = gameFarmIdOf(farm);
+    const money = f => isFinite(f.money) ? ' · ' + finMoney(f.money) : '';
+    const ok = await showDialog({
+        title: t('gameFarmAskTitle'),
+        bodyHtml: `<p>${escapeHtml(t('gameFarmAskBody'))}</p>
+            <label class="settings-field"><span>${t('gameFarmLabel')}</span><select id="game-farm-ask">${farms.map(f =>
+                `<option value="${escapeHtml(f.id)}" ${f.id === current ? 'selected' : ''}>${escapeHtml(f.name || t('gameFarmUnnamed'))} (#${escapeHtml(f.id)})${money(f)}</option>`).join('')}</select></label>`,
+        confirmText: t('confirm'),
+        cancelText: t('cancel'),
+        icon: 'fa-people-group'
+    });
+    const pick = document.getElementById('game-farm-ask');
+    if (ok !== true || !pick) return false;
+    farm.gameFarmId = pick.value;
+    farm.gameFarmConfirmed = true;
+    useSaveFarm(farm);
+    return true;
+}
+
+// Name of the farm "Fields from game" read, for its message ('' for a single-farm save).
+function gameFarmNameOf(farm) {
+    const farms = farm && farm.saveGamePath ? listSaveFarms(farm.saveGamePath) : [];
+    if (farms.length < 2) return '';
+    const f = farms.find(x => x.id === gameFarmIdOf(farm));
+    return f ? `${f.name || t('gameFarmUnnamed')} (#${f.id})` : '';
 }
 
 // Fills in farm.gameFarmId the first time a save is read: the only farm in
@@ -6311,10 +6347,12 @@ if (saveSettingsBtn) {
                     if (target.saveGamePath !== pathToFile) {
                         // Another save: pick its farm again from scratch.
                         delete target.gameFarmId;
+                        delete target.gameFarmConfirmed;
                         target.saveGamePath = pathToFile;
                         resolveGameFarmId(target);
                     } else if (gameFarmRow && !gameFarmRow.hidden && gameFarmSelect && gameFarmSelect.value) {
                         target.gameFarmId = gameFarmSelect.value;
+                        target.gameFarmConfirmed = true;
                     }
                     useSaveFarm(target);
                     const newData = readGameSave(pathToFile);

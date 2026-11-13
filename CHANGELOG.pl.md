@@ -2,6 +2,11 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
+## 0.11.3 — unreleased
+
+**Poprawki**
+- **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.
+
 ## 0.11.2 — 2026-11-08
 
 **Nowe**

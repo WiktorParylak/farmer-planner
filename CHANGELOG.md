@@ -2,6 +2,11 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.11.3 — unreleased
+
+**Fixed**
+- **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.
+
 ## 0.11.2 — 2026-11-08
 
 **New**

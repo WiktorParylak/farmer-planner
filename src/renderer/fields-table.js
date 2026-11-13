@@ -2522,6 +2522,7 @@ async function loadFieldsFromGame() {
     const farm = allFarms.find(f => f.id === currentFarmId);
     if (!farm || isEditMode) return;
     useSaveFarm(farm);
+    if (farm.saveGamePath && !(await confirmGameFarm(farm))) return;
     const save = readSaveFields(farm, { saved: true });
     if (!save.ok) { await showNotice(t('loadFieldsTitle'), t('loadFieldsNoSave'), true); return; }
 
@@ -2574,9 +2575,24 @@ async function loadFieldsFromGame() {
     syncWeedsFromSave(farm);
     saveFarmData(farm);
     renderSeasonView();
-    const msg = t('loadFieldsDone').replace('{a}', added).replace('{h}', areas).replace('{s}', sown)
-        + (keptManual ? ' ' + t('loadFieldsKeptManual').replace('{n}', keptManual) : '');
-    await showNotice(t('loadFieldsTitle'), msg);
+    await showNotice(t('loadFieldsTitle'), loadFieldsMessage({
+        own: save.fields.length, all: save.mapFieldCount, added, areas, sown, keptManual,
+        farmName: gameFarmNameOf(farm), noPf: !usePfArea
+    }));
+}
+
+// The "Fields from game" summary: how many of the map's fields are on the
+// player's land (only those are added), which farm of a multiplayer save that
+// is, and why no area came from the game without Precision Farming.
+function loadFieldsMessage({ own, all, added, areas, sown, keptManual, farmName, noPf }) {
+    const lines = [];
+    if (farmName) lines.push(t('loadFieldsFarm').replace('{farm}', farmName));
+    if (all) lines.push(t('loadFieldsOwned').replace('{own}', own).replace('{all}', all));
+    lines.push(t('loadFieldsDone').replace('{a}', added).replace('{h}', areas).replace('{s}', sown)
+        + (keptManual ? ' ' + t('loadFieldsKeptManual').replace('{n}', keptManual) : ''));
+    lines.push(t('loadFieldsOwnedHint'));
+    if (noPf) lines.push(t('loadFieldsNoPfArea'));
+    return lines.join('\n');
 }
 
 const loadFieldsBtn = document.getElementById('load-fields-btn');
