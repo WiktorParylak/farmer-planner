@@ -6,6 +6,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 **Nowe**
 - **Dwa przyciski płodozmianu**: *Dostosuj zaplanowane rośliny do płodozmianu* daje polom w cyklu uprawę z ich kroku zamiast innej zaplanowanej (obsiane pola i kroki z ugorem zostają bez zmian), a *Zaplanuj płodozmian do zaplanowanych pól* daje polom z uprawą bez cyklu ten cykl, który ma krok z tą uprawą i najlepiej pasuje do ostatnich sezonów, bez zmiany uprawy. Oba najpierw pokazują listę i dają się cofnąć.
+- **Nieużywane mody we wszystkich zapisach**: zakładka *Porównaj z zapisem* w menedżerze modów zaczyna od *Wszystkie zapisy* i pokazuje mody, których nie używa żaden zapis. Mody potrzebne innym modom (zależności z modDesc, także pośrednie) liczą się jako używane, z informacją, który mod ich potrzebuje. Zaznacz je albo kliknij *Zaznacz wszystkie nieużywane*, a potem przenieś do innej biblioteki albo usuń (do Kosza). Zaznaczenie nie przechodzi już z jednej zakładki do drugiej.
 
 **Zmiany**
 - **Prostsza karta pola w trybie edycji**: na karcie nie ma już stanu, orki i wapna. Ustawiasz je w oknie pola albo kliknięciem w tabeli, a zapis trybu edycji zostawia je bez zmian. Pasek kilku pól dalej oznacza je jako obsiane albo orane i mówi, co ustawił.

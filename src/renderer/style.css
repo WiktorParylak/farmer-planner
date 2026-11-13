@@ -11023,6 +11023,15 @@ button.mm-badge {
   margin-left: 6px;
 }
 
+.mm-cmp.mm-cmp-pick {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.mm-cmp-pick.is-picked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
 .mm-save-pick {
   max-width: 420px;
 }

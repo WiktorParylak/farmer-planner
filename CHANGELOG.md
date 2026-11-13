@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **New**
 - **Two crop rotation buttons**: *Adjust planned crops to the rotation* gives fields on a cycle the crop of their step in place of another planned one (sown fields and fallow steps stay as they are), and *Plan the rotation for planned fields* gives fields with a crop and no cycle the cycle that has a step of that crop and fits their last seasons best, keeping the crop. Both show the list first and can be undone.
+- **Unused mods across all savegames**: the mod manager's *Compare with a save* starts with *All savegames* and lists the mods no savegame uses, counting the mods other mods need (modDesc dependencies, all the way down) as used and showing which mod needs them. Tick them, or *Select all unused*, then move them to another library or delete them (to the Recycle Bin). A selection no longer carries over from one tab to another.
 
 **Changed**
 - **A simpler field card in Edit**: the card no longer has the state, tillage and lime. You set them in the field window or by clicking in the table, and saving Edit keeps them as they were. The bar for several fields still marks them sown or ploughed, and says what it set.
