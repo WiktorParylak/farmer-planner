@@ -4,6 +4,9 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 ## 0.11.3 — unreleased
 
+**Zmiany**
+- **Prostsza karta pola w trybie edycji**: na karcie nie ma już stanu, orki i wapna. Ustawiasz je w oknie pola albo kliknięciem w tabeli, a zapis trybu edycji zostawia je bez zmian. Pasek kilku pól dalej oznacza je jako obsiane albo orane i mówi, co ustawił.
+
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.
 

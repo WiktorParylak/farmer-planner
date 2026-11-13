@@ -4,6 +4,9 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.11.3 — unreleased
 
+**Changed**
+- **A simpler field card in Edit**: the card no longer has the state, tillage and lime. You set them in the field window or by clicking in the table, and saving Edit keeps them as they were. The bar for several fields still marks them sown or ploughed, and says what it set.
+
 **Fixed**
 - **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.
 

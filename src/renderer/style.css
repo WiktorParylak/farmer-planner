@@ -3793,25 +3793,8 @@ span.tillage-switch-option {
 }
 
 /* auto-fill (not auto-fit) keeps the columns lined up with the row above. */
-.field-card-row--grid.field-card-row--catch {
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-}
-
 .field-card .fc-cell[hidden] {
   display: none;
-}
-
-.field-card .treatments-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-}
-
-.fc-chip-text {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--color-ink-soft);
 }
 
 .animal-mods-info {
@@ -4159,7 +4142,9 @@ details[open] > :not(summary) {
 
 .field-card-row--grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  /* auto-fill: the crop row lines up with the catch-crop row under it
+     instead of stretching its two cells across the card. */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-items: start;
 }
 
@@ -4233,17 +4218,6 @@ details[open] > :not(summary) {
 
 .fc-cell--area .field-area {
   width: 100%;
-}
-
-.fc-cell--state {
-  cursor: pointer;
-}
-
-.fc-cell--state .field-state {
-  width: 22px;
-  height: 22px;
-  cursor: pointer;
-  align-self: flex-start;
 }
 
 /* Several fields at once (Edit mode): the bar above the cards and the
@@ -6941,22 +6915,6 @@ select:focus-visible,
   font-size: var(--fs-base);
 }
 
-/* Field card: checkbox + its caption (state "Sown", rolling "I want to roll"). */
-.fc-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  font-size: var(--fs-base);
-  color: var(--color-ink);
-}
-
-.fc-cell--state .field-rolling {
-  width: 22px;
-  height: 22px;
-  cursor: pointer;
-}
-
 /* Main table: the state badge is a button that toggles sown / not sown. */
 .state-toggle {
   padding: 0;
@@ -7021,10 +6979,6 @@ button.treatment-chip--lime.is-warning {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
   font-weight: 700;
-}
-
-.fc-check input[type="checkbox"] {
-  accent-color: var(--color-primary);
 }
 
 /* Table chips you can click (lime, rolling). */

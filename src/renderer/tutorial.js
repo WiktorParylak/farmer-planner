@@ -488,9 +488,6 @@ const TUTORIAL_CHAPTERS = [
             tutInput('d5', tutInCard('input.field-area'), () => tutNumValue(tutInCard('input.field-area')()) > 0, '3.5'),
             tutInput('d6', tutInCard('select.field-crop'), () => { const el = tutInCard('select.field-crop')(); return !!el && el.value !== ''; }, 'Wheat'),
             tutInput('d7', tutInCard('select.field-sow'), () => { const el = tutInCard('select.field-sow')(); return !!el && el.value !== ''; }, 'SEPTEMBER'),
-            tutClick('d8', tutInCard('.tillage-switch-option--plowed'), () => { const el = tutInCard('.tillage-switch-option--plowed')(); return !!el && el.classList.contains('is-active'); }),
-            tutClick('d9', tutInCard('.treatment-chip--lime'), () => { const el = tutInCard('.treatment-chip--lime')(); return !!el && (el.classList.contains('is-active') || el.classList.contains('is-warning')); }),
-            tutClick('d10', tutInCard('input.field-state'), () => { const el = tutInCard('input.field-state')(); return !!el && el.checked; }),
             tutClick('d11', '#edit-season-btn', () => isEditMode === false, {
                 enter: () => { const el = tutInCard('input.field-number')(); tut.newFieldNumber = el ? el.value.trim() : ''; }
             }),

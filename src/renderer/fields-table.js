@@ -117,33 +117,6 @@ function limeInfoText(field, idx, farm) {
     return parts.filter(Boolean).join(' ');
 }
 
-// Cycles the lime chip: off -> active (fresh application) -> dismissed (off)
-// from either active or warning. Manure/fertilizer keep the simpler generic
-// toggle since they don't carry this multi-season state.
-window.toggleLimeChip = function (btn) {
-    if (btn.classList.contains('is-active') || btn.classList.contains('is-warning')) {
-        btn.classList.remove('is-active', 'is-warning');
-        // Clear the tracked application season so that turning this back on
-        // later is treated as a fresh application, not a resumed old one.
-        delete btn.dataset.limeSeason;
-        delete btn.dataset.limePh;
-        // Visual state lives in the inline --lime-* vars — clear them too, or
-        // the chip looks unchanged.
-        btn.style.removeProperty('--lime-color');
-        btn.style.removeProperty('--lime-pct');
-        btn.classList.remove('lime-strong');
-        btn.title = t('limeEditTitle');
-    } else {
-        btn.classList.add('is-active');
-        btn.classList.remove('is-warning');
-        // Fresh application = ideal pH: show the chip full right away.
-        btn.style.setProperty('--lime-color', limeChipColor(LIME_PH_IDEAL));
-        btn.style.setProperty('--lime-pct', '100%');
-        btn.classList.add('lime-strong');
-        btn.title = `${t('limeEditTitle')} (100% pH)`;
-    }
-};
-
 // Reads which crops were on each field number in the season right before the
 // one being viewed (a split field has several), so we can flag "same crop as
 // last season". FS25 has no crop-rotation bonus, so a repeat is the only
@@ -1232,7 +1205,7 @@ function setCardSelected(row, on) {
 // What a selected card passes on to the other selected ones. Number, area
 // and name stay per field.
 const MIRRORED_INPUTS = ['field-crop', 'field-sow', 'field-catch-crop', 'field-catch-sow',
-    'field-state', 'field-lease', 'field-lease-seasons', 'field-lease-then'];
+    'field-lease', 'field-lease-seasons', 'field-lease-then'];
 
 function selectedEditRows(except) {
     return fieldsBody ? [...fieldsBody.querySelectorAll('tr.field-edit-tr.is-bulk-selected')].filter(r => r !== except) : [];
@@ -1294,7 +1267,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', e => {
     const row = e.target.closest('tr.field-edit-tr');
     if (!row) return;
     const onBox = !!e.target.closest('.field-card-select');
-    if (!onBox && e.target.closest('input, select, textarea, button, a, .tillage-switch-option')) return;
+    if (!onBox && e.target.closest('input, select, textarea, button, a')) return;
     if (onBox && e.target.tagName !== 'INPUT') e.preventDefault();   // the label would toggle again
     const want = !!e.shiftKey && !(e.ctrlKey || e.metaKey);
     row.classList.toggle('is-bulk-selected', !want);
@@ -1428,13 +1401,16 @@ function applyEditBulk(action, bar) {
             row.querySelector('.field-catch-sow').innerHTML = generateMonthOptionsHtml(crop, bar.querySelector('#eb-catch-sow').value || null);
             syncCardOptionalCells(row);
         } else if (action === 'sown' || action === 'unsown') {
-            row.querySelector('.field-state').checked = action === 'sown';
+            // Not on the card: the row carries it to the save (see buildFieldEditCard).
+            row.dataset.state = action === 'sown' ? 'Planted' : 'To Plant';
+            flashMirrored(row);
         } else {
-            row.querySelectorAll('.tillage-switch-option').forEach(chip => chip.classList.remove('is-active'));
-            const chip = action === 'plowed' ? '.tillage-switch-option--plowed' : (action === 'noTill' ? '.tillage-switch-option--notill' : null);
-            if (chip) row.querySelector(chip).classList.add('is-active');
+            row.dataset.tillage = action === 'plowed' || action === 'noTill' ? action : '';
+            flashMirrored(row);
         }
     });
+    const label = { sown: t('planted'), unsown: t('toPlant'), plowed: t('tillagePlowed'), noTill: t('tillageNoTill'), noTillage: t('bulkNoTillageHint') }[action];
+    if (label) showAutoSyncToast(t('bulkSetDone').replace('{what}', label).replace('{n}', rows.length));
 }
 
 // The job badge / line in the table: dir 1 ticks off the next job (left click
@@ -2084,26 +2060,21 @@ function buildFieldEditCard(field, opts) {
         : generateMonthOptionsHtml(field.crop, field.sowingMonth);
     const catchMonthOptions = generateMonthOptionsHtml(field.catchCrop, field.catchSowingMonth);
 
-    const isChecked = field.state === 'Planted' ? 'checked' : '';
     const lease = field.lease || null;
     const key = (field.number || '').toString().trim();
     const savedSize = (farm && farm.fieldSizes && key && farm.fieldSizes[key] !== undefined) ? farm.fieldSizes[key] : '';
+    // State, tillage and lime aren't on the card (the field window and the
+    // table set them): they ride along on the row and go back unchanged on
+    // save — the bulk bar's Sown / Plough buttons write them here too.
     // opts.origIdx = this field's real index in farm.fields (not a position in
-    // a sorted render copy) — needed so the soil-mix lookup behind the pH
-    // model keys the same way it does everywhere else (buildSuppliesFertRows,
-    // the read-only fields table, etc).
-    const limePhForCard = isNew ? null : resolveLimePh(field, (farm && farm.currentSeason) || 1, getFieldSoilMix(fertPlanSoilKey(field, opts.origIdx), getSupplyRates()));
-    const limeStatusForCard = isNew ? 'off' : (limePhForCard == null ? 'off' : (limePhForCard > 0.75 ? 'active' : 'warning'));
-    // is-active/is-warning are kept purely as state markers for
-    // toggleLimeChip() and the edit-save handler (they read these classes to
-    // know on/off + active-vs-warning) — the visual color now comes from the
-    // inline .lime-fill style below, not from CSS on these classes.
-    const limeCls = limeStatusForCard === 'active' ? 'is-active' : (limeStatusForCard === 'warning' ? 'is-warning' : '');
-    const limeColorForCard = limeChipColor(limePhForCard);
+    // a sorted render copy), so the soil-mix lookup behind the pH model keys
+    // the same way it does everywhere else.
+    const limePh = isNew ? null : resolveLimePh(field, (farm && farm.currentSeason) || 1, getFieldSoilMix(fertPlanSoilKey(field, opts.origIdx), getSupplyRates()));
     const limeSeason = (field.limeAppliedSeason !== undefined && field.limeAppliedSeason !== null) ? field.limeAppliedSeason : '';
 
     return `
-        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}">
+        <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}"
+            data-state="${field.state === 'Planted' ? 'Planted' : 'To Plant'}" data-tillage="${field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : ''}" data-lime-season="${limeSeason}" data-lime-ph="${limePh != null ? limePh : ''}">
             <td colspan="7">
                 <div class="field-card">
                     <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
@@ -2120,10 +2091,6 @@ function buildFieldEditCard(field, opts) {
                             <span class="fc-label">${t('thFieldHa')}</span>
                             <input type="text" class="edit-input field-area" value="${field.area || ''}" data-orig="${escapeHtml(String(field.area || ''))}" placeholder="0.00">
                         </div>
-                        <label class="fc-cell fc-cell--state">
-                            <span class="fc-label">${t('thState')}</span>
-                            <span class="fc-check"><input type="checkbox" class="edit-input field-state fp-check" ${isChecked}> <span class="fc-check-text">${t('planted')}</span></span>
-                        </label>
                     </div>
                     <div class="field-card-row field-card-row--grid">
                         <div class="fc-cell">
@@ -2133,23 +2100,6 @@ function buildFieldEditCard(field, opts) {
                         <div class="fc-cell">
                             <span class="fc-label">${t('thSowingMth')}</span>
                             <select class="edit-input field-sow">${monthOptions}</select>
-                        </div>
-                        <div class="fc-cell">
-                            <span class="fc-label">${t('thTillage')}</span>
-                            <div class="tillage-switch">
-                                <button type="button" class="tillage-switch-option tillage-switch-option--plowed ${field.tillage === 'plowed' ? 'is-active' : ''}" onclick="toggleTillageChip(this)">${t('tillagePlowed')}</button>
-                                <button type="button" class="tillage-switch-option tillage-switch-option--notill ${field.tillage === 'noTill' ? 'is-active' : ''}" onclick="toggleTillageChip(this)">${t('tillageNoTill')}</button>
-                            </div>
-                        </div>
-                        <div class="fc-cell">
-                            <span class="fc-label">${t('thSoil')}</span>
-                            <div class="treatments-cell">
-                                <button type="button" class="treatment-chip treatment-chip--lime ${limeCls}${limePhForCard != null && limePhForCard >= 0.5 ? ' lime-strong' : ''}"${limeColorForCard ? ` style="--lime-color:${limeColorForCard}; --lime-pct:${Math.round(limePhForCard * 100)}%;"` : ''} data-lime-season="${limeSeason}" data-lime-ph="${limePhForCard != null ? limePhForCard : ''}" onclick="toggleLimeChip(this)" title="${t('limeEditTitle')}${limePhForCard != null ? ' (' + Math.round(limePhForCard * 100) + '% pH)' : ''}">
-                                    <span class="lime-fill"></span>
-                                    <span class="lime-letter" data-letter="${t('limeLetter')}">${t('limeLetter')}</span>
-                                </button>
-                                <span class="fc-chip-text">${t('work_lime')}</span>
-                            </div>
                         </div>
                     </div>
                     <div class="field-card-row field-card-row--grid field-card-row--catch">
@@ -2244,26 +2194,6 @@ if (fieldsBody) fieldsBody.addEventListener('change', e => {
     const row = e.target.closest('tr');
     if (row) syncCardOptionalCells(row);
 });
-
-// Toggles between "Plowed" and "No-till" for a field — mutually exclusive,
-// like a radio pair: selecting one clears the other, clicking the already
-// active one clears the selection entirely.
-window.toggleTillageChip = function (btn) {
-    const row = btn.closest('tr');
-    const wasActive = btn.classList.contains('is-active');
-    row.querySelectorAll('.tillage-switch-option').forEach(chip => chip.classList.remove('is-active'));
-    if (!wasActive) btn.classList.add('is-active');
-    // Selected cards follow (several fields at once).
-    if (isEditMode && row.classList.contains('is-bulk-selected')) {
-        const plowed = row.querySelector('.tillage-switch-option--plowed').classList.contains('is-active');
-        const noTill = row.querySelector('.tillage-switch-option--notill').classList.contains('is-active');
-        selectedEditRows(row).forEach(other => {
-            other.querySelector('.tillage-switch-option--plowed').classList.toggle('is-active', plowed);
-            other.querySelector('.tillage-switch-option--notill').classList.toggle('is-active', noTill);
-            flashMirrored(other);
-        });
-    }
-};
 
 window.deleteFieldRow = function (btn) {
     btn.closest('tr').remove();
@@ -2723,32 +2653,21 @@ function collectEditedFields(farm) {
         const areaInput = row.querySelector('.field-area');
         const areaEdited = areaInput && areaInput.dataset.orig !== undefined && areaInput.value !== areaInput.dataset.orig;
 
-        const checkbox = row.querySelector('.field-state');
-        const stateValue = (checkbox && checkbox.checked) ? "Planted" : "To Plant";
-
-        const limeChip = row.querySelector('.treatment-chip--lime');
-        const plowedChip = row.querySelector('.tillage-switch-option--plowed');
-        const noTillChip = row.querySelector('.tillage-switch-option--notill');
-
-        let tillage = null;
-        if (plowedChip && plowedChip.classList.contains('is-active')) tillage = 'plowed';
-        else if (noTillChip && noTillChip.classList.contains('is-active')) tillage = 'noTill';
-
-        // If the lime chip is on (active or still showing the red
-        // warning), keep whichever season/pH it was originally
-        // applied at — don't reset the clock just because the
-        // season got saved. Only a fresh off->on click resets both
-        // to "now, ideal pH".
+        // State, tillage and lime come back as the card got them (or as the
+        // bulk bar set them). A limed field keeps the season and pH it was
+        // limed at: saving doesn't restart the clock. data-lime-ph was stamped
+        // from resolveLimePh() at render time, so it's right even for a field
+        // that predates the pH model.
+        const stateValue = row.dataset.state === 'Planted' ? 'Planted' : 'To Plant';
+        const tillage = row.dataset.tillage === 'plowed' || row.dataset.tillage === 'noTill' ? row.dataset.tillage : null;
         let limeAppliedSeason = null;
         let limePh = null;
-        if (limeChip && (limeChip.classList.contains('is-active') || limeChip.classList.contains('is-warning'))) {
-            const original = limeChip.dataset.limeSeason ? parseInt(limeChip.dataset.limeSeason) : null;
+        if (row.dataset.limePh) {
+            const original = row.dataset.limeSeason ? parseInt(row.dataset.limeSeason) : null;
             const isFresh = original === null || isNaN(original);
             limeAppliedSeason = isFresh ? (farm.currentSeason || 1) : original;
-            // dataset.limePh was stamped from resolveLimePh() at render time, so
-            // it's already correct even for a field that predates this pH model.
-            const originalPh = limeChip.dataset.limePh !== '' ? parseFloat(limeChip.dataset.limePh) : null;
-            limePh = isFresh ? LIME_PH_IDEAL : (originalPh !== null && !isNaN(originalPh) ? originalPh : LIME_PH_IDEAL);
+            const originalPh = parseFloat(row.dataset.limePh);
+            limePh = isFresh || isNaN(originalPh) ? LIME_PH_IDEAL : originalPh;
         }
 
         const catchCropSelect = row.querySelector('.field-catch-crop');
