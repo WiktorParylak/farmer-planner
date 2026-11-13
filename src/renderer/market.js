@@ -150,7 +150,8 @@ function marketInputPrice(farm, market, fillType) {
 // the save has no price.
 function fieldInputCostPerHa(farm, field, idx, crop, rates, market, limeLitresByField) {
     const soilMix = getFieldSoilMix(fertPlanSoilKey(field, idx), rates);
-    const price = ft => marketInputPrice(farm, market, ft);
+    // A season's saved prices bring the input prices paid then.
+    const price = ft => (market.inputs && ft in market.inputs ? market.inputs[ft] : marketInputPrice(farm, market, ft));
     const seedPrice = price(MARKET_INPUT_FILLTYPES.seed);
     const fertPrice = price(MARKET_INPUT_FILLTYPES.fertilizer);
     const limePrice = price(MARKET_INPUT_FILLTYPES.lime);
@@ -175,13 +176,43 @@ function marketLimeByField(farm, rates) {
     return out;
 }
 
+// What a season's archive keeps of the market when it ends: the price of each
+// of its crops and of the inputs in that month, per 1000 l. null without prices.
+// { month, prices: { FILLTYPE: price }, inputs: { SEEDS, FERTILIZER, LIME } }
+function seasonMarketSnapshot(farm, fields) {
+    const market = getFarmMarket(farm);
+    const month = String(farm && farm.month || '').toUpperCase();
+    if (!market || marketPeriodIndex(month) < 0) return null;
+    const prices = {};
+    (fields || []).forEach(f => [f.crop, f.catchCrop].filter(Boolean).forEach(crop => {
+        const ft = marketCropFillType(market, crop);
+        const p = ft ? marketPrice(market, ft, month) : null;
+        if (p !== null) prices[ft] = p;
+    }));
+    const inputs = {};
+    Object.values(MARKET_INPUT_FILLTYPES).forEach(ft => { inputs[ft] = marketInputPrice(farm, market, ft); });
+    return { month, prices, inputs };
+}
+
+// A saved snapshot in the shape of readSaveMarket: each price in its month only.
+function marketFromSnapshot(snap) {
+    const i = marketPeriodIndex(snap && snap.month);
+    if (i < 0) return null;
+    const prices = {};
+    Object.entries(snap.prices || {}).forEach(([ft, p]) => { prices[ft] = MARKET_MONTHS.map((_, k) => (k === i ? p : null)); });
+    return { prices, demands: [], inputs: { ...(snap.inputs || {}) } };
+}
+
 // Per crop of the season: price now, revenue of its predicted yield, input
 // costs and gross margin per hectare (seed, mineral fertilizer, lime — no
 // machines, fuel or wages). yieldRows: buildYieldForecastRows(...).rows.
-function buildCropMarginRows(farm, fields, rates, yieldRows) {
-    const market = getFarmMarket(farm);
+// past: { market, month } for a season already over (no lime: what it needed
+// then isn't kept).
+function buildCropMarginRows(farm, fields, rates, yieldRows, past = null) {
+    const market = past ? past.market : getFarmMarket(farm);
     if (!market) return null;
-    const limeByField = marketLimeByField(farm, rates);
+    const month = past ? past.month : farm.month;
+    const limeByField = past ? {} : marketLimeByField(farm, rates);
     const costs = {};
     (fields || []).forEach((f, i) => {
         const area = parseFloat(f.area) || 0;
@@ -197,7 +228,7 @@ function buildCropMarginRows(farm, fields, rates, yieldRows) {
     const byCrop = {};
     yieldRows.forEach(r => {
         const fillType = marketCropFillType(market, r.crop);
-        const summary = fillType ? marketPriceSummary(market, fillType, farm.month) : null;
+        const summary = fillType ? marketPriceSummary(market, fillType, month) : null;
         const price = summary ? summary.now : null;
         const revenue = price !== null && r.known ? r.litres * price / 1000 : null;
         const c = costs[r.crop] || { area: r.area, cost: 0, known: false };

@@ -23,6 +23,7 @@ const VIEWS = {
     'work-window': `openWorkModal(0)`,
     'rotation': `document.querySelector('.sidebar-item[data-view="rotation"]').click()`,
     'yields-prices': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click()`,
+    'yields-prices-past': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click(); document.querySelector('.yield-season-arrow[data-season]').click()`,
     'notes': `document.querySelector('.sidebar-item[data-view="notes"]').click()`,
     'animals': `document.querySelector('.sidebar-item[data-view="animals"]').click()`,
     'feed-plan': `document.querySelector('.sidebar-item[data-view="feedplan"]').click()`,

@@ -2396,9 +2396,16 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     season = Math.min(Math.max(1, parseInt(season) || currentSeason), currentSeason);
     const isPast = season < currentSeason;
 
-    const rates = getSupplyRates();
-    const data = buildYieldForecastRows(seasonCropRows(farm, season), rates, isPast ? null : farm);
-    const showMoisture = !isPast && !!MOISTURE_DATA;
+    // A past season: what its archive kept (rates, moisture, prices at its end).
+    const archive = isPast ? loadSeasonArchive(farm, season) : null;
+    const rates = archive && archive.supplyRates ? { ...getSupplyRates(), ...archive.supplyRates } : getSupplyRates();
+    const pastMoisture = archive && archive.moisture && archive.moisture.crops ? archive.moisture : null;
+    const cropRows = seasonCropRows(farm, season);
+    // Its moisture shows, but nothing is harvested "now" (no month), so the litres stay as planned.
+    const data = isPast
+        ? withMoistureData(pastMoisture, () => buildYieldForecastRows(cropRows, rates, pastMoisture ? { month: '' } : null))
+        : buildYieldForecastRows(cropRows, rates, farm);
+    const showMoisture = isPast ? !!pastMoisture : !!MOISTURE_DATA;
     const showLoss = !isPast && data.rows.some(r => r.state);
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
@@ -2418,12 +2425,19 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    // Prices and margin: this season only, from the save's price curve.
-    const margin = isPast ? null : buildCropMarginRows(farm, seasonCropRows(farm, season), rates, data.rows);
+    // Prices and margin: this season from the save's price curve; a past one at
+    // the prices of the month it ended in, or (archived before they were kept) today's.
+    const pastSnap = archive && archive.market ? marketFromSnapshot(archive.market) : null;
+    const todayMarket = isPast && !pastSnap ? getFarmMarket(farm) : null;
+    const margin = !isPast ? buildCropMarginRows(farm, cropRows, rates, data.rows)
+        : pastSnap ? buildCropMarginRows(farm, cropRows, rates, data.rows, { market: pastSnap, month: archive.market.month })
+            : todayMarket ? buildCropMarginRows(farm, cropRows, rates, data.rows, { market: todayMarket, month: farm.month }) : null;
+    const priceHead = pastSnap ? t('yieldColPriceEnd').replace('{month}', translateMonth(archive.market.month))
+        : (todayMarket ? t('yieldColPrice') + ' ≈' : t('yieldColPrice'));
     const money = v => v === null || v === undefined ? '–' : finMoney(v);
     html += `<table class="data-table supply-table yield-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
-        ${margin ? `<th>${t('yieldColPrice')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
+        ${margin ? `<th>${priceHead}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
     let revenueTotal = 0, costTotal = 0, revenueKnown = false;
     data.rows.forEach(r => {
@@ -2460,9 +2474,11 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         <td colspan="${2 + (showMoisture ? 1 : 0) + (showLoss ? 1 : 0)}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
         ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
             <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
-    if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
+    if (margin && todayMarket) html += `<p class="hub-panel-note">${t('yieldPastTodayPrices').replace('{n}', season)}</p>`;
+    if (margin) html += `<p class="hub-panel-note">${t(isPast ? 'yieldMarginNotePast' : 'yieldMarginNote')}</p>`;
     else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t(fs.existsSync(farm.saveGamePath) ? 'yieldNoPricesNote' : 'yieldNoSaveNote')}</p>`;
-    if (margin) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
+    // The price curve and the great demands are about today.
+    if (margin && !isPast) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
@@ -5268,6 +5284,27 @@ function loadSeasonFields(farm, seasonNum) {
     }
 }
 
+// A past season's whole archive (season_N.json), or null.
+function loadSeasonArchive(farm, seasonNum) {
+    if (!farm || seasonNum >= (farm.currentSeason || 1)) return null;
+    try { return JSON.parse(fs.readFileSync(path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum}.json`), 'utf-8')); }
+    catch (e) { return null; }
+}
+
+// The supply rates a season's yields and costs were counted with (per-crop
+// seed / N / yield overrides and the buffer), kept in its archive.
+function archivedSupplyRates() {
+    const r = getSupplyRates();
+    return JSON.parse(JSON.stringify({ crops: r.crops || {}, bufferPct: r.bufferPct }));
+}
+
+// Runs fn with the moisture of another time in place of today's.
+function withMoistureData(data, fn) {
+    const today = MOISTURE_DATA;
+    MOISTURE_DATA = data;
+    try { return fn(); } finally { MOISTURE_DATA = today; }
+}
+
 // Every crop of a season, for totals: its archive, or this season's crops on the
 // fields and those already off them (after the live rows, whose indexes count).
 function seasonCropRows(farm, seasonNum) {
@@ -5652,7 +5689,12 @@ async function runNewSeason({ intro = '' } = {}) {
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
                 avgHealth: archivedAvgHealth,
-                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {}))
+                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {})),
+                // For "Yields and prices" one season back: the prices of the
+                // month it ended in, the moisture then, and the rates it was planned with.
+                market: seasonMarketSnapshot(farm, seasonRows),
+                moisture: MOISTURE_DATA ? JSON.parse(JSON.stringify({ moisture: MOISTURE_DATA.moisture, boosts: MOISTURE_DATA.boosts, crops: MOISTURE_DATA.crops })) : null,
+                supplyRates: archivedSupplyRates()
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 

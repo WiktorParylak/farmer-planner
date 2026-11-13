@@ -187,3 +187,49 @@ test('season: the timeline heads each season with its game years', async () => {
     assert.ok(heads[0].includes(`${t('season')} ${s}`) && heads[0].includes(`${y}/${y + 1}`), heads[0]);
     assert.ok(heads[1].includes(`${t('season')} ${s + 1}`) && heads[1].includes(`${y + 1}/${y + 2}`), heads[1]);
 });
+
+test('season: a new season keeps the prices of its last month, its moisture and its rates', async () => {
+    const farm = await freshFarm();
+    const season = farm.currentSeason;
+    await newSeason();
+    const archive = JSON.parse(fs.readFileSync(archivePath(farm, season), 'utf-8'));
+    const i = MARKET_MONTHS.indexOf(farm.month);
+    assert.strictEqual(archive.market.month, farm.month);
+    Object.entries(archive.market.prices).forEach(([ft, p]) => assert.strictEqual(p, farm.devMarket.prices[ft][i], ft));
+    assert.ok(Object.keys(archive.market.prices).length > 0, 'its crops are priced');
+    assert.strictEqual(archive.market.inputs.SEEDS, farm.devMarket.prices.SEEDS[i]);
+    assert.ok(archive.supplyRates && typeof archive.supplyRates.crops === 'object');
+    assert.strictEqual(archive.moisture, null, 'no moisture mod on the test farm');
+});
+
+// "Yields and prices" for one season, drawn into a detached panel.
+function yieldPanel(season) {
+    const title = document.createElement('h2'), body = document.createElement('div');
+    renderYieldForecastPanel(title, body, null, season);
+    return body;
+}
+
+test('yields: a past season shows the prices it ended with, not today\'s', async () => {
+    const farm = await freshFarm();
+    const season = farm.currentSeason;
+    await newSeason();
+    const now = getCurrentFarm();
+    const snap = JSON.parse(fs.readFileSync(archivePath(farm, season), 'utf-8')).market;
+    const before = yieldPanel(season).querySelector('.yield-table').innerHTML;
+    // Prices change after the season: the past one keeps its own.
+    Object.values(now.devMarket.prices).forEach(row => row.forEach((v, k) => { row[k] = v * 3; }));
+    const body = yieldPanel(season);
+    assert.strictEqual(body.querySelector('.yield-table').innerHTML, before);
+    assert.ok(body.querySelector('.yield-table thead').textContent.includes(translateMonth(snap.month)), 'the header names the month');
+    assert.ok(!body.querySelector('.market-spark'), 'no price curve for a past season');
+});
+
+test('yields: a season archived without prices is counted at today\'s, and says so', async () => {
+    const farm = await freshFarm();
+    const body = yieldPanel(1);
+    assert.ok(body.querySelector('.yield-margin'), 'margin columns are there');
+    assert.ok(body.textContent.includes(t('yieldPastTodayPrices').replace('{n}', 1)));
+    assert.ok(body.querySelector('.yield-table thead').textContent.includes('≈'));
+    const two = yieldPanel(farm.currentSeason - 1);
+    assert.ok(!two.textContent.includes(t('yieldPastTodayPrices').replace('{n}', farm.currentSeason - 1)), 'season 2 kept its prices');
+});
