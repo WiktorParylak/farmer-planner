@@ -186,7 +186,7 @@ test('editing: a change right after opening a farm can still be undone', async (
 
 test('editing: opening panels is not a change', async () => {
     await freshFarm();
-    for (const view of ['finance', 'animals', 'supplies', 'rotation', 'storage', 'yieldforecast', 'feedplan', 'notes', 'seasonsummary', 'plan']) {
+    for (const view of ['finance', 'animals', 'breednorms', 'supplies', 'rotation', 'storage', 'yieldforecast', 'feedplan', 'notes', 'seasonsummary', 'plan']) {
         document.querySelector(`.sidebar-item[data-view="${view}"]`).click();
         await wait(60);
     }

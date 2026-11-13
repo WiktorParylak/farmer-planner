@@ -599,19 +599,8 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
             tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
             tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .trend-card, #hub-panel-body .fin-chart'); return charts.length ? charts.slice(0, 3) : null; }),
-            // Folded by default: opened for the step, folded again after.
-            tutInfo('k22', () => {
-                tutAnimalsOverview();
-                const box = tq('#hub-panel-body .breed-norms');
-                if (box && !box.open) { box.open = true; breedNormsOpen = true; }
-                return box;
-            }, {
-                leave: () => {
-                    const box = tq('#hub-panel-body .breed-norms');
-                    if (box) box.open = false;
-                    breedNormsOpen = false;
-                }
-            }),
+            // Its own view in the sidebar, after the Feed planner.
+            hubOpen('k22', 'breednorms'),
             tutInfo('k17', null),
             hubOpen('k18', 'plan')
         ]

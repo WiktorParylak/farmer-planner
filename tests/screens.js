@@ -26,6 +26,7 @@ const VIEWS = {
     'yields-prices-past': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click(); document.querySelector('.yield-season-arrow[data-season]').click()`,
     'notes': `document.querySelector('.sidebar-item[data-view="notes"]').click()`,
     'animals': `document.querySelector('.sidebar-item[data-view="animals"]').click()`,
+    'breed-norms': `document.querySelector('.sidebar-item[data-view="breednorms"]').click()`,
     'feed-plan': `document.querySelector('.sidebar-item[data-view="feedplan"]').click()`,
     'storage': `document.querySelector('.sidebar-item[data-view="storage"]').click()`,
     'supplies': `document.querySelector('.sidebar-item[data-view="supplies"]').click()`,
