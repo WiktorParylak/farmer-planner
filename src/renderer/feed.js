@@ -1438,6 +1438,8 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     const buildings = ((farm && farm.animalBuildings) || []).filter(b => (b.clusters || []).some(c => animalTypeOf(c.subType)));
 
     let html = `<div class="feed-plan"><p class="supply-intro">${t('feedIntroShort')}</p>`;
+    // Notes about where the numbers come from: all at the very bottom.
+    const notes = [];
 
     if (!buildings.length) {
         html += `<p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>`;
@@ -1523,8 +1525,8 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
             cats.forEach(c => { html += renderFeedIngredientTile([c], barnNeed.byCategory[c], feedBalanceFor(c, balance), num); });
             html += `</div>`;
         }
-        if (farm && !farm.saveGamePath) html += `<p class="hub-panel-note">${t('feedStockNoSave')}</p>`;
-        else if (!stock) html += `<p class="hub-panel-note">${t('feedStockNotRead')}</p>`;
+        if (farm && !farm.saveGamePath) notes.push(t('feedStockNoSave'));
+        else if (!stock) notes.push(t('feedStockNotRead'));
 
         // --- 3b. Feed mixers (productions making pig food / TMR / mineral feed) ---
         html += renderFeedMixersSection(farm, Object.keys(barnNeed.heads), num);
@@ -1532,19 +1534,19 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
 
     // --- 4. Settings (collapsed): feed fields, parameters, custom feeds ---
     html += `<details class="feed-settings" ${feedSettingsOpen ? 'open' : ''}>
-        <summary><i class="fa-solid fa-sliders" aria-hidden="true"></i> ${t('feedSettings')}</summary>`;
+        <summary><i class="fa-solid fa-sliders" aria-hidden="true"></i> <span>${t('feedSettings')}</span><i class="fa-solid fa-chevron-down feed-settings-chevron" aria-hidden="true"></i></summary>`;
 
     html += `<div class="hub-panel-subtitle">${t('feedPlanFields')}</div>`;
     if (!supply.rows.length) {
         html += `<p class="hub-panel-note">${t('feedNoFields')}</p>`;
     } else {
         html += `<table class="data-table supply-table feed-table"><thead><tr>
-            <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
-            <th>${t('feedColUse')}</th><th>${t('feedColStraw')}</th><th>${t('feedColYield')}</th></tr></thead><tbody>`;
+            <th>${t('suppliesColField')}</th><th class="is-text">${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
+            <th class="is-text">${t('feedColUse')}</th><th>${t('feedColStraw')}</th><th>${t('feedColYield')}</th></tr></thead><tbody>`;
         supply.rows.forEach(r => {
             const opts = ['sale', ...r.uses].map(u => `<option value="${u}" ${r.use === u ? 'selected' : ''}>${t('feedUse_' + u)}</option>`).join('');
-            html += `<tr><td>${escapeHtml(r.number)}</td><td>${translateCropName(r.crop)}${catchTag(r)}</td><td>${r.area.toFixed(2)} ha</td>
-                <td>${r.use === 'cuts' ? `<span class="feed-use-cuts">${t('feedUseCuts').replace('{n}', r.cuts)}</span>` : `<select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select>`}</td>
+            html += `<tr><td>${escapeHtml(r.number)}</td><td class="is-text">${translateCropName(r.crop)}${catchTag(r)}</td><td>${r.area.toFixed(2)} ha</td>
+                <td class="is-text">${r.use === 'cuts' ? `<span class="feed-use-cuts">${t('feedUseCuts').replace('{n}', r.cuts)}</span>` : `<select class="feed-input feed-use-select" data-key="${escapeHtml(r.key)}">${opts}</select>`}</td>
                 <td>${r.strawPossible ? `<input type="checkbox" class="feed-straw-check" data-key="${escapeHtml(r.key)}" ${plan.strawFields[r.key] ? 'checked' : ''}>` : '–'}</td>
                 <td>${r.litres > 0 ? num(r.litres) + ' l' : '–'}${r.straw > 0 ? `<span class="supply-sub">${feedCategoryLabel('STRAW')}: ${num(r.straw)} l</span>` : ''}</td></tr>`;
         });
@@ -1579,8 +1581,10 @@ function renderFeedPlanPanel(titleEl, bodyEl, modalEl) {
     }
     if (editorHere) html += renderFeedEditor(feedEditorDraft);
 
-    if (demand.unknownSubTypes > 0) html += `<p class="hub-panel-note">${t('feedUnknownAnimals').replace('{n}', demand.unknownSubTypes)}</p>`;
-    html += `<p class="hub-panel-note">${t('feedStockNote')}</p><p class="hub-panel-note">${t('feedPlanNote')}</p></details></div>`;
+    html += `</details>`;
+    if (demand.unknownSubTypes > 0) notes.push(t('feedUnknownAnimals').replace('{n}', demand.unknownSubTypes));
+    notes.push(t('feedStockNote'), t('feedPlanNote'));
+    html += `<div class="feed-notes">${notes.map(n => `<p class="hub-panel-note">${n}</p>`).join('')}</div></div>`;
 
     bodyEl.innerHTML = html;
     wireFeedPlanPanel(bodyEl);

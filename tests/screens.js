@@ -28,6 +28,8 @@ const VIEWS = {
     'animals': `document.querySelector('.sidebar-item[data-view="animals"]').click()`,
     'breed-norms': `document.querySelector('.sidebar-item[data-view="breednorms"]').click()`,
     'feed-plan': `document.querySelector('.sidebar-item[data-view="feedplan"]').click()`,
+    'feed-plan-mixer': `document.querySelector('.sidebar-item[data-view="feedplan"]').click(); (document.querySelector('#hub-panel-body .mixer') || document.querySelector('#hub-panel-body .feed-ing-grid')).scrollIntoView({ block: 'start' })`,
+    'feed-plan-bottom': `document.querySelector('.sidebar-item[data-view="feedplan"]').click(); (() => { const d = document.querySelector('#hub-panel-body .feed-settings'); d.open = true; setTimeout(() => document.querySelector('#hub-panel-body .feed-notes').scrollIntoView({ block: 'end' }), 50); })()`,
     'storage': `document.querySelector('.sidebar-item[data-view="storage"]').click()`,
     'supplies': `setSetting('suppliesTab', 'seed'); document.querySelector('.sidebar-item[data-view="supplies"]').click()`,
     'supplies-fertilizer': `setSetting('suppliesTab', 'fert'); document.querySelector('.sidebar-item[data-view="supplies"]').click()`,

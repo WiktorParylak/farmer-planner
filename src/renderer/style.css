@@ -6421,6 +6421,10 @@ select:focus-visible,
 }
 
 .feed-settings > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 700;
@@ -6430,8 +6434,60 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
-.feed-settings > summary i {
-  margin-right: 4px;
+.feed-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.feed-settings > summary span {
+  flex: 1;
+  text-align: left;
+}
+
+.feed-settings > summary:hover {
+  color: var(--color-ink);
+}
+
+.feed-settings-chevron {
+  font-size: 0.8em;
+  transition: transform 0.15s ease;
+}
+
+.feed-settings[open] > summary {
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feed-settings[open] .feed-settings-chevron {
+  transform: rotate(180deg);
+}
+
+/* Feed planner bottom: one gap above every section heading, the field table
+   and own feeds left-aligned, the notes in one quiet block at the end. */
+.feed-plan .hub-panel-subtitle {
+  margin: 18px 0 6px;
+}
+
+.feed-plan .feed-use-select {
+  width: 100%;
+  max-width: 220px;
+}
+
+.feed-plan .feed-custom-card {
+  text-align: left;
+}
+
+.feed-notes {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.feed-notes .hub-panel-note {
+  margin: 4px 0;
+  font-size: var(--fs-xs);
+  font-style: normal;
+  text-align: left;
 }
 
 /* Animals panel: ration picker per species (shared with the feed planner). */
@@ -6587,7 +6643,7 @@ select:focus-visible,
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .mixer-load,

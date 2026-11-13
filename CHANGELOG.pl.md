@@ -15,6 +15,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Ścieżki technologiczne: pola z gleby z prawdziwymi obrysami**: *Pola z gleby* rysują teraz obrys każdego pola (z dziurami, skośne brzegi jako proste linie) zamiast prostokąta wokół niego, a kliknięcie wewnątrz obrysu wybiera pole, także gdy pola leżą skośnie obok siebie. *Pola z mapy* zniknęły: gleba robi to samo bez moda mapy.
 - **Normy rasy w pasku bocznym**: przeniesione ze zwiniętego pola na dole Zwierząt do własnej pozycji pod Planerem pasz, z większym wykresem obok liczb. Kliknij albo przeciągnij po wykresie, żeby wybrać wiek; oś pokazuje miesiące.
 Zaopatrzenie zaczyna się od listy zakupów: karta na każdy produkt (litry i koszt), informacja o polach pominiętych w sumach, a tabele pole po polu są w zakładkach Nasiona / Nawóz / Wapno. Wybierasz, jakiego nawozu naturalnego używasz, i tabela pokazuje tylko jego.
+Porządniejszy dół planera pasz: karty Załadunek i Mieszanka paszowozu mają tę samą wysokość, ustawienia pasz zwijają się pod paskiem ze strzałką, tabela pól ma uprawę i przeznaczenie po lewej i równe listy, a uwagi o tym, skąd są liczby, są razem w jednym spokojnym bloku na końcu.
 
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.
