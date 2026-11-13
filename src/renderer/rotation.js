@@ -107,7 +107,7 @@ function rotationById(farm, id) {
 
 function rotationFillMode(farm) {
     const v = farm && farm.rotationAutoFill;
-    return ['auto', 'ask', 'off'].includes(v) ? v : 'auto';
+    return ['auto', 'ask', 'off'].includes(v) ? v : 'ask';
 }
 
 // ---------- slots and positions ----------
@@ -245,14 +245,11 @@ function fieldPastCrops(history, number) {
     return out;
 }
 
-// Proposes the slot the field is in this season: the one that best explains
-// its current crop and the last seasons (recent seasons weigh more).
-function detectRotationSlot(rot, field, history, season) {
-    const slots = rotationSlots(rot);
-    if (!slots.length) return 0;
+// How well each slot of the cycle explains the field's current crop and the
+// last seasons (recent seasons weigh more): one score per slot.
+function rotationSlotScores(rot, field, history, season) {
     const past = fieldPastCrops(history, field.number);
-    let best = 0, bestScore = -Infinity;
-    slots.forEach((_, p) => {
+    return rotationSlots(rot).map((_, p) => {
         let score = 0;
         for (let k = 0; k <= 5; k++) {
             const expected = rotationSlotAt(rot, p - k).crop;
@@ -263,6 +260,14 @@ function detectRotationSlot(rot, field, history, season) {
             const hit = expected ? actual.some(c => cropOrderKey(c) === cropOrderKey(expected)) : !actual.length;
             score += (hit ? 1 : -1) / (k + 1);
         }
+        return score;
+    });
+}
+
+// Proposes the slot the field is in this season: the one with the best score.
+function detectRotationSlot(rot, field, history, season) {
+    let best = 0, bestScore = -Infinity;
+    rotationSlotScores(rot, field, history, season).forEach((score, p) => {
         if (score > bestScore) { bestScore = score; best = p; }
     });
     return best;
@@ -619,12 +624,32 @@ function dropGeneratorPlan(field) {
     showAutoSyncToast(t('rotPlanDropped').replace('{n}', field.number), 4000);
 }
 
-function setFieldCycle(farm, field, rotId) {
+// A field with another crop planned (not sown yet) is asked about first: put
+// the step's crop on it, or keep its crop (it then shows as off its cycle).
+// ask: false (the generator and other code) never asks and keeps the crop.
+async function setFieldCycle(farm, field, rotId, { ask = true } = {}) {
     dropGeneratorPlan(field);
     const rot = rotationById(farm, rotId);
     if (!rot) { delete field.rotation; return; }
     setFieldRotationSlot(field, rot, detectRotationSlot(rot, field, loadSeasonHistory(farm, farm.currentSeason || 1), farm.currentSeason || 1));
-    fillEmptyFieldFromRotation(farm, field);
+    if (fillEmptyFieldFromRotation(farm, field)) return;
+    const info = fieldRotationInfo(farm, field);
+    if (!ask || !rotationCropDiffers(field, info)) return;
+    const answer = await showConfirm({
+        title: t('rotAdjustTitle').replace('{n}', field.number),
+        body: t('rotAdjustAsk').replace('{n}', field.number).replace('{crop}', translateCropName(field.crop))
+            .replace('{name}', rot.name).replace('{want}', translateCropName(info.slot.crop)),
+        confirmText: t('rotAdjustYes').replace('{crop}', translateCropName(info.slot.crop)),
+        cancelText: t('rotAdjustKeep').replace('{crop}', translateCropName(field.crop)),
+        icon: 'fa-arrows-spin'
+    });
+    if (answer === true) putRotationCropOnField(farm, field, fieldRotationInfo(farm, field));
+}
+
+// The field has a crop planned, not sown yet, other than its step's crop (a fallow step asks nothing).
+function rotationCropDiffers(field, info) {
+    return !!(info && info.slot.crop && field.crop && field.state !== 'Planted'
+        && cropOrderKey(field.crop) !== cropOrderKey(info.slot.crop));
 }
 
 function setFieldCycleStep(farm, field, index) {
@@ -649,19 +674,128 @@ function fillEmptyFieldFromRotation(farm, field) {
 // The crop of the field's step goes on the field, in place of what's planned there.
 function putRotationCropOnField(farm, field, info) {
     const before = JSON.parse(JSON.stringify(farm.fields));
-    applyRotationSlot(field, info.slot);
-    // Mid-season, like the month fill: this month or next when the crop allows it.
-    field.sowingMonth = rotationSowMonthSoon(info.slot, farm.month) || field.sowingMonth;
-    field.rotation.filled = farm.currentSeason || 1;
+    placeRotationCrop(farm, field, info);
     migrateFieldKeys(farm, before, farm.fields);
     showAutoSyncToast(t('rotFieldFilled').replace('{crop}', translateCropName(field.crop)), 4000);
 }
 
-// Changes from the field view section (wired in fields-table.js).
-function handleRotationFieldViewChange(el, farm, field) {
-    if (el.classList.contains('field-view-rotation')) { setFieldCycle(farm, field, el.value); return true; }
+function placeRotationCrop(farm, field, info) {
+    applyRotationSlot(field, info.slot);
+    // Mid-season, like the month fill: this month or next when the crop allows it.
+    field.sowingMonth = rotationSowMonthSoon(info.slot, farm.month) || field.sowingMonth;
+    field.rotation.filled = farm.currentSeason || 1;
+}
+
+// Changes from the field view section (wired in fields-table.js). Resolves to
+// true when it handled the change (the cycle may ask a question first).
+async function handleRotationFieldViewChange(el, farm, field) {
+    if (el.classList.contains('field-view-rotation')) { await setFieldCycle(farm, field, el.value); return true; }
     if (el.classList.contains('field-view-rotation-step')) { setFieldCycleStep(farm, field, el.value); return true; }
     return false;
+}
+
+// ---------- the plan's two bulk buttons ----------
+// "Adjust planned crops to the rotation": fields on a cycle whose planned crop
+// (not sown yet) isn't their step's. [{ idx, number, from, to }]
+function rotationMatchPlan(farm) {
+    const out = [];
+    (farm.fields || []).forEach((field, idx) => {
+        const info = fieldRotationInfo(farm, field);
+        if (rotationCropDiffers(field, info)) out.push({ idx, number: field.number, from: field.crop, to: info.slot.crop });
+    });
+    return out;
+}
+
+function applyRotationMatch(farm, changes) {
+    const before = JSON.parse(JSON.stringify(farm.fields));
+    changes.forEach(c => {
+        const field = farm.fields[c.idx];
+        const info = field && fieldRotationInfo(farm, field);
+        if (info && info.slot.crop) placeRotationCrop(farm, field, info);
+    });
+    migrateFieldKeys(farm, before, farm.fields);
+}
+
+// "Plan the rotation for planned fields": every field with a crop and no cycle
+// gets the cycle with a step of that crop that best fits its last seasons (a
+// tie goes to the cycle higher in the list), at that step, so its crop stays.
+// { changes: [{ idx, number, crop, rotId, rotName, index, step }], noCycle: [{ idx, number, crop }] }
+function rotationAssignPlan(farm) {
+    const season = farm.currentSeason || 1;
+    const history = loadSeasonHistory(farm, season);
+    const rots = getRotations(farm).filter(r => r.steps && r.steps.length);
+    const changes = [], noCycle = [];
+    (farm.fields || []).forEach((field, idx) => {
+        if (!field.crop || fieldRotationInfo(farm, field)) return;
+        let best = null;
+        rots.forEach(rot => {
+            const slots = rotationSlots(rot);
+            rotationSlotScores(rot, field, history, season).forEach((score, p) => {
+                if (cropOrderKey(slots[p].crop) !== cropOrderKey(field.crop)) return;
+                if (!best || score > best.score) best = { score, rot, index: p, step: slots[p].step };
+            });
+        });
+        if (best) changes.push({ idx, number: field.number, crop: field.crop, rotId: best.rot.id, rotName: best.rot.name, index: best.index, step: best.step });
+        else noCycle.push({ idx, number: field.number, crop: field.crop });
+    });
+    return { changes, noCycle };
+}
+
+// As picking the cycle by hand, the generator's plan for the field goes.
+function applyRotationAssign(farm, changes) {
+    changes.forEach(c => {
+        const field = farm.fields[c.idx];
+        const rot = rotationById(farm, c.rotId);
+        if (!field || !rot) return;
+        delete field.nextCrop;
+        delete field.planAhead;
+        setFieldRotationSlot(field, rot, c.index);
+    });
+}
+
+// A list in a confirmation: up to 15 rows, then "and N more".
+function rotationChangeList(rows) {
+    const shown = rows.slice(0, 15).join('\n');
+    return rows.length > 15 ? shown + '\n' + t('rotListMore').replace('{n}', rows.length - 15) : shown;
+}
+
+async function runRotationMatchAll(farm) {
+    const changes = rotationMatchPlan(farm);
+    if (!changes.length) { showAutoSyncToast(t('rotMatchAllNone'), 3000); return; }
+    const ok = await showConfirm({
+        title: t('rotMatchAll'),
+        body: t('rotMatchAllConfirm').replace('{n}', changes.length) + '\n\n'
+            + rotationChangeList(changes.map(c => `${c.number}: ${translateCropName(c.from)} → ${translateCropName(c.to)}`)),
+        confirmText: t('rotMatchAllYes'), icon: 'fa-arrows-spin'
+    });
+    if (ok !== true) return;
+    writeFieldsBackup(farm, JSON.parse(JSON.stringify(farm.fields || [])), 'pre-rotation-match');
+    applyRotationMatch(farm, changes);
+    saveRotations(farm);
+    renderSeasonView();
+    showAutoSyncToast(t('rotMatchAllDone').replace('{n}', changes.length), 4000);
+}
+
+async function runRotationAssignAll(farm) {
+    const { changes, noCycle } = rotationAssignPlan(farm);
+    const missing = noCycle.length ? '\n\n' + t('rotAssignAllNoCycle') + ' ' + noCycle.map(c => `${c.number} (${translateCropName(c.crop)})`).join(', ') : '';
+    if (!changes.length) {
+        await showNotice(t('rotAssignAll'), t('rotAssignAllNone') + missing);
+        return;
+    }
+    const ok = await showConfirm({
+        title: t('rotAssignAll'),
+        body: t('rotAssignAllConfirm').replace('{n}', changes.length) + '\n\n'
+            + rotationChangeList(changes.map(c => t('rotAssignAllRow').replace('{n}', c.number).replace('{crop}', translateCropName(c.crop)).replace('{name}', c.rotName).replace('{step}', c.step + 1)))
+            + missing,
+        confirmText: t('rotAssignAllYes'), icon: 'fa-arrows-spin'
+    });
+    if (ok !== true) return;
+    writeFieldsBackup(farm, JSON.parse(JSON.stringify(farm.fields || [])), 'pre-rotation-assign');
+    applyRotationAssign(farm, changes);
+    saveRotations(farm);
+    renderSeasonView();
+    showAutoSyncToast(t('rotAssignAllDone').replace('{n}', changes.length), 4000);
 }
 
 function handleRotationFieldViewClick(target, farm, field) {
@@ -778,6 +912,10 @@ function rotationPlanHtml(farm) {
             <label class="settings-field rotation-mode"><span>${t('rotAutoFill')}</span>
                 <select id="rotation-fill-mode">${['auto', 'ask', 'off'].map(m => `<option value="${m}" ${m === mode ? 'selected' : ''}>${t('rotAutoFill_' + m)}</option>`).join('')}</select></label>
             <span class="settings-hint">${t('rotAutoFillHint')}</span>
+            <div class="rotation-toolbar-actions">
+                <button type="button" class="settings-btn rotation-match-all" title="${escapeHtml(t('rotMatchAllHint'))}" ${rotationMatchPlan(farm).length ? '' : 'disabled'}><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ${t('rotMatchAll')}</button>
+                <button type="button" class="settings-btn rotation-assign-all" title="${escapeHtml(t('rotAssignAllHint'))}" ${getRotations(farm).length && fields.some(f => f.crop && !fieldRotationInfo(farm, f)) ? '' : 'disabled'}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> ${t('rotAssignAll')}</button>
+            </div>
         </div>
         ${getRotations(farm).length ? '' : `<p class="settings-hint">${t('rotNoCyclesHint')}</p>`}
         <div class="rotation-grid-wrap"><table class="rotation-grid">
@@ -919,7 +1057,7 @@ function addRotation(farm, rot) {
         if (el.classList.contains('rotation-plan-cycle')) {
             const field = farm.fields[+el.dataset.idx];
             if (!field) return;
-            setFieldCycle(farm, field, el.value);
+            await setFieldCycle(farm, field, el.value);
             saveRotations(farm);
             return;
         }
@@ -998,6 +1136,8 @@ function addRotation(farm, rot) {
             if (name) { name.focus(); name.select(); }
             return;
         }
+        if (e.target.closest('.rotation-match-all')) { await runRotationMatchAll(farm); return; }
+        if (e.target.closest('.rotation-assign-all')) { await runRotationAssignAll(farm); return; }
         const openField = e.target.closest('.rotation-open-field, .rotation-open-cell');
         if (openField) { openFieldModal(+openField.dataset.idx); return; }
         const rot = selectedRot(farm);

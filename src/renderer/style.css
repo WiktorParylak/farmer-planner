@@ -8476,6 +8476,17 @@ button.field-open.has-callout .field-number-chip {
   flex: 0 0 auto;
 }
 
+.rotation-toolbar > .settings-hint {
+  flex: 1 1 220px;
+}
+
+.rotation-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .rotation-grid-wrap {
   overflow-x: auto;
 }

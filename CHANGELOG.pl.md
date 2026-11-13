@@ -4,8 +4,12 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 
 ## 0.11.3 — unreleased
 
+**Nowe**
+- **Dwa przyciski płodozmianu**: *Dostosuj zaplanowane rośliny do płodozmianu* daje polom w cyklu uprawę z ich kroku zamiast innej zaplanowanej (obsiane pola i kroki z ugorem zostają bez zmian), a *Zaplanuj płodozmian do zaplanowanych pól* daje polom z uprawą bez cyklu ten cykl, który ma krok z tą uprawą i najlepiej pasuje do ostatnich sezonów, bez zmiany uprawy. Oba najpierw pokazują listę i dają się cofnąć.
+
 **Zmiany**
 - **Prostsza karta pola w trybie edycji**: na karcie nie ma już stanu, orki i wapna. Ustawiasz je w oknie pola albo kliknięciem w tabeli, a zapis trybu edycji zostawia je bez zmian. Pasek kilku pól dalej oznacza je jako obsiane albo orane i mówi, co ustawił.
+- **Płodozmian najpierw pyta**: przypisanie cyklu polu z inną zaplanowaną uprawą pyta, czy zaplanować uprawę z kroku, czy zostawić obecną. *Uzupełniaj uprawy z płodozmianu* ma teraz domyślnie *Pytaj* na farmach, które jeszcze tego nie ustawiły.
 
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.

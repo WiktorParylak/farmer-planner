@@ -4,8 +4,12 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 ## 0.11.3 — unreleased
 
+**New**
+- **Two crop rotation buttons**: *Adjust planned crops to the rotation* gives fields on a cycle the crop of their step in place of another planned one (sown fields and fallow steps stay as they are), and *Plan the rotation for planned fields* gives fields with a crop and no cycle the cycle that has a step of that crop and fits their last seasons best, keeping the crop. Both show the list first and can be undone.
+
 **Changed**
 - **A simpler field card in Edit**: the card no longer has the state, tillage and lime. You set them in the field window or by clicking in the table, and saving Edit keeps them as they were. The bar for several fields still marks them sown or ploughed, and says what it set.
+- **Crop rotation asks first**: giving a field a cycle when it has another crop planned asks whether to plan the step's crop instead or keep the one there. *Fill crops from the rotation* is now *Ask first* on farms that haven't chosen yet.
 
 **Fixed**
 - **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.

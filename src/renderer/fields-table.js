@@ -657,12 +657,12 @@ window.openFieldModal = function (idx, tab) {
     document.getElementById('field-modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
-    body.addEventListener('change', e => {
+    body.addEventListener('change', async e => {
         const el = e.target;
         const farm = getCurrentFarm();
         const field = farm && (farm.fields || [])[fieldModalIdx];
         if (!field) return;
-        if (handleRotationFieldViewChange(el, farm, field)) {
+        if (await handleRotationFieldViewChange(el, farm, field)) {
             saveFarmData(farm);
             rerenderKeepingFocus(renderFieldModal, modal.querySelector('.modal-content'));
         } else if (el.classList.contains('field-view-number')) {

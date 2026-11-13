@@ -447,6 +447,8 @@ function buildDevFarm({ pl }) {
         finishedCrops: [devField("13", 0.85, "Pea", "MARCH", "Planted", "noTill", { finishedSeason: DEV_SEASON, finishedMonth: "JULY" })],
         fieldSizes: { "5": 5 },
         // Crop rotation: three cycles; fields 1, 2, 3-4, 6 and 15 use them.
+        // Filled without asking (new farms ask), so field 15 gets its crop on opening.
+        rotationAutoFill: "auto",
         rotations: [
             { id: "rot_dev_norfolk", name: "Norfolk", color: "#c97a2b", steps: [
                 { crop: "Wheat", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Sugarbeet", catchCrop: "", sowingMonth: "", seasons: 1 },
