@@ -90,6 +90,7 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
     win.show();
     win.setResizable(true);
     const shots = [];
+    let lastFrame = null;
     const languages = await js('APP_LANGUAGES');
     for (const lang of languages) {
         // The dev farm's names follow the language it was built in.
@@ -111,11 +112,21 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
                 if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && !name.startsWith('mod-manager')) issues.push('opening it changed the fields');
                 consoleErrors.filter(e => !/ResizeObserver loop/.test(e)).forEach(e => issues.push('console error: ' + e));
                 // The first capture after a change can return the frame before it.
+                // Two painted frames first (capped, a hidden page paints none).
                 win.webContents.invalidate();
+                await js(`Promise.race([new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(1)))), new Promise(r => setTimeout(() => r(0), 1000))])`);
                 await wait(250);
                 await win.webContents.capturePage();
                 const file = `${lang}-${w}x${h}-${name}.jpg`;
-                fs.writeFileSync(path.join(outDir, file), (await win.webContents.capturePage()).toJPEG(78));
+                // A frame the same as the last screen's is the old one still: wait for the new.
+                let image = await win.webContents.capturePage();
+                for (let k = 0; k < 8 && lastFrame && image.toBitmap().equals(lastFrame); k++) {
+                    win.webContents.invalidate();
+                    await wait(300);
+                    image = await win.webContents.capturePage();
+                }
+                lastFrame = image.toBitmap();
+                fs.writeFileSync(path.join(outDir, file), image.toJPEG(78));
                 shots.push({ name, lang, size: `${w}x${h}`, file, issues, cut });
                 await js(`FT.backToPlan()`);
             }
