@@ -350,4 +350,98 @@ function xcfLayerRgba(d, layer) {
     return { w, h, rgba };
 }
 
-module.exports = { gdmHeader, gdmDecode, gdmEncode, padRgba, encodePngRgba, decodePng, packRgb, xcfOpen, xcfLayerRgba };
+// ---------- field outlines ----------
+// The outlines of every label in a label grid (dim x dim, 0 = none), in pixels
+// x `cell`: Map(label -> [ring, ...]), ring = [[x, y], ...] closed (the outer
+// edge and any holes; fill them even-odd). Edges between a label's pixels and
+// the rest are joined into loops, collinear points dropped, then simplified
+// (Douglas-Peucker, `tol` pixels: a staircase's steps stand off its line by
+// less than one) so a slanted staircase edge becomes a line.
+function traceLabelOutlines(labels, dim, cell = 1, tol = 1) {
+    // Directed edges with the label on their right: dir 0 = +x, 1 = +y, 2 = -x, 3 = -y.
+    // Per label: Map(vertex -> bitmask of outgoing dirs); vertex = y * (dim + 1) + x.
+    const W = dim + 1;
+    const edges = new Map();
+    const add = (l, x, y, dir) => {
+        let m = edges.get(l);
+        if (!m) edges.set(l, m = new Map());
+        const v = y * W + x;
+        m.set(v, (m.get(v) || 0) | (1 << dir));
+    };
+    for (let y = 0; y < dim; y++) {
+        const row = y * dim;
+        for (let x = 0; x < dim; x++) {
+            const l = labels[row + x];
+            if (!l) continue;
+            if (y === 0 || labels[row - dim + x] !== l) add(l, x, y, 0);
+            if (x === dim - 1 || labels[row + x + 1] !== l) add(l, x + 1, y, 1);
+            if (y === dim - 1 || labels[row + dim + x] !== l) add(l, x + 1, y + 1, 2);
+            if (x === 0 || labels[row + x - 1] !== l) add(l, x, y + 1, 3);
+        }
+    }
+    const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+    const out = new Map();
+    edges.forEach((m, l) => {
+        const rings = [];
+        for (const start of m.keys()) {
+            while (m.get(start)) {
+                // Walk one loop. At a corner two pixels share diagonally, turn
+                // right first, so each keeps its own loop.
+                const corners = [];
+                let v = start, dir = -1, firstDir = -1;
+                for (;;) {
+                    const mask = m.get(v) || 0;
+                    let next = -1;
+                    const order = dir < 0 ? [0, 1, 2, 3] : [(dir + 1) % 4, dir, (dir + 3) % 4];
+                    for (const d of order) if (mask & (1 << d)) { next = d; break; }
+                    if (next < 0) break;
+                    m.set(v, mask & ~(1 << next));
+                    if (next !== dir) corners.push([v % W, (v / W) | 0]);
+                    if (firstDir < 0) firstDir = next;
+                    dir = next;
+                    v += DX[dir] + DY[dir] * W;
+                    if (v === start) break;
+                }
+                // The start is a corner only if the loop turns there.
+                if (dir === firstDir) corners.shift();
+                if (corners.length >= 3) rings.push(simplifyRing(corners, tol).map(([x, y]) => [x * cell, y * cell]));
+            }
+        }
+        out.set(l, rings);
+    });
+    return out;
+}
+
+// Douglas-Peucker on a closed ring: split at the point farthest from the
+// first, simplify both halves. Keeps at least a triangle.
+function simplifyRing(pts, tol) {
+    if (pts.length <= 4 || !(tol > 0)) return pts;
+    const d2 = (p, a, b) => {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const len = dx * dx + dy * dy;
+        if (!len) return (p[0] - a[0]) ** 2 + (p[1] - a[1]) ** 2;
+        const c = dx * (p[1] - a[1]) - dy * (p[0] - a[0]);
+        return c * c / len;
+    };
+    const keep = new Uint8Array(pts.length);
+    let split = 1, far2 = -1;
+    pts.forEach((p, k) => { const d = (p[0] - pts[0][0]) ** 2 + (p[1] - pts[0][1]) ** 2; if (d > far2) { far2 = d; split = k; } });
+    keep[0] = keep[split] = 1;
+    // A stack, not recursion: a long ragged edge would go too deep.
+    const stack = [[0, split], [split, pts.length]];
+    while (stack.length) {
+        const [i, j] = stack.pop();
+        let far = -1, best = tol * tol;
+        for (let k = i + 1; k < j; k++) {
+            const d = d2(pts[k], pts[i], pts[j % pts.length]);
+            if (d > best) { best = d; far = k; }
+        }
+        if (far < 0) continue;
+        keep[far] = 1;
+        stack.push([i, far], [far, j]);
+    }
+    const out = pts.filter((_, k) => keep[k]);
+    return out.length >= 3 ? out : pts;
+}
+
+module.exports = { gdmHeader, gdmDecode, gdmEncode, padRgba, encodePngRgba, decodePng, packRgb, xcfOpen, xcfLayerRgba, traceLabelOutlines };

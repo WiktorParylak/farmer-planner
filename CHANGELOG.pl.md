@@ -10,6 +10,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Zmiany**
 - **Prostsza karta pola w trybie edycji**: na karcie nie ma już stanu, orki i wapna. Ustawiasz je w oknie pola albo kliknięciem w tabeli, a zapis trybu edycji zostawia je bez zmian. Pasek kilku pól dalej oznacza je jako obsiane albo orane i mówi, co ustawił.
 - **Płodozmian najpierw pyta**: przypisanie cyklu polu z inną zaplanowaną uprawą pyta, czy zaplanować uprawę z kroku, czy zostawić obecną. *Uzupełniaj uprawy z płodozmianu* ma teraz domyślnie *Pytaj* na farmach, które jeszcze tego nie ustawiły.
+- **Ścieżki technologiczne: pola z gleby z prawdziwymi obrysami**: *Pola z gleby* rysują teraz obrys każdego pola (z dziurami, skośne brzegi jako proste linie) zamiast prostokąta wokół niego, a kliknięcie wewnątrz obrysu wybiera pole, także gdy pola leżą skośnie obok siebie. *Pola z mapy* zniknęły: gleba robi to samo bez moda mapy.
 
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.

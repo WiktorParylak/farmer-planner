@@ -10,6 +10,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Changed**
 - **A simpler field card in Edit**: the card no longer has the state, tillage and lime. You set them in the field window or by clicking in the table, and saving Edit keeps them as they were. The bar for several fields still marks them sown or ploughed, and says what it set.
 - **Crop rotation asks first**: giving a field a cycle when it has another crop planned asks whether to plan the step's crop instead or keep the one there. *Fill crops from the rotation* is now *Ask first* on farms that haven't chosen yet.
+- **Tramlines: fields from the soil with their real outlines**: *Fields from the soil* now draws each field's own outline (holes included, slanted edges as straight lines) instead of a box around it, and a click inside the outline picks the field, also where fields lie at an angle next to each other. *Fields from the map* is gone: the soil does the same without the map mod.
 
 **Fixed**
 - **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.
