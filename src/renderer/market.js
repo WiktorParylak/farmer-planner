@@ -152,7 +152,7 @@ function fieldInputCostPerHa(farm, field, idx, crop, rates, market, limeLitresBy
     const soilMix = getFieldSoilMix(fertPlanSoilKey(field, idx), rates);
     // A season's saved prices bring the input prices paid then.
     const price = ft => (market.inputs && ft in market.inputs ? market.inputs[ft] : marketInputPrice(farm, market, ft));
-    const seedPrice = price(MARKET_INPUT_FILLTYPES.seed);
+    const seedPrice = price(suppliesSeedInput(crop));   // potatoes / sugarcane: their own fill type
     const fertPrice = price(MARKET_INPUT_FILLTYPES.fertilizer);
     const limePrice = price(MARKET_INPUT_FILLTYPES.lime);
     const seedRate = fieldSeedRate(crop, soilMix, rates);
@@ -178,7 +178,7 @@ function marketLimeByField(farm, rates) {
 
 // What a season's archive keeps of the market when it ends: the price of each
 // of its crops and of the inputs in that month, per 1000 l. null without prices.
-// { month, prices: { FILLTYPE: price }, inputs: { SEEDS, FERTILIZER, LIME } }
+// { month, prices: { FILLTYPE: price }, inputs: { SEEDS, FERTILIZER, LIME, POTATO, SUGARCANE } }
 function seasonMarketSnapshot(farm, fields) {
     const market = getFarmMarket(farm);
     const month = String(farm && farm.month || '').toUpperCase();
@@ -190,7 +190,8 @@ function seasonMarketSnapshot(farm, fields) {
         if (p !== null) prices[ft] = p;
     }));
     const inputs = {};
-    Object.values(MARKET_INPUT_FILLTYPES).forEach(ft => { inputs[ft] = marketInputPrice(farm, market, ft); });
+    Object.values(MARKET_INPUT_FILLTYPES).concat(Object.values(SUPPLY_OWN_SEED_FILLTYPES))
+        .forEach(ft => { inputs[ft] = marketInputPrice(farm, market, ft); });
     return { month, prices, inputs };
 }
 

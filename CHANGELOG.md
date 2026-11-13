@@ -14,9 +14,11 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Crop rotation asks first**: giving a field a cycle when it has another crop planned asks whether to plan the step's crop instead or keep the one there. *Fill crops from the rotation* is now *Ask first* on farms that haven't chosen yet.
 - **Tramlines: fields from the soil with their real outlines**: *Fields from the soil* now draws each field's own outline (holes included, slanted edges as straight lines) instead of a box around it, and a click inside the outline picks the field, also where fields lie at an angle next to each other. *Fields from the map* is gone: the soil does the same without the map mod.
 - **Breed norms in the sidebar**: they moved out of the folded box at the bottom of Animals into their own item under the Feed planner, with a larger chart beside the figures. Click or drag on the chart to pick the age; the axis shows the months.
+Supplies starts with a shopping list: one card per product to buy (litres and cost), a note about fields left out of the totals, and the per-field tables in Seeds / Fertilizer / Lime tabs. You pick which organic fertilizer you use, and the table shows only that one.
 
 **Fixed**
 - **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.
+Seed potatoes and sugarcane were counted and priced as seeds in Supplies and in the margin of Yields and prices; they now get their own card and the price of potatoes or sugarcane.
 
 ## 0.11.2 — 2026-11-08
 

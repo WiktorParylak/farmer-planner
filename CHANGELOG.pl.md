@@ -14,9 +14,11 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Płodozmian najpierw pyta**: przypisanie cyklu polu z inną zaplanowaną uprawą pyta, czy zaplanować uprawę z kroku, czy zostawić obecną. *Uzupełniaj uprawy z płodozmianu* ma teraz domyślnie *Pytaj* na farmach, które jeszcze tego nie ustawiły.
 - **Ścieżki technologiczne: pola z gleby z prawdziwymi obrysami**: *Pola z gleby* rysują teraz obrys każdego pola (z dziurami, skośne brzegi jako proste linie) zamiast prostokąta wokół niego, a kliknięcie wewnątrz obrysu wybiera pole, także gdy pola leżą skośnie obok siebie. *Pola z mapy* zniknęły: gleba robi to samo bez moda mapy.
 - **Normy rasy w pasku bocznym**: przeniesione ze zwiniętego pola na dole Zwierząt do własnej pozycji pod Planerem pasz, z większym wykresem obok liczb. Kliknij albo przeciągnij po wykresie, żeby wybrać wiek; oś pokazuje miesiące.
+Zaopatrzenie zaczyna się od listy zakupów: karta na każdy produkt (litry i koszt), informacja o polach pominiętych w sumach, a tabele pole po polu są w zakładkach Nasiona / Nawóz / Wapno. Wybierasz, jakiego nawozu naturalnego używasz, i tabela pokazuje tylko jego.
 
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.
+Sadzeniaki i trzcina cukrowa były w Zaopatrzeniu i w marży w „Plonach i cenach” liczone i wyceniane jak nasiona; teraz mają własną kartę i cenę ziemniaków albo trzciny.
 
 ## 0.11.2 — 2026-11-08
 
