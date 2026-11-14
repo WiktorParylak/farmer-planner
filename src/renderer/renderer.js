@@ -322,6 +322,8 @@ if (appSettingsBtn && appSettingsModal) {
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
         const splashToggle = document.getElementById('splash-toggle');
         if (splashToggle) splashToggle.checked = getSetting('farmer_planner_splash') !== '0';
+        const newsToggle = document.getElementById('news-start-toggle');
+        if (newsToggle) newsToggle.checked = isNewsAtStartEnabled();
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         const devSetting = document.getElementById('dev-farm-setting');
@@ -6574,8 +6576,11 @@ window.exportFarmBackup = async function (farmId, quiet = false) {
 
 // Settings -> Help: diagnostic file for a bug report (see diagnostics.js) and
 // links to GitHub issues / the website's contact form.
+// Everything but the install id the news polls vote with (it stays anonymous).
 function appSettingsForDiagnostics() {
-    return appSettings.all();
+    const all = appSettings.all();
+    delete all.newsInstallId;
+    return all;
 }
 
 function openDiagnosticsModal() {
@@ -7294,6 +7299,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // when a farm is opened, not here (no farm is active on the dashboard).
     const languageChosen = !!getSetting(CONFIG_KEY_LANG);
     applyLanguage(currentLang);
+    // News (news.js) loads while the start-up dialogs are up.
+    const newsLoading = loadNews();
 
     // Leftover from a tutorial that was interrupted by closing the app.
     removeDemoFarm();
@@ -7311,6 +7318,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await askDiscordOnce();
     await reportUnfinishedUpdate();
     await showWhatsNewAfterUpdate(!languageChosen);
+    // Not on the very first start, and not before the tutorial.
+    if (languageChosen && getSetting(CONFIG_KEY_TUTORIAL_DONE) === '1') await showNewsAtStart(newsLoading);
     if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

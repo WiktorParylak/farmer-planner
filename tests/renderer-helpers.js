@@ -74,6 +74,51 @@ window.FT = (() => {
         fs.writeFileSync(path.join(dir, 'careerSavegame.xml'), '<careerSavegame><settings><savegameName>Green Valley</savegameName></settings><mod modName="FS25_FrontLoader" title="Front loader" version="1.2.0.0"/><mod modName="FS25_Sprayer" title="Sprayer" version="1.0.0.0"/></careerSavegame>');
     }
 
+    // Two posts in place of farmerplanner.pl: one with every kind of block,
+    // one with a poll. The network answers from here (images: a screenshot
+    // from docs/, votes: counted in memory).
+    const NEWS_SAMPLE = {
+        format: 1,
+        posts: [
+            {
+                id: 'test-welcome', date: '2026-11-20', accent: 'orange', size: 'large',
+                title: { en: 'Winter on the farm', pl: 'Zima na farmie', de: 'Winter auf dem Hof' },
+                blocks: [
+                    { type: 'banner', image: 'img/test-banner.png', alt: { en: 'The plan' } },
+                    { type: 'text', en: 'A short post with **bold** text and a [link](https://farmerplanner.pl).\n\n- one\n- two', pl: 'Krótki wpis z **pogrubieniem** i [linkiem](https://farmerplanner.pl).\n\n- jeden\n- dwa', de: 'Ein kurzer Beitrag mit **fett** und einem [Link](https://farmerplanner.pl).\n\n- eins\n- zwei' },
+                    { type: 'callout', tone: 'new', en: 'Something new is coming.', pl: 'Nadchodzi coś nowego.', de: 'Etwas Neues kommt.' },
+                    { type: 'gallery', images: [{ image: 'img/test-banner.png' }, { image: 'img/test-banner.png' }, { image: 'img/test-banner.png' }] },
+                    { type: 'divider' },
+                    { type: 'button', url: 'https://farmerplanner.pl', label: { en: 'Open the website', pl: 'Otwórz stronę', de: 'Webseite öffnen' } }
+                ]
+            },
+            {
+                id: 'test-poll', date: '2026-11-10', accent: 'blue',
+                title: { en: 'What next?', pl: 'Co dalej?', de: 'Was als Nächstes?' },
+                blocks: [
+                    { type: 'text', en: 'Pick one.', pl: 'Wybierz jedno.', de: 'Wähle eins.' },
+                    { type: 'poll', id: 'test-next', question: { en: 'Which feature?', pl: 'Która funkcja?', de: 'Welche Funktion?' },
+                      options: [{ id: 'a', en: 'Dedicated servers', pl: 'Serwery dedykowane', de: 'Dedizierte Server' }, { id: 'b', en: 'Mobile', pl: 'Telefon', de: 'Handy' }] }
+                ]
+            }
+        ]
+    };
+    const newsVotesSent = [];
+    function fakeNews() {
+        const counts = { a: 12, b: 5 };
+        newsNet.request = async (url, opts = {}) => {
+            if (url === NEWS_URL) return Buffer.from(JSON.stringify(NEWS_SAMPLE));
+            if (url.startsWith(NEWS_VOTE_URL)) {
+                if (opts.method === 'POST') { newsVotesSent.push(opts.body); opts.body.options.forEach(o => { counts[o] = (counts[o] || 0) + 1; }); }
+                return Buffer.from(JSON.stringify({ options: counts, closed: false }));
+            }
+            if (url.startsWith(NEWS_BASE)) return fs.readFileSync(path.join(process.cwd(), 'docs', 'screenshot-plan.png'));
+            throw new Error('Not in the test: ' + url);
+        };
+        newsData = NEWS_SAMPLE;
+        return NEWS_SAMPLE;
+    }
+
     function copy(value) {
         return JSON.parse(JSON.stringify(value));
     }
@@ -121,5 +166,5 @@ window.FT = (() => {
         await wait(100);
     }
 
-    return { fakeMods, fakeSave, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
+    return { fakeNews, newsVotesSent, fakeMods, fakeSave, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
 })();

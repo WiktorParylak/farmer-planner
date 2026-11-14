@@ -37,6 +37,9 @@ const VIEWS = {
     'season-summary': `document.querySelector('.sidebar-item[data-view="seasonsummary"]').click()`,
     'field-soil-list': `showPlannerView('fieldsoil')`,
     'settings': `document.getElementById('settings-btn').click()`,
+    'news-badge': `FT.fakeNews(); setSetting('newsSeen', '[]'); renderNewsBadge(); exitBtn.click()`,
+    'news': `FT.fakeNews(); setSetting('newsSeen', '[]'); exitBtn.click(); setTimeout(() => document.getElementById('news-btn').click(), 100)`,
+    'news-poll': `FT.fakeNews(); setSetting('newsVotes', JSON.stringify({ 'test-next': ['a'] })); exitBtn.click(); setTimeout(() => showNewsWindow([newsPosts()[1]]), 100)`,
     'mod-manager': `FT.fakeMods(); mm.tab = 'mods'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`,
     'mod-manager-compare': `FT.fakeMods(); FT.fakeSave(); mm.tab = 'compare'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`
 };
@@ -114,7 +117,7 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
                 await wait(250);
                 const { issues, cut } = await js(CHECK);
                 // Looking at a screen must not change the farm.
-                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && !name.startsWith('mod-manager')) issues.push('opening it changed the fields');
+                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && !name.startsWith('mod-manager') && !name.startsWith('news')) issues.push('opening it changed the fields');
                 consoleErrors.filter(e => !/ResizeObserver loop/.test(e)).forEach(e => issues.push('console error: ' + e));
                 // The first capture after a change can return the frame before it.
                 // Two painted frames first (capped, a hidden page paints none).
