@@ -199,6 +199,7 @@ Wpisy, które gracze widzą przy starcie aplikacji (raz) i pod przyciskiem „Ak
 - Obrazki: ścieżki względem `https://farmerplanner.pl/news/` (folder `public/news/img/`), jpg/png/webp, do 2 MB. Inne domeny są odrzucane.
 - Ankiety: `public/news/vote.php` sprawdza ankietę i opcje w `news.json`, jeden głos na instalację (losowy identyfikator, bez danych osobowych; nie trafia do pliku diagnostycznego).
 - W aplikacji wszystko jest w `src/renderer/news.js`; testy podstawiają sieć (`newsNet`, `FT.fakeNews()`), `npm test` nigdy nie łączy się z farmerplanner.pl.
+- Podgląd bez publikowania: przy `npm start` Ustawienia → Deweloper → *Pokaż testowe aktualności* otwiera dwa wpisy testowe (`NEWS_DEV_SAMPLE` w `news.js`, wszystkie typy klocków + ankieta z głosami w pamięci). Nowy klocek → dopisz go tam.
 
 ## Konwencje
 

@@ -394,6 +394,65 @@ function closeNewsLightbox() {
     document.getElementById('news-lightbox').hidden = true;
 }
 
+// Two test posts in place of farmerplanner.pl: one with every kind of block,
+// one with a poll. Used by npm test and by Settings → Developer ("Show test
+// news", only when run from the repo); never published.
+const NEWS_DEV_SAMPLE = {
+    format: 1,
+    posts: [
+        {
+            id: 'test-welcome', date: '2026-11-20', accent: 'orange', size: 'large',
+            title: { en: 'Winter on the farm', pl: 'Zima na farmie', de: 'Winter auf dem Hof' },
+            blocks: [
+                { type: 'banner', image: 'img/test-banner.png', alt: { en: 'The plan' } },
+                { type: 'text', en: 'A short post with **bold** text and a [link](https://farmerplanner.pl).\n\n- one\n- two', pl: 'Krótki wpis z **pogrubieniem** i [linkiem](https://farmerplanner.pl).\n\n- jeden\n- dwa', de: 'Ein kurzer Beitrag mit **fett** und einem [Link](https://farmerplanner.pl).\n\n- eins\n- zwei' },
+                { type: 'callout', tone: 'new', en: 'Something new is coming.', pl: 'Nadchodzi coś nowego.', de: 'Etwas Neues kommt.' },
+                { type: 'gallery', images: [{ image: 'img/test-banner.png' }, { image: 'img/test-banner.png' }, { image: 'img/test-banner.png' }] },
+                { type: 'divider' },
+                { type: 'button', url: 'https://farmerplanner.pl', label: { en: 'Open the website', pl: 'Otwórz stronę', de: 'Webseite öffnen' } }
+            ]
+        },
+        {
+            id: 'test-poll', date: '2026-11-10', accent: 'blue',
+            title: { en: 'What next?', pl: 'Co dalej?', de: 'Was als Nächstes?' },
+            blocks: [
+                { type: 'text', en: 'Pick one.', pl: 'Wybierz jedno.', de: 'Wähle eins.' },
+                { type: 'poll', id: 'test-next', question: { en: 'Which feature?', pl: 'Która funkcja?', de: 'Welche Funktion?' },
+                  options: [{ id: 'a', en: 'Dedicated servers', pl: 'Serwery dedykowane', de: 'Dedizierte Server' }, { id: 'b', en: 'Mobile', pl: 'Telefon', de: 'Handy' }] }
+            ]
+        }
+    ]
+};
+
+// The network for the test posts: news.json from above, images = a screenshot
+// from docs/, votes counted in memory (`sent` collects the POSTed bodies).
+function newsDevRequest(sent = []) {
+    const counts = { a: 12, b: 5 };
+    const picture = path.join(__dirname, '..', '..', 'docs', 'screenshot-plan.png');
+    return async (url, opts = {}) => {
+        if (url === NEWS_URL) return Buffer.from(JSON.stringify(NEWS_DEV_SAMPLE));
+        if (url.startsWith(NEWS_VOTE_URL)) {
+            if (opts.method === 'POST') { sent.push(opts.body); opts.body.options.forEach(o => { counts[o] = (counts[o] || 0) + 1; }); }
+            return Buffer.from(JSON.stringify({ options: counts, closed: false }));
+        }
+        if (url.startsWith(NEWS_BASE)) return fs.readFileSync(fs.existsSync(picture) ? picture : path.join(process.cwd(), 'docs', 'screenshot-plan.png'));
+        throw new Error('Not a test post: ' + url);
+    };
+}
+
+// Settings → Developer: the test posts in the news window, with a fresh poll.
+// The real news, network and badge come back when the window closes.
+async function showNewsDevSample() {
+    const request = newsNet.request, data = newsData;
+    const votes = newsJson('newsVotes', {});
+    delete votes['test-next'];
+    setSetting('newsVotes', JSON.stringify(votes));
+    newsNet.request = newsDevRequest();
+    newsData = NEWS_DEV_SAMPLE;
+    try { await showNewsWindow(newsPosts()); }
+    finally { newsNet.request = request; newsData = data; renderNewsBadge(); }
+}
+
 // Shows posts one at a time; resolves when the window closes.
 function showNewsWindow(posts) {
     const modal = document.getElementById('news-modal');
@@ -475,6 +534,12 @@ async function showNewsAtStart(loading) {
         // Unseen first, then the rest, each newest first.
         const unseen = newsUnseen(posts, newsList('newsSeen'), []);
         await showNewsWindow([...unseen, ...posts.filter(p => !unseen.includes(p))]);
+    });
+
+    const dev = document.getElementById('news-dev-btn');
+    if (dev) dev.addEventListener('click', () => {
+        closeModal(document.getElementById('app-settings-modal'));
+        showNewsDevSample();
     });
 
     const toggle = document.getElementById('news-start-toggle');

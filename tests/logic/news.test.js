@@ -139,3 +139,19 @@ test('news: when the site already has this install\'s vote, the app shows that o
     await shown;
     await wait(400);
 });
+
+test('news: Settings → Developer shows the test posts and then puts the real news back', async () => {
+    const real = newsData, request = newsNet.request;
+    setSetting('newsVotes', JSON.stringify({ 'test-next': ['a'] }));
+    const shown = showNewsDevSample();
+    await waitFor(() => document.getElementById('news-modal').style.display === 'flex', 'the news window');
+    assert.strictEqual(document.getElementById('news-title').textContent, 'Winter on the farm');
+    document.getElementById('news-next').click();
+    assert.ok(document.querySelector('#news-body .news-poll-option'), 'the poll can be voted again');
+    document.getElementById('news-close').click();
+    await shown;
+    assert.strictEqual(newsData, real);
+    assert.strictEqual(newsNet.request, request);
+    assert.ok(document.getElementById('news-dev-btn'), 'the button is in the settings');
+    await wait(400);
+});

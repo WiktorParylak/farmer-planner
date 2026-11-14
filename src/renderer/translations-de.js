@@ -1770,6 +1770,7 @@ const UI = {
     devFarmSettingLabel: "Entwickler",
     devFarmSettingHint: "In die App eingebauter Testhof (Felder, Tiere, Futter und Verlauf in jedem Zustand). Ausschalten löscht ihn.",
     devFarmRebuild: "Testhof neu aufbauen",
+    newsDevShow: "Test-Neuigkeiten zeigen",
     tutorialDemoFarmName: "Demo-Hof",
     tutMenuTitle: "Farmer-Planner-Tutorial",
     tutMenuIntro: "Wähle ein Kapitel oder geh alles durch. In manchen Schritten klickst oder tippst du selbst etwas — „Zeig es mir“ macht es für dich.",
