@@ -7742,7 +7742,7 @@ button.table-chip-toggle:hover {
 /* Chart left, figures right; one column on a narrow window. */
 .breed-norms-body {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
   gap: 20px;
   align-items: start;
 }
@@ -7757,6 +7757,7 @@ button.table-chip-toggle:hover {
 }
 .breed-norms-pic { width: 88px; height: 88px; }
 .breed-norms-table { width: 100%; }
+.breed-norms-table th:not(:first-child) { white-space: normal; }
 .breed-norms-table td:first-child { text-align: left; }
 .breed-norms-table td { font-variant-numeric: tabular-nums; }
 .breed-norms-group th {
@@ -7789,6 +7790,10 @@ button.table-chip-toggle:hover {
 }
 .breed-curve .breed-curve-food { stroke: var(--color-primary); }
 .breed-curve .breed-curve-out { stroke: var(--color-accent); }
+.breed-curve-year {
+  fill: var(--color-accent);
+  opacity: 0.12;
+}
 .breed-curve-grid {
   stroke: var(--color-border);
   stroke-width: 1;

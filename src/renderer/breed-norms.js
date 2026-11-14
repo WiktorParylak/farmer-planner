@@ -50,13 +50,27 @@ function breedNormsRows(farm, subType, age, barnId) {
     return { rows, ration, scale };
 }
 
+// Per head over the next year: the same animals, one month older each
+// in-game month (age, age + 1, … age + 11), so a herd of calves that
+// grows into cows eats more than 12 × this month. Adds `year` to each row.
+const BREED_YEAR_MONTHS = 12;
+function breedNormsYear(farm, subType, age, barnId) {
+    const now = breedNormsRows(farm, subType, age, barnId);
+    now.rows.forEach(r => { r.year = 0; });
+    for (let m = 0; m < BREED_YEAR_MONTHS; m++) {
+        const later = m === 0 ? now.rows : breedNormsRows(farm, subType, age + m, barnId).rows;
+        later.forEach((r, i) => { now.rows[i].year += r.perHead; });
+    }
+    return now;
+}
+
 // The age range the chart shows: a little past the end of the breed's curves
-// (they stay flat from there), at least a year, and the age typed in.
+// (they stay flat from there), at least a year, and the age typed in plus the year the yearly column counts.
 function breedNormsMaxAge(subType, age) {
     const def = ANIMAL_NEEDS_DATA[subType] || {};
     const keys = [def.food, ...Object.values(def.production || {})].flatMap(c => (c || []).map(p => p.ageMonth));
     if (!keys.length) return 0;
-    return Math.max(12, Math.ceil(Math.max(...keys) * 1.25 / 6) * 6, Math.ceil(age));
+    return Math.max(12, Math.ceil(Math.max(...keys) * 1.25 / 6) * 6, Math.ceil(age + BREED_YEAR_MONTHS));
 }
 
 // Food (and the main product) over the breed's age range, with a marker at
@@ -75,6 +89,9 @@ function breedNormsCurveHtml(subType, age) {
     // A line every 6 or 12 months, so the age can be read off the chart.
     const step = maxAge > 72 ? 12 : 6;
     for (let a = step; a < maxAge; a += step) svg += `<line class="breed-curve-grid" x1="${x(a).toFixed(1)}" x2="${x(a).toFixed(1)}" y1="0" y2="${H}"/>`;
+    // The year the yearly column counts: from this age 12 months on.
+    const yEnd = Math.min(age + BREED_YEAR_MONTHS, maxAge);
+    if (yEnd > age) svg += `<rect class="breed-curve-year" x="${x(age).toFixed(1)}" width="${(x(yEnd) - x(age)).toFixed(1)}" y="0" height="${H}"/>`;
     lines.forEach(l => {
         if (!l.curve || !l.curve.length) return;
         const top = Math.max(...l.curve.map(p => p.value)) || 1;
@@ -112,7 +129,7 @@ function breedNormsResultHtml(farm) {
     const st = breedNormsState;
     if (!ANIMAL_NEEDS_DATA[st.subType]) return '';
     const barn = breedNormsBreeds(farm).inBarns.get(st.subType);
-    const { rows, ration, scale } = breedNormsRows(farm, st.subType, st.age, barn ? barn.barnId : null);
+    const { rows, ration, scale } = breedNormsYear(farm, st.subType, st.age, barn ? barn.barnId : null);
     if (!rows.length) return `<p class="hub-panel-note">${t('breedNormsNoCurves')}</p>`;
     const days = feedDaysPerPeriod(farm);
     const num = v => v.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: v !== 0 && Math.abs(v) < 10 ? 2 : 0 });
@@ -120,10 +137,19 @@ function breedNormsResultHtml(farm) {
             <td>${escapeHtml(r.label)}</td>
             <td>${num(r.perHead)} l</td>
             <td>${num(r.perHead * st.count)} l<span class="breed-norms-day">${num(r.perHead * st.count / days)} l ${t('breedNormsPerDay')}</span></td>
+            <td>${num(r.year * st.count)} l${yearChange(r)}</td>
         </tr>`).join('');
+    // How far the year is from 12 × this month, once the animals' age moves the curve.
+    function yearChange(r) {
+        const flat = r.perHead * BREED_YEAR_MONTHS;
+        if (!flat) return r.year ? `<span class="breed-norms-day">${t('breedNormsYearStarts')}</span>` : '';
+        const pct = Math.round((r.year / flat - 1) * 100);
+        return pct ? `<span class="breed-norms-day">${t('breedNormsYearVsNow').replace('{pct}', (pct > 0 ? '+' : '−') + Math.abs(pct) + ' %')}</span>` : '';
+    }
     const head = (label, group) => rows.some(r => r.out === group)
-        ? `<tr class="breed-norms-group"><th colspan="3">${label}</th></tr>${body(group)}` : '';
-    const notes = [t('breedNormsNote').replace('{days}', days)];
+        ? `<tr class="breed-norms-group"><th colspan="4">${label}</th></tr>${body(group)}` : '';
+    const notes = [t('breedNormsNote').replace('{days}', days),
+        t('breedNormsYearNote').replace('{from}', st.age).replace('{to}', st.age + BREED_YEAR_MONTHS - 1)];
     if (scale !== 1) notes.push(t('breedNormsAfc').replace('{x}', scale.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 })));
     notes.push(ration
         ? t('breedNormsRation').replace('{ration}', ration.name || t('feedRation_' + ration.id)).replace('{pct}', ration.efficiency)
@@ -135,6 +161,7 @@ function breedNormsResultHtml(farm) {
             ${pic ? `<span class="animal-pic breed-norms-pic"><img src="${escapeHtml(pic)}" alt="" draggable="false"></span>` : ''}
             <table class="data-table supply-table breed-norms-table"><thead><tr>
                 <th></th><th>${t('breedNormsPerHead')}</th><th>${t('breedNormsHerd').replace('{n}', st.count.toLocaleString(FIN_LOCALE()))}</th>
+                <th>${t('breedNormsHerdYear').replace('{n}', st.count.toLocaleString(FIN_LOCALE()))}</th>
             </tr></thead><tbody>
                 ${head(t('breedNormsNeeds'), false)}
                 ${head(t('breedNormsGives'), true)}
