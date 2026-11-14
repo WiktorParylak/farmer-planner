@@ -17,6 +17,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 - **Normy rasy w pasku bocznym**: przeniesione ze zwiniętego pola na dole Zwierząt do własnej pozycji pod Planerem pasz, z większym wykresem obok liczb. Kliknij albo przeciągnij po wykresie, żeby wybrać wiek; oś pokazuje miesiące.
 - **Zaopatrzenie jako lista zakupów**: ekran zaczyna się od kart, po jednej na każdy produkt (litry i koszt), potem jest informacja o polach pominiętych w sumach, a tabele pole po polu są w zakładkach Nasiona / Nawóz / Wapno. Wybierasz, jakiego nawozu naturalnego używasz, i tabela pokazuje tylko jego.
 - **Porządniejszy dół planera pasz**: karty Załadunek i Mieszanka paszowozu mają tę samą wysokość, ustawienia pasz zwijają się pod paskiem ze strzałką, tabela pól ma uprawę i przeznaczenie po lewej i równe listy, a uwagi o tym, skąd są liczby, są razem w jednym spokojnym bloku na końcu.
+- **Najlepsza cena w Plonach i cenach**: nowa kolumna obok ceny teraz pokazuje najlepszą cenę uprawy w roku według krzywej cen gry, jej miesiąc (albo „teraz”) i o ile jest wyższa.
 
 **Poprawki**
 - **Pola z gry w zapisie wieloosobowym**: w zapisie z kilkoma farmami aplikacja po cichu brała pola farmy nr 1. Teraz najpierw pyta, która farma jest Twoja, i to zapamiętuje (można to zmienić w ustawieniach farmy). Komunikat mówi, z której farmy wziął pola i ile pól z mapy leży na Twoich działkach, że dodawane są tylko te i że powierzchnię daje Precision Farming.

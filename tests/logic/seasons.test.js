@@ -233,3 +233,21 @@ test('yields: a season archived without prices is counted at today\'s, and says 
     const two = yieldPanel(farm.currentSeason - 1);
     assert.ok(!two.textContent.includes(t('yieldPastTodayPrices').replace('{n}', farm.currentSeason - 1)), 'season 2 kept its prices');
 });
+
+test('yields: this season shows the year\'s best price and its month, a past one does not', async () => {
+    const farm = await freshFarm();
+    const body = yieldPanel(farm.currentSeason);
+    const head = [...body.querySelectorAll('.yield-table thead th')].map(th => th.textContent);
+    assert.ok(head.some(h => h.includes(t('yieldColPriceBest'))));
+    const market = getFarmMarket(farm);
+    const rows = buildYieldForecastRows(farm.fields, getSupplyRates(), farm).rows;
+    const margin = buildCropMarginRows(farm, farm.fields, getSupplyRates(), rows);
+    const crop = rows.find(r => margin.byCrop[r.crop].best);
+    const c = margin.byCrop[crop.crop];
+    const curve = market.prices[c.fillType].filter(v => v !== null);
+    assert.strictEqual(c.best.price, Math.max(...curve));
+    assert.ok(c.best.price >= c.price);
+    assert.ok(body.querySelector('.yield-best'));
+    const past = yieldPanel(farm.currentSeason - 1);
+    assert.ok(![...past.querySelectorAll('.yield-table thead th')].some(th => th.textContent.includes(t('yieldColPriceBest'))));
+});

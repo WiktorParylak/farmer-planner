@@ -2437,7 +2437,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const money = v => v === null || v === undefined ? '–' : finMoney(v);
     html += `<table class="data-table supply-table yield-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
-        ${margin ? `<th>${priceHead}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
+        ${margin ? `<th>${priceHead}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th>${isPast ? '' : `<th>${t('yieldColPriceBest')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th>`}<th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
     let revenueTotal = 0, costTotal = 0, revenueKnown = false;
     data.rows.forEach(r => {
@@ -2460,7 +2460,10 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
             if (c.costPerHa !== null && c.costPerHa !== undefined) costTotal += c.costPerHa * r.area;
             const costFlag = c.costPerHa !== null && c.costPerHa !== undefined && !c.costKnown ? ` <span class="supply-flag" title="${t('yieldCostPartialFlag')}">?</span>` : '';
             const mCls = c.marginPerHa === null || c.marginPerHa === undefined ? '' : c.marginPerHa < 0 ? ' yield-margin--loss' : ' yield-margin--gain';
-            marginCells = `<td>${money(c.price)}</td>
+            const b = c.best;
+            const bestCell = isPast ? '' : !b ? '<td>–</td>'
+                : `<td class="yield-best">${money(b.price)}<span class="supply-sub">${b.isNow ? t('marketBestNow') : marketShortMonth(b.month) + (b.change > 0.005 ? ` +${Math.round(b.change * 100)}%` : '')}</span></td>`;
+            marginCells = `<td>${money(c.price)}</td>${bestCell}
                 <td>${money(c.revenue)}</td>
                 <td>${money(c.costPerHa)}${costFlag}</td>
                 <td class="yield-margin${mCls}">${money(c.marginPerHa)}</td>`;
@@ -2472,7 +2475,7 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const area = data.rows.reduce((sum, r) => sum + r.area, 0);
     html += `</tbody><tfoot><tr class="supply-total-row">
         <td colspan="${2 + (showMoisture ? 1 : 0) + (showLoss ? 1 : 0)}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
-        ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
+        ${margin ? `<td></td>${isPast ? '' : '<td></td>'}<td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
             <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
     if (margin && todayMarket) html += `<p class="hub-panel-note">${t('yieldPastTodayPrices').replace('{n}', season)}</p>`;
     if (margin) html += `<p class="hub-panel-note">${t(isPast ? 'yieldMarginNotePast' : 'yieldMarginNote')}</p>`;

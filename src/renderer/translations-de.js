@@ -876,6 +876,7 @@ const UI = {
     yieldForecastUnknownFlag: "Keine Ertragsdaten für diese Feldfrucht — der Beitrag dieses Feldes fehlt in der Summe.",
     yieldForecastUnknownNote: "{n} Feldfrucht/-früchte ohne bekannten Ertrag — ihre Summen sind zu niedrig.",
     yieldColPrice: "Preis jetzt",
+    yieldColPriceBest: "Bester Preis",
     yieldColPriceEnd: "Preis am Saisonende ({month})",
     yieldPastTodayPrices: "Für Saison {n} wurden keine Preise gespeichert (sie endete vor dieser Version): Sie wird mit den heutigen Preisen gerechnet.",
     yieldMarginNotePast: "Preis: der Preis des Spiels im Monat, in dem die Saison endete, je 1000 l, gespeichert beim Start der neuen Saison. Betriebsmittel: Saatgut und der Mineraldünger des Stickstoffplans, gleich bepreist; Kalk wird für eine vergangene Saison nicht gerechnet. Marge: Erlös des erwarteten Ertrags minus Betriebsmittel — ohne Maschinen, Diesel und Löhne.",

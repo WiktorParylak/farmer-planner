@@ -17,6 +17,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 - **Breed norms in the sidebar**: they moved out of the folded box at the bottom of Animals into their own item under the Feed planner, with a larger chart beside the figures. Click or drag on the chart to pick the age; the axis shows the months.
 - **Supplies as a shopping list**: the screen starts with one card per product to buy (litres and cost), then a note about fields left out of the totals, and the per-field tables in Seeds / Fertilizer / Lime tabs. You pick which organic fertilizer you use, and the table shows only that one.
 - **A tidier bottom of the feed planner**: the mixer wagon's Load and Mix cards are the same height, the feed settings fold under a bar with a chevron, the field table keeps crop and use on the left with even dropdowns, and the notes about where the numbers come from sit together in one quiet block at the end.
+- **Best price in Yields and prices**: a new column next to today's price shows each crop's best price of the year on the game's price curve and its month (or "now"), with how much higher it is.
 
 **Fixed**
 - **Fields from game in a multiplayer save**: a save with several farms quietly gave you farm 1's fields. Now the app asks which farm is yours before taking any, and remembers it (you can change it in the farm's settings). The message says which farm it read and how many of the map's fields are on your land, that only those are added, and that the area comes from Precision Farming.

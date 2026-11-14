@@ -235,7 +235,10 @@ function buildCropMarginRows(farm, fields, rates, yieldRows, past = null) {
         const c = costs[r.crop] || { area: r.area, cost: 0, known: false };
         const costPerHa = c.area > 0 ? c.cost / c.area : null;
         const marginPerHa = revenue !== null && r.area > 0 ? (revenue - c.cost) / r.area : null;
-        byCrop[r.crop] = { fillType, summary, price, revenue, costPerHa, costKnown: c.known, marginPerHa };
+        // The year's best price on the curve and its month (a past season's
+        // snapshot keeps one month only, so it has none).
+        const best = !past && summary ? { price: summary.max, month: summary.best, isNow: summary.bestIdx === marketPeriodIndex(month), change: summary.change } : null;
+        byCrop[r.crop] = { fillType, summary, price, best, revenue, costPerHa, costKnown: c.known, marginPerHa };
     });
     return { market, byCrop };
 }
