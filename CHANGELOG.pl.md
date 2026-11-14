@@ -2,7 +2,7 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
-## 0.11.3 — unreleased
+## 0.11.3 — 2026-11-14
 
 **Nowe**
 - **Dwa przyciski płodozmianu**: *Dostosuj zaplanowane rośliny do płodozmianu* daje polom w cyklu uprawę z ich kroku zamiast innej zaplanowanej (obsiane pola i kroki z ugorem zostają bez zmian), a *Zaplanuj płodozmian do zaplanowanych pól* daje polom z uprawą bez cyklu ten cykl, który ma krok z tą uprawą i najlepiej pasuje do ostatnich sezonów, bez zmiany uprawy. Oba najpierw pokazują listę i dają się cofnąć.

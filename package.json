@@ -1,6 +1,6 @@
 {
   "name": "farmer-planner",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "whatsNewFrom": "0.11.0",
   "main": "src/main/main.js",
   "scripts": {

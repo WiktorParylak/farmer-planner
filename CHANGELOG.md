@@ -2,7 +2,7 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
-## 0.11.3 — unreleased
+## 0.11.3 — 2026-11-14
 
 **New**
 - **Two crop rotation buttons**: *Adjust planned crops to the rotation* gives fields on a cycle the crop of their step in place of another planned one (sown fields and fallow steps stay as they are), and *Plan the rotation for planned fields* gives fields with a crop and no cycle the cycle that has a step of that crop and fits their last seasons best, keeping the crop. Both show the list first and can be undone.
