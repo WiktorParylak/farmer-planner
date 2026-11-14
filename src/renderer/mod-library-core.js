@@ -125,7 +125,10 @@ function parseModDesc(xml) {
         author: xmlText(xmlTag(xml, 'author')),
         iconFile: xmlText(xmlTag(xml, 'iconFilename')),
         descVersion: desc ? Number(desc) : null,
-        multiplayer: /<multiplayer\b[^>]*supported\s*=\s*["']true["']/i.test(xml)
+        multiplayer: /<multiplayer\b[^>]*supported\s*=\s*["']true["']/i.test(xml),
+        // <dependencies><dependency>FS25_Other</dependency></dependencies>: mods it needs loaded.
+        dependencies: [...(xmlTag(xml, 'dependencies') || '').matchAll(/<dependency\b[^>]*>([\s\S]*?)<\/dependency>/gi)]
+            .map(m => xmlText(m[1])).filter(Boolean)
     };
 }
 
@@ -155,7 +158,7 @@ function readModEntry(dir, fileName) {
         isZip,
         size: isZip ? st.size : 0,
         mtime: st.mtimeMs,
-        title: {}, description: {}, version: '', author: '', iconFile: '', descVersion: null, multiplayer: false,
+        title: {}, description: {}, version: '', author: '', iconFile: '', descVersion: null, multiplayer: false, dependencies: [],
         hasModDesc: false, isPack: false, corrupt: false, problems: []
     };
     try {
@@ -280,18 +283,51 @@ function readSaveMods(careerSavegamePath) {
 
 // DLCs are in the save's list too, but live in the game's pdlc folder.
 function compareWithSave(mods, saveMods) {
+    const r = compareWithSaves(mods, [{ name: '', mods: saveMods }]);
+    return { missing: r.missing, unused: r.unused, versionDiff: r.versionDiff, used: r.usedIn.size };
+}
+
+// A library against several saves: saves = [{ name, mods }] (mods from readSaveMods).
+// A mod counts as used when a save lists it, or when a used mod needs it
+// (modDesc <dependencies>, all the way down). A save only lists the mods that
+// were on when it was saved.
+// -> { missing: [save mod + { saves }], versionDiff: [{ save, mod, saves }],
+//      usedIn: Map(mod -> save names), neededBy: Map(mod -> names of mods needing it),
+//      used: Set(mod), unused: [mod] }
+function compareWithSaves(mods, saves) {
     const lib = new Map(mods.map(m => [m.name.toLowerCase(), m]));
-    const used = new Set();
-    const missing = [], versionDiff = [];
-    saveMods.forEach(s => {
+    const usedIn = new Map(), missing = new Map(), versionDiff = new Map();
+    saves.forEach(save => (save.mods || []).forEach(s => {
         if (/^pdlc_/i.test(s.name)) return;
-        const m = lib.get(s.name.toLowerCase());
-        if (!m) { missing.push(s); return; }
-        used.add(m);
-        if (s.version && m.version && s.version !== m.version) versionDiff.push({ save: s, mod: m });
-    });
+        const key = s.name.toLowerCase();
+        const m = lib.get(key);
+        if (!m) {
+            const e = missing.get(key) || missing.set(key, { ...s, saves: [] }).get(key);
+            if (!e.saves.includes(save.name)) e.saves.push(save.name);
+            return;
+        }
+        const list = usedIn.get(m) || usedIn.set(m, []).get(m);
+        if (!list.includes(save.name)) list.push(save.name);
+        if (s.version && m.version && s.version !== m.version) {
+            const dk = key + '@' + s.version;
+            const d = versionDiff.get(dk) || versionDiff.set(dk, { save: s, mod: m, saves: [] }).get(dk);
+            if (!d.saves.includes(save.name)) d.saves.push(save.name);
+        }
+    }));
+    const used = new Set(usedIn.keys()), neededBy = new Map();
+    const queue = [...used];
+    while (queue.length) {
+        const m = queue.shift();
+        (m.dependencies || []).forEach(dep => {
+            const d = lib.get(dep.toLowerCase());
+            if (!d || d === m) return;
+            const by = neededBy.get(d) || neededBy.set(d, []).get(d);
+            if (!by.includes(m.name)) by.push(m.name);
+            if (!used.has(d)) { used.add(d); queue.push(d); }
+        });
+    }
     const unused = mods.filter(m => !used.has(m) && m.hasModDesc);
-    return { missing, unused, versionDiff, used: used.size };
+    return { missing: [...missing.values()], versionDiff: [...versionDiff.values()], usedIn, neededBy, used, unused };
 }
 
 // ---------- gameSettings.xml ----------
@@ -809,7 +845,7 @@ module.exports = {
     VALID_MOD_NAME, FS25_STEAM_URL,
     sameDir, readLibraries, writeLibraries, addLibraries, newLibraryId, readFsgCollections,
     parseModDesc, readModEntry, scanLibrary, findProblems, suggestModName, checkModZip,
-    readSaveMods, compareWithSave,
+    readSaveMods, compareWithSave, compareWithSaves,
     readOverride, withOverride, setOverride,
     copyMod, moveMod, renameMod, packMod, unpackMod,
     readModIcon, iconCacheName,

@@ -9,7 +9,6 @@
 // back exactly as intended.
 
 const tlCore = require('./tramlines-core');
-const { readMapFieldPolygons } = require('./savegame-soil');
 
 const TL_DEFAULTS = { threshold: 128, edge: 4, minPx: 2000, brush: 9, converter: '', gameDir: '' };
 const TL_EDIT_MARGIN = 64;
@@ -23,10 +22,9 @@ const tl = {
     image: null,             // last ImageData from the worker
     colors: [0],             // values that count as tramlines (0 = no crop)
     highlight: true,
-    mapFields: null,         // [{ key, id, poly: [[x,y]] }] in map pixels
-    groundFields: null,      // [{ key, label, bbox, px }]
+    groundFields: null,      // [{ key, label, bbox, px, rings: [[[x,y], ...], ...] }] in map pixels
     selected: new Set(),
-    mode: null,              // what a click on the map does: 'map' | 'ground' | 'lasso' | null
+    mode: null,              // what a click on the map does: 'ground' | 'lasso' | null
     lasso: [],               // closed polygons
     lassoPts: [],
     cutName: '',
@@ -228,7 +226,7 @@ async function tlClose() {
     if (dashboardView) dashboardView.style.display = 'flex';
     tlStopWorker();
     tl.image = null;
-    tl.mode = null; tl.mapFields = null; tl.groundFields = null;
+    tl.mode = null; tl.groundFields = null;
     tl.selected.clear(); tl.lasso = []; tl.lassoPts = []; tl.cutName = ''; tl.merge = false; tl.renaming = null;
 }
 
@@ -239,7 +237,7 @@ async function tlEnsureLoaded() {
     await tlBusy(t('tlLoading').replace('{save}', save.name), async () => {
         const r = await tlCall('load', { saveDir: save.dir });
         tl.loaded = { saveDir: save.dir, dim: r.dim, title: save.title };
-        tl.mode = null; tl.mapFields = null; tl.groundFields = null; tl.selected.clear(); tl.lasso = []; tl.lassoPts = [];
+        tl.mode = null; tl.groundFields = null; tl.selected.clear(); tl.lasso = []; tl.lassoPts = [];
         tlFit();
     });
     tlRenderSide();
@@ -386,24 +384,23 @@ function tlDraw() {
             pts.forEach(([x, y], i) => { const [a, b] = tlToScreen(x, y); if (i) g.lineTo(a, b); else g.moveTo(a, b); });
             if (close) g.closePath();
         };
-        (tl.mapFields || []).forEach(f => {
+        // Each field's real outline (holes stay empty), its number when there's room.
+        (tl.groundFields || []).forEach((f, i) => {
             const sel = tl.selected.has(f.key);
-            poly(f.poly, true);
-            if (sel) { g.fillStyle = 'rgba(0,255,102,0.18)'; g.fill(); }
-            g.strokeStyle = sel ? '#00ff66' : 'rgba(80,200,255,0.8)';
+            g.beginPath();
+            f.rings.forEach(ring => {
+                ring.forEach(([x, y], k) => { const [a, b] = tlToScreen(x, y); if (k) g.lineTo(a, b); else g.moveTo(a, b); });
+                g.closePath();
+            });
+            if (sel) { g.fillStyle = 'rgba(0,255,102,0.18)'; g.fill('evenodd'); }
+            g.strokeStyle = sel ? '#00ff66' : 'rgba(255,200,80,0.85)';
             g.stroke();
-            if (s * (f.bbox[2] - f.bbox[0]) > 30) {
+            if (s * (f.bbox[2] - f.bbox[0]) > 30 && s * (f.bbox[3] - f.bbox[1]) > 16) {
+                const n = String(i + 1);
                 const [a, b] = tlToScreen((f.bbox[0] + f.bbox[2]) / 2, (f.bbox[1] + f.bbox[3]) / 2);
-                g.fillStyle = sel ? '#00ff66' : '#bfe8ff';
-                g.fillText(f.id, a - g.measureText(f.id).width / 2, b);
+                g.fillStyle = sel ? '#00ff66' : '#ffe2a8';
+                g.fillText(n, a - g.measureText(n).width / 2, b);
             }
-        });
-        (tl.groundFields || []).forEach(f => {
-            const sel = tl.selected.has(f.key);
-            const [a, b] = tlToScreen(f.bbox[0], f.bbox[1]);
-            g.strokeStyle = sel ? '#00ff66' : 'rgba(255,200,80,0.8)';
-            g.strokeRect(a, b, (f.bbox[2] - f.bbox[0]) * s, (f.bbox[3] - f.bbox[1]) * s);
-            if (sel) { g.fillStyle = 'rgba(0,255,102,0.12)'; g.fillRect(a, b, (f.bbox[2] - f.bbox[0]) * s, (f.bbox[3] - f.bbox[1]) * s); }
         });
         g.strokeStyle = '#00ff66';
         tl.lasso.forEach(p => { poly(p, true); g.fillStyle = 'rgba(0,255,102,0.18)'; g.fill(); g.stroke(); });
@@ -470,12 +467,10 @@ function tlPasteHtml(save) {
 function tlCutHtml(save) {
     if (!save) return '';
     const chips = tl.colors.map((c, i) => `<span class="tl-color-chip"><span class="tl-swatch" style="background:rgb(${c & 255},${(c >> 8) & 255},${(c >> 16) & 255})"></span>${c}${c === 0 ? ' · ' + escapeHtml(t('tlNoCrop')) : ''}<button type="button" class="tl-color-remove" data-i="${i}" title="${escapeHtml(t('delete'))}">×</button></span>`).join('');
-    const fields = [...(tl.mapFields || []).map(f => ({ key: f.key, label: t('tlFieldName').replace('{n}', f.id), bbox: f.bbox })),
-        ...(tl.groundFields || []).map((f, i) => ({ key: f.key, label: t('tlAreaName').replace('{n}', i + 1), bbox: f.bbox }))];
+    const fields = (tl.groundFields || []).map((f, i) => ({ key: f.key, label: t('tlAreaName').replace('{n}', i + 1), bbox: f.bbox }));
     const sel = tl.selected.size + tl.lasso.length;
     const modeBtn = (mode, cls, label, hint) => `<button type="button" class="settings-btn ${cls}${tl.mode === mode ? ' is-active' : ''}" aria-pressed="${tl.mode === mode}" title="${escapeHtml(t(hint))}">${t(label)}</button>`;
     return `<div class="tl-row">
-            ${modeBtn('map', 'tl-detect-map', 'tlDetectMap', 'tlDetectMapHint')}
             ${modeBtn('ground', 'tl-detect-ground', 'tlDetectGround', 'tlDetectGroundHint')}
             ${modeBtn('lasso', 'tl-lasso', 'tlLasso', 'tlLassoHint')}
         </div>
@@ -531,27 +526,11 @@ function tlSettingsHtml() {
 function tlSetMode(mode) {
     tl.mode = mode;
     tl.lassoPts = [];
-    if (mode !== 'map') tl.mapFields = null;
     if (mode !== 'ground') tl.groundFields = null;
-    const prefix = { map: 'm:', ground: 'g:' }[mode];
+    const prefix = { ground: 'g:' }[mode];
     [...tl.selected].forEach(k => { if (!prefix || !k.startsWith(prefix)) tl.selected.delete(k); });
     tlRenderSide();
     tlDraw();
-}
-
-async function tlDetectMap() {
-    if (tl.mode === 'map') { tlSetMode(null); return; }
-    const save = tlCurrentSave();
-    if (!save || !tl.loaded) return;
-    const r = readMapFieldPolygons(path.join(save.dir, 'careerSavegame.xml'));
-    if (!r.ok) { await showNotice(t('tlTitle'), t('tlDetectMapFail_' + (['nomod', 'nomap', 'nofields'].includes(r.reason) ? r.reason : 'other')).replace('{mod}', r.modName || ''), true); return; }
-    const k = tl.loaded.dim / r.mapSize;
-    tl.mapFields = r.fields.map(f => {
-        const poly = f.pts.map(([x, z]) => [(x + r.mapSize / 2) * k, (z + r.mapSize / 2) * k]);
-        const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
-        return { key: 'm:' + f.id, id: f.id, poly, bbox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
-    }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-    tlSetMode('map');
 }
 
 async function tlDetectGround() {
@@ -586,7 +565,6 @@ async function tlCut() {
     const nameIn = tl.cutName;
     const outDir = tlLibraryDir(save.title);
     const items = [];
-    (tl.mapFields || []).filter(f => tl.selected.has(f.key)).forEach(f => items.push({ label: t('tlFieldName').replace('{n}', f.id), area: { growPolys: [f.poly] } }));
     (tl.groundFields || []).forEach((f, i) => { if (tl.selected.has(f.key)) items.push({ label: t('tlAreaName').replace('{n}', i + 1), area: { labels: [f.label] } }); });
     tl.lasso.forEach((p, i) => items.push({ label: t('tlLassoName').replace('{n}', i + 1), area: { polys: [p] } }));
     if (!items.length) return;
@@ -597,9 +575,9 @@ async function tlCut() {
     let jobs;
     if (tl.merge || items.length === 1) {
         const pick = key => items.flatMap(i => i.area[key] || []);
-        const polys = pick('polys'), growPolys = pick('growPolys'), labels = pick('labels');
-        if ((polys.length || growPolys.length) && labels.length) { await showNotice(t('tlTitle'), t('tlMergeMixed'), true); return; }
-        jobs = [{ name: tlSafeName(nameIn.trim() || items[0].label), area: labels.length ? { labels } : { polys, growPolys } }];
+        const polys = pick('polys'), labels = pick('labels');
+        if (polys.length && labels.length) { await showNotice(t('tlTitle'), t('tlMergeMixed'), true); return; }
+        jobs = [{ name: tlSafeName(nameIn.trim() || items[0].label), area: labels.length ? { labels } : { polys } }];
     } else {
         jobs = items.map(i => ({ name: tlSafeName(nameIn.trim() ? `${nameIn.trim()} ${i.label}` : i.label), area: i.area }));
     }
@@ -923,17 +901,16 @@ function tlEditorOpenKeepView(name) {
         }
         else if (tg.closest('.tl-entry-export') && entry) tlExport(entry);
         else if (tg.closest('.tl-entry-delete') && entry) tlDeleteEntry(entry);
-        else if (tg.closest('.tl-detect-map')) tlDetectMap();
         else if (tg.closest('.tl-detect-ground')) tlDetectGround();
         else if (tg.closest('.tl-lasso-undo')) tlLassoUndo();
         else if (tg.closest('.tl-lasso-clear')) { tl.lasso = []; tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-lasso')) tlSetMode(tl.mode === 'lasso' ? null : 'lasso');
         else if (tg.closest('.tl-color-remove')) { tl.colors.splice(+tg.closest('.tl-color-remove').dataset.i, 1); tlRenderSide(); tlRequestView(); }
-        else if (tg.closest('.tl-fields-all')) { [...(tl.mapFields || []), ...(tl.groundFields || [])].forEach(f => tl.selected.add(f.key)); tlRenderSide(); tlDraw(); }
+        else if (tg.closest('.tl-fields-all')) { (tl.groundFields || []).forEach(f => tl.selected.add(f.key)); tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-fields-none')) { tl.selected.clear(); tlRenderSide(); tlDraw(); }
         else if (tg.closest('.tl-field-zoom')) {
             const key = tg.closest('.tl-entry').dataset.key;
-            const f = [...(tl.mapFields || []), ...(tl.groundFields || [])].find(x => x.key === key);
+            const f = (tl.groundFields || []).find(x => x.key === key);
             if (f) tlZoomTo(f.bbox);
         }
         else if (tg.closest('.tl-cut')) tlCut();
@@ -1012,8 +989,9 @@ function tlEditorOpenKeepView(name) {
         if (tl.tab !== 'cut') return;
         if (lassoClick) { tl.lassoPts.push([mx, my]); tlRenderSide(); tlDraw(); return; }
         const inPoly = (P, x, y) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) ins = !ins; } return ins; };
-        const hit = (tl.mapFields || []).find(f => inPoly(f.poly, mx, my))
-            || (tl.groundFields || []).filter(f => mx >= f.bbox[0] && mx < f.bbox[2] && my >= f.bbox[1] && my < f.bbox[3]).sort((a, b) => a.px - b.px)[0];
+        // Inside the outline (even-odd over its rings, so a hole is outside); the box only narrows the search.
+        const hit = (tl.groundFields || []).filter(f => mx >= f.bbox[0] && mx < f.bbox[2] && my >= f.bbox[1] && my < f.bbox[3])
+            .filter(f => f.rings.reduce((ins, ring) => ins !== inPoly(ring, mx, my), false)).sort((a, b) => a.px - b.px)[0];
         if (!hit) return;
         if (tl.selected.has(hit.key)) tl.selected.delete(hit.key); else tl.selected.add(hit.key);
         tlRenderSide();

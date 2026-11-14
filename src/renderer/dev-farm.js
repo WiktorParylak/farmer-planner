@@ -166,7 +166,7 @@ function devArchivedSeasons() {
         season, dateArchived: new Date(Date.UTC(2026, season, 1)).toISOString(),
         fields, balance, loan, animals, avgHealth
     });
-    return [
+    const seasons = [
         archived(1, [
             devField("1", 5.2, "Canola", "AUGUST", "Planted", "plowed", { limeAppliedSeason: 1, limePh: 1, harvestMonth: "JUNE", fertilizer: true }),
             devField("2", 3.4, "Wheat", "OCTOBER", "Planted", "plowed", { harvestMonth: "JULY" }),
@@ -185,6 +185,16 @@ function devArchivedSeasons() {
             devField("14", 3.1, "Wheat", "SEPTEMBER", "Planted", "plowed", { limeAppliedSeason: 2, limePh: 1, harvestMonth: "JULY" })
         ], 214000, 160000, 210, 91)
     ];
+    // Season 2 kept the prices of the month it ended in; season 1 is from before they were kept.
+    seasons[1].market = devMarketSnapshot('FEBRUARY', ['CANOLA', 'WHEAT', 'BARLEY', 'SOYBEAN', 'GRASS', 'SUGARBEET', 'SUNFLOWER']);
+    return seasons;
+}
+
+// What a new season keeps of the prices (seasonMarketSnapshot in market.js).
+function devMarketSnapshot(month, crops) {
+    const m = devMarket(), i = DEV_MONTHS.indexOf(month);
+    const pick = list => Object.fromEntries(list.map(ft => [ft, m.prices[ft][i]]));
+    return { month, prices: pick(crops), inputs: pick(['SEEDS', 'FERTILIZER', 'LIME']) };
 }
 
 // One row per in-game month from year 1 MARCH to now. Money and the herd grow
@@ -447,6 +457,8 @@ function buildDevFarm({ pl }) {
         finishedCrops: [devField("13", 0.85, "Pea", "MARCH", "Planted", "noTill", { finishedSeason: DEV_SEASON, finishedMonth: "JULY" })],
         fieldSizes: { "5": 5 },
         // Crop rotation: three cycles; fields 1, 2, 3-4, 6 and 15 use them.
+        // Filled without asking (new farms ask), so field 15 gets its crop on opening.
+        rotationAutoFill: "auto",
         rotations: [
             { id: "rot_dev_norfolk", name: "Norfolk", color: "#c97a2b", steps: [
                 { crop: "Wheat", catchCrop: "", sowingMonth: "", seasons: 1 }, { crop: "Sugarbeet", catchCrop: "", sowingMonth: "", seasons: 1 },

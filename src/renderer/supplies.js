@@ -9,13 +9,50 @@
 // NITROGEN_BY_SOIL (read from data/ in renderer.js)… are resolved when a
 // function runs, never at load time.
 
-// Zaopatrzenie: exactly two tables, both read farm.fields[] directly (no
-// savegame source toggle) — Seeds, and a Fertilizer table merging what used
-// to be three separate tables (mineral / natural-from-plan / organic
-// equivalence) into one row per field, driven by that field's own
-// fertilization plan. Fields without a saved plan get a "fill in the plan"
-// call-to-action instead of a guessed number. The "Adjust rates" drawer lives
-// in Farm Settings now (see renderSettingsSupplyAdjust) — not rendered here.
+// Zaopatrzenie: a shopping list first — one card per product to buy (litres
+// and ≈ cost), banners for what's missing from the totals — then the per-field
+// tables in tabs (Seeds / Fertilizer / Lime). All read farm.fields[] directly.
+// Fields without a saved fertilization plan get a "fill in the plan" button
+// instead of a guessed number. The "Adjust rates" drawer lives in Farm
+// Settings (see renderSettingsSupplyAdjust) — not rendered here.
+const SUPPLY_TABS = ['seed', 'fert', 'lime'];
+const SUPPLY_ORGANIC_TYPES = ['manure', 'slurry', 'digestate'];
+
+function suppliesTab() {
+    const v = getSetting('suppliesTab');
+    return SUPPLY_TABS.includes(v) ? v : 'seed';
+}
+
+function suppliesOrganic() {
+    const v = getSetting('suppliesOrganic');
+    return SUPPLY_ORGANIC_TYPES.includes(v) ? v : 'manure';
+}
+
+// What to buy, one card per product: seed, each crop planted with its own
+// harvest (potatoes, sugarcane), mineral fertilizer and lime. priceOf(fillType)
+// gives the price per 1000 l or null. cost is null when there's something to
+// buy but no price for it.
+function suppliesSummary(seed, fert, lime, priceOf) {
+    const card = (key, input, litres, fields) => {
+        const price = litres > 0 ? priceOf(input) : null;
+        return { key, input, litres, fields, cost: litres > 0 ? (price !== null ? litres * price / 1000 : null) : 0 };
+    };
+    const seedTotals = seed.totals || {};
+    const fieldsOf = input => new Set(seed.rows.filter(r => r.input === input).map(r => r.number)).size;
+    const cards = [card('seed', MARKET_INPUT_FILLTYPES.seed, seedTotals[MARKET_INPUT_FILLTYPES.seed] || 0, fieldsOf(MARKET_INPUT_FILLTYPES.seed))];
+    Object.keys(seedTotals).filter(ft => ft !== MARKET_INPUT_FILLTYPES.seed && seedTotals[ft] > 0).sort()
+        .forEach(ft => cards.push(card('own-' + ft, ft, seedTotals[ft], fieldsOf(ft))));
+    cards.push(card('fert', MARKET_INPUT_FILLTYPES.fertilizer, fert.totals ? fert.totals.mineralLAbs : 0, fert.rows.filter(r => r.hasPlan).length));
+    cards.push(card('lime', MARKET_INPUT_FILLTYPES.lime, lime.total || 0, lime.rows.length));
+    const priced = cards.filter(c => c.litres > 0 && c.cost !== null);
+    return {
+        cards,
+        costTotal: priced.reduce((s, c) => s + c.cost, 0),
+        costKnown: priced.length > 0,
+        costPartial: cards.some(c => c.litres > 0 && c.cost === null)
+    };
+}
+
 function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     titleEl.textContent = t('suppliesTitle');
 
@@ -26,6 +63,9 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     const season = farm.currentSeason || 1;
     const seed = buildSuppliesSeedRows(farm, rates);
     const fert = buildSuppliesFertRows(farm, rates);
+    const lime = buildSuppliesLimeRows(farm, rates);
+    const market = getFarmMarket(farm);
+    const summary = suppliesSummary(seed, fert, lime, ft => marketInputPrice(farm, market, ft));
 
     const fmtL = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} l`;
     const fmtKg = n => `${Math.round(n).toLocaleString(FIN_LOCALE())} kg`;
@@ -37,109 +77,173 @@ function renderSuppliesPanel(titleEl, bodyEl, modalEl) {
     }, 0);
 
     let html = `<p class="supply-intro">${t('suppliesIntro').replace('{n}', season)}</p>
-        <p class="details-category"><span>${t('suppliesPlannedArea')}</span><span class="details-category-value">${plannedArea.toFixed(2)} ha</span></p>
-        <p class="details-category"><span>${t('suppliesFieldsToSow')}</span><span class="details-category-value">${seed.rows.length}</span></p>`;
+        <div class="supply-head">
+            <span>${t('suppliesPlannedArea')} <b>${plannedArea.toFixed(2)} ha</b></span>
+            <span>${t('suppliesFieldsToSow')} <b>${new Set(seed.rows.filter(r => !r.isCatch).map(r => r.number)).size}</b></span>
+            ${summary.costKnown ? `<span class="supply-head-cost">${t('suppliesCostTotal')} <b>≈ ${finMoney(summary.costTotal)}</b>${summary.costPartial ? ' <span class="supply-flag supply-flag--label" title="' + escapeHtml(t('suppliesCostPartial')) + '">?</span>' : ''}</span>` : ''}
+        </div>`;
 
-    if (!seed.rows.length && !fert.rows.length) {
+    if (!seed.rows.length && !fert.rows.length && !lime.rows.length) {
         bodyEl.innerHTML = html + `<p class="hub-panel-note">${t('suppliesNoCrops')}</p>`;
         return;
     }
 
-    // --- Seeds --- one row per field still to sow.
-    html += `<div class="hub-panel-subtitle">${t('suppliesSeeds')}</div>`;
-    if (seed.rows.length) {
-        html += `<table class="data-table supply-table"><thead><tr>
-            <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
+    // --- Shopping list ---
+    const tab = suppliesTab();
+    const cardLabel = c => c.key === 'seed' ? t('suppliesSeeds') : c.key === 'fert' ? t('suppliesCardFert') : c.key === 'lime' ? t('suppliesLime') : translateCropName(Object.keys(SUPPLY_OWN_SEED_FILLTYPES).find(k => SUPPLY_OWN_SEED_FILLTYPES[k] === c.input) || c.input);
+    const cardTab = c => c.key.startsWith('own-') ? 'seed' : c.key;
+    html += `<div class="supply-cards">${summary.cards.map(c => {
+        const empty = !(c.litres > 0);
+        return `<button type="button" class="supply-card${empty ? ' is-empty' : ''}${cardTab(c) === tab ? ' is-current' : ''}" data-supply-tab="${cardTab(c)}" data-supply-card="${escapeHtml(c.key)}">
+            <span class="supply-card-label">${escapeHtml(cardLabel(c))}</span>
+            ${empty
+                ? `<span class="supply-card-none">${t('suppliesCardNothing')}</span>`
+                : `<span class="supply-card-value">${fmtL(c.litres)}</span>
+                   <span class="supply-card-sub">${c.cost !== null ? `≈ ${finMoney(c.cost)} · ` : ''}${t('suppliesCardFields').replace('{n}', c.fields)}</span>`}
+        </button>`;
+    }).join('')}</div>`;
+
+    // --- Banners: what the totals leave out ---
+    const firstMissing = fert.rows.find(r => !r.hasPlan);
+    if (firstMissing) {
+        html += `<div class="supply-banner">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <span>${t('suppliesBannerNoPlan').replace('{n}', fert.missingPlanCount)}</span>
+            <button type="button" class="supply-fillplan-btn" title="${t('suppliesFillPlanHint')}" ${fertPlanOpenAttrs(firstMissing.planKey, firstMissing.soilKey, firstMissing.displayNumber, firstMissing.crop, firstMissing.area)}>${t('suppliesFillPlanCta')}</button>
+        </div>`;
+    }
+    const unknownCrops = [...new Set(seed.rows.filter(r => !r.known).map(r => r.crop))];
+    if (unknownCrops.length) {
+        html += `<div class="supply-banner">
+            <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+            <span>${t('suppliesBannerUnknown').replace('{crops}', unknownCrops.map(c => escapeHtml(translateCropName(c))).join(', ')).replace('{v}', SUPPLY_SEED_FALLBACK)}</span>
+        </div>`;
+    }
+
+    // --- Tabs ---
+    const tabBtn = (id, icon, label) => `<button type="button" class="view-tab${tab === id ? ' is-active' : ''}" role="tab" aria-selected="${tab === id}" data-supply-tab="${id}"><i class="fa-solid ${icon}" aria-hidden="true"></i> ${label}</button>`;
+    html += `<div class="view-tabs supply-tabs" role="tablist">${tabBtn('seed', 'fa-seedling', t('suppliesSeeds'))}${tabBtn('fert', 'fa-flask', t('suppliesFertilizer'))}${tabBtn('lime', 'fa-mountain', t('suppliesLime'))}</div>`;
+
+    html += `<div class="supply-tab-body">`;
+    if (tab === 'seed') html += suppliesSeedTabHtml(farm, seed, fmtL, num);
+    else if (tab === 'fert') html += suppliesFertTabHtml(farm, fert, fmtL, fmtKg, num);
+    else html += suppliesLimeTabHtml(farm, lime, fmtL);
+    html += `</div>`;
+
+    // --- How the numbers are made ---
+    const how = [
+        t('suppliesBufferNote').replace('{p}', rates.bufferPct),
+        t('suppliesHowSeed'),
+        t('suppliesHowMineral').replace('{d}', supplyRate(rates, 'nDensity')),
+        t('suppliesSoilHint')
+    ];
+    if (market) how.push(t('suppliesCostNote'));
+    html += `<details class="supply-how"><summary>${t('suppliesHow')}</summary><ul>${how.map(s => `<li>${s}</li>`).join('')}</ul></details>`;
+
+    bodyEl.innerHTML = html;
+
+    bodyEl.querySelectorAll('[data-supply-tab]').forEach(el => el.addEventListener('click', () => {
+        setSetting('suppliesTab', el.dataset.supplyTab);
+        const scroll = modalEl ? modalEl.scrollTop : 0;
+        renderSuppliesPanel(titleEl, bodyEl, modalEl);
+        if (modalEl) modalEl.scrollTop = scroll;
+    }));
+    bodyEl.querySelectorAll('[data-supply-org]').forEach(el => el.addEventListener('click', () => {
+        setSetting('suppliesOrganic', el.dataset.supplyOrg);
+        const scroll = modalEl ? modalEl.scrollTop : 0;
+        renderSuppliesPanel(titleEl, bodyEl, modalEl);
+        if (modalEl) modalEl.scrollTop = scroll;
+    }));
+}
+
+// Seeds tab: fields sown with bought seed, then the crops planted with their
+// own harvest (potatoes, sugarcane), each fill type with its own total.
+function suppliesSeedTabHtml(farm, seed, fmtL, num) {
+    if (!seed.rows.length) return `<p class="hub-panel-note">${t('suppliesAllSown')}</p>`;
+    const table = (rows, input) => {
+        const total = seed.totals[input] || 0;
+        let h = `<table class="data-table supply-table"><thead><tr>
+            <th>${t('suppliesColField')}</th><th class="is-text">${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
             <th>${t('suppliesColRate')}</th><th>${t('suppliesColNeed')}</th></tr></thead><tbody>`;
-        seed.rows.forEach(r => {
+        rows.forEach(r => {
             const flag = r.known ? '' : ` <span class="supply-flag" title="${t('suppliesUnknownRate').replace('{v}', r.rate)}">?</span>`;
-            html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}${flag}${catchTag(r)}</td>
+            h += `<tr><td>${escapeHtml(r.number)}</td><td class="is-text">${translateCropName(r.crop)}${flag}${catchTag(r)}</td>
                 <td>${r.area.toFixed(2)} ha</td>
                 <td>${num(r.rate)} ${t('suppliesSeedRateUnit')}</td>
                 <td>${fmtL(r.buffered)}</td></tr>`;
         });
-        html += `</tbody><tfoot><tr class="supply-total-row">
-            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(seed.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.seed, seed.total)}</td></tr></tfoot></table>`;
-    } else {
-        html += `<p class="hub-panel-note">${t('suppliesAllSown')}</p>`;
+        return h + `</tbody><tfoot><tr class="supply-total-row">
+            <td colspan="4">${t('suppliesTotal')}</td><td>${fmtL(total)}${marketCostHtml(farm, input, total)}</td></tr></tfoot></table>`;
+    };
+    const bought = seed.rows.filter(r => r.input === MARKET_INPUT_FILLTYPES.seed);
+    const own = seed.rows.filter(r => r.input !== MARKET_INPUT_FILLTYPES.seed);
+    let html = bought.length ? table(bought, MARKET_INPUT_FILLTYPES.seed) : '';
+    if (own.length) {
+        html += `<div class="hub-panel-subtitle">${t('suppliesOwnSeed')}</div>
+            <p class="hub-panel-note">${t('suppliesOwnSeedHint')}</p>`;
+        [...new Set(own.map(r => r.input))].sort().forEach(input => { html += table(own.filter(r => r.input === input), input); });
     }
+    return html;
+}
 
-    // --- Fertilizer --- one row per field due for fertilizing, sourced from
-    // that field's own "Nawożenie" plan: target / existing / natural / mineral
-    // N all in one row, natural N also shown as manure/slurry/digestate
-    // volume. A field with no saved plan gets a CTA instead of a guess.
-    html += `<div class="hub-panel-subtitle">${t('suppliesFertilizer')}</div>`;
-    if (fert.rows.length) {
-        const orgCell = (r) => r.orgRate > 0
-            ? `${num(r.orgRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.orgAbs)} N</span>
-               <span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(r.orgVolAbs.manure)}</span>
-               <span class="supply-sub">${t('suppliesOrgSlurry')} ${fmtL(r.orgVolAbs.slurry)}</span>
-               <span class="supply-sub">${t('suppliesOrgDigestate')} ${fmtL(r.orgVolAbs.digestate)}</span>`
-            : '–';
-        html += `<table class="data-table supply-table"><thead><tr>
-            <th>${t('suppliesColField')}</th><th>${t('suppliesColCrop')}</th><th>${t('suppliesColSoil')}</th><th>${t('suppliesColArea')}</th>
-            <th>${t('suppliesColTargetN')}</th><th>${t('suppliesColExistingN')}</th><th>${t('suppliesColOrgN')}</th><th>${t('suppliesColMineralN')}</th>
-            </tr></thead><tbody>`;
-        fert.rows.forEach(r => {
-            if (!r.hasPlan) {
-                html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}</td><td colspan="2">${r.area.toFixed(2)} ha</td>
-                    <td colspan="4" class="supply-fillplan-cell">
-                        <button type="button" class="supply-fillplan-btn" title="${t('suppliesFillPlanHint')}"
-                            ${fertPlanOpenAttrs(r.planKey, r.soilKey, r.displayNumber, r.crop, r.area)}>
-                            ${t('suppliesFillPlanCta')}
-                        </button>
-                    </td></tr>`;
-                return;
-            }
-            html += `<tr><td>${r.number}</td><td>${translateCropName(r.crop)}</td>
-                <td class="supply-soil-cell">${soilMixLabel(r.soilMix)}</td>
-                <td>${r.area.toFixed(2)} ha</td>
-                <td>${num(r.targetRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.targetAbs)}</span></td>
-                <td>${r.existingRate > 0 ? `${num(r.existingRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.existingAbs)}</span>` : '–'}</td>
-                <td>${orgCell(r)}</td>
-                <td>${fmtL(r.mineralLAbs)}<span class="supply-sub">${fmtKg(r.mineralAbs)} N</span></td></tr>`;
-        });
-        html += `</tbody><tfoot><tr class="supply-total-row">
-            <td colspan="4">${t('suppliesTotal')}</td>
-            <td>${fmtKg(fert.totals.targetAbs)} N</td>
-            <td>${fmtKg(fert.totals.existingAbs)} N</td>
-            <td>${fmtKg(fert.totals.orgAbs)} N<span class="supply-sub">${t('suppliesOrgManure')} ${fmtL(fert.totals.orgVolAbs.manure)}</span><span class="supply-sub">${t('suppliesOrgSlurry')} ${fmtL(fert.totals.orgVolAbs.slurry)}</span><span class="supply-sub">${t('suppliesOrgDigestate')} ${fmtL(fert.totals.orgVolAbs.digestate)}</span></td>
-            <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span>${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.fertilizer, fert.totals.mineralLAbs)}</td>
-            </tr></tfoot></table>`;
-        if (fert.missingPlanCount > 0) {
-            html += `<p class="hub-panel-note">${t('suppliesNoPlanNote').replace('{n}', fert.missingPlanCount)}</p>`;
+// Fertilizer tab: one row per field due for fertilizing, from that field's
+// own plan. The organic column shows the one product the player uses.
+function suppliesFertTabHtml(farm, fert, fmtL, fmtKg, num) {
+    if (!fert.rows.length) return `<p class="hub-panel-note">${t('suppliesNoFert')}</p>`;
+    const org = suppliesOrganic();
+    const orgKey = { manure: 'suppliesOrgManure', slurry: 'suppliesOrgSlurry', digestate: 'suppliesOrgDigestate' };
+    const orgBtn = k => `<button type="button" class="view-tab${org === k ? ' is-active' : ''}" aria-pressed="${org === k}" data-supply-org="${k}">${t(orgKey[k])}</button>`;
+    let html = `<div class="supply-org-pick"><span>${t('suppliesOrgPick')}</span>
+        <div class="view-tabs" role="group" aria-label="${escapeHtml(t('suppliesOrgPick'))}">${SUPPLY_ORGANIC_TYPES.map(orgBtn).join('')}</div></div>`;
+    const orgCell = (rate, abs, vol) => rate > 0
+        ? `${fmtL(vol)}<span class="supply-sub">${num(rate)} ${t('suppliesNRateUnit')} · ${fmtKg(abs)} N</span>`
+        : '–';
+    html += `<table class="data-table supply-table"><thead><tr>
+        <th>${t('suppliesColField')}</th><th class="is-text">${t('suppliesColCrop')}</th><th>${t('suppliesColArea')}</th>
+        <th>${t('suppliesColTargetN')}</th><th>${t('suppliesColExistingN')}</th><th>${t(orgKey[org])}</th><th>${t('suppliesColMineralN')}</th>
+        </tr></thead><tbody>`;
+    fert.rows.forEach(r => {
+        if (!r.hasPlan) {
+            html += `<tr><td>${escapeHtml(r.number)}</td><td class="is-text">${translateCropName(r.crop)}</td><td>${r.area.toFixed(2)} ha</td>
+                <td colspan="4" class="supply-fillplan-cell">
+                    <button type="button" class="supply-fillplan-btn" title="${t('suppliesFillPlanHint')}"
+                        ${fertPlanOpenAttrs(r.planKey, r.soilKey, r.displayNumber, r.crop, r.area)}>
+                        ${t('suppliesFillPlanCta')}
+                    </button>
+                </td></tr>`;
+            return;
         }
-        const density = supplyRate(rates, 'nDensity');
-        html += `<p class="hub-panel-note">${t('suppliesNDensityNote').replace('{d}', density)}</p>`;
-        html += `<p class="hub-panel-note">${t('suppliesSoilHint')}</p>`;
-    } else {
-        html += `<p class="hub-panel-note">${t('suppliesNoFert')}</p>`;
-    }
+        html += `<tr><td>${escapeHtml(r.number)}</td><td class="is-text">${translateCropName(r.crop)}<span class="supply-sub supply-soil-sub">${soilMixLabel(r.soilMix)}</span></td>
+            <td>${r.area.toFixed(2)} ha</td>
+            <td>${num(r.targetRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.targetAbs)}</span></td>
+            <td>${r.existingRate > 0 ? `${num(r.existingRate)} ${t('suppliesNRateUnit')}<span class="supply-sub">${fmtKg(r.existingAbs)}</span>` : '–'}</td>
+            <td>${orgCell(r.orgRate, r.orgAbs, r.orgVolAbs[org])}</td>
+            <td>${fmtL(r.mineralLAbs)}<span class="supply-sub">${fmtKg(r.mineralAbs)} N</span></td></tr>`;
+    });
+    html += `</tbody><tfoot><tr class="supply-total-row">
+        <td colspan="3">${t('suppliesTotal')}</td>
+        <td>${fmtKg(fert.totals.targetAbs)} N</td>
+        <td>${fmtKg(fert.totals.existingAbs)} N</td>
+        <td>${fert.totals.orgAbs > 0 ? `${fmtL(fert.totals.orgVolAbs[org])}<span class="supply-sub">${fmtKg(fert.totals.orgAbs)} N</span>` : '–'}</td>
+        <td>${fmtL(fert.totals.mineralLAbs)}<span class="supply-sub">${fmtKg(fert.totals.mineralAbs)} N</span>${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.fertilizer, fert.totals.mineralLAbs)}</td>
+        </tr></tfoot></table>`;
+    return html;
+}
 
-    // --- Lime --- fields below their soil's optimum pH. With Precision
-    // Farming in the save: the litres to bring every part of the field up
-    // (pH map); otherwise the app's own estimate for fields it marks as
-    // needing lime (one application per soil type, limeRateForSoil).
-    const lime = buildSuppliesLimeRows(farm, rates);
-    html += `<div class="hub-panel-subtitle">${t('suppliesLime')}</div>`;
-    if (lime.rows.length) {
-        html += `<table class="data-table supply-table"><thead><tr>
-            <th>${t('suppliesColField')}</th><th>${t('suppliesColArea')}</th><th>${t('suppliesLimePh')}</th><th>${t('suppliesLimeBuy')}</th>
-            </tr></thead><tbody>`;
-        lime.rows.forEach(r => {
-            html += `<tr><td>${escapeHtml(r.number)}</td><td>${r.area.toFixed(2)} ha</td>
-                <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
-                <td>${fmtL(r.buffered)}</td></tr>`;
-        });
-        html += `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.lime, lime.total)}</td></tr></tfoot></table>`;
-    } else {
-        html += `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
-    }
-
-    html += `<p class="hub-panel-note">${t('suppliesBufferNote').replace('{p}', rates.bufferPct)}</p>`;
-    if (getFarmMarket(farm)) html += `<p class="hub-panel-note">${t('suppliesCostNote')}</p>`;
-
-    bodyEl.innerHTML = html;
+// Lime tab: fields below their soil's optimum pH. With Precision Farming in
+// the save: the litres to bring every part of the field up (pH map);
+// otherwise the app's own estimate for fields it marks as needing lime.
+function suppliesLimeTabHtml(farm, lime, fmtL) {
+    if (!lime.rows.length) return `<p class="hub-panel-note">${t('suppliesLimeNone')}</p>`;
+    let html = `<table class="data-table supply-table"><thead><tr>
+        <th>${t('suppliesColField')}</th><th>${t('suppliesColArea')}</th><th>${t('suppliesLimePh')}</th><th>${t('suppliesLimeBuy')}</th>
+        </tr></thead><tbody>`;
+    lime.rows.forEach(r => {
+        html += `<tr><td>${escapeHtml(r.number)}</td><td>${r.area.toFixed(2)} ha</td>
+            <td>${r.fromGame ? `${r.ph.toFixed(2)} → ${r.optimal.toFixed(2)}` : t('suppliesLimeEstimate')}</td>
+            <td>${fmtL(r.buffered)}</td></tr>`;
+    });
+    return html + `</tbody><tfoot><tr class="supply-total-row"><td colspan="3">${t('suppliesTotal')}</td><td>${fmtL(lime.total)}${marketCostHtml(farm, MARKET_INPUT_FILLTYPES.lime, lime.total)}</td></tr></tfoot></table>`;
 }
 
 // Lime to buy this season, per planner field (buffer included).
@@ -851,14 +955,24 @@ function buildSuppliesSeedRows(farm, rates) {
             const known = rate !== null;
             const r = known ? rate : SUPPLY_SEED_FALLBACK;
             const need = area * r;
-            rows.push({ number, crop: c, isCatch, area, rate: r, known, need, buffered: need * buffer });
+            rows.push({ number, crop: c, input: suppliesSeedInput(c), isCatch, area, rate: r, known, need, buffered: need * buffer });
         };
         if (crop && f.state !== 'Planted') addRow(crop, false);
         // Catch crop: sown separately (before/after the main crop), so its
         // seed is still needed even once the main crop is in the ground.
         if (f.catchCrop) addRow(f.catchCrop, true);
     });
-    return { rows, total: rows.reduce((s, r) => s + r.buffered, 0) };
+    const totals = {};
+    rows.forEach(r => { totals[r.input] = (totals[r.input] || 0) + r.buffered; });
+    return { rows, totals, total: rows.reduce((s, r) => s + r.buffered, 0) };
+}
+
+// Crops planted with their own harvest instead of bought seed: FS25's
+// planters for them take the crop's fill type (the fruit xml has no seed
+// fill type, so the list is kept here).
+const SUPPLY_OWN_SEED_FILLTYPES = { Potato: 'POTATO', Sugarcane: 'SUGARCANE' };
+function suppliesSeedInput(crop) {
+    return SUPPLY_OWN_SEED_FILLTYPES[crop] || MARKET_INPUT_FILLTYPES.seed;
 }
 
 // Fertilizer: one row per field eligible for fertilizing this season. A field

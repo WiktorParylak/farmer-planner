@@ -23,16 +23,25 @@ const VIEWS = {
     'work-window': `openWorkModal(0)`,
     'rotation': `document.querySelector('.sidebar-item[data-view="rotation"]').click()`,
     'yields-prices': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click()`,
+    'yields-prices-past': `document.querySelector('.sidebar-item[data-view="yieldforecast"]').click(); document.querySelector('.yield-season-arrow[data-season]').click()`,
     'notes': `document.querySelector('.sidebar-item[data-view="notes"]').click()`,
     'animals': `document.querySelector('.sidebar-item[data-view="animals"]').click()`,
+    'breed-norms': `document.querySelector('.sidebar-item[data-view="breednorms"]').click()`,
     'feed-plan': `document.querySelector('.sidebar-item[data-view="feedplan"]').click()`,
+    'feed-plan-mixer': `document.querySelector('.sidebar-item[data-view="feedplan"]').click(); (document.querySelector('#hub-panel-body .mixer') || document.querySelector('#hub-panel-body .feed-ing-grid')).scrollIntoView({ block: 'start' })`,
+    'feed-plan-bottom': `document.querySelector('.sidebar-item[data-view="feedplan"]').click(); (() => { const d = document.querySelector('#hub-panel-body .feed-settings'); d.open = true; setTimeout(() => document.querySelector('#hub-panel-body .feed-notes').scrollIntoView({ block: 'end' }), 50); })()`,
     'storage': `document.querySelector('.sidebar-item[data-view="storage"]').click()`,
-    'supplies': `document.querySelector('.sidebar-item[data-view="supplies"]').click()`,
+    'supplies': `setSetting('suppliesTab', 'seed'); document.querySelector('.sidebar-item[data-view="supplies"]').click()`,
+    'supplies-fertilizer': `setSetting('suppliesTab', 'fert'); document.querySelector('.sidebar-item[data-view="supplies"]').click()`,
     'finance': `document.querySelector('.sidebar-item[data-view="finance"]').click()`,
     'season-summary': `document.querySelector('.sidebar-item[data-view="seasonsummary"]').click()`,
     'field-soil-list': `showPlannerView('fieldsoil')`,
     'settings': `document.getElementById('settings-btn').click()`,
-    'mod-manager': `FT.fakeMods(); exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`
+    'news-badge': `FT.fakeNews(); setSetting('newsSeen', '[]'); renderNewsBadge(); exitBtn.click()`,
+    'news': `FT.fakeNews(); setSetting('newsSeen', '[]'); exitBtn.click(); setTimeout(() => document.getElementById('news-btn').click(), 100)`,
+    'news-poll': `FT.fakeNews(); setSetting('newsVotes', JSON.stringify({ 'test-next': ['a'] })); exitBtn.click(); setTimeout(() => showNewsWindow([newsPosts()[1]]), 100)`,
+    'mod-manager': `FT.fakeMods(); mm.tab = 'mods'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`,
+    'mod-manager-compare': `FT.fakeMods(); FT.fakeSave(); mm.tab = 'compare'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`
 };
 
 // What's wrong on the screen as it is now. Runs in the page.
@@ -89,6 +98,7 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
     win.show();
     win.setResizable(true);
     const shots = [];
+    let lastFrame = null;
     const languages = await js('APP_LANGUAGES');
     for (const lang of languages) {
         // The dev farm's names follow the language it was built in.
@@ -107,14 +117,24 @@ module.exports = async function ({ win, js, wait, consoleErrors, repo }) {
                 await wait(250);
                 const { issues, cut } = await js(CHECK);
                 // Looking at a screen must not change the farm.
-                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && name !== 'mod-manager') issues.push('opening it changed the fields');
+                if (await js('getCurrentFarm() && JSON.stringify(getCurrentFarm().fields)') !== fieldsBefore && name !== 'start-screen' && !name.startsWith('mod-manager') && !name.startsWith('news')) issues.push('opening it changed the fields');
                 consoleErrors.filter(e => !/ResizeObserver loop/.test(e)).forEach(e => issues.push('console error: ' + e));
                 // The first capture after a change can return the frame before it.
+                // Two painted frames first (capped, a hidden page paints none).
                 win.webContents.invalidate();
+                await js(`Promise.race([new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(1)))), new Promise(r => setTimeout(() => r(0), 1000))])`);
                 await wait(250);
                 await win.webContents.capturePage();
                 const file = `${lang}-${w}x${h}-${name}.jpg`;
-                fs.writeFileSync(path.join(outDir, file), (await win.webContents.capturePage()).toJPEG(78));
+                // A frame the same as the last screen's is the old one still: wait for the new.
+                let image = await win.webContents.capturePage();
+                for (let k = 0; k < 8 && lastFrame && image.toBitmap().equals(lastFrame); k++) {
+                    win.webContents.invalidate();
+                    await wait(300);
+                    image = await win.webContents.capturePage();
+                }
+                lastFrame = image.toBitmap();
+                fs.writeFileSync(path.join(outDir, file), image.toJPEG(78));
                 shots.push({ name, lang, size: `${w}x${h}`, file, issues, cut });
                 await js(`FT.backToPlan()`);
             }

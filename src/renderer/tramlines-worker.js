@@ -11,7 +11,6 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const core = require('./tramlines-core');
-const { readMapFarmlands } = require('./savegame-soil');
 
 const FRUITS = 'densityMap_fruits.gdm';
 const GROUND = 'densityMap_ground.gdm';
@@ -20,7 +19,6 @@ const BACKUP_DIR = 'farmer_planner_backup';
 const KEEP_BACKUPS = 5;
 const THICK_RADIUS = 6;     // no-crop areas (2r+1)² and wider aren't tramlines, at 8192²
 const MIN_SPECK_PX = 10;    // smaller separate bits are noise along the field edge
-const LAND_SHARE = 0.1;     // a farmland counts for a field from this share of its outline
 
 function backupList(dir, kind = 'fruits') {
     const re = new RegExp('^densityMap_' + kind + '_\\d{8}_\\d{6}\\.gdm$');
@@ -199,40 +197,6 @@ function soilOf() {
     return state.soil;
 }
 
-// Adds to `mask` the soil the seed outlines really stand on: flooded from the
-// worked soil inside them, along worked soil, within their farmlands. A field
-// merged in the game or worked past its outline is covered as a whole, while a
-// neighbour behind unworked ground stays out.
-function growOverLand(mask, dim, seed) {
-    const soil = soilOf();
-    let fl = null;
-    try { fl = readMapFarmlands(path.join(state.saveDir, 'careerSavegame.xml')); } catch (e) { /* outline only */ }
-    if (!soil || !fl || !fl.ok) return;
-    const fw = fl.w / dim, fh = fl.h / dim;
-    const landAt = i => fl.data[Math.floor(((i / dim) | 0) * fh) * fl.w + Math.floor((i % dim) * fw)];
-    const soilAt = i => soil.nz[Math.floor(((i / dim) | 0) / soil.cell) * soil.dim + Math.floor((i % dim) / soil.cell)];
-    const counts = new Map();
-    let total = 0;
-    for (let i = 0; i < seed.length; i++) {
-        if (!seed[i]) continue;
-        const id = landAt(i);
-        total++;
-        if (id) counts.set(id, (counts.get(id) || 0) + 1);
-    }
-    const lands = new Set([...counts].filter(([, n]) => n >= total * LAND_SHARE).map(([id]) => id));
-    if (!lands.size) return;
-    const seen = new Uint8Array(dim * dim), stack = [];
-    const take = i => { if (!seen[i] && soilAt(i) && lands.has(landAt(i))) { seen[i] = 1; mask[i] = 1; stack.push(i); } };
-    for (let i = 0; i < seed.length; i++) if (seed[i]) take(i);
-    while (stack.length) {
-        const i = stack.pop(), x = i % dim;
-        if (x) take(i - 1);
-        if (x < dim - 1) take(i + 1);
-        if (i >= dim) take(i - dim);
-        if (i < dim * (dim - 1)) take(i + dim);
-    }
-}
-
 // ---------- ops ----------
 const ops = {
     load({ saveDir }) {
@@ -345,13 +309,14 @@ const ops = {
         const labels = new Uint16Array(gd * gd);
         for (let i = 0; i < lab.length; i++) if (lab[i]) labels[i] = keep.get(lab[i]) || 0;
         state.ground = { labels, dim: gd, cell, fields };
+        const outlines = core.traceLabelOutlines(labels, gd, cell);
+        fields.forEach(f => { f.rings = outlines.get(f.label) || []; });
         // Sorted in reading order (bands of 256 px), like program-sciezki.
         return fields.slice().sort((a, b) => Math.floor(a.bbox[1] / 256) - Math.floor(b.bbox[1] / 256) || a.bbox[0] - b.bbox[0]);
     },
 
     // Cuts tramlines into a library entry. area (map pixels): { polys: [...] }
-    // exactly as drawn, { growPolys: [...] } grown over the farmland's worked
-    // soil, or { labels: [..] } from groundFields. colors: values that count as
+    // exactly as drawn, or { labels: [..] } from groundFields. colors: values that count as
     // tramlines (empty = every pixel in the area). The no-crop value also needs
     // worked soil and a narrow shape: the same value covers everything outside
     // fields and unsown ground, which aren't tramlines.
@@ -369,12 +334,6 @@ const ops = {
             }
         }
         (area.polys || []).forEach(P => fillPolygon(inArea, dim, P));
-        if (area.growPolys && area.growPolys.length) {
-            const seed = new Uint8Array(dim * dim);
-            area.growPolys.forEach(P => fillPolygon(seed, dim, P));
-            for (let i = 0; i < seed.length; i++) if (seed[i]) inArea[i] = 1;
-            growOverLand(inArea, dim, seed);
-        }
         let x0 = dim, y0 = dim, x1 = -1, y1 = -1;
         for (let y = 0; y < dim; y++) {
             const row = y * dim;

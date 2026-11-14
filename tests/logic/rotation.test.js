@@ -187,3 +187,72 @@ test('rotation: a good cycle has no warnings, a bad one does', () => {
     assert.deepStrictEqual(rotationCycleWarnings(good, 3), []);
     assert.ok(rotationCycleWarnings({ steps: [{ crop: 'Wheat' }, { crop: 'Barley' }, { crop: 'Oat' }] }, 3).length > 0);
 });
+
+test('rotation: filling from the rotation asks by default, a farm\'s own choice stays', () => {
+    assert.strictEqual(rotationFillMode({}), 'ask');
+    assert.strictEqual(rotationFillMode({ rotationAutoFill: 'auto' }), 'auto');
+    assert.strictEqual(rotationFillMode({ rotationAutoFill: 'off' }), 'off');
+});
+
+test('rotation: adjusting planned crops skips sown fields, fallow steps and fields that fit', () => {
+    const fallowRot = { id: 'f', steps: [{ crop: '' }, { crop: 'Wheat' }] };
+    const farm = { currentSeason: 1, month: 'AUGUST', rotations: [rot, fallowRot], fields: [
+        field({ number: '1', crop: 'Barley', rotation: { id: 'r', step: 0 } }),
+        field({ number: '2', crop: 'Barley', state: 'Planted', rotation: { id: 'r', step: 0 } }),
+        field({ number: '3', crop: 'Canola', rotation: { id: 'r', step: 0 } }),
+        field({ number: '4', crop: 'Barley', rotation: { id: 'f', step: 0 } }),
+        field({ number: '5', crop: 'Barley' })
+    ] };
+    const changes = rotationMatchPlan(farm);
+    assert.deepStrictEqual(changes.map(c => [c.number, c.from, c.to]), [['1', 'Barley', 'Canola']]);
+    applyRotationMatch(farm, changes);
+    assert.strictEqual(farm.fields[0].crop, 'Canola');
+    assert.strictEqual(farm.fields[0].state, 'To Plant');
+    assert.strictEqual(farm.fields[1].crop, 'Barley', 'a sown field stays');
+    assert.strictEqual(rotationMatchPlan(farm).length, 0);
+});
+
+test('rotation: planned fields get the cycle that fits best, at their crop\'s step', () => {
+    const wheatFirst = { id: 'w', name: 'W', steps: [{ crop: 'Wheat' }, { crop: 'Barley' }] };
+    const farm = { currentSeason: 1, rotations: [wheatFirst, rot], fields: [
+        field({ number: '1', crop: 'Grass', nextCrop: { crop: 'Maize' } }),
+        field({ number: '2', crop: 'Wheat' }),
+        field({ number: '3', crop: 'Potato' }),
+        field({ number: '4', crop: 'Canola', rotation: { id: 'r', step: 0 } }),
+        field({ number: '5', crop: '' })
+    ] };
+    const { changes, noCycle } = rotationAssignPlan(farm);
+    assert.deepStrictEqual(changes.map(c => [c.number, c.rotId, c.step]), [['1', 'r', 2], ['2', 'w', 0]], 'a tie goes to the cycle higher in the list');
+    assert.deepStrictEqual(noCycle.map(c => c.number), ['3']);
+    applyRotationAssign(farm, changes);
+    assert.strictEqual(fieldRotationInfo(farm, farm.fields[0]).slot.crop, 'Grass');
+    assert.strictEqual(farm.fields[0].crop, 'Grass', 'the crop stays');
+    assert.strictEqual(farm.fields[0].nextCrop, undefined, 'the generator\'s plan goes');
+    assert.strictEqual(fieldRotationInfo(farm, farm.fields[1]).rot.id, 'w');
+});
+
+test('rotation: a cycle for a field with another crop asks whether to adjust it', async () => {
+    const farm = await freshFarm();
+    const idx = farm.fields.findIndex(f => f.number === '7');
+    const f = farm.fields[idx];
+    assert.strictEqual(f.crop, 'Potato');
+    // Keep: the cycle is set, the crop stays.
+    let done = setFieldCycle(farm, f, 'rot_dev_canola');
+    assert.ok((await answerDialog('cancel')).includes('7'));
+    await done;
+    assert.strictEqual(farm.fields[idx].crop, 'Potato');
+    assert.strictEqual(farm.fields[idx].rotation.id, 'rot_dev_canola');
+    await wait(400);
+    // Adjust: the step's crop goes on.
+    done = setFieldCycle(farm, farm.fields[idx], 'rot_dev_canola');
+    await answerDialog('confirm');
+    await done;
+    const want = fieldRotationInfo(farm, farm.fields[idx]).slot.crop;
+    assert.strictEqual(farm.fields[idx].crop, want);
+    await wait(400);
+    // ask: false never asks.
+    farm.fields[idx].crop = 'Potato';
+    await setFieldCycle(farm, farm.fields[idx], 'rot_dev_norfolk', { ask: false });
+    assert.ok(!dialogOpen(), 'no question');
+    assert.strictEqual(farm.fields[idx].crop, 'Potato');
+});

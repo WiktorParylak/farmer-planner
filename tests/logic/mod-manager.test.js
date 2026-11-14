@@ -373,3 +373,54 @@ test('mod manager: the view lists the game folder and a new library', async () =
     // The tests after this one expect a farm open, as freshFarm leaves it.
     await freshFarm();
 });
+
+test('mod manager: modDesc dependencies are read', () => {
+    const md = mmT.parseModDesc(`<modDesc descVersion="97"><title><en>A</en></title><dependencies>
+        <dependency>FS25_Base</dependency>
+        <dependency> FS25_Other </dependency>
+    </dependencies></modDesc>`);
+    assert.deepStrictEqual(md.dependencies, ['FS25_Base', 'FS25_Other']);
+    assert.deepStrictEqual(mmT.parseModDesc('<modDesc descVersion="97"></modDesc>').dependencies, []);
+});
+
+test('mod manager: unused across all saves counts mods other mods need', () => {
+    const mod = (name, deps = [], extra = {}) => ({ name, file: name + '.zip', version: '1.0', hasModDesc: true, size: 1, dependencies: deps, ...extra });
+    const A = mod('FS25_A', ['FS25_B']), B = mod('FS25_B', ['fs25_c']), C = mod('FS25_C');
+    const D = mod('FS25_D'), E = mod('FS25_E'), Pack = mod('FS25_Pack', [], { hasModDesc: false });
+    const saves = [
+        { name: 'savegame1', mods: [{ name: 'FS25_A', version: '1.0' }, { name: 'pdlc_highlandsFishingPack', version: '1.0' }] },
+        { name: 'savegame2', mods: [{ name: 'FS25_D', version: '2.0' }, { name: 'FS25_A', version: '1.0' }, { name: 'FS25_Gone', version: '1.0' }] }
+    ];
+    const r = mmT.compareWithSaves([A, B, C, D, E, Pack], saves);
+    assert.deepStrictEqual(r.unused.map(m => m.name), ['FS25_E'], 'a chain A -> B -> C counts as used, a folder without modDesc is left out');
+    assert.deepStrictEqual(r.usedIn.get(A), ['savegame1', 'savegame2']);
+    assert.ok(!r.usedIn.has(B));
+    assert.deepStrictEqual(r.neededBy.get(C), ['FS25_B']);
+    assert.deepStrictEqual(r.missing.map(m => [m.name, m.saves]), [['FS25_Gone', ['savegame2']]], 'a DLC is never missing');
+    assert.deepStrictEqual(r.versionDiff.map(d => [d.mod.name, d.saves]), [['FS25_D', ['savegame2']]]);
+    const one = mmT.compareWithSaves([A, B, C, D, E], [saves[0]]);
+    assert.deepStrictEqual(one.unused.map(m => m.name), ['FS25_D', 'FS25_E']);
+});
+
+test('mod manager: the Compare tab lists unused mods to pick, and a pick stays in its tab', async () => {
+    FT.fakeMods();
+    const save = path.join(tlGameDir(), 'savegame7');
+    fs.mkdirSync(save, { recursive: true });
+    fs.writeFileSync(path.join(save, 'careerSavegame.xml'), '<careerSavegame><settings><savegameName>Test</savegameName></settings><mod modName="FS25_FrontLoader" version="1.2.0.0"/></careerSavegame>');
+    try {
+        await mmOpen();
+        await FT.waitFor(() => mm.scan, 'the library scan');
+        document.querySelector('#modmanager-view [data-mm="tab"][data-tab="compare"]').click();
+        assert.strictEqual(document.getElementById('mm-save').value, '', 'all savegames by default');
+        const unused = [...document.querySelectorAll('.mm-cmp-pick [data-pick]')].map(el => el.dataset.pick);
+        assert.ok(unused.includes('FS25_BigTrailer') && !unused.includes('FS25_FrontLoader'), unused.join(', '));
+        document.querySelector('#modmanager-view [data-mm="pick-unused"]').click();
+        assert.strictEqual(mm.picked.size, unused.length);
+        assert.ok(document.querySelector('#modmanager-view .mm-pickbar [data-mm="delete"]:not([disabled])'), 'delete is offered');
+        document.querySelector('#modmanager-view [data-mm="tab"][data-tab="mods"]').click();
+        assert.strictEqual(mm.picked.size, 0, 'switching tabs drops the selection');
+    } finally {
+        mmClose();
+        fs.rmSync(save, { recursive: true, force: true });
+    }
+});

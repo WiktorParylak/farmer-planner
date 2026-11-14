@@ -99,6 +99,7 @@ src/renderer/index.html        cały UI (jedna strona)
 src/renderer/storage.js        magazyny i produkcje: odczyt z zapisu do farm.storage i panel (PRZED renderer.js)
 src/renderer/renderer.js       ~5,7k linii — rdzeń: dane farm, sync z zapisem, panele, sezony, ustawienia
 src/renderer/feed.js           planer paszy, mieszalniki, paszowóz (classic <script> PRZED renderer.js)
+src/renderer/breed-norms.js    normy rasy: osobny widok w pasku bocznym, wykres z wyborem wieku (PO feed.js, PRZED renderer.js)
 src/renderer/supplies.js       zaopatrzenie, plan nawożenia pola, model stawek (PRZED renderer.js)
 src/renderer/fields-table.js   tabela planu, okno pola, planer prac, tryb edycji (PO renderer.js)
 src/renderer/fields-timeline.js drugi widok planu: oś czasu, tylko do odczytu (PO fields-table.js)
@@ -115,6 +116,7 @@ src/renderer/map-scale-core.js strumieniowe skalowanie GDM / GRLE / PNG (paskami
 src/renderer/mod-manager.js     menedżer modów: biblioteki (foldery modów jak kolekcje FSG Mod Assistant), lista modów z ikonami, problemy, porównanie z zapisem, ModHub (PO map-scale.js)
 src/renderer/mod-library-core.js logika menedżera bez DOM-u: mod-libraries.json, skan modDesc, problemy, gameSettings.xml, kopiowanie/przenoszenie, import FSG, lista ModHuba
 src/renderer/dds.js             dekoder DDS (DXT1/3/5, RGBA) dla ikon modów
+src/renderer/news.js            aktualności z farmerplanner.pl/news.json: okno przy starcie, przycisk na ekranie startowym, ankiety (PO mod-manager.js)
 src/renderer/style.css         style
 src/renderer/savegame-soil.js  gleby pól z Precision Farming (parsowanie GRLE)
 src/renderer/map-crops.js      uprawy i kalendarz z moda mapy
@@ -136,7 +138,7 @@ docs/                          logo i screenshoty do README
 ```
 
 - `nodeIntegration: true`, `contextIsolation: false` — renderer używa bezpośrednio `require('fs')` itd.
-- Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `market.js`, `storage.js`, `renderer.js`, `fields-table.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
+- Kolejność skryptów w `index.html`: `feed.js`, `supplies.js`, `market.js`, `storage.js`, `breed-norms.js`, `renderer.js`, `fields-table.js`, …, `mod-manager.js`, `news.js`, `tutorial.js` — zwykłe `<script>` ze wspólnym globalnym zasięgiem. Pliki przed `renderer.js` mają na górnym poziomie tylko stałe, stan i funkcje (nic nie czyta `fs`/`t()`/DOM-u renderera przy ładowaniu); pliki po nim mogą podpinać listenery do jego elementów. `renderer.js` nie może przy ładowaniu wołać funkcji z plików ładowanych po nim (start aplikacji jest w `DOMContentLoaded`). Nie deklaruj drugi raz `const fs`/`path` w tych plikach — kolizja nazw w globalnym zasięgu.
 - Dane farm: `Documents\Farmer Planner` (migracja ze starego `%APPDATA%\FarmerPlanner`). Ustawienia aplikacji (język, Discord, aktualizacje, samouczek, sortowanie): `Documents\Farmer Planner\settings.json` przez `getSetting`/`setSetting` — nie `localStorage`. Stan okna: `userData/window-state.json`.
 - Aplikacja tylko **czyta** pliki gry, nigdy ich nie modyfikuje — z dwoma wyjątkami. Pierwszy (zgoda użytkownika 2026-10-28): narzędzie ścieżek technologicznych nadpisuje `savegameN\densityMap_fruits.gdm` oraz (zgoda użytkownika 2026-11-02, czyszczenie chwastów pod wklejanymi ścieżkami) `savegameN\densityMap_weed.gdm`, tylko przy zamkniętej grze (sprawdza proces `FarmingSimulator2025*`, gra to `FarmingSimulator2025Game.exe`), po kopii do `savegameN\farmer_planner_backup\` (5 ostatnich), po zdekodowaniu nowego pliku i porównaniu z oczekiwanymi wartościami (opcjonalnie też grleConverterem), przez plik tymczasowy + rename. Menedżer modów (zgoda użytkownika 2026-11-06) zmienia w `gameSettings.xml` tylko atrybuty `active`/`directory` tagu `<modsDirectoryOverride>` — przy zamkniętej grze, po kopii do `Documents\Farmer Planner\backups\gameSettings\` (5 ostatnich), przez plik tymczasowy + sprawdzenie, że poza tagiem nic się nie zmieniło; w folderach bibliotek modów kopiuje, przenosi, zmienia nazwy, dodaje, pakuje i rozpakowuje mody, a usuwa tylko do Kosza; listę bibliotek trzyma w `Documents\Farmer Planner\mod-libraries.json`, a kolekcje FSG importuje raz (bez śledzenia ich configu). Dane o aktualizacjach: `https://jtsage.dev/modHubData25_combo.json` (ta sama lista co w FSG Mod Assistant), cache 24 h w `Documents\Farmer Planner\cache\modhub.json`. Aktualizacja moda: CDN Giants (`cdnNN.giants-software.com/modHub/storage/...`) odrzuca (403) pobieranie przez program i nawet bezpośredni link otwarty w przeglądarce — plik wydaje tylko przycisk Download na stronie moda. Dlatego aplikacja otwiera stronę moda w przeglądarce (`shell.openExternal`), gracz klika Download, a aplikacja czeka na zip w folderze Pobrane (`get-downloads-dir`) i dopiero wtedy podmienia mod. Nie obchodź tej blokady (udawany User-Agent, Referer itp.). Nie rozszerzaj zapisu na inne pliki gry bez pytania. Mod-łącznik (`link-mod/`) pisze tylko własne pliki do `modSettings/FS25_FarmerPlannerLink/savegameN/`: `live.xml` (co 10 s), `fields.xml` i `data.xml` (tylko po zmianie), każdy z atrybutem `session`; czyta po jednym polu na własnej kopii `FieldState`, nie podmienia funkcji gry i nie wysyła zdarzeń — tak ma zostać. Dane na żywo służą tylko do wyświetlania: nic zapisywanego w farmie (`farm.fields`, dziennik pól, nowy sezon) ich nie używa. Gracz sam kopiuje zip moda do folderu mods — aplikacja nic nie zapisuje w folderze gry. Format (atrybut `format` w `live.xml`) zmieniaj razem w Lua i w `live-link.js`. Moda nie da się tu uruchomić w grze: logikę można sprawdzić w maszynie Lua (fengari) na atrapie API gry, a prawdziwy test robi użytkownik. Narzędzie skalowania mapy **nie** pisze do folderu mods ani do zapisu: oryginały i przeskalowane pliki trafiają do `Documents\Farmer Planner\maps\<mapa>\`, gracz sam kopiuje wynik do moda albo zapisu. Ścieżki = piksele z wartością 0 (brak uprawy) na uprawionej glebie (`densityMap_ground` ≠ 0), w wąskiej linii; biblioteka: `Documents\Farmer Planner\tramlines\<mapTitle>\<nazwa>.png` + `.json` (przycięte do bboxa + przezroczysty margines 64 px). Testuj tylko na kopiach zapisów.
 - Tłumaczenia: `TRANSLATIONS` (`en` / `pl` / `de`) w `translations.js` + `translations-de.js`, funkcja `t(key)`, atrybuty `data-i18n` w HTML. Każdy nowy tekst w UI — klucz we **wszystkich trzech** językach (`APP_LANGUAGES` w `renderer.js`); brakujący klucz DE spada na EN. Są też `MONTH_/CROP_NAME_/ANIMAL_SPECIES_/PRODUCTION_FILLTYPE_TRANSLATIONS`.
@@ -179,6 +181,25 @@ Testowanie bez gry na drugim komputerze: skopiuj folder farmy z `Documents\Farme
 - Screenshoty na stronie i w README są **angielskie**, robione z farmy testowej (`dev-farm.js`, przemianowanej na „Green Valley Farm”) skryptem `npm run screenshots` w repo strony. Po zmianach w UI odśwież je tam i skopiuj PNG do `docs/` tutaj.
 - README (EN i PL) ma ten sam układ i teksty co strona; zmiany funkcji opisuj w obu miejscach. Logo w README: `docs/logo-light.svg` (ciemne, jasny motyw GitHuba) i `Assets/Logo.svg` (białe, ciemny motyw).
 - Repo na GitHubie ma ustawione Website = farmerplanner.pl, opis i tematy (fs25, farming-simulator-25…).
+
+## Aktualności (news)
+
+Wpisy, które gracze widzą przy starcie aplikacji (raz) i pod przyciskiem „Aktualności” na ekranie startowym.
+Źródło: `public/news.json` w repo strony (`farmer-planner-website`) → `https://farmerplanner.pl/news.json`.
+**Publikacja = commit + push na `main` repo strony** (deploy GitHub Actions), więc tylko na polecenie użytkownika.
+
+- Format: `{ "format": 1, "posts": [ ... ] }`, najnowszy wpis na górze. Pola wpisu: `id` (unikalny, nigdy się nie zmienia —
+  po nim aplikacja pamięta, co gracz widział), `date` (RRRR-MM-DD), `title` `{ en, pl, de }`, opcjonalnie `accent`
+  (`green|orange|blue|red|gold`), `size` (`normal|large`), `minVersion`/`maxVersion`, `until` (RRRR-MM-DD), `pinned`
+  (pokazuj przy każdym starcie, aż gracz kliknie „Nie pokazuj więcej”), `blocks`.
+- Klocki (`blocks`): `banner` (`image`, `alt`), `text` (`en`/`pl`/`de`, Markdown jak w CHANGELOG + linki `[tekst](https://...)`),
+  `image` (`image`, `caption`), `gallery` (`images: [{ image, caption }]`), `callout` (`tone: info|warning|new`, `en`/`pl`/`de`),
+  `poll` (`id`, `question`, `options: [{ id, en, pl, de }]`, `multi`, `until`), `button` (`url` https, `label`, `style: primary|secondary`), `divider`.
+  Nieznany typ klocka aplikacja pomija — wpis używający nowego klocka dostaje `minVersion` wersji, która go zna.
+- Obrazki: ścieżki względem `https://farmerplanner.pl/news/` (folder `public/news/img/`), jpg/png/webp, do 2 MB. Inne domeny są odrzucane.
+- Ankiety: `public/news/vote.php` sprawdza ankietę i opcje w `news.json`, jeden głos na instalację (losowy identyfikator, bez danych osobowych; nie trafia do pliku diagnostycznego).
+- W aplikacji wszystko jest w `src/renderer/news.js`; testy podstawiają sieć (`newsNet`, `FT.fakeNews()`), `npm test` nigdy nie łączy się z farmerplanner.pl.
+- Podgląd bez publikowania: przy `npm start` Ustawienia → Deweloper → *Pokaż testowe aktualności* otwiera dwa wpisy testowe (`NEWS_DEV_SAMPLE` w `news.js`, wszystkie typy klocków + ankieta z głosami w pamięci). Nowy klocek → dopisz go tam.
 
 ## Konwencje
 

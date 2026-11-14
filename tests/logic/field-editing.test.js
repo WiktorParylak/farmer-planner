@@ -186,7 +186,7 @@ test('editing: a change right after opening a farm can still be undone', async (
 
 test('editing: opening panels is not a change', async () => {
     await freshFarm();
-    for (const view of ['finance', 'animals', 'supplies', 'rotation', 'storage', 'yieldforecast', 'feedplan', 'notes', 'seasonsummary', 'plan']) {
+    for (const view of ['finance', 'animals', 'breednorms', 'supplies', 'rotation', 'storage', 'yieldforecast', 'feedplan', 'notes', 'seasonsummary', 'plan']) {
         document.querySelector(`.sidebar-item[data-view="${view}"]`).click();
         await wait(60);
     }
@@ -203,4 +203,62 @@ test('editing: the field window keeps its tab after a change and opens where ask
     assert.ok(document.querySelector('.field-view-pane[data-pane="crop"]').hidden);
     openFieldModal(0);
     assert.strictEqual(active(), 'crop');
+});
+
+
+// The edit card has no state, tillage or lime: they go through the save as
+// they were, and the bulk bar's buttons still set them.
+async function editAndSave(between) {
+    document.getElementById('edit-season-btn').click();
+    await wait(200);
+    if (between) await between();
+    document.getElementById('edit-season-btn').click();
+    await wait(300);
+    assert.strictEqual(isEditMode, false);
+}
+
+const byId = id => getCurrentFarm().fields.find(f => f.id === id);
+const cardOf = id => [...document.querySelectorAll('#fields-body tr.field-edit-tr')].find(r => JSON.parse(r.dataset.extra || '{}').id === id);
+
+test('editing: the card has no state, tillage or lime, and saving keeps them', async () => {
+    const farm = await freshFarm();
+    const f = farm.fields[0];
+    Object.assign(f, { state: 'Planted', tillage: 'noTill', limeAppliedSeason: farm.currentSeason || 1, limePh: 0.6 });
+    saveFarmData(farm, { undo: false });
+    await editAndSave(async () => {
+        const body = document.getElementById('fields-body');
+        assert.strictEqual(body.querySelector('.field-state, .tillage-switch-option, .treatment-chip--lime'), null);
+    });
+    const g = byId(f.id);
+    assert.deepStrictEqual([g.state, g.tillage, g.limeAppliedSeason, g.limePh], ['Planted', 'noTill', farm.currentSeason || 1, 0.6]);
+});
+
+test('editing: a new card starts not sown, without tillage or lime', async () => {
+    await freshFarm();
+    const before = getCurrentFarm().fields.length;
+    await editAndSave(async () => {
+        document.querySelector('#fields-body .add-row-trigger').click();
+        await wait(100);
+        const cards = document.querySelectorAll('#fields-body tr.field-edit-tr');
+        const card = cards[cards.length - 1];
+        card.querySelector('.field-number').value = '77';
+        card.querySelector('.field-area').value = '2';
+    });
+    const added = getCurrentFarm().fields.find(x => x.number === '77');
+    assert.ok(added && getCurrentFarm().fields.length === before + 1);
+    assert.deepStrictEqual([added.state, added.tillage, added.limeAppliedSeason, added.limePh], ['To Plant', null, null, null]);
+});
+
+test('editing: the bulk bar sets sown and tillage on the selected cards only', async () => {
+    const farm = await freshFarm();
+    const [a, b, c] = farm.fields.slice(0, 3).map(x => ({ id: x.id, state: x.state, tillage: x.tillage }));
+    await editAndSave(async () => {
+        [a, b].forEach(x => { const box = cardOf(x.id).querySelector('.edit-bulk-check'); box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true })); });
+        document.querySelector('[data-ebulk="sown"]').click();
+        document.querySelector('[data-ebulk="noTill"]').click();
+        await wait(50);
+        assert.ok(autoSyncToast.textContent.includes(t('tillageNoTill')), 'the toast says what was set');
+    });
+    [a, b].forEach(x => assert.deepStrictEqual([byId(x.id).state, byId(x.id).tillage], ['Planted', 'noTill'], 'field ' + x.id));
+    assert.deepStrictEqual([byId(c.id).state, byId(c.id).tillage], [c.state, c.tillage], 'an unselected field keeps its own');
 });

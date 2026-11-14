@@ -21,7 +21,7 @@ const mm = {
     sort: 'name',            // 'name' | 'size' | 'date'
     filter: 'all',           // 'all' | 'problems' | 'updates'
     picked: new Set(),       // file names in the picked library
-    saveDir: '',             // savegame for the comparison
+    saveDir: '',             // savegame for the comparison ('' = all of them)
     hub: null,               // ModHub list (mod-library-core loadModHub)
     hubBusy: false,
     busy: null,              // { text, frac, cancel } while files are copied or a download is awaited
@@ -253,14 +253,15 @@ function mmModRowHtml(mod) {
     </div>`;
 }
 
-function mmPickBarHtml() {
+// pool: the mods the select-all box ticks (the list shown under the bar).
+function mmPickBarHtml(pool = mmVisibleMods()) {
     const n = mm.picked.size;
     const targets = mmAllLibs().filter(l => l.id !== mm.sel);
     const off = !n || mm.busy ? ' disabled' : '';
-    const updates = mmUpdatable().length;
+    const updates = mm.tab === 'mods' ? mmUpdatable().length : 0;
     return `<div class="tl-row mm-pickbar">
         ${updates ? `<button type="button" class="edit-season-btn mm-update-all" data-mm="update-all"${mm.busy ? ' disabled' : ''}><i class="fa-solid fa-download" aria-hidden="true"></i> ${escapeHtml(t('mmUpdateAll').replace('{n}', updates))}</button>` : ''}
-        <label class="tl-check"><input type="checkbox" class="fp-check" data-mm-all${n && n === mmVisibleMods().length ? ' checked' : ''}> ${escapeHtml(t('mmSelected').replace('{n}', n))}</label>
+        <label class="tl-check"><input type="checkbox" class="fp-check" data-mm-all${n && n === pool.length ? ' checked' : ''}> ${escapeHtml(t('mmSelected').replace('{n}', n))}</label>
         ${targets.length ? `<select id="mm-target" aria-label="${escapeHtml(t('mmTarget'))}">${targets.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`).join('')}</select>
         <button type="button" class="settings-btn" data-mm="copy"${off}><i class="fa-solid fa-copy" aria-hidden="true"></i> ${escapeHtml(t('mmCopyTo'))}</button>
         <button type="button" class="settings-btn" data-mm="move"${off}><i class="fa-solid fa-right-left" aria-hidden="true"></i> ${escapeHtml(t('mmMoveTo'))}</button>` : ''}
@@ -313,20 +314,27 @@ function mmFindElsewhere(name) {
     }) || null;
 }
 
+// The unused mods listed in the Compare tab (what its select-all ticks).
+let mmComparePool = [];
+
 function mmCompareHtml() {
     const saves = mmListSaves();
+    mmComparePool = [];
     if (!saves.length) return `<p class="settings-hint">${escapeHtml(t('mmNoSaves').replace('{dir}', tlGameDir()))}</p>`;
-    if (!saves.some(s => s.dir === mm.saveDir)) mm.saveDir = saves[0].dir;
+    if (mm.saveDir && !saves.some(s => s.dir === mm.saveDir)) mm.saveDir = '';
+    const all = !mm.saveDir;
     const pick = `<label class="ms-field mm-save-pick"><span>${escapeHtml(t('mmSaveLabel'))}</span>
-        <select id="mm-save">${saves.map(s => `<option value="${escapeHtml(s.dir)}"${s.dir === mm.saveDir ? ' selected' : ''}>${escapeHtml(s.name)}${s.title ? ' · ' + escapeHtml(s.title) : ''}</option>`).join('')}</select></label>`;
+        <select id="mm-save"><option value=""${all ? ' selected' : ''}>${escapeHtml(t('mmAllSaves').replace('{n}', saves.length))}</option>${saves.map(s => `<option value="${escapeHtml(s.dir)}"${s.dir === mm.saveDir ? ' selected' : ''}>${escapeHtml(s.name)}${s.title ? ' · ' + escapeHtml(s.title) : ''}</option>`).join('')}</select></label>`;
     if (!mm.scan || mm.scan.missing) return pick;
-    const saveMods = mmCore.readSaveMods(path.join(mm.saveDir, 'careerSavegame.xml')) || [];
-    const r = mmCore.compareWithSave(mm.scan.mods, saveMods);
-    const section = (title, items) => `<section class="ms-group"><h3 class="ms-group-title"><span>${escapeHtml(title)}</span><span class="ms-group-count">${items.length}</span></h3>${items.join('')}</section>`;
+    const chosen = (all ? saves : saves.filter(s => s.dir === mm.saveDir))
+        .map(s => ({ name: s.title ? `${s.name} · ${s.title}` : s.name, mods: mmCore.readSaveMods(path.join(s.dir, 'careerSavegame.xml')) || [] }));
+    const r = mmCore.compareWithSaves(mm.scan.mods, chosen);
+    const inSaves = list => all && list && list.length ? ` <span class="mm-mod-file">· ${escapeHtml(list.join(', '))}</span>` : '';
+    const section = (title, items, head = '') => `<section class="ms-group"><h3 class="ms-group-title"><span>${escapeHtml(title)}</span><span class="ms-group-count">${items.length}</span></h3>${head}${items.join('')}</section>`;
     const missing = r.missing.map(s => {
         const where = mmFindElsewhere(s.name);
         return `<div class="ms-file mm-cmp">
-            <span class="ms-file-name">${escapeHtml(s.title || s.name)} <span class="mm-mod-file">${escapeHtml(s.name)}</span></span>
+            <span class="ms-file-name">${escapeHtml(s.title || s.name)} <span class="mm-mod-file">${escapeHtml(s.name)}</span>${inSaves(s.saves)}</span>
             <span class="ms-file-size">${escapeHtml(s.version || '')}</span>
             ${where
                 ? `<button type="button" class="tl-link" data-mm="fetch" data-name="${escapeHtml(s.name)}" data-from="${escapeHtml(where.id)}"${mm.busy ? ' disabled' : ''}>${escapeHtml(t('mmCopyFrom').replace('{lib}', where.name))}</button>`
@@ -334,18 +342,34 @@ function mmCompareHtml() {
         </div>`;
     });
     const diff = r.versionDiff.map(d => `<div class="ms-file mm-cmp">
-        <span class="ms-file-name">${escapeHtml(mmTitle(d.mod))} <span class="mm-mod-file">${escapeHtml(d.mod.file)}</span></span>
+        <span class="ms-file-name">${escapeHtml(mmTitle(d.mod))} <span class="mm-mod-file">${escapeHtml(d.mod.file)}</span>${inSaves(d.saves)}</span>
         <span class="ms-file-size">${escapeHtml(t('mmVersionDiffRow').replace('{a}', d.save.version).replace('{b}', d.mod.version))}</span>
     </div>`);
-    const unused = r.unused.map(m => `<div class="ms-file mm-cmp">
+    // In no save, but a used mod needs them: why they aren't on the unused list.
+    const forOthers = [...r.neededBy.keys()].filter(m => !r.usedIn.has(m)).map(m => `<div class="ms-file mm-cmp">
+        <span class="ms-file-name">${escapeHtml(mmTitle(m))} <span class="mm-mod-file">${escapeHtml(m.file)}</span></span>
+        <span class="ms-file-note">${escapeHtml(t('mmNeededBy').replace('{list}', r.neededBy.get(m).join(', ')))}</span>
+    </div>`);
+    mmComparePool = r.unused;
+    [...mm.picked].forEach(file => { if (!r.unused.some(m => m.file === file)) mm.picked.delete(file); });
+    const unused = r.unused.map(m => `<div class="ms-file mm-cmp mm-cmp-pick${mm.picked.has(m.file) ? ' is-picked' : ''}">
+        <input type="checkbox" class="fp-check" data-pick="${escapeHtml(m.file)}"${mm.picked.has(m.file) ? ' checked' : ''} aria-label="${escapeHtml(mmTitle(m))}">
         <span class="ms-file-name">${escapeHtml(mmTitle(m))} <span class="mm-mod-file">${escapeHtml(m.file)}</span></span>
         <span class="ms-file-mb">${mmFmtMb(m.size)}</span>
     </div>`);
+    const unusedMb = r.unused.reduce((sum, m) => sum + m.size, 0);
+    const summary = all
+        ? t('mmCompareSummaryAll').replace('{n}', mm.scan.mods.filter(m => m.hasModDesc).length).replace('{used}', r.used.size).replace('{unused}', r.unused.length).replace('{mb}', mmFmtMb(unusedMb))
+        : t('mmCompareSummary').replace('{used}', r.usedIn.size).replace('{n}', chosen[0].mods.filter(s => !/^pdlc_/i.test(s.name)).length);
+    const unusedHead = `<p class="settings-hint">${escapeHtml(t(all ? 'mmUnusedHint' : 'mmUnusedHintOne'))}</p>
+        <div class="tl-row"><button type="button" class="tl-link" data-mm="pick-unused">${escapeHtml(t('mmPickUnused'))}</button></div>
+        ${mmPickBarHtml(r.unused)}`;
     return pick
-        + `<p class="ms-total">${escapeHtml(t('mmCompareSummary').replace('{used}', r.used).replace('{n}', saveMods.filter(s => !/^pdlc_/i.test(s.name)).length))}</p>`
-        + (r.missing.length ? section(t('mmMissing'), missing) : `<p class="settings-hint"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${escapeHtml(t('mmAllPresent'))}</p>`)
+        + `<p class="ms-total">${escapeHtml(summary)}</p>`
+        + (r.missing.length ? section(t(all ? 'mmMissingAll' : 'mmMissing'), missing) : `<p class="settings-hint"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${escapeHtml(t(all ? 'mmAllPresentAll' : 'mmAllPresent'))}</p>`)
         + (r.versionDiff.length ? section(t('mmVersionDiff'), diff) : '')
-        + (r.unused.length ? section(t('mmUnused'), unused) : '');
+        + (r.unused.length ? section(t(all ? 'mmUnusedAll' : 'mmUnused'), unused, unusedHead) : '')
+        + (forOthers.length ? section(t('mmKeptForOthers'), forOthers) : '');
 }
 
 function mmRender() {
@@ -859,7 +883,9 @@ async function mmUpdate(mods) {
         const act = b.dataset.mm;
         const picked = () => (mm.scan ? mm.scan.mods.filter(m => mm.picked.has(m.file)) : []);
         if (act === 'pick') mmPick(b.dataset.id);
-        else if (act === 'tab') { mm.tab = b.dataset.tab; mmRender(); }
+        // A selection never carries over to another tab's list.
+        else if (act === 'tab') { mm.tab = b.dataset.tab; mm.picked.clear(); mmRender(); }
+        else if (act === 'pick-unused') { mmComparePool.forEach(m => mm.picked.add(m.file)); mmRender(); }
         else if (act === 'new') mmNewLibrary();
         else if (act === 'edit') mmEditLibrary();
         else if (act === 'remove') mmRemoveLibrary();
@@ -894,7 +920,7 @@ async function mmUpdate(mods) {
             mmRender();
         } else if ('mmAll' in el.dataset) {
             mm.picked.clear();
-            if (el.checked) mmVisibleMods().forEach(m => mm.picked.add(m.file));
+            if (el.checked) (mm.tab === 'compare' ? mmComparePool : mmVisibleMods()).forEach(m => mm.picked.add(m.file));
             mmRender();
         }
     });

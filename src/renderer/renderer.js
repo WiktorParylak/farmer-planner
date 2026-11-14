@@ -322,6 +322,8 @@ if (appSettingsBtn && appSettingsModal) {
         if (updToggle) updToggle.checked = isUpdateCheckEnabled();
         const splashToggle = document.getElementById('splash-toggle');
         if (splashToggle) splashToggle.checked = getSetting('farmer_planner_splash') !== '0';
+        const newsToggle = document.getElementById('news-start-toggle');
+        if (newsToggle) newsToggle.checked = isNewsAtStartEnabled();
         const versionLabel = document.getElementById('app-version-label');
         if (versionLabel) versionLabel.textContent = t('updateCurrentVersion').replace('{v}', APP_VERSION);
         const devSetting = document.getElementById('dev-farm-setting');
@@ -1841,11 +1843,9 @@ window.openHubPanel = function (type) {
         if (buildings.length === 0) {
             bodyEl.innerHTML = `<div class="fin-view anim-view">
                 <p class="hub-panel-note">${t('hubNoAnimalsYet')}</p>
-                ${breedNormsHtml(farm)}
                 ${animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth)}
             </div>`;
             activateTrendCharts(bodyEl);
-            wireBreedNorms(bodyEl, farm);
         } else {
             // Fallback reference for buildings without a manually-entered
             // capacity: scaled against the fullest total feed load among
@@ -2199,14 +2199,12 @@ window.openHubPanel = function (type) {
                     </div>`;
                 });
                 html += `</div>`; // .barn-tile-grid
-                html += breedNormsHtml(farm);
                 html += animalsTrendsHtml(farm, monthlyAnim, animalHistory, trendWidth);
                 html = `<div class="fin-view anim-view">${html}</div>`;
             }
 
             bodyEl.innerHTML = html;
             wireBarnPanel(bodyEl, farm);
-            wireBreedNorms(bodyEl, farm);
             activateTrendCharts(bodyEl);
 
             bodyEl.querySelectorAll('.pen-ration-select').forEach(el => el.addEventListener('change', () => {
@@ -2235,6 +2233,8 @@ window.openHubPanel = function (type) {
         renderRotationPanel(titleEl, bodyEl);
     } else if (type === 'feedplan') {
         renderFeedPlanPanel(titleEl, bodyEl, modalEl);
+    } else if (type === 'breednorms') {
+        renderBreedNormsPanel(titleEl, bodyEl);
     } else {
         return;
     }
@@ -2396,9 +2396,16 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     season = Math.min(Math.max(1, parseInt(season) || currentSeason), currentSeason);
     const isPast = season < currentSeason;
 
-    const rates = getSupplyRates();
-    const data = buildYieldForecastRows(seasonCropRows(farm, season), rates, isPast ? null : farm);
-    const showMoisture = !isPast && !!MOISTURE_DATA;
+    // A past season: what its archive kept (rates, moisture, prices at its end).
+    const archive = isPast ? loadSeasonArchive(farm, season) : null;
+    const rates = archive && archive.supplyRates ? { ...getSupplyRates(), ...archive.supplyRates } : getSupplyRates();
+    const pastMoisture = archive && archive.moisture && archive.moisture.crops ? archive.moisture : null;
+    const cropRows = seasonCropRows(farm, season);
+    // Its moisture shows, but nothing is harvested "now" (no month), so the litres stay as planned.
+    const data = isPast
+        ? withMoistureData(pastMoisture, () => buildYieldForecastRows(cropRows, rates, pastMoisture ? { month: '' } : null))
+        : buildYieldForecastRows(cropRows, rates, farm);
+    const showMoisture = isPast ? !!pastMoisture : !!MOISTURE_DATA;
     const showLoss = !isPast && data.rows.some(r => r.state);
     const num = n => Math.round(n).toLocaleString(FIN_LOCALE());
 
@@ -2418,12 +2425,19 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
         return;
     }
 
-    // Prices and margin: this season only, from the save's price curve.
-    const margin = isPast ? null : buildCropMarginRows(farm, seasonCropRows(farm, season), rates, data.rows);
+    // Prices and margin: this season from the save's price curve; a past one at
+    // the prices of the month it ended in, or (archived before they were kept) today's.
+    const pastSnap = archive && archive.market ? marketFromSnapshot(archive.market) : null;
+    const todayMarket = isPast && !pastSnap ? getFarmMarket(farm) : null;
+    const margin = !isPast ? buildCropMarginRows(farm, cropRows, rates, data.rows)
+        : pastSnap ? buildCropMarginRows(farm, cropRows, rates, data.rows, { market: pastSnap, month: archive.market.month })
+            : todayMarket ? buildCropMarginRows(farm, cropRows, rates, data.rows, { market: todayMarket, month: farm.month }) : null;
+    const priceHead = pastSnap ? t('yieldColPriceEnd').replace('{month}', translateMonth(archive.market.month))
+        : (todayMarket ? t('yieldColPrice') + ' ≈' : t('yieldColPrice'));
     const money = v => v === null || v === undefined ? '–' : finMoney(v);
     html += `<table class="data-table supply-table yield-table"><thead><tr>
         <th>${t('yieldForecastColCrop')}</th><th>${t('yieldForecastColArea')}</th>${showMoisture ? `<th>${t('yieldForecastColMoisture')}</th>` : ''}${showLoss ? `<th>${t('yieldColLoss')}</th>` : ''}<th>${t('yieldForecastColYield')}</th>
-        ${margin ? `<th>${t('yieldColPrice')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th><th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
+        ${margin ? `<th>${priceHead}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th>${isPast ? '' : `<th>${t('yieldColPriceBest')}<span class="yield-th-unit">${t('yieldPriceUnit')}</span></th>`}<th>${t('yieldColRevenue')}</th><th>${t('yieldColCostHa')}</th><th>${t('yieldColMarginHa')}</th>` : ''}
         </tr></thead><tbody>`;
     let revenueTotal = 0, costTotal = 0, revenueKnown = false;
     data.rows.forEach(r => {
@@ -2446,7 +2460,10 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
             if (c.costPerHa !== null && c.costPerHa !== undefined) costTotal += c.costPerHa * r.area;
             const costFlag = c.costPerHa !== null && c.costPerHa !== undefined && !c.costKnown ? ` <span class="supply-flag" title="${t('yieldCostPartialFlag')}">?</span>` : '';
             const mCls = c.marginPerHa === null || c.marginPerHa === undefined ? '' : c.marginPerHa < 0 ? ' yield-margin--loss' : ' yield-margin--gain';
-            marginCells = `<td>${money(c.price)}</td>
+            const b = c.best;
+            const bestCell = isPast ? '' : !b ? '<td>–</td>'
+                : `<td class="yield-best">${money(b.price)}<span class="supply-sub">${b.isNow ? t('marketBestNow') : marketShortMonth(b.month) + (b.change > 0.005 ? ` +${Math.round(b.change * 100)}%` : '')}</span></td>`;
+            marginCells = `<td>${money(c.price)}</td>${bestCell}
                 <td>${money(c.revenue)}</td>
                 <td>${money(c.costPerHa)}${costFlag}</td>
                 <td class="yield-margin${mCls}">${money(c.marginPerHa)}</td>`;
@@ -2458,11 +2475,13 @@ function renderYieldForecastPanel(titleEl, bodyEl, modalEl, season = viewedSeaso
     const area = data.rows.reduce((sum, r) => sum + r.area, 0);
     html += `</tbody><tfoot><tr class="supply-total-row">
         <td colspan="${2 + (showMoisture ? 1 : 0) + (showLoss ? 1 : 0)}">${t('suppliesTotal')}</td><td>${num(data.total)} l</td>
-        ${margin ? `<td></td><td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
+        ${margin ? `<td></td>${isPast ? '' : '<td></td>'}<td>${revenueKnown ? money(revenueTotal) : '–'}</td><td>${area > 0 ? money(costTotal / area) : '–'}</td>
             <td class="yield-margin">${revenueKnown && area > 0 ? money((revenueTotal - costTotal) / area) : '–'}</td>` : ''}</tr></tfoot></table>`;
-    if (margin) html += `<p class="hub-panel-note">${t('yieldMarginNote')}</p>`;
+    if (margin && todayMarket) html += `<p class="hub-panel-note">${t('yieldPastTodayPrices').replace('{n}', season)}</p>`;
+    if (margin) html += `<p class="hub-panel-note">${t(isPast ? 'yieldMarginNotePast' : 'yieldMarginNote')}</p>`;
     else if (!isPast && farm.saveGamePath) html += `<p class="hub-panel-note">${t(fs.existsSync(farm.saveGamePath) ? 'yieldNoPricesNote' : 'yieldNoSaveNote')}</p>`;
-    if (margin) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
+    // The price curve and the great demands are about today.
+    if (margin && !isPast) html += marketPricesCardHtml(farm, margin.market, data.rows) + marketDemandsCardHtml(farm, margin.market);
 
     if (data.missingCount > 0) {
         html += `<p class="hub-panel-note">${t('yieldForecastUnknownNote').replace('{n}', data.missingCount)}</p>`;
@@ -3532,7 +3551,9 @@ function readSaveFields(farm, opts = {}) {
                 cutShare: isFinite(cutShare) ? cutShare : null
             });
         }
-        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive };
+        // mapFieldCount: every field on the map, owned or not ("Fields from game" says how many are yours).
+        const mapFieldCount = (fxText.match(/<field\s+id="\d+"/g) || []).length;
+        return { ok: true, fields: out, hasArea: Object.keys(areaById).length > 0, live: !!useLive, mapFieldCount };
     } catch (e) {
         console.error('readSaveFields failed', e);
         return { ok: false, reason: 'parse' };
@@ -4471,6 +4492,40 @@ function listSaveFarms(pathToFile) {
     }
 }
 
+// Multiplayer save: which of its farms is the player's. Asked once, before
+// "Fields from game" takes fields from it — farm 1 picked silently can be
+// someone else's. The choice in Settings counts as an answer too.
+// -> true to go on, false when cancelled.
+async function confirmGameFarm(farm) {
+    const farms = listSaveFarms(farm.saveGamePath);
+    if (farms.length < 2 || farm.gameFarmConfirmed) return true;
+    const current = gameFarmIdOf(farm);
+    const money = f => isFinite(f.money) ? ' · ' + finMoney(f.money) : '';
+    const ok = await showDialog({
+        title: t('gameFarmAskTitle'),
+        bodyHtml: `<p>${escapeHtml(t('gameFarmAskBody'))}</p>
+            <label class="settings-field"><span>${t('gameFarmLabel')}</span><select id="game-farm-ask">${farms.map(f =>
+                `<option value="${escapeHtml(f.id)}" ${f.id === current ? 'selected' : ''}>${escapeHtml(f.name || t('gameFarmUnnamed'))} (#${escapeHtml(f.id)})${money(f)}</option>`).join('')}</select></label>`,
+        confirmText: t('confirm'),
+        cancelText: t('cancel'),
+        icon: 'fa-people-group'
+    });
+    const pick = document.getElementById('game-farm-ask');
+    if (ok !== true || !pick) return false;
+    farm.gameFarmId = pick.value;
+    farm.gameFarmConfirmed = true;
+    useSaveFarm(farm);
+    return true;
+}
+
+// Name of the farm "Fields from game" read, for its message ('' for a single-farm save).
+function gameFarmNameOf(farm) {
+    const farms = farm && farm.saveGamePath ? listSaveFarms(farm.saveGamePath) : [];
+    if (farms.length < 2) return '';
+    const f = farms.find(x => x.id === gameFarmIdOf(farm));
+    return f ? `${f.name || t('gameFarmUnnamed')} (#${f.id})` : '';
+}
+
 // Fills in farm.gameFarmId the first time a save is read: the only farm in
 // the save, else farm 1 if it exists, else the first one. Returns true if set.
 function resolveGameFarmId(farm) {
@@ -5232,6 +5287,27 @@ function loadSeasonFields(farm, seasonNum) {
     }
 }
 
+// A past season's whole archive (season_N.json), or null.
+function loadSeasonArchive(farm, seasonNum) {
+    if (!farm || seasonNum >= (farm.currentSeason || 1)) return null;
+    try { return JSON.parse(fs.readFileSync(path.join(appDataDir, farm.folderName, 'seasons', `season_${seasonNum}.json`), 'utf-8')); }
+    catch (e) { return null; }
+}
+
+// The supply rates a season's yields and costs were counted with (per-crop
+// seed / N / yield overrides and the buffer), kept in its archive.
+function archivedSupplyRates() {
+    const r = getSupplyRates();
+    return JSON.parse(JSON.stringify({ crops: r.crops || {}, bufferPct: r.bufferPct }));
+}
+
+// Runs fn with the moisture of another time in place of today's.
+function withMoistureData(data, fn) {
+    const today = MOISTURE_DATA;
+    MOISTURE_DATA = data;
+    try { return fn(); } finally { MOISTURE_DATA = today; }
+}
+
 // Every crop of a season, for totals: its archive, or this season's crops on the
 // fields and those already off them (after the live rows, whose indexes count).
 function seasonCropRows(farm, seasonNum) {
@@ -5616,7 +5692,12 @@ async function runNewSeason({ intro = '' } = {}) {
                 loan: farm.loan || 0,
                 animals: farm.animals || 0,
                 avgHealth: archivedAvgHealth,
-                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {}))
+                fertPlan: Object.assign({}, ...seasonRows.map(r => r.finishedFert || {})),
+                // For "Yields and prices" one season back: the prices of the
+                // month it ended in, the moisture then, and the rates it was planned with.
+                market: seasonMarketSnapshot(farm, seasonRows),
+                moisture: MOISTURE_DATA ? JSON.parse(JSON.stringify({ moisture: MOISTURE_DATA.moisture, boosts: MOISTURE_DATA.boosts, crops: MOISTURE_DATA.crops })) : null,
+                supplyRates: archivedSupplyRates()
             };
             fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2), 'utf-8');
 
@@ -6311,10 +6392,12 @@ if (saveSettingsBtn) {
                     if (target.saveGamePath !== pathToFile) {
                         // Another save: pick its farm again from scratch.
                         delete target.gameFarmId;
+                        delete target.gameFarmConfirmed;
                         target.saveGamePath = pathToFile;
                         resolveGameFarmId(target);
                     } else if (gameFarmRow && !gameFarmRow.hidden && gameFarmSelect && gameFarmSelect.value) {
                         target.gameFarmId = gameFarmSelect.value;
+                        target.gameFarmConfirmed = true;
                     }
                     useSaveFarm(target);
                     const newData = readGameSave(pathToFile);
@@ -6496,8 +6579,11 @@ window.exportFarmBackup = async function (farmId, quiet = false) {
 
 // Settings -> Help: diagnostic file for a bug report (see diagnostics.js) and
 // links to GitHub issues / the website's contact form.
+// Everything but the install id the news polls vote with (it stays anonymous).
 function appSettingsForDiagnostics() {
-    return appSettings.all();
+    const all = appSettings.all();
+    delete all.newsInstallId;
+    return all;
 }
 
 function openDiagnosticsModal() {
@@ -7216,6 +7302,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // when a farm is opened, not here (no farm is active on the dashboard).
     const languageChosen = !!getSetting(CONFIG_KEY_LANG);
     applyLanguage(currentLang);
+    // News (news.js) loads while the start-up dialogs are up.
+    const newsLoading = loadNews();
 
     // Leftover from a tutorial that was interrupted by closing the app.
     removeDemoFarm();
@@ -7233,6 +7321,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await askDiscordOnce();
     await reportUnfinishedUpdate();
     await showWhatsNewAfterUpdate(!languageChosen);
+    // Not on the very first start, and not before the tutorial.
+    if (languageChosen && getSetting(CONFIG_KEY_TUTORIAL_DONE) === '1') await showNewsAtStart(newsLoading);
     if (getSetting(CONFIG_KEY_TUTORIAL_DONE) !== '1') startTutorial();
     else if (isUpdateCheckEnabled()) setTimeout(() => checkForUpdates(), 1500);
 });

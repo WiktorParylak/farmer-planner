@@ -67,6 +67,20 @@ window.FT = (() => {
         });
     }
 
+    // A savegame in the test game folder that uses one of fakeMods' mods.
+    function fakeSave() {
+        const dir = path.join(tlGameDir(), 'savegame1');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'careerSavegame.xml'), '<careerSavegame><settings><savegameName>Green Valley</savegameName></settings><mod modName="FS25_FrontLoader" title="Front loader" version="1.2.0.0"/><mod modName="FS25_Sprayer" title="Sprayer" version="1.0.0.0"/></careerSavegame>');
+    }
+
+    const newsVotesSent = [];
+    function fakeNews() {
+        newsNet.request = newsDevRequest(newsVotesSent);
+        newsData = NEWS_DEV_SAMPLE;
+        return NEWS_DEV_SAMPLE;
+    }
+
     function copy(value) {
         return JSON.parse(JSON.stringify(value));
     }
@@ -114,5 +128,5 @@ window.FT = (() => {
         await wait(100);
     }
 
-    return { fakeMods, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
+    return { fakeNews, newsVotesSent, fakeMods, fakeSave, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
 })();

@@ -2662,6 +2662,7 @@ th.is-sortable[aria-sort="descending"]::after {
 .sidebar-item--storage .sidebar-item-icon { background-color: var(--color-accent); }
 .sidebar-item--seasonsummary .sidebar-item-icon { background-color: var(--color-primary); }
 .sidebar-item--feedplan .sidebar-item-icon { background-color: var(--color-accent); }
+.sidebar-item--breednorms .sidebar-item-icon { background-color: var(--color-sky); }
 
 /* Keep the icon readable against the green active background. */
 .sidebar-item.is-active .sidebar-item-icon {
@@ -3793,25 +3794,8 @@ span.tillage-switch-option {
 }
 
 /* auto-fill (not auto-fit) keeps the columns lined up with the row above. */
-.field-card-row--grid.field-card-row--catch {
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-}
-
 .field-card .fc-cell[hidden] {
   display: none;
-}
-
-.field-card .treatments-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-}
-
-.fc-chip-text {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--color-ink-soft);
 }
 
 .animal-mods-info {
@@ -4159,7 +4143,9 @@ details[open] > :not(summary) {
 
 .field-card-row--grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  /* auto-fill: the crop row lines up with the catch-crop row under it
+     instead of stretching its two cells across the card. */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-items: start;
 }
 
@@ -4233,17 +4219,6 @@ details[open] > :not(summary) {
 
 .fc-cell--area .field-area {
   width: 100%;
-}
-
-.fc-cell--state {
-  cursor: pointer;
-}
-
-.fc-cell--state .field-state {
-  width: 22px;
-  height: 22px;
-  cursor: pointer;
-  align-self: flex-start;
 }
 
 /* Several fields at once (Edit mode): the bar above the cards and the
@@ -4798,6 +4773,165 @@ select:focus-visible,
   margin: 0 0 6px;
   font-size: var(--fs-base);
   color: var(--color-ink-soft);
+}
+
+/* Supplies: the line under the intro, the shopping-list cards, the banners
+   and the tabs over the per-field tables. */
+.supply-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
+.supply-head b {
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.supply-head-cost {
+  margin-left: auto;
+}
+
+.supply-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.supply-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+  color: var(--color-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.supply-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.supply-card.is-current {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.supply-card:focus-visible {
+  outline: 2px solid var(--color-accent-dark);
+  outline-offset: 1px;
+}
+
+.supply-card-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-soft);
+}
+
+.supply-card-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.supply-card-sub {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-faint);
+}
+
+.supply-card-none {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-faint);
+}
+
+.supply-card.is-empty .supply-card-label {
+  color: var(--color-ink-faint);
+}
+
+.supply-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-alt);
+  font-size: var(--fs-sm);
+  color: var(--color-ink);
+}
+
+.supply-banner i {
+  color: var(--color-accent-dark);
+}
+
+.supply-banner span {
+  flex: 1;
+  text-align: left;
+}
+
+.supply-tabs {
+  align-self: flex-start;
+  width: fit-content;
+  margin: 6px 0 8px;
+}
+
+.supply-org-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 6px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
+.supply-org-pick .view-tab {
+  padding: 4px 12px;
+  font-size: var(--fs-sm);
+}
+
+.data-table .supply-soil-sub {
+  font-family: var(--font-body);
+}
+
+.supply-how {
+  margin-top: 14px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-soft);
+}
+
+.supply-how > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.supply-how ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.supply-how li {
+  margin: 3px 0;
 }
 
 /* Side tables (Supplies, yield forecast, rates, field soil, feed, finance,
@@ -6287,6 +6421,10 @@ select:focus-visible,
 }
 
 .feed-settings > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 700;
@@ -6296,8 +6434,60 @@ select:focus-visible,
   color: var(--color-ink-soft);
 }
 
-.feed-settings > summary i {
-  margin-right: 4px;
+.feed-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.feed-settings > summary span {
+  flex: 1;
+  text-align: left;
+}
+
+.feed-settings > summary:hover {
+  color: var(--color-ink);
+}
+
+.feed-settings-chevron {
+  font-size: 0.8em;
+  transition: transform 0.15s ease;
+}
+
+.feed-settings[open] > summary {
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feed-settings[open] .feed-settings-chevron {
+  transform: rotate(180deg);
+}
+
+/* Feed planner bottom: one gap above every section heading, the field table
+   and own feeds left-aligned, the notes in one quiet block at the end. */
+.feed-plan .hub-panel-subtitle {
+  margin: 18px 0 6px;
+}
+
+.feed-plan .feed-use-select {
+  width: 100%;
+  max-width: 220px;
+}
+
+.feed-plan .feed-custom-card {
+  text-align: left;
+}
+
+.feed-notes {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.feed-notes .hub-panel-note {
+  margin: 4px 0;
+  font-size: var(--fs-xs);
+  font-style: normal;
+  text-align: left;
 }
 
 /* Animals panel: ration picker per species (shared with the feed planner). */
@@ -6453,7 +6643,7 @@ select:focus-visible,
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .mixer-load,
@@ -6941,22 +7131,6 @@ select:focus-visible,
   font-size: var(--fs-base);
 }
 
-/* Field card: checkbox + its caption (state "Sown", rolling "I want to roll"). */
-.fc-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  font-size: var(--fs-base);
-  color: var(--color-ink);
-}
-
-.fc-cell--state .field-rolling {
-  width: 22px;
-  height: 22px;
-  cursor: pointer;
-}
-
 /* Main table: the state badge is a button that toggles sown / not sown. */
 .state-toggle {
   padding: 0;
@@ -7021,10 +7195,6 @@ button.treatment-chip--lime.is-warning {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
   font-weight: 700;
-}
-
-.fc-check input[type="checkbox"] {
-  accent-color: var(--color-primary);
 }
 
 /* Table chips you can click (lime, rolling). */
@@ -7538,12 +7708,11 @@ button.table-chip-toggle:hover {
   margin: 0;
 }
 
-/* Breed norms: read-only preview of one breed's needs and output. */
-.breed-norms > summary {
-  margin: 4px 0 0;
-  cursor: pointer;
+/* Breed norms (a view of its own): one breed's needs and output. */
+.breed-norms-controls,
+.breed-norms-figures {
+  text-align: left;
 }
-.breed-norms[open] > summary { margin-bottom: 8px; }
 .breed-norms-controls {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -7570,21 +7739,27 @@ button.table-chip-toggle:hover {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
+/* Chart left, figures right; one column on a narrow window. */
 .breed-norms-body {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+  gap: 20px;
+  align-items: start;
 }
-.breed-norms-side {
+@media (max-width: 1100px) {
+  .breed-norms-body { grid-template-columns: minmax(0, 1fr); }
+}
+.breed-norms-figures {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  flex: 0 1 320px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 0;
 }
-.breed-norms-pic { width: 72px; height: 72px; }
-.breed-norms-table { flex: 1 1 320px; width: auto; }
+.breed-norms-pic { width: 88px; height: 88px; }
+.breed-norms-table { width: 100%; }
+.breed-norms-table th:not(:first-child) { white-space: normal; }
+.breed-norms-table td:first-child { text-align: left; }
+.breed-norms-table td { font-variant-numeric: tabular-nums; }
 .breed-norms-group th {
   text-align: left;
   font-size: var(--fs-2xs);
@@ -7601,7 +7776,9 @@ button.table-chip-toggle:hover {
 .breed-curve {
   display: block;
   width: 100%;
-  height: 90px;
+  height: 240px;
+  cursor: ew-resize;
+  touch-action: none;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-medium);
@@ -7613,9 +7790,31 @@ button.table-chip-toggle:hover {
 }
 .breed-curve .breed-curve-food { stroke: var(--color-primary); }
 .breed-curve .breed-curve-out { stroke: var(--color-accent); }
+.breed-curve-year {
+  fill: var(--color-accent);
+  opacity: 0.12;
+}
+.breed-curve-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.breed-curve-ticks {
+  position: relative;
+  height: 16px;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.breed-curve-ticks span {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+}
+.breed-curve-ticks span:first-child { transform: none; }
 .breed-curve-marker {
   stroke: var(--color-rust);
-  stroke-width: 1.5;
+  stroke-width: 2;
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
 }
@@ -7641,6 +7840,7 @@ button.table-chip-toggle:hover {
 .breed-curve-axis { margin-left: auto; color: var(--color-ink-faint); }
 .breed-norms-notes {
   margin: 10px 0 0;
+  text-align: left;
   padding-left: 18px;
   font-size: var(--fs-xs);
   color: var(--color-ink-soft);
@@ -8520,6 +8720,17 @@ button.field-open.has-callout .field-number-chip {
 
 .rotation-toolbar .rotation-mode {
   flex: 0 0 auto;
+}
+
+.rotation-toolbar > .settings-hint {
+  flex: 1 1 220px;
+}
+
+.rotation-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .rotation-grid-wrap {
@@ -11058,6 +11269,15 @@ button.mm-badge {
   margin-left: 6px;
 }
 
+.mm-cmp.mm-cmp-pick {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.mm-cmp-pick.is-picked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
 .mm-save-pick {
   max-width: 420px;
 }
@@ -11150,4 +11370,357 @@ button.mm-badge {
   border-color: var(--color-border-strong);
   background-color: var(--color-surface-alt);
   color: var(--color-ink);
+}
+
+/* ---- News (news.js): posts from farmerplanner.pl drawn from blocks ---- */
+.news-badge {
+  margin-left: 2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.news-badge[hidden] {
+  display: none;
+}
+
+.news-content {
+  --news-accent: var(--color-primary);
+  --news-accent-soft: var(--color-primary-soft);
+  position: relative;
+  max-width: 640px;
+  width: min(640px, 92vw);
+  padding-top: 0;
+  overflow: hidden;
+}
+
+.news-content--large {
+  max-width: 900px;
+  width: min(900px, 94vw);
+}
+
+.news-accent--orange { --news-accent: var(--color-accent); --news-accent-soft: var(--color-accent-soft); }
+.news-accent--blue { --news-accent: var(--color-sky); --news-accent-soft: rgba(62, 112, 137, 0.14); }
+.news-accent--red { --news-accent: var(--color-rust); --news-accent-soft: var(--color-rust-soft); }
+.news-accent--gold { --news-accent: #A8862A; --news-accent-soft: rgba(168, 134, 42, 0.16); }
+
+.news-head {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0 -1px;
+  padding: 16px 4px 10px;
+  border-top: 6px solid var(--news-accent);
+  text-align: left;
+}
+
+.news-kicker {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--news-accent);
+}
+
+.news-head h3 {
+  margin: 0;
+  text-align: left;
+}
+
+.news-date {
+  font-size: var(--fs-sm);
+  color: var(--color-ink-faint);
+}
+
+.news-body {
+  align-self: stretch;
+  max-height: 56vh;
+  overflow-y: auto;
+  text-align: left;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  padding: 4px 10px 8px 2px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.news-body > * + * {
+  margin-top: 12px;
+}
+
+.news-text p {
+  margin: 0 0 8px;
+  white-space: normal;
+}
+
+.news-text h5 {
+  margin: 12px 0 2px;
+  font-size: var(--fs-base);
+  color: var(--color-ink-soft);
+}
+
+.news-text ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.news-link {
+  color: var(--news-accent);
+  font-weight: 600;
+}
+
+.news-banner {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  margin-top: 10px;
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-alt);
+}
+
+.news-figure {
+  margin: 12px 0 0;
+}
+
+.news-image {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--radius-small);
+  cursor: zoom-in;
+}
+
+.news-figure figcaption {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-faint);
+}
+
+.news-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.news-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-small);
+  background-color: var(--color-surface-alt);
+  cursor: zoom-in;
+}
+
+.news-body img.is-missing {
+  display: none;
+}
+
+.news-callout {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-sky);
+  border-radius: var(--radius-small);
+  background-color: rgba(62, 112, 137, 0.1);
+}
+
+.news-callout i {
+  margin-top: 3px;
+  color: var(--color-sky);
+}
+
+.news-callout p {
+  margin: 0;
+  white-space: normal;
+}
+
+.news-callout--warning {
+  border-left-color: var(--color-rust);
+  background-color: var(--color-rust-soft);
+}
+
+.news-callout--warning i { color: var(--color-rust); }
+
+.news-callout--new {
+  border-left-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.news-callout--new i { color: var(--color-accent-dark); }
+
+.news-divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.news-button-row {
+  display: flex;
+}
+
+.news-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border: 1px solid var(--news-accent);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.news-btn--primary {
+  background-color: var(--news-accent);
+  color: #fff;
+}
+
+.news-btn--secondary {
+  background-color: transparent;
+  color: var(--news-accent);
+}
+
+.news-btn i {
+  font-size: 0.85em;
+}
+
+.news-poll {
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface-soft);
+}
+
+.news-poll-q {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.news-poll-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.news-poll-option {
+  padding: 6px 14px;
+  border: 1px solid var(--news-accent);
+  border-radius: var(--radius-pill);
+  background-color: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.news-poll-option:hover {
+  background-color: var(--news-accent-soft);
+}
+
+.news-poll-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  cursor: pointer;
+}
+
+.news-poll-check input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--news-accent);
+}
+
+.news-poll-send {
+  margin-top: 6px;
+}
+
+.news-poll-result {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  margin: 6px 0;
+}
+
+.news-poll-pct {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+}
+
+.news-poll-bar {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.news-poll-bar span {
+  display: block;
+  height: 100%;
+  background-color: var(--news-accent);
+  opacity: 0.55;
+}
+
+.news-poll-result.is-mine .news-poll-bar span {
+  opacity: 1;
+}
+
+.news-poll-mine {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--news-accent);
+}
+
+.news-poll-foot,
+.news-poll-msg {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--color-ink-faint);
+}
+
+.news-buttons {
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.news-buttons button[hidden] {
+  display: none;
+}
+
+.news-pager {
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-ink-faint);
+}
+
+.news-lightbox {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(15, 22, 17, 0.85);
+  cursor: zoom-out;
+}
+
+.news-lightbox[hidden] {
+  display: none;
+}
+
+.news-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-small);
 }

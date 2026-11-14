@@ -79,6 +79,11 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 
 ## Questions
 
+**Windows blocked the installer. What now?**
+The installer isn't signed with a code-signing certificate yet (that's planned), so Windows may stop it.
+- *Windows protected your PC* (SmartScreen): click **More info → Run anyway**.
+- *Smart App Control blocked an app*: Smart App Control has no button to let one app through. The only way is to turn it off in **Windows Security → App & browser control → Smart App Control settings → Off**. On an up-to-date Windows 11 you can turn it back on there later; on older builds, or with optional diagnostic data turned off, Microsoft says turning it back on needs a reset or reinstall of Windows. Decide for yourself whether you want that.
+
 **Does it change my savegame?**
 No. Farmer Planner only reads game files, with two exceptions you start yourself. The tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm` and clears the weeds under them in `densityMap_weed.gdm`. It only does that with the game closed, copies the files to `farmer_planner_backup` first, checks the new files before they replace the old ones, and can restore the last backup. The optional Farmer Planner Link mod also only reads the game: it writes its own files to `modSettings/FS25_FarmerPlannerLink` and nothing else. The mod manager changes only the mods folder setting in `gameSettings.xml` when you activate a library, with the game closed and after a copy of the file, and moves mods only inside your library folders (deleting goes to the Recycle Bin).
 
@@ -123,7 +128,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 **Tools (left sidebar)**
 - **Finance** — balance and loan month by month and season by season; income, costs and operating profit by category as on the game's Finances screen, with investments apart.
 - **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed. **Breed norms** show what one animal or a herd of a breed eats and gives per month at a given age.
-- **Supplies** — how much seed and fertilizer to buy for the season, and what it costs at this month's price.
+- **Supplies** — a shopping list for the season: seed, seed potatoes or sugarcane, mineral fertilizer and lime, each with its cost at this month's price, and the per-field tables in tabs.
 - **Field soil type** — field soils used by the fertilization plans.
 - **Notes** — pinned to months and fields, with tags and a checklist that starts over every in-game year.
 - **Yields and prices** — predicted harvest per crop, this month's price from the save's price curve, revenue, inputs and margin per hectare; prices over the year with the best month to sell, and great demands at the selling points. With the Moisture System mod, also today's field moisture, its ideal range and how it changes the yield of this month's harvest; with the link mod, the loss from each field's state.

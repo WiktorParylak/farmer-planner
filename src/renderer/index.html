@@ -55,6 +55,7 @@
                     </div>
                 </div>
                 <div class="start-tools">
+                    <button type="button" id="news-btn" class="settings-btn tramlines-btn news-open-btn"><i class="fa-solid fa-newspaper" aria-hidden="true"></i> <span data-i18n="newsBtn">News</span><span id="news-badge" class="news-badge" hidden></span></button>
                     <button type="button" id="tramlines-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-road" aria-hidden="true"></i> <span data-i18n="tlTitle">Tramlines</span></button>
                     <button type="button" id="mapscale-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i> <span data-i18n="msTitle">Map scaling</span></button>
                     <button type="button" id="modmanager-btn" class="settings-btn tramlines-btn"><i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i> <span data-i18n="mmTitle">Mod manager</span></button>
@@ -150,6 +151,10 @@
                     <button type="button" class="sidebar-item sidebar-item--feedplan" data-view="feedplan" data-i18n-title="hubFeedPlan">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn" aria-hidden="true"></i></span>
                         <span class="sidebar-item-label" data-i18n="hubFeedPlan">Feed planner</span>
+                    </button>
+                    <button type="button" class="sidebar-item sidebar-item--breednorms" data-view="breednorms" data-i18n-title="breedNormsTitle">
+                        <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></span>
+                        <span class="sidebar-item-label" data-i18n="breedNormsTitle">Breed norms</span>
                     </button>
                     <button type="button" class="sidebar-item sidebar-item--storage" data-view="storage" data-i18n-title="hubStorage">
                         <span class="sidebar-item-icon" aria-hidden="true"><i class="fa-solid fa-warehouse" aria-hidden="true"></i></span>
@@ -425,6 +430,10 @@
                     <input type="checkbox" id="update-check-toggle" style="width:auto; margin:0; flex:0 0 auto;">
                     <span data-i18n="updateSettingHint">Check for a new version when the app starts.</span>
                 </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="news-start-toggle" style="width:auto; margin:0; flex:0 0 auto;">
+                    <span data-i18n="newsAtStartHint">Show news from farmerplanner.pl when the app starts.</span>
+                </label>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
                     <button type="button" id="check-updates-btn" class="replay-tutorial-btn" data-i18n="updateCheckNow">Check now</button>
                     <button type="button" id="whats-new-btn" class="replay-tutorial-btn" data-i18n="whatsNewButton">What's new</button>
@@ -446,6 +455,7 @@
                         <span data-i18n="devFarmSettingHint">Test farm built into the app. Turning it off deletes it.</span>
                     </label>
                     <button type="button" id="dev-farm-rebuild-btn" class="replay-tutorial-btn" data-i18n="devFarmRebuild" style="margin-top:6px;">Rebuild test farm</button>
+                    <button type="button" id="news-dev-btn" class="replay-tutorial-btn" data-i18n="newsDevShow" style="margin-top:6px;">Show test news</button>
                 </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
@@ -588,6 +598,25 @@
             </div>
         </div>
     </div>
+    <!-- News: posts from farmerplanner.pl/news.json, drawn from blocks (news.js). -->
+    <div id="news-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="news-title">
+        <div class="modal-content app-dialog-content news-content">
+            <div class="news-head">
+                <span class="news-kicker"><i class="fa-solid fa-newspaper" aria-hidden="true"></i> <span data-i18n="newsTitle">News</span></span>
+                <h3 id="news-title"></h3>
+                <span id="news-date" class="news-date"></span>
+            </div>
+            <div id="news-body" class="news-body"></div>
+            <div class="modal-buttons news-buttons">
+                <span id="news-pager" class="news-pager"></span>
+                <button type="button" id="news-hide" class="modal-cancel-btn" data-i18n="newsHide">Don't show again</button>
+                <button type="button" id="news-prev" class="modal-cancel-btn" data-i18n="newsPrev">Previous</button>
+                <button type="button" id="news-next" class="modal-cancel-btn" data-i18n="newsNext">Next</button>
+                <button type="button" id="news-close" data-i18n="newsClose">Close</button>
+            </div>
+            <div id="news-lightbox" class="news-lightbox" hidden><img alt=""></div>
+        </div>
+    </div>
     <!-- Update available: download the installer inside the app, then it takes over. -->
     <div id="update-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-body">
         <div class="modal-content app-dialog-content update-content">
@@ -654,6 +683,7 @@
     <script src="supplies.js"></script>
     <script src="market.js"></script>
     <script src="storage.js"></script>
+    <script src="breed-norms.js"></script>
     <script src="renderer.js"></script>
     <script src="fields-table.js"></script>
     <script src="fields-timeline.js"></script>
@@ -665,6 +695,7 @@
     <script src="tramlines.js"></script>
     <script src="map-scale.js"></script>
     <script src="mod-manager.js"></script>
+    <script src="news.js"></script>
     <script src="tutorial.js"></script>
 </body>
 

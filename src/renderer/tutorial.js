@@ -488,9 +488,6 @@ const TUTORIAL_CHAPTERS = [
             tutInput('d5', tutInCard('input.field-area'), () => tutNumValue(tutInCard('input.field-area')()) > 0, '3.5'),
             tutInput('d6', tutInCard('select.field-crop'), () => { const el = tutInCard('select.field-crop')(); return !!el && el.value !== ''; }, 'Wheat'),
             tutInput('d7', tutInCard('select.field-sow'), () => { const el = tutInCard('select.field-sow')(); return !!el && el.value !== ''; }, 'SEPTEMBER'),
-            tutClick('d8', tutInCard('.tillage-switch-option--plowed'), () => { const el = tutInCard('.tillage-switch-option--plowed')(); return !!el && el.classList.contains('is-active'); }),
-            tutClick('d9', tutInCard('.treatment-chip--lime'), () => { const el = tutInCard('.treatment-chip--lime')(); return !!el && (el.classList.contains('is-active') || el.classList.contains('is-warning')); }),
-            tutClick('d10', tutInCard('input.field-state'), () => { const el = tutInCard('input.field-state')(); return !!el && el.checked; }),
             tutClick('d11', '#edit-season-btn', () => isEditMode === false, {
                 enter: () => { const el = tutInCard('input.field-number')(); tut.newFieldNumber = el ? el.value.trim() : ''; }
             }),
@@ -560,8 +557,8 @@ const TUTORIAL_CHAPTERS = [
             }, '60'),
             tutInfo('h8', '#hub-panel-body .field-soil-import'),
             hubOpen('h9', 'supplies'),
-            tutInfo('h10', () => tqa('#hub-panel-body table.supply-table')[0] || null),
-            tutInfo('h11', () => tqa('#hub-panel-body table.supply-table')[1] || null),
+            tutInfo('h10', '#hub-panel-body .supply-cards'),
+            tutInfo('h11', '#hub-panel-body .supply-tabs'),
             hubOpen('h13', 'notes'),
             tutInfo('h14', '#hub-panel-body .note-card'),
             tutClick('h15', '#hub-panel-body .notes-add-btn', () => tutModalOpen('note-edit-modal')),
@@ -602,19 +599,8 @@ const TUTORIAL_CHAPTERS = [
             tutInfo('k14', () => tutPenPart(0, '.barn-panel--stored')),
             tutInfo('k15', () => tutPenPart(0, '.barn-panel--output')),
             tutInfo('k16', () => { tutAnimalsOverview(); const charts = tqa('#hub-panel-body .trend-card, #hub-panel-body .fin-chart'); return charts.length ? charts.slice(0, 3) : null; }),
-            // Folded by default: opened for the step, folded again after.
-            tutInfo('k22', () => {
-                tutAnimalsOverview();
-                const box = tq('#hub-panel-body .breed-norms');
-                if (box && !box.open) { box.open = true; breedNormsOpen = true; }
-                return box;
-            }, {
-                leave: () => {
-                    const box = tq('#hub-panel-body .breed-norms');
-                    if (box) box.open = false;
-                    breedNormsOpen = false;
-                }
-            }),
+            // Its own view in the sidebar, after the Feed planner.
+            hubOpen('k22', 'breednorms'),
             tutInfo('k17', null),
             hubOpen('k18', 'plan')
         ]
