@@ -127,7 +127,7 @@ Tak. W zapisie z kilkoma farmami wybierasz w Ustawieniach swoją, a planer czyta
 **Narzędzia (pasek po lewej)**
 - **Finanse** — saldo i kredyt miesiąc po miesiącu i sezon po sezonie; przychody, koszty i zysk operacyjny według kategorii jak na ekranie Finanse w grze, z inwestycjami osobno.
 - **Zwierzęta** — kafelek dla każdego budynku, zdjęcia ras z Twoich modów, stado według rasy i wieku, poziom paszy i na ile dni wystarczy, dzienne zapotrzebowanie, produkcja i reprodukcja (postęp ciąży, miesiące do porodu, zwierzęta niezapłodnione lub za młode). Budynkom można zmieniać nazwy. **Normy rasy** pokazują, ile jedna sztuka albo stado danej rasy zjada i daje na miesiąc w danym wieku.
-- **Zaopatrzenie** — ile nasion i nawozów kupić na sezon i ile to kosztuje po cenie z tego miesiąca.
+- **Zaopatrzenie** — lista zakupów na sezon: nasiona, sadzeniaki albo trzcina, nawóz mineralny i wapno, każde z kosztem po cenie z tego miesiąca, a tabele pole po polu w zakładkach.
 - **Typ gleby pól** — gleby pól używane przez plany nawożenia.
 - **Notatki** — przypięte do miesięcy i pól, z tagami i listą zadań, która co rok w grze zaczyna się od nowa.
 - **Plony i ceny** — przewidywany zbiór każdej uprawy, cena w tym miesiącu z krzywej cen zapisu, przychód, środki i marża na hektar; ceny w roku z najlepszym miesiącem sprzedaży i podwyższony popyt w skupach. Z modem Moisture System także dzisiejsza wilgotność pól, jej idealny zakres i jak zmienia plon zbiorów w tym miesiącu; z modem-łącznikiem strata za stan każdego pola.

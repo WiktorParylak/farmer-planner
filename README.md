@@ -128,7 +128,7 @@ Yes. In a save with several farms you choose your own farm in Settings, and the 
 **Tools (left sidebar)**
 - **Finance** — balance and loan month by month and season by season; income, costs and operating profit by category as on the game's Finances screen, with investments apart.
 - **Animals** — one tile per building, breed pictures taken from your mods, herd by breed and age, feed level and how many days it lasts, daily needs, output, and reproduction (pregnancy progress, months to birth, animals not inseminated or too young). Buildings can be renamed. **Breed norms** show what one animal or a herd of a breed eats and gives per month at a given age.
-- **Supplies** — how much seed and fertilizer to buy for the season, and what it costs at this month's price.
+- **Supplies** — a shopping list for the season: seed, seed potatoes or sugarcane, mineral fertilizer and lime, each with its cost at this month's price, and the per-field tables in tabs.
 - **Field soil type** — field soils used by the fertilization plans.
 - **Notes** — pinned to months and fields, with tags and a checklist that starts over every in-game year.
 - **Yields and prices** — predicted harvest per crop, this month's price from the save's price curve, revenue, inputs and margin per hectare; prices over the year with the best month to sell, and great demands at the selling points. With the Moisture System mod, also today's field moisture, its ideal range and how it changes the yield of this month's harvest; with the link mod, the loss from each field's state.
