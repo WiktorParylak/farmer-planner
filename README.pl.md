@@ -78,6 +78,11 @@ Mody są wyszukiwane w folderze `mods` obok zapisu gry, w folderze ustawionym w 
 
 ## Pytania
 
+**Windows zablokował instalator. Co teraz?**
+Instalator nie jest jeszcze podpisany certyfikatem (to jest w planach), więc Windows może go zatrzymać.
+- *System Windows ochronił ten komputer* (SmartScreen): kliknij **Więcej informacji → Uruchom mimo to**.
+- *Inteligentna kontrola aplikacji zablokowała aplikację* (Smart App Control): ta funkcja nie ma przycisku, który przepuści jedną aplikację. Jedyny sposób to wyłączyć ją w **Zabezpieczenia Windows → Kontrola aplikacji i przeglądarki → Ustawienia inteligentnej kontroli aplikacji → Wyłączone**. W aktualnym Windows 11 można ją tam później włączyć z powrotem; w starszych wersjach albo przy wyłączonych opcjonalnych danych diagnostycznych Microsoft podaje, że ponowne włączenie wymaga zresetowania lub ponownej instalacji Windows. Decyzja należy do Ciebie.
+
 **Czy zmienia mój zapis gry?**
 Nie. Farmer Planner tylko czyta pliki gry, z dwoma wyjątkami, które uruchamiasz sam. Narzędzie ścieżek technologicznych zapisuje wklejane ścieżki do pliku `densityMap_fruits.gdm` zapisu i usuwa chwasty pod nimi w `densityMap_weed.gdm`. Robi to tylko przy zamkniętej grze, najpierw kopiuje pliki do `farmer_planner_backup`, sprawdza nowe pliki, zanim podmieni stare, i potrafi przywrócić ostatnią kopię. Opcjonalny mod Farmer Planner Link też tylko czyta grę: zapisuje własne pliki do `modSettings/FS25_FarmerPlannerLink` i nic więcej. Menedżer modów przy aktywacji biblioteki zmienia w `gameSettings.xml` tylko ustawienie folderu modów, przy zamkniętej grze i po kopii pliku, a mody przenosi tylko w Twoich folderach bibliotek (usuwanie trafia do Kosza).
 

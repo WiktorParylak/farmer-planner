@@ -79,6 +79,11 @@ Mods are looked up in the `mods` folder next to your savegame, in the folder set
 
 ## Questions
 
+**Windows blocked the installer. What now?**
+The installer isn't signed with a code-signing certificate yet (that's planned), so Windows may stop it.
+- *Windows protected your PC* (SmartScreen): click **More info → Run anyway**.
+- *Smart App Control blocked an app*: Smart App Control has no button to let one app through. The only way is to turn it off in **Windows Security → App & browser control → Smart App Control settings → Off**. On an up-to-date Windows 11 you can turn it back on there later; on older builds, or with optional diagnostic data turned off, Microsoft says turning it back on needs a reset or reinstall of Windows. Decide for yourself whether you want that.
+
 **Does it change my savegame?**
 No. Farmer Planner only reads game files, with two exceptions you start yourself. The tramlines tool writes the tramlines you paste into the save's `densityMap_fruits.gdm` and clears the weeds under them in `densityMap_weed.gdm`. It only does that with the game closed, copies the files to `farmer_planner_backup` first, checks the new files before they replace the old ones, and can restore the last backup. The optional Farmer Planner Link mod also only reads the game: it writes its own files to `modSettings/FS25_FarmerPlannerLink` and nothing else. The mod manager changes only the mods folder setting in `gameSettings.xml` when you activate a library, with the game closed and after a copy of the file, and moves mods only inside your library folders (deleting goes to the Recycle Bin).
 
