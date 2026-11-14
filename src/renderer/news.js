@@ -371,7 +371,9 @@ async function sendNewsVote(pollEl, picked) {
     try {
         const r = await newsNet.json(NEWS_VOTE_URL, { method: 'POST', body: { ...payload, install: newsInstallId() }, max: 64 * 1024 });
         if (r && typeof r.options === 'object') newsPollResults[block.id] = r;
-        const votes = { ...(newsJson('newsVotes', {})), [block.id]: payload.options };
+        // vote.php answers with the vote it keeps (an earlier one if this install already voted).
+        const mine = r && Array.isArray(r.voted) && r.voted.length ? r.voted : payload.options;
+        const votes = { ...newsJson('newsVotes', {}), [block.id]: mine };
         setSetting('newsVotes', JSON.stringify(votes));
         rerenderNewsPoll(block);
     } catch (e) {

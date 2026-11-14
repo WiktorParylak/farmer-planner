@@ -121,3 +121,21 @@ test('news: the diagnostic file has the news settings but not the install id', a
     assert.strictEqual(s.newsFetchedAt, '2026-11-14T10:00:00.000Z');
     assert.ok('newsSeen' in s);
 });
+
+test('news: when the site already has this install\'s vote, the app shows that one', async () => {
+    setSetting('newsVotes', '{}');
+    FT.fakeNews();
+    const request = newsNet.request;
+    newsNet.request = async (url, opts = {}) => opts.method === 'POST'
+        ? Buffer.from(JSON.stringify({ options: { a: 3, b: 1 }, voted: ['a'] }))
+        : request(url, opts);
+    const shown = showNewsWindow([newsPosts()[1]]);
+    await waitFor(() => document.querySelector('#news-body .news-poll-option'), 'the poll');
+    document.querySelector('#news-body .news-poll-option[data-option="b"]').click();
+    await waitFor(() => document.querySelector('#news-body .news-poll-result.is-mine'), 'the results');
+    assert.deepStrictEqual(newsJson('newsVotes', {})['test-next'], ['a']);
+    newsNet.request = request;
+    document.getElementById('news-close').click();
+    await shown;
+    await wait(400);
+});
