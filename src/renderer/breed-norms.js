@@ -4,8 +4,8 @@
 //
 // Read-only: what one breed eats and gives per in-game month at a given age,
 // and for a herd you type in — the same curves and scales the planner uses
-// (ANIMAL_NEEDS_DATA, AnimalFoodCalculator's consumption scale for food,
-// water and straw, the barn's ration for milk, eggs and wool). EAS lactation
+// (ANIMAL_NEEDS_DATA, AnimalFoodCalculator's scale for food, water, straw
+// and the outputs, the barn's ration for milk, eggs and wool). EAS lactation
 // isn't in it: it depends on when each animal calved.
 let breedNormsState = { subType: null, count: 1, age: 24 };
 
@@ -44,7 +44,7 @@ function breedNormsRows(farm, subType, age, barnId) {
     const ration = type && barnId != null ? resolveRation(type, getFeedPlan(farm), barnId) : null;
     const eff = ration ? ration.efficiency / 100 : 1;
     Object.keys(def.production || {}).forEach(ft => {
-        const v = interpolateNeedCurve(def.production[ft], age) * (FEED_UNSCALED_OUTPUT.includes(ft) ? 1 : eff);
+        const v = interpolateNeedCurve(def.production[ft], age) * (FEED_UNSCALED_OUTPUT.includes(ft) ? 1 : eff) * scale;
         rows.push({ key: ft, label: formatFillType(ft), perHead: v, out: true });
     });
     return { rows, ration, scale };
@@ -151,6 +151,8 @@ function breedNormsResultHtml(farm) {
     const notes = [t('breedNormsNote').replace('{days}', days),
         t('breedNormsYearNote').replace('{from}', st.age).replace('{to}', st.age + BREED_YEAR_MONTHS - 1)];
     if (scale !== 1) notes.push(t('breedNormsAfc').replace('{x}', scale.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 })));
+    const shear = farmShearMonths(farm, st.subType);
+    if (shear && rows.some(r => r.key === 'WOOL')) notes.push(breedNormsShearNote(shear));
     notes.push(ration
         ? t('breedNormsRation').replace('{ration}', ration.name || t('feedRation_' + ration.id)).replace('{pct}', ration.efficiency)
         : t('breedNormsFullRation'));
@@ -169,6 +171,12 @@ function breedNormsResultHtml(farm) {
         </div>
     </div>
     <ul class="breed-norms-notes">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`;
+}
+
+// AFC's seasonal wool: the monthly wool is an average, it comes out in the shearing months.
+function breedNormsShearNote(months) {
+    const names = months.map(m => translateMonth(ALL_MONTHS[m - 1]));
+    return t('breedNormsShearing').replace('{months}', names.join(t('breedNormsShearingAnd'))).replace('{age}', AFC_FIRST_SHEAR_AGE);
 }
 
 // Opens the view on one breed at one age (e.g. from a barn).

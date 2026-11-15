@@ -2,6 +2,15 @@
 
 Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersje, których tu nie ma, aplikacja pokazuje po angielsku z `CHANGELOG.md`.
 
+## 0.11.4 — unreleased
+
+**Nowe**
+- **Wełna sezonowa z AnimalFoodCalculator 1.2**: gdy w modzie jest włączona *Seasonal Wool*, Normy rasy podają, że wełna to średnia na miesiąc, a wychodzi tylko przy strzyży (czerwiec albo maj i październik, zależnie od rasy; od 8. miesiąca życia), a linia moda w ustawieniach farmy pokazuje, że jest włączona.
+
+**Poprawki**
+- **AnimalFoodCalculator skaluje też to, co dają zwierzęta**: mleko, jaja, wełna, obornik i gnojowica są teraz mnożone przez mnożnik moda (np. × dni w miesiącu w trybie auto) tak jak w grze i idą za krzywymi wybranego w modzie źródła, nie tylko pasza, woda i słoma.
+- **Bez obcych ras z AnimalFoodCalculator**: gdy źródłem jest własny animals.xml moda, rasy, których gra nie wczytała (alpaki, krowy Charolaise i inne z cudzych map), nie pojawiają się już w Normach rasy.
+
 ## 0.11.3 — 2026-11-14
 
 **Nowe**

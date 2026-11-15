@@ -8,10 +8,15 @@
 // FS25_AnimalFoodCalculator (AFC), settings in <savegame>/afcConsumptionScaling.xml:
 //   scale = enabled ? (autoScaleByDays ? daysPerPeriod : 1) * customMultiplier : 1
 //   (AFCConsumptionScaling:getScaleFactor; modes vanilla/auto/manual/hybrid),
-//   applied to food, water and straw. Its referenceSource picks whose
-//   animals.xml curves the barns follow: custom = AFC's own xmls/animals.xml,
-//   animalpackage = FS25_AnimalPackage_vanillaEdition's, basegame = the
-//   game's, map / effective = whatever the game loaded.
+//   applied to food, water and straw, and to what the animals give (milk,
+//   manure, slurry, pallets — getOutputProductionScaleFactor). Its
+//   referenceSource picks whose animals.xml curves the barns follow, inputs
+//   and outputs alike: custom = AFC's own xmls/animals.xml, animalpackage =
+//   FS25_AnimalPackage_vanillaEdition's, basegame = the game's, map /
+//   effective = whatever the game loaded.
+//   1.2: seasonalWoolEnabled — the wool of the sheep breeds in
+//   AFC_SHEAR_MONTHS piles up and comes out only in their shearing months
+//   (AFCSeasonalWool), the year's total unchanged.
 //
 // FS25_EnhancedAnimalSystem (EAS): a cluster that has given birth eats
 //   food x <lactation><key month=monthsSinceLastBirth+1 food=…> from the mod's
@@ -28,6 +33,23 @@ const { locateMod } = require('./mod-locator');
 const AFC_MOD = 'FS25_AnimalFoodCalculator';
 const EAS_MOD = 'FS25_EnhancedAnimalSystem';
 const ANIMAL_PACKAGE_MOD = 'FS25_AnimalPackage_vanillaEdition';
+
+// AFCSeasonalWool.profileBySubType: calendar months (1 = January) the wool is
+// sheared in. Exact subTypes only, as in the mod. Animals younger than
+// AFC_FIRST_SHEAR_AGE months aren't sheared yet.
+const AFC_SHEAR_MONTHS = {
+    SHEEP_LANDRACE: [6], SHEEP_BLACK_WELSH: [6],
+    SHEEP_STEINSCHAF: [5, 10], SHEEP_SWISS_MOUNTAIN: [5, 10],
+    EWE_MERINO: [6], RAM_MERINO: [6], EWE_SUFFOLK: [6], RAM_SUFFOLK: [6],
+    EWE_MOUNTAINSHEEP: [5, 10], RAM_MOUNTAINSHEEP: [5, 10]
+};
+const AFC_FIRST_SHEAR_AGE = 8;
+
+// Shearing months of a breed under AFC's seasonal wool, or null.
+function afcShearMonths(afc, subType) {
+    if (!afc || !afc.seasonalWool) return null;
+    return AFC_SHEAR_MONTHS[String(subType || '').toUpperCase()] || null;
+}
 
 // Animal Package has no single animals.xml: every species (and some breeds)
 // has its own definition file in its own folder. Any XML in the mod with an
@@ -101,7 +123,7 @@ function readAnimalMods(careerSavegamePath, skip = new Set()) {
     }
 
     if (active.has(AFC_MOD) && !skip.has('afc')) {
-        const afc = { enabled: false, autoScaleByDays: false, customMultiplier: 1, mode: 'vanilla', referenceSource: 'effective', referenceXml: [] };
+        const afc = { enabled: false, autoScaleByDays: false, customMultiplier: 1, mode: 'vanilla', referenceSource: 'effective', seasonalWool: false, referenceXml: [] };
         try {
             const s = fs.readFileSync(path.join(saveDir, 'afcConsumptionScaling.xml'), 'utf-8');
             const tag = (s.match(/<settings\b[^>]*>/) || [''])[0];
@@ -111,6 +133,7 @@ function readAnimalMods(careerSavegamePath, skip = new Set()) {
             afc.customMultiplier = isNaN(mult) ? 1 : Math.min(100, Math.max(0, mult));
             afc.mode = (attr(tag, 'mode') || 'vanilla').toLowerCase();
             afc.referenceSource = (attr(tag, 'referenceSource') || 'effective').toLowerCase();
+            afc.seasonalWool = attr(tag, 'seasonalWoolEnabled') === 'true';
         } catch { /* no settings file yet — AFC defaults (off) */ }
         afc.scale = afc.enabled ? (afc.autoScaleByDays ? out.daysPerPeriod : 1) * afc.customMultiplier : 1;
 
@@ -165,4 +188,4 @@ function easMilkFactor(eas, animalType, cluster) {
     return key && typeof key.milk === 'number' ? key.milk : 0;
 }
 
-module.exports = { readAnimalMods, easFoodFactor, easMilkFactor };
+module.exports = { readAnimalMods, easFoodFactor, easMilkFactor, afcShearMonths, AFC_FIRST_SHEAR_AGE };

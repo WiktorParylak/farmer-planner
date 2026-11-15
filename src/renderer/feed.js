@@ -202,6 +202,14 @@ function feedConsumptionScale(farm) {
     if (!afc.enabled) return 1;
     return (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier;
 }
+// AFC scales what the animals give by the same factor (getOutputProductionScaleFactor).
+function feedOutputScale(farm) {
+    return feedConsumptionScale(farm);
+}
+// Shearing months of a breed when AFC's seasonal wool is on, else null.
+function farmShearMonths(farm, subType) {
+    return afcActive(farm) ? afcShearMonths(ANIMAL_MODS.afc, subType) : null;
+}
 function clusterFoodFactor(farm, type, cluster) {
     return easActive(farm) ? easFoodFactor(ANIMAL_MODS.eas, type, cluster) : 1;
 }

@@ -8,7 +8,7 @@ const { readFieldSoilFromSave, readFarmlandAreas } = require('./savegame-soil');
 const animalImages = require('./animal-images');
 const modFiles = require('./mod-files');
 const { readMapCrops, readModL10n, readPfSeedRates, readMapAnimalFood } = require('./map-crops');
-const { readAnimalMods, easFoodFactor, easMilkFactor } = require('./animal-mods');
+const { readAnimalMods, easFoodFactor, easMilkFactor, afcShearMonths, AFC_FIRST_SHEAR_AGE } = require('./animal-mods');
 const { readMoistureSystem, moistureYieldFactor } = require('./moisture-mod');
 const { DEV_FARM_ID, buildDevFarm } = require('./dev-farm');
 const { TRANSLATIONS, MONTH_TRANSLATIONS, CROP_NAME_TRANSLATIONS, ANIMAL_SPECIES_TRANSLATIONS, PRODUCTION_FILLTYPE_TRANSLATIONS } = require('./translations');
@@ -3931,24 +3931,37 @@ function loadFarmConfigs(farm) {
             if (parsed) Object.keys(parsed).forEach(st => { ANIMAL_NEEDS_DATA[st] = { ...(ANIMAL_NEEDS_DATA[st] || {}), ...parsed[st] }; });
         });
     }
-    if (afcActive(farm)) {
-        const INPUTS = ['food', 'water', 'straw'];
-        const applyInputs = (subType, src) => {
-            if (!ANIMAL_NEEDS_DATA[subType] && !src) return;
-            const next = { ...(ANIMAL_NEEDS_DATA[subType] || {}) };
-            INPUTS.forEach(k => { if (src && src[k] && src[k].length) next[k] = src[k]; });
-            ANIMAL_NEEDS_DATA[subType] = next;
-        };
-        const afc = ANIMAL_MODS.afc;
-        if (afc.referenceSource === 'basegame') {
-            Object.keys(DEFAULT_ANIMALS).forEach(st => applyInputs(st, DEFAULT_ANIMALS[st]));
-        }
-        afc.referenceXml.forEach(xml => {
-            const parsed = parseAnimalNeedsXml(xml);
-            if (parsed) Object.keys(parsed).forEach(st => applyInputs(st, parsed[st]));
-        });
-    }
+    if (afcActive(farm)) applyAfcReferenceCurves(ANIMAL_MODS.afc);
     if (modEnabled('manureForAll')) applyManureForAll(ANIMAL_NEEDS_DATA);
+}
+
+// AnimalFoodCalculator's reference source: the barns eat and give by its
+// curves (AFC scales inputs by the reference curve and outputs by the
+// reference / game ratio, which comes to the same). Only breeds the game has
+// loaded — AFC's own animals.xml also lists breeds of other maps and DLCs.
+function applyAfcReferenceCurves(afc) {
+    const INPUTS = ['food', 'water', 'straw'];
+    const apply = (subType, src) => {
+        const cur = ANIMAL_NEEDS_DATA[subType];
+        if (!cur || !src) return;
+        const next = { ...cur };
+        INPUTS.forEach(k => { if (src[k] && src[k].length) next[k] = src[k]; });
+        if (cur.production && src.production) {
+            const production = { ...cur.production };
+            Object.keys(production).forEach(ft => {
+                if (src.production[ft] && src.production[ft].length) production[ft] = src.production[ft];
+            });
+            next.production = production;
+        }
+        ANIMAL_NEEDS_DATA[subType] = next;
+    };
+    if (afc.referenceSource === 'basegame') {
+        Object.keys(DEFAULT_ANIMALS).forEach(st => apply(st, DEFAULT_ANIMALS[st]));
+    }
+    afc.referenceXml.forEach(xml => {
+        const parsed = parseAnimalNeedsXml(xml);
+        if (parsed) Object.keys(parsed).forEach(st => apply(st, parsed[st]));
+    });
 }
 
 // Crop keys the planner offers: the map's list when known (only those with a
@@ -4307,7 +4320,9 @@ function getDailyAnimalNeed(subType, ageMonth, needType) {
 }
 
 // Adds one cluster's output (milk/eggs/wool/manure..., litres per in-game
-// month from the breed's curves) into `into` (fillType -> litres).
+// month from the breed's curves, times AFC's scale) into `into` (fillType ->
+// litres). Wool under AFC's seasonal wool stays the monthly average: it
+// comes out only in the shearing months, the year's total is the same.
 function addClusterOutput(farm, building, c, feedPlan, into) {
     const def = ANIMAL_NEEDS_DATA[c.subType];
     if (!def || !def.production) return;
@@ -4316,10 +4331,11 @@ function addClusterOutput(farm, building, c, feedPlan, into) {
     // The ration's productionWeight scales milk/eggs/wool the way
     // the game does; manure/slurry don't depend on the feed.
     const outputFactor = ration ? ration.efficiency / 100 : 1;
+    const scale = feedOutputScale(farm);
     Object.keys(def.production).forEach(fillType => {
         const rate = getDailyAnimalProduction(c.subType, c.age, fillType);
         const factor = (FEED_UNSCALED_OUTPUT.includes(fillType) ? 1 : outputFactor)
-            * clusterMilkFactor(farm, animalType, c, fillType);
+            * clusterMilkFactor(farm, animalType, c, fillType) * scale;
         if (rate > 0) into[fillType] = (into[fillType] || 0) + rate * c.numAnimals * factor;
     });
 }
@@ -5901,6 +5917,7 @@ function renderAnimalModsInfo(farm) {
             const scale = afc.enabled ? (afc.autoScaleByDays ? feedDaysPerPeriod(farm) : 1) * afc.customMultiplier : 1;
             const src = t('afcSource_' + afc.referenceSource) || afc.referenceSource;
             detail += ' · ' + t('afcModeLine').replace('{mode}', t('afcMode_' + afc.mode) || afc.mode).replace('{x}', scale.toLocaleString(undefined, { maximumFractionDigits: 2 })).replace('{src}', src);
+            if (afc.seasonalWool) detail += ' · ' + t('afcSeasonalWool');
         }
         if (def.id === 'eas' && mods.eas) {
             const species = Object.keys(mods.eas.lactation).map(tp => formatAnimalName(tp)).join(', ') || '–';

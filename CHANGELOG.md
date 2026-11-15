@@ -2,6 +2,15 @@
 
 All notable changes to Farmer Planner. Installers for every version are on the [Releases](https://github.com/WiktorParylak/farmer-planner/releases) page.
 
+## 0.11.4 — unreleased
+
+**New**
+- **AnimalFoodCalculator 1.2 seasonal wool**: when *Seasonal Wool* is on in the mod, Breed norms says the wool is a monthly average that comes out only when the sheep are sheared (June, or May and October, depending on the breed; from 8 months of age), and the mod's line in the farm settings shows it's on.
+
+**Fixed**
+- **AnimalFoodCalculator also scales what the animals give**: milk, eggs, wool, manure and slurry are now multiplied by the mod's scale (e.g. × days per month in auto mode) the way the game does, and follow the curves of the mod's reference source, not just food, water and straw.
+- **No foreign breeds from AnimalFoodCalculator**: with the mod's own animals.xml as the reference, breeds the game hasn't loaded (alpacas, Charolais and other cows of other maps) no longer show up in Breed norms.
+
 ## 0.11.3 — 2026-11-14
 
 **New**
