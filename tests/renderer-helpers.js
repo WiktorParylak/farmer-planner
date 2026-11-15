@@ -92,7 +92,9 @@ window.FT = (() => {
                 ['food', 'water', 'straw'].filter(k => d[k] && d[k].length).forEach(k => curve(`                <${k}>`, `                </${k}>`, d[k]));
                 lines.push('            </input>', '            <output>');
                 Object.keys(d.production || {}).forEach(ft => curve(`                <pallets fillType="${ft}">`, '                </pallets>', d.production[ft]));
-                lines.push('            </output>', '        </subType>');
+                lines.push('            </output>');
+                Object.keys(d.prices || {}).forEach(tag => curve(`            <${tag}>`, `            </${tag}>`, d.prices[tag]));
+                lines.push('        </subType>');
             });
             lines.push('    </animal>');
         });

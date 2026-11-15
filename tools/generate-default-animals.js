@@ -113,6 +113,14 @@ function parseAnimalNeedsXml(xmlText) {
             };
         }
 
+        // Money per animal by age (the AFC editor compares its prices with these).
+        const prices = {};
+        ['buyPrice', 'sellPrice', 'transportPrice'].forEach(tag => {
+            const curve = readCurveOf(subTypeBody, tag);
+            if (curve.length) prices[tag] = curve;
+        });
+        if (Object.keys(prices).length > 0) entry.prices = prices;
+
         needs[subType] = entry;
     }
 

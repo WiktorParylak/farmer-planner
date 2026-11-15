@@ -71,6 +71,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 150
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        },
+        {
+          "ageMonth": 60,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "COW_HOLSTEIN": {
@@ -145,6 +189,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 150
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        },
+        {
+          "ageMonth": 60,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "COW_ANGUS": {
@@ -205,6 +293,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 230
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        },
+        {
+          "ageMonth": 36,
+          "value": 3500
+        },
+        {
+          "ageMonth": 60,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "COW_LIMOUSIN": {
@@ -265,6 +397,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 230
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        },
+        {
+          "ageMonth": 36,
+          "value": 3500
+        },
+        {
+          "ageMonth": 60,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "COW_WATERBUFFALO": {
@@ -339,6 +515,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 150
+        },
+        {
+          "ageMonth": 24,
+          "value": 1500
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        },
+        {
+          "ageMonth": 60,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "COW_HIGHLAND_CATTLE": {
@@ -399,6 +619,50 @@
       "minAgeMonth": 18,
       "durationMonth": 10,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 230
+        },
+        {
+          "ageMonth": 24,
+          "value": 3000
+        },
+        {
+          "ageMonth": 36,
+          "value": 3500
+        },
+        {
+          "ageMonth": 60,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 50
+        },
+        {
+          "ageMonth": 12,
+          "value": 80
+        },
+        {
+          "ageMonth": 18,
+          "value": 100
+        }
+      ]
     }
   },
   "PIG_LANDRACE": {
@@ -459,6 +723,38 @@
       "minAgeMonth": 6,
       "durationMonth": 4,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 12,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 24,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 50
+        }
+      ]
     }
   },
   "PIG_BLACK_PIED": {
@@ -519,6 +815,38 @@
       "minAgeMonth": 6,
       "durationMonth": 4,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 12,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 24,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 50
+        }
+      ]
     }
   },
   "PIG_BERKSHIRE": {
@@ -579,6 +907,38 @@
       "minAgeMonth": 6,
       "durationMonth": 4,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 12,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 24,
+          "value": 2500
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 6,
+          "value": 50
+        }
+      ]
     }
   },
   "SHEEP_LANDRACE": {
@@ -628,6 +988,38 @@
       "minAgeMonth": 8,
       "durationMonth": 5,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 36,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 8,
+          "value": 50
+        }
+      ]
     }
   },
   "SHEEP_STEINSCHAF": {
@@ -677,6 +1069,38 @@
       "minAgeMonth": 8,
       "durationMonth": 5,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 36,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 8,
+          "value": 50
+        }
+      ]
     }
   },
   "SHEEP_SWISS_MOUNTAIN": {
@@ -726,6 +1150,38 @@
       "minAgeMonth": 8,
       "durationMonth": 5,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 36,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 8,
+          "value": 50
+        }
+      ]
     }
   },
   "SHEEP_BLACK_WELSH": {
@@ -775,6 +1231,38 @@
       "minAgeMonth": 8,
       "durationMonth": 5,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 36,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 8,
+          "value": 50
+        }
+      ]
     }
   },
   "GOAT": {
@@ -824,6 +1312,38 @@
       "minAgeMonth": 8,
       "durationMonth": 5,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 200
+        },
+        {
+          "ageMonth": 36,
+          "value": 1500
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 100
+        },
+        {
+          "ageMonth": 36,
+          "value": 1000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 30
+        },
+        {
+          "ageMonth": 8,
+          "value": 50
+        }
+      ]
     }
   },
   "HORSE_GRAY": {
@@ -874,6 +1394,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_PINTO": {
@@ -924,6 +1476,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_PALOMINO": {
@@ -974,6 +1558,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_CHESTNUT": {
@@ -1024,6 +1640,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_BAY": {
@@ -1074,6 +1722,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_BLACK": {
@@ -1124,6 +1804,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_SEAL_BROWN": {
@@ -1174,6 +1886,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "HORSE_DUN": {
@@ -1224,6 +1968,38 @@
       "minAgeMonth": 22,
       "durationMonth": 11,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 500
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 400
+        },
+        {
+          "ageMonth": 36,
+          "value": 5000
+        },
+        {
+          "ageMonth": 60,
+          "value": 5000
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 300
+        }
+      ]
     }
   },
   "CHICKEN": {
@@ -1256,6 +2032,38 @@
       "minAgeMonth": 6,
       "durationMonth": 2,
       "minHealthFactor": 0.75
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 5
+        },
+        {
+          "ageMonth": 6,
+          "value": 50
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 2
+        },
+        {
+          "ageMonth": 6,
+          "value": 25
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 1
+        },
+        {
+          "ageMonth": 6,
+          "value": 5
+        }
+      ]
     }
   },
   "CHICKEN_ROOSTER": {
@@ -1272,6 +2080,34 @@
       "minAgeMonth": null,
       "durationMonth": null,
       "minHealthFactor": null
+    },
+    "prices": {
+      "buyPrice": [
+        {
+          "ageMonth": 0,
+          "value": 5
+        },
+        {
+          "ageMonth": 6,
+          "value": 50
+        }
+      ],
+      "sellPrice": [
+        {
+          "ageMonth": 0,
+          "value": 2
+        },
+        {
+          "ageMonth": 6,
+          "value": 20
+        }
+      ],
+      "transportPrice": [
+        {
+          "ageMonth": 0,
+          "value": 1
+        }
+      ]
     }
   }
 }

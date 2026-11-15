@@ -44,10 +44,13 @@ async function afcEdTestZip() {
     return zip;
 }
 
-test('AFC editor: reads the breeds\' curves, not comments or prices', () => {
+test('AFC editor: reads the breeds\' curves and prices, not comments', () => {
     const breeds = afcCore.afcParseAnimals(AFC_ED_XML);
     assert.deepStrictEqual(breeds.map(b => b.subType), ['COW_HOLSTEIN']);
-    assert.deepStrictEqual(breeds[0].curves.map(c => c.id), ['COW_HOLSTEIN|input|food|', 'COW_HOLSTEIN|input|water|', 'COW_HOLSTEIN|output|milk|MILK']);
+    assert.deepStrictEqual(breeds[0].curves.map(c => c.id), ['COW_HOLSTEIN|input|food|', 'COW_HOLSTEIN|input|water|', 'COW_HOLSTEIN|output|milk|MILK', 'COW_HOLSTEIN|price|sellPrice|']);
+    assert.deepStrictEqual(breeds[0].curves[3].keys, [{ ageMonth: 0, value: 1000 }]);
+    assert.deepStrictEqual(afcCore.afcBreedCurves(breeds[0]).prices, { sellPrice: [{ ageMonth: 0, value: 1000 }] });
+    assert.ok(!('SELLPRICE' in afcCore.afcBreedCurves(breeds[0]).production), 'a price is no output');
     assert.deepStrictEqual(breeds[0].curves[0].keys, [{ ageMonth: 0, value: 10 }, { ageMonth: 12, value: 50.5 }]);
 });
 
@@ -277,6 +280,59 @@ test('AFC editor: EAS lactation factors change food and milk, and the switch tur
         await afcEdClose();
         setSetting('afcEditorZip', null);
         setSetting('afcEditorFarm', null);
+        fs.rmSync(zip, { force: true });
+    }
+});
+
+test('AFC editor: a sell price edit changes only that line, and the herd\'s sale value', () => {
+    const r = afcCore.afcApplyEdits(AFC_ED_XML, { 'COW_HOLSTEIN|price|sellPrice|': [{ ageMonth: 0, value: 1000 }, { ageMonth: 24, value: 3000 }] });
+    assert.deepStrictEqual(r.changed, ['COW_HOLSTEIN|price|sellPrice|']);
+    const again = afcCore.afcParseAnimals(r.xml)[0];
+    assert.deepStrictEqual(again.curves.find(c => c.tag === 'sellPrice').keys, [{ ageMonth: 0, value: 1000 }, { ageMonth: 24, value: 3000 }]);
+    assert.strictEqual(r.xml.split('<sellPrice>')[0], AFC_ED_XML.split('<sellPrice>')[0], 'nothing before it changes');
+    assert.strictEqual(r.xml.split('</sellPrice>')[1], AFC_ED_XML.split('</sellPrice>')[1], 'nothing after it changes');
+    const herd = afcCore.afcHerdEconomics([{ id: 'a', subType: 'COW_HOLSTEIN', numAnimals: 3, age: 12 }], () => afcCore.afcBreedCurves(again), {}, 1);
+    assert.strictEqual(herd.month.sellValue, 3 * (1000 + 2000 * 13 / 24));
+    assert.strictEqual(herd.year.sellValue, 3 * 3000);
+});
+
+test('AFC editor: curves and whole breeds set to the base game', async () => {
+    assert.ok(DEFAULT_ANIMALS.COW_HOLSTEIN.prices.sellPrice.length, 'base data has prices');
+    // A jump (two points at one age) becomes a one-month ramp.
+    assert.deepStrictEqual(afcEdBaseCopy([{ ageMonth: 0, value: 0 }, { ageMonth: 12, value: 0 }, { ageMonth: 12, value: 150 }]),
+        [{ ageMonth: 0, value: 0 }, { ageMonth: 11, value: 0 }, { ageMonth: 12, value: 150 }]);
+    const zip = await FT.fakeAfcZip();
+    afcEdOpen();
+    try {
+        afcEd.sel = 'COW_HOLSTEIN';
+        const main = document.getElementById('afced-main');
+        const food = afcEdCurve('COW_HOLSTEIN|input|food|');
+        afcEdSetKeys(food, food.keys.map(k => ({ ageMonth: k.ageMonth, value: k.value * 3 })));
+        afcEdRender();
+        main.querySelector('[data-curve="COW_HOLSTEIN|input|food|"] [data-act="base"]').click();
+        assert.deepStrictEqual(afcEdChangedIds(), [], 'food back to the base game = as in the fake mod');
+        afcEdSetKeys(food, [{ ageMonth: 0, value: 1 }]);
+        afcEdRender();
+        main.querySelector('.afced-title-row [data-act="breed-base"]').click();
+        assert.ok(!afcEdChangedIds().includes('COW_HOLSTEIN|input|food|'), 'whole breed back to the base game');
+        assert.ok(afcEdChangedIds().includes('COW_HOLSTEIN|output|pallets|MILK'), 'the milk jump became a ramp');
+        afcEd.edits = {};
+        afcEdRender();
+        // Sell price ×2, and back with its own button.
+        const sell = 'COW_HOLSTEIN|price|sellPrice|';
+        const card = main.querySelector(`[data-curve="${sell}"]`);
+        assert.ok(card, 'the sell price is editable');
+        card.querySelector('.afced-mult-x').value = '2';
+        card.querySelector('[data-act="mult"]').click();
+        assert.deepStrictEqual(afcEdChangedIds(), [sell]);
+        assert.ok(afcEdHerdResult().now.year.sellValue > afcEdHerdResult().mod.year.sellValue * 1.9);
+        main.querySelector(`[data-curve="${sell}"] [data-act="base"]`).click();
+        assert.deepStrictEqual(afcEdChangedIds(), []);
+        assert.ok(afcEd.message && !afcEd.message.error);
+    } finally {
+        afcEd.edits = {};
+        await afcEdClose();
+        setSetting('afcEditorZip', null);
         fs.rmSync(zip, { force: true });
     }
 });

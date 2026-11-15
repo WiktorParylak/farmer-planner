@@ -21,6 +21,8 @@ const AFC_EDITOR_MOD = 'FS25_AnimalFoodCalculator';
 const AFC_EDITOR_ENTRY = 'xmls/animals.xml';
 const AFC_EDITOR_BACKUPS_KEPT = 5;
 const AFC_EDITOR_INPUTS = ['food', 'water', 'straw'];
+// Money per animal by age, right under <subType> (AFC 1.2, as in the base game).
+const AFC_EDITOR_PRICES = ['buyPrice', 'sellPrice', 'transportPrice'];
 
 function afcAttr(tag, name) {
     const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"'));
@@ -70,7 +72,7 @@ function afcReadKeys(text, from, to) {
     return keys;
 }
 
-// -> [{ type, subType, curves: [{ id, group: 'input' | 'output', tag,
+// -> [{ type, subType, curves: [{ id, group: 'input' | 'output' | 'price', tag,
 //       fillType, keys: [{ ageMonth, value }], innerStart, innerEnd }] }]
 function afcParseAnimals(xml) {
     // Comments become spaces of the same length: offsets stay right.
@@ -102,6 +104,18 @@ function afcParseAnimals(xml) {
                             keys: afcReadKeys(text, el.innerStart, el.innerEnd),
                             innerStart: el.innerStart, innerEnd: el.innerEnd
                         });
+                    });
+                });
+            afcChildren(text, sub.innerStart, sub.innerEnd)
+                .filter(e => AFC_EDITOR_PRICES.includes(e.tag) && e.innerEnd > e.innerStart)
+                .forEach(el => {
+                    const id = [subType, 'price', el.tag, ''].join('|');
+                    if (seen[id]) return;
+                    seen[id] = 1;
+                    curves.push({
+                        id, group: 'price', tag: el.tag, fillType: '',
+                        keys: afcReadKeys(text, el.innerStart, el.innerEnd),
+                        innerStart: el.innerStart, innerEnd: el.innerEnd
                     });
                 });
             if (curves.length) breeds.push({ type, subType, curves });
@@ -194,10 +208,11 @@ function afcCurveAt(keys, age) {
 // the shape of the planner's ANIMAL_NEEDS_DATA. keysOf(curve) picks the keys
 // (the file's, or the editor's).
 function afcBreedCurves(breed, keysOf) {
-    const out = { production: {} };
+    const out = { production: {}, prices: {} };
     breed.curves.forEach(c => {
         const keys = keysOf ? keysOf(c) : c.keys;
         if (c.group === 'input') out[c.tag] = keys;
+        else if (c.group === 'price') out.prices[c.tag] = keys;
         else out.production[afcCurveFillType(c)] = keys;
     });
     return out;
@@ -221,14 +236,16 @@ function afcIngredientPrice(ing, prices) {
 // per 1000 l } (missing = no price); scale: AFC's factor. The year counts each
 // group one month older every month. Water is free; feed is priced by its
 // ration's ingredients, straw as STRAW.
-// -> { month, year, groups: [{ id, year }], skipped: [subType], unpriced: [FILLTYPE] }
+// -> { month, year, groups: [{ id, year }], skipped: [subType], unpriced: [FILLTYPE] };
+// month / year: { food, water, straw, out, revenue, feedCost, profit,
+// sellValue (the herd's sale price at the span's end) }
 //    month / year: { food, water, straw, out: { FILLTYPE: l }, revenue, feedCost, profit }
 function afcHerdEconomics(groups, curvesOf, prices, scale = 1) {
     prices = prices || {};
     const unpriced = new Set(), skipped = new Set();
-    const empty = () => ({ food: 0, water: 0, straw: 0, out: {}, revenue: 0, feedCost: 0, profit: 0 });
+    const empty = () => ({ food: 0, water: 0, straw: 0, out: {}, revenue: 0, feedCost: 0, profit: 0, sellValue: 0 });
     const add = (into, from) => {
-        ['food', 'water', 'straw', 'revenue', 'feedCost', 'profit'].forEach(k => { into[k] += from[k]; });
+        ['food', 'water', 'straw', 'revenue', 'feedCost', 'profit', 'sellValue'].forEach(k => { into[k] += from[k]; });
         Object.keys(from.out).forEach(ft => { into.out[ft] = (into.out[ft] || 0) + from.out[ft]; });
     };
     const total = { month: empty(), year: empty() };
@@ -271,6 +288,9 @@ function afcHerdEconomics(groups, curvesOf, prices, scale = 1) {
                 else unpriced.add('STRAW');
             }
             r.profit = r.revenue - r.feedCost;
+            // What the group sells for at the end of the span (its sellPrice curve).
+            const sell = cv.prices && cv.prices.sellPrice;
+            if (sell && sell.length) r.sellValue = afcCurveAt(sell, (g.age || 0) + months) * g.numAnimals;
             return r;
         };
         const month = span(1), year = span(AFC_YEAR_MONTHS);
@@ -386,7 +406,7 @@ function afcRestoreZip(zipPath, backupPath, backupDir) {
 }
 
 module.exports = {
-    AFC_EDITOR_MOD, AFC_EDITOR_ENTRY, AFC_EDITOR_INPUTS,
+    AFC_EDITOR_MOD, AFC_EDITOR_ENTRY, AFC_EDITOR_INPUTS, AFC_EDITOR_PRICES,
     afcParseAnimals, afcApplyEdits, afcCleanKeys, afcSameKeys,
     afcCurveFillType, afcCurveAt, afcBreedCurves, afcHerdEconomics,
     afcReadZip, afcSaveZip, afcRestoreZip, afcBackupList

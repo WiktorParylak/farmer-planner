@@ -12024,3 +12024,16 @@ button.mm-badge {
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
 }
+
+.afced-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.afced-group-tools {
+  align-items: center;
+  margin-bottom: 8px;
+}

@@ -251,11 +251,46 @@ function afcEdBaseKeys(subType, curve) {
     const d = DEFAULT_ANIMALS[subType];
     if (!d) return null;
     if (curve.group === 'input') return d[curve.tag] || null;
+    if (curve.group === 'price') return (d.prices || {})[curve.tag] || null;
     return (d.production || {})[afcEdFillType(curve)] || null;
 }
 function afcEdCurveLabel(curve) {
     if (curve.group === 'input' && afcCore.AFC_EDITOR_INPUTS.includes(curve.tag)) return t('breedNorm_' + curve.tag);
+    if (curve.group === 'price') return t('afcEdPrice_' + curve.tag);
     return formatFillType(afcEdFillType(curve));
+}
+
+// A base game curve as editor points. The game writes a jump as two points at
+// one age (milk 0 → 150 at 12 months); the editor keeps one point per age, so
+// the first of them moves a month earlier (a one-month ramp instead).
+function afcEdBaseCopy(base) {
+    const out = [];
+    base.forEach((k, i) => {
+        const next = base[i + 1];
+        if (next && next.ageMonth === k.ageMonth) {
+            const prev = out[out.length - 1];
+            if (k.ageMonth - 1 > (prev ? prev.ageMonth : -1)) out.push({ ageMonth: k.ageMonth - 1, value: k.value });
+            return;
+        }
+        out.push({ ageMonth: k.ageMonth, value: k.value });
+    });
+    return out;
+}
+
+// Every curve of a breed (of one group, if given) set to the base game's;
+// curves the base game hasn't got stay as they are. -> number of curves set.
+function afcEdBreedToBase(subType, group) {
+    const breed = afcEd.breeds.find(b => b.subType === subType);
+    if (!breed) return 0;
+    let n = 0;
+    breed.curves.filter(c => !group || c.group === group).forEach(c => {
+        const base = afcEdBaseKeys(subType, c);
+        if (!base || !base.length) return;
+        afcEdSetKeys(c, afcEdBaseCopy(base));
+        n++;
+    });
+    afcEd.message = { text: t('afcEdToBaseDone').replace('{n}', n), error: false };
+    return n;
 }
 
 // ---------- render ----------
@@ -357,6 +392,7 @@ function afcEdCurveHtml(subType, curve) {
             <span class="afced-mult">${escapeHtml(t('afcEdMultiply'))}
                 <input type="number" class="afced-mult-x" min="0" step="0.05" value="1" data-k="${id}|mult">
                 <button type="button" class="settings-btn" data-act="mult">${escapeHtml(t('afcEdApply'))}</button></span>
+            <button type="button" class="settings-btn" data-act="base" ${base && base.length && !afcCore.afcSameKeys(afcEdBaseCopy(base), keys) ? '' : 'disabled'} title="${escapeHtml(base && base.length ? '' : t('afcEdNoBase'))}">${escapeHtml(t('afcEdToBase'))}</button>
             <button type="button" class="settings-btn" data-act="reset" ${edited ? '' : 'disabled'}>${escapeHtml(t('afcEdResetCurve'))}</button>
         </header>
         ${afcEdChartHtml(keys, curve.keys, base, age)}
@@ -388,16 +424,25 @@ function afcEdRenderMain() {
         main.innerHTML = `<p class="hub-panel-note">${escapeHtml(afcEd.zip ? t('afcEdNoBreeds') : t('afcEdNoZip'))}</p>`;
         return;
     }
-    const group = (g, label) => breed.curves.some(c => c.group === g)
+    const hasBase = !!DEFAULT_ANIMALS[breed.subType];
+    const group = (g, label, hint) => breed.curves.some(c => c.group === g)
         ? `<details class="afced-group-box" data-group="${g}" ${afcEd.closedGroups.has(g) ? '' : 'open'}>
             <summary class="afced-group">${escapeHtml(t(label))}</summary>
+            <div class="tl-row afced-group-tools">
+                <button type="button" class="settings-btn" data-act="breed-base" data-group="${g}" ${hasBase ? '' : 'disabled'}>${escapeHtml(t('afcEdGroupToBase'))}</button>
+                ${hint ? `<span class="settings-hint">${escapeHtml(t(hint))}</span>` : ''}
+            </div>
             <div class="afced-grid">${breed.curves.filter(c => c.group === g).map(c => afcEdCurveHtml(breed.subType, c)).join('')}</div>
         </details>` : '';
-    main.innerHTML = `<h2 class="afced-title">${escapeHtml(formatAnimalName(breed.subType))} <small>${escapeHtml(breed.subType)}</small></h2>
+    main.innerHTML = `<div class="afced-title-row">
+            <h2 class="afced-title">${escapeHtml(formatAnimalName(breed.subType))} <small>${escapeHtml(breed.subType)}</small></h2>
+            <button type="button" class="settings-btn" data-act="breed-base" ${hasBase ? '' : 'disabled'} title="${escapeHtml(hasBase ? t('afcEdBreedToBaseHint') : t('afcEdNoBase'))}">${escapeHtml(t('afcEdBreedToBase'))}</button>
+        </div>
         ${afcEdHerdHtml()}
         <p class="settings-hint">${escapeHtml(t('afcEdLegend'))}</p>
         ${group('input', 'afcEdIntake')}
-        ${group('output', 'afcEdOutput')}`;
+        ${group('output', 'afcEdOutput')}
+        ${group('price', 'afcEdPrices', 'afcEdPricesHint')}`;
     if (focused) {
         const el = [...main.querySelectorAll('[data-k]')].find(e => e.dataset.k === focused);
         if (el) el.focus();
@@ -497,6 +542,7 @@ function afcEdHerdHtml() {
             ${money ? row(t('afcEdRevenue'), x => x.revenue, { money: true, cls: 'afced-sep' })
                 + row(t('afcEdFeedCost'), x => x.feedCost, { money: true })
                 + row(t('afcEdProfit'), x => x.profit, { money: true, cls: 'afced-total' }) : ''}
+            ${[mod, now, base].some(x => x.sellValue > 0) ? row(t(per === 'year' ? 'afcEdSellValueYear' : 'afcEdSellValueMonth'), x => x.sellValue, { money: true, cls: 'afced-sep' }) : ''}
         </tbody></table>` : `<p class="settings-hint">${escapeHtml(t('afcEdNoHerd'))}</p>`}
         ${byBarn}
         <ul class="afced-notes">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
@@ -545,6 +591,11 @@ function afcEdOnMainClick(e) {
     }
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
+    if (btn.dataset.act === 'breed-base') {
+        afcEdBreedToBase(afcEd.sel, btn.dataset.group || null);
+        afcEdRender();
+        return;
+    }
     const curve = afcEdCurve(btn.closest('[data-curve]').dataset.curve);
     const keys = afcEdKeys(curve).map(k => ({ ...k }));
     if (btn.dataset.act === 'del') {
@@ -558,6 +609,10 @@ function afcEdOnMainClick(e) {
         const x = parseFloat(btn.parentElement.querySelector('.afced-mult-x').value);
         if (!(x >= 0)) return;
         afcEdSetKeys(curve, keys.map(k => ({ ageMonth: k.ageMonth, value: Math.round(k.value * x * 10000) / 10000 })));
+    } else if (btn.dataset.act === 'base') {
+        const base = afcEdBaseKeys(afcEd.sel, curve);
+        if (!base || !base.length) return;
+        afcEdSetKeys(curve, afcEdBaseCopy(base));
     } else if (btn.dataset.act === 'reset') {
         delete afcEd.edits[curve.id];
     } else return;
