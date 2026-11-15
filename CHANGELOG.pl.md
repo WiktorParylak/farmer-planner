@@ -11,6 +11,7 @@ Polska wersja listy zmian, pokazywana w aplikacji w oknie „Co nowego”. Wersj
 **Poprawki**
 - **AnimalFoodCalculator skaluje też to, co dają zwierzęta**: mleko, jaja, wełna, obornik i gnojowica są teraz mnożone przez mnożnik moda (np. × dni w miesiącu w trybie auto) tak jak w grze i idą za krzywymi wybranego w modzie źródła, nie tylko pasza, woda i słoma.
 - **Bez obcych ras z AnimalFoodCalculator**: gdy źródłem jest własny animals.xml moda, rasy, których gra nie wczytała (alpaki, krowy Charolaise i inne z cudzych map), nie pojawiają się już w Normach rasy.
+- **Skalowanie mapy z 16-bitową warstwą GRLE**: mapy z nieużywanym 16-bitowym plikiem warstwy (np. `infoLayer_farmland.grle` w Kolonii 2026) kończyły skalowanie komunikatem o uszkodzonym pliku i nic nie zapisywały. Taki plik jest teraz oznaczony jako *Nieznany format pliku* i pominięty, a reszta się skaluje.
 
 ## 0.11.3 — 2026-11-14
 

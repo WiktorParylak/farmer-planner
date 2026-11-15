@@ -11,6 +11,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 **Fixed**
 - **AnimalFoodCalculator also scales what the animals give**: milk, eggs, wool, manure and slurry are now multiplied by the mod's scale (e.g. × days per month in auto mode) the way the game does, and follow the curves of the mod's reference source, not just food, water and straw.
 - **No foreign breeds from AnimalFoodCalculator**: with the mod's own animals.xml as the reference, breeds the game hasn't loaded (alpacas, Charolais and other cows of other maps) no longer show up in Breed norms.
+- **Map scaling with a 16-bit GRLE layer**: maps carrying an unused 16-bit layer file (such as `infoLayer_farmland.grle` in Kolonia 2026) stopped scaling with a broken-file message and kept nothing. Such a file is now marked *Unknown file format* and left out, and the rest scales.
 
 ## 0.11.3 — 2026-11-14
 

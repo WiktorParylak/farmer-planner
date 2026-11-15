@@ -199,10 +199,12 @@ function gdmHashFile(d) {
 
 // ---------- GRLE ----------
 // 21-byte header: "GRLE", version, width / 256 (u16 @6), height / 256 (u16 @10),
-// data length (u32 @17). Then RLE: a byte; if the next byte repeats it, a run
-// length follows (0xFF bytes summed + a final byte) of further copies.
+// bytes per pixel (@13), data length (u32 @17). Then RLE: a byte; if the next
+// byte repeats it, a run length follows (0xFF bytes summed + a final byte) of
+// further copies. Only 1 byte per pixel is known: a 16-bit layer (some maps
+// carry an unused infoLayer_farmland.grle like that) is another format.
 function grleInfo(b) {
-    if (b.toString('latin1', 0, 4) !== 'GRLE') throw Object.assign(new Error('MS_BAD_FILE'), { code: 'MS_BAD_FILE' });
+    if (b.length < 21 || b.toString('latin1', 0, 4) !== 'GRLE' || b[13] !== 1) throw Object.assign(new Error('MS_BAD_FILE'), { code: 'MS_BAD_FILE' });
     return { w: b.readUInt16LE(6) * 256, h: b.readUInt16LE(10) * 256, channels: 8 };
 }
 
