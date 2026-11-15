@@ -191,3 +191,92 @@ test('AFC editor: the herd panel compares the mod with the edits, for a breed an
         fs.rmSync(zip, { force: true });   // the mod manager's test counts the mods folder
     }
 });
+
+test('AFC editor: EAS lactation factors scale food and milk month by month', () => {
+    const cv = { food: [{ ageMonth: 0, value: 100 }], production: { MILK: [{ ageMonth: 0, value: 1000 }], MANURE: [{ ageMonth: 0, value: 10 }] } };
+    const months = Array.from({ length: 12 }, (_, m) => ({ food: m < 6 ? 1.5 : 1, milk: m < 6 ? 1 : 0 }));
+    const g = { id: 'a', subType: 'X', numAnimals: 1, age: 30, efficiency: 1, ingredients: [] };
+    const plain = afcCore.afcHerdEconomics([g], () => cv, {}, 1);
+    const eas = afcCore.afcHerdEconomics([{ ...g, months }], () => cv, {}, 1);
+    assert.strictEqual(plain.year.out.MILK, 12000);
+    assert.strictEqual(eas.year.out.MILK, 6000, 'dry for half the year');
+    assert.strictEqual(eas.year.food, 100 * 1.5 * 6 + 100 * 6);
+    assert.strictEqual(eas.year.out.MANURE, plain.year.out.MANURE, 'manure untouched');
+});
+
+test('AFC editor: the EAS switch only works on a farm with EAS and changes the milk', async () => {
+    const farm = await freshFarm();
+    const zip = await FT.fakeAfcZip();
+    setSetting('afcEditorFarm', farm.id);
+    afcEdOpen();
+    try {
+        afcEd.sel = 'COW_HOLSTEIN';
+        afcEdHerdDefaults();
+        afcEdRender();
+        const main = document.getElementById('afced-main');
+        assert.ok(main.querySelector('.afced-eas-in').disabled, 'the test farm has no EAS');
+        const lactation = {};
+        for (let m = 0; m <= 14; m++) lactation[m] = { food: 1.2, milk: m < 10 ? 1 : 0 };
+        afcEd.farmCtx.eas = { lactation: { COW: lactation } };
+        afcEdRenderMain();
+        const box = main.querySelector('.afced-eas-in');
+        assert.ok(!box.disabled && box.checked);
+        const on = afcEdHerdResult().mod.year;
+        box.checked = false;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+        assert.strictEqual(afcEd.eas, false);
+        const off = afcEdHerdResult().mod.year;
+        assert.ok(on.food > off.food, 'lactation feeds more');
+        assert.notStrictEqual(Math.round(on.out.MILK), Math.round(off.out.MILK));
+    } finally {
+        afcEd.eas = true;
+        afcEd.edits = {};
+        await afcEdClose();
+        setSetting('afcEditorZip', null);
+        setSetting('afcEditorFarm', null);
+        fs.rmSync(zip, { force: true });
+    }
+});
+
+test('AFC editor: EAS lactation factors change food and milk, and the switch turns them off', async () => {
+    const curves = { COW_X: { food: [{ ageMonth: 0, value: 100 }], production: { MILK: [{ ageMonth: 0, value: 1000 }], MANURE: [{ ageMonth: 0, value: 10 }] } } };
+    const months = Array.from({ length: 12 }, (_, m) => ({ food: m < 6 ? 1.5 : 1, milk: m < 6 ? 1 : 0 }));
+    const r = afcCore.afcHerdEconomics([{ id: 'a', subType: 'COW_X', numAnimals: 1, age: 30, months }], st => curves[st], {}, 1);
+    assert.strictEqual(r.year.food, 100 * 1.5 * 6 + 100 * 6);
+    assert.strictEqual(r.year.out.MILK, 1000 * 6);
+    assert.strictEqual(r.year.out.MANURE, 120, 'manure has no lactation');
+
+    const farm = await freshFarm();
+    const zip = await FT.fakeAfcZip();
+    setSetting('afcEditorFarm', farm.id);
+    afcEdOpen();
+    try {
+        afcEd.sel = 'COW_HOLSTEIN';
+        afcEd.age = 36;
+        const main = document.getElementById('afced-main');
+        afcEdRenderMain();
+        assert.ok(main.querySelector('.afced-eas-in').disabled, 'no EAS on the test farm');
+        const plain = afcEdHerdResult().mod.year;
+        const dry = {};
+        for (let m = 0; m <= 24; m++) dry[m] = { food: 1.2, milk: 0.5 };
+        afcEd.farmCtx.eas = { lactation: { COW: dry } };
+        afcEdRenderMain();
+        assert.ok(main.querySelector('.afced-eas-in').checked);
+        const withEas = afcEdHerdResult().mod.year;
+        assert.ok(Math.abs(withEas.food - plain.food * 1.2) < 1e-6, 'food × EAS');
+        // Milk × 0.5, and none in the dry months late in pregnancy (EAS: reproduction ≥ 80 %).
+        assert.ok(withEas.out.MILK > 0 && withEas.out.MILK < plain.out.MILK * 0.5 + 1e-6, 'milk × EAS');
+        const month = afcEdHerdResult().mod.month;
+        assert.ok(Math.abs(month.out.MILK - afcEd.count * afcCore.afcCurveAt(afcEdCurve('COW_HOLSTEIN|output|pallets|MILK').keys, 36) * 0.5 * afcEdHerdGroups().groups[0].efficiency) < 1e-6, 'this month: × 0.5');
+        const box = main.querySelector('.afced-eas-in');
+        box.checked = false;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+        assert.strictEqual(afcEdHerdResult().mod.year.food, plain.food);
+    } finally {
+        afcEd.eas = true;
+        await afcEdClose();
+        setSetting('afcEditorZip', null);
+        setSetting('afcEditorFarm', null);
+        fs.rmSync(zip, { force: true });
+    }
+});

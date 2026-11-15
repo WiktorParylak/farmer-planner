@@ -214,7 +214,9 @@ function afcIngredientPrice(ing, prices) {
 
 // What a herd eats and gives over its next month and year, and what that's
 // worth. groups: [{ id, subType, numAnimals, age, efficiency (1 = full),
-// ingredients: [{ category, pct, fillTypes? }] | null, absolute? }];
+// ingredients: [{ category, pct, fillTypes? }] | null, absolute?,
+// months?: [{ food, milk }] — EnhancedAnimalSystem's lactation factors for
+// month 0..11 (food × food, every MILK output × milk; missing = 1) }];
 // curvesOf(subType) -> afcBreedCurves shape or null; prices: { FILLTYPE: money
 // per 1000 l } (missing = no price); scale: AFC's factor. The year counts each
 // group one month older every month. Water is free; feed is priced by its
@@ -239,9 +241,13 @@ function afcHerdEconomics(groups, curvesOf, prices, scale = 1) {
             const r = empty();
             for (let m = 0; m < months; m++) {
                 const age = (g.age || 0) + m;
-                ['food', 'water', 'straw'].forEach(k => { r[k] += afcCurveAt(cv[k], age) * g.numAnimals * scale; });
+                const f = (g.months && g.months[m]) || {};
+                ['food', 'water', 'straw'].forEach(k => {
+                    r[k] += afcCurveAt(cv[k], age) * g.numAnimals * scale * (k === 'food' && f.food != null ? f.food : 1);
+                });
                 Object.keys(cv.production || {}).forEach(ft => {
-                    const l = afcCurveAt(cv.production[ft], age) * g.numAnimals * scale * (AFC_RATION_FREE_OUTPUT.includes(ft) ? 1 : eff);
+                    const lact = /MILK/.test(ft) && f.milk != null ? f.milk : 1;
+                    const l = afcCurveAt(cv.production[ft], age) * g.numAnimals * scale * lact * (AFC_RATION_FREE_OUTPUT.includes(ft) ? 1 : eff);
                     if (l > 0) r.out[ft] = (r.out[ft] || 0) + l;
                 });
             }

@@ -23,6 +23,7 @@ const afcEd = {
     farmCtx: null,      // afcEdFarmContext() of farmId
     scope: 'breed',
     period: 'year',     // the comparison per 'month' or per 'year'
+    eas: true,          // count EnhancedAnimalSystem's lactation when the farm has it
     count: 10,
     age: 24,
     open: new Set(),    // curve ids whose point table is open
@@ -107,10 +108,11 @@ function afcEdFarmContext(farm) {
         const vals = market.prices[ft].filter(v => v != null);
         if (vals.length) prices[ft] = vals.reduce((s, v) => s + v, 0) / vals.length;
     });
-    let afc = null;
-    try { afc = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)).afc : null; }
+    let mods = null;
+    try { mods = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)) : null; }
     catch (e) { console.warn('AFC editor: animal mods of the farm unreadable', e); }
-    return { farm, prices, hasPrices: Object.keys(prices).length > 0, afc, scale: afc ? afc.scale : 1, plan: getFeedPlan(farm) };
+    const afc = mods && mods.afc;
+    return { farm, prices, hasPrices: Object.keys(prices).length > 0, afc, eas: (mods && mods.eas) || null, scale: afc ? afc.scale : 1, plan: getFeedPlan(farm) };
 }
 
 function afcEdPickFarm(id) {
@@ -152,6 +154,22 @@ function afcEdRation(subType, barnId) {
     return { ration: r, mixerLost };
 }
 
+// EAS lactation factors of a group's next 12 months (null when EAS isn't counted).
+// A group typed in has no breeding state of its own: it's taken as inseminated,
+// having calved already once it's old enough to breed.
+function afcEdEasMonths(c) {
+    const eas = afcEd.eas && afcEd.farmCtx && afcEd.farmCtx.eas;
+    if (!eas) return null;
+    const type = afcEdTypeOf(c.subType);
+    const def = getReproductionDef(c.subType);
+    const minAge = def ? parseFloat(def.minAgeMonth) || 0 : 0;
+    const state = 'hadABirth' in c ? c : { ...c, hadABirth: c.age >= minAge, isInseminated: true, monthsSinceLastBirth: 0, reproduction: 0 };
+    return projectedClusterMonths(state).map(m => {
+        const milk = easMilkFactor(eas, type, m);
+        return { food: easFoodFactor(eas, type, m), milk: milk === null ? 1 : milk };
+    });
+}
+
 // The groups the comparison counts: the breed typed in, or every group of the farm's barns.
 function afcEdHerdGroups() {
     const out = { groups: [], mixerLost: false, barns: [] };
@@ -161,7 +179,8 @@ function afcEdHerdGroups() {
         out.groups.push({
             id, subType: c.subType, numAnimals: c.numAnimals, age: c.age,
             efficiency: ration ? ration.efficiency / 100 : 1,
-            ingredients: ration ? ration.ingredients : null, absolute: !!(ration && ration.absolute)
+            ingredients: ration ? ration.ingredients : null, absolute: !!(ration && ration.absolute),
+            months: afcEdEasMonths(c)
         });
     };
     if (afcEd.scope === 'farm' && afcEd.farmCtx) {
@@ -429,6 +448,7 @@ function afcEdHerdHtml() {
         if (unpriced.length) notes.push(t('afcEdUnpriced').replace('{list}', unpriced.map(ft => ft === 'FOOD' ? t('afcEdUnpricedFeed') : formatFillType(ft)).join(', ')));
     } else notes.push(t('afcEdNoPrices'));
     if (r.mixerLost) notes.push(t('afcEdMixerLost'));
+    if (ctx && ctx.eas && afcEd.eas) notes.push(t(afcEd.scope === 'breed' ? 'afcEdEasBreedNote' : 'afcEdEasNote'));
 
     // Per building: the groups' year totals added up per barn.
     let byBarn = '';
@@ -462,6 +482,9 @@ function afcEdHerdHtml() {
                 <label>${escapeHtml(t('afcEdHeads'))} <input type="number" min="0" step="1" class="afced-herd-in" data-field="count" data-k="herd|count" value="${afcEd.count}"></label>
                 <label>${escapeHtml(t('afcEdAgeMonths'))} <input type="number" min="0" step="1" class="afced-herd-in" data-field="age" data-k="herd|age" value="${afcEd.age}"></label>` : ''}
             <span class="tl-row">${seg('period', 'month', per, 'afcEdPerMonth')}${seg('period', 'year', per, 'afcEdPerYear')}</span>
+            <label class="afced-eas" title="${escapeHtml(ctx && ctx.eas ? '' : t('afcEdEasNone'))}">
+                <input type="checkbox" class="afced-eas-in" data-k="herd|eas" ${ctx && ctx.eas ? '' : 'disabled'} ${ctx && ctx.eas && afcEd.eas ? 'checked' : ''}>
+                ${escapeHtml(t('afcEdEas'))}${ctx && ctx.eas ? '' : ` <small>(${escapeHtml(t('afcEdEasNone'))})</small>`}</label>
         </div>
         ${r.groups.length ? `<table class="data-table afced-herd-table"><thead><tr>
             <th></th><th>${escapeHtml(t('afcEdColMod'))}</th><th>${escapeHtml(t('afcEdColNow'))}</th>
@@ -486,6 +509,11 @@ function afcEdOnMainChange(e) {
         setSetting('afcEditorFarm', e.target.value || null);
         afcEdPickFarm(e.target.value);
         afcEdHerdDefaults();
+        afcEdRenderMain();
+        return;
+    }
+    if (e.target.classList.contains('afced-eas-in')) {
+        afcEd.eas = e.target.checked;
         afcEdRenderMain();
         return;
     }
