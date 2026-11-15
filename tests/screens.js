@@ -42,7 +42,7 @@ const VIEWS = {
     'news-poll': `FT.fakeNews(); setSetting('newsVotes', JSON.stringify({ 'test-next': ['a'] })); exitBtn.click(); setTimeout(() => showNewsWindow([newsPosts()[1]]), 100)`,
     'mod-manager': `FT.fakeMods(); mm.tab = 'mods'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`,
     'mod-manager-compare': `FT.fakeMods(); FT.fakeSave(); mm.tab = 'compare'; exitBtn.click(); setTimeout(() => document.getElementById('modmanager-btn').click(), 100)`,
-    'afc-editor': `exitBtn.click(); FT.fakeAfcZip().then(() => { afcEdOpen(); afcEd.sel = 'SHEEP_LANDRACE'; afcEdApplyChanges({ 'SHEEP_LANDRACE|input|food|': afcEdCurve('SHEEP_LANDRACE|input|food|').keys.map(k => ({ ageMonth: k.ageMonth, value: k.value * 1.5 })) }); afcEdRender(); })`
+    'afc-editor': `exitBtn.click(); FT.fakeAfcZip().then(() => { setSetting('afcEditorFarm', DEV_FARM_ID); afcEdOpen(); afcEd.sel = 'SHEEP_LANDRACE'; afcEdApplyChanges({ 'SHEEP_LANDRACE|input|food|': afcEdCurve('SHEEP_LANDRACE|input|food|').keys.map(k => ({ ageMonth: k.ageMonth, value: k.value * 1.5 })) }); afcEdRender(); })`
 };
 
 // What's wrong on the screen as it is now. Runs in the page.

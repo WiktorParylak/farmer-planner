@@ -163,6 +163,118 @@ function afcApplyEdits(xml, edits) {
     return { xml: out, changed, skipped };
 }
 
+// ---------- the herd: what it eats, gives and earns ----------
+// Feed category (feed.js FEED_CATEGORIES) -> the fill type its price comes from.
+const AFC_FEED_PRICE_FILLTYPE = {
+    GRASS: 'GRASS_WINDROW', HAY: 'DRYGRASS_WINDROW', SILAGE: 'SILAGE', STRAW: 'STRAW', MINERAL: 'MINERAL_FEED',
+    PIG_BASE: 'MAIZE', GRAIN: 'WHEAT', PROTEIN: 'SOYBEAN', EARTH: 'POTATO', OAT: 'OAT'
+};
+// Outputs the ration's productionWeight doesn't touch (feed.js FEED_UNSCALED_OUTPUT).
+const AFC_RATION_FREE_OUTPUT = ['MANURE', 'LIQUIDMANURE'];
+const AFC_OUTPUT_TAG_FILLTYPE = { milk: 'MILK', manure: 'MANURE', liquidmanure: 'LIQUIDMANURE' };
+const AFC_YEAR_MONTHS = 12;
+
+// The fill type an output curve gives.
+function afcCurveFillType(curve) {
+    return curve.fillType || AFC_OUTPUT_TAG_FILLTYPE[curve.tag.toLowerCase()] || curve.tag.toUpperCase();
+}
+
+// A curve's value at an age, as the game reads it (renderer.js interpolateNeedCurve).
+function afcCurveAt(keys, age) {
+    if (!keys || !keys.length) return 0;
+    if (age <= keys[0].ageMonth) return keys[0].value;
+    for (let i = 0; i < keys.length - 1; i++) {
+        const a = keys[i], b = keys[i + 1];
+        if (age <= b.ageMonth) return a.value + (b.ageMonth === a.ageMonth ? 0 : (age - a.ageMonth) / (b.ageMonth - a.ageMonth)) * (b.value - a.value);
+    }
+    return keys[keys.length - 1].value;
+}
+
+// A breed of afcParseAnimals as { food, water, straw, production: { FILLTYPE: keys } },
+// the shape of the planner's ANIMAL_NEEDS_DATA. keysOf(curve) picks the keys
+// (the file's, or the editor's).
+function afcBreedCurves(breed, keysOf) {
+    const out = { production: {} };
+    breed.curves.forEach(c => {
+        const keys = keysOf ? keysOf(c) : c.keys;
+        if (c.group === 'input') out[c.tag] = keys;
+        else out.production[afcCurveFillType(c)] = keys;
+    });
+    return out;
+}
+
+// Price of one ration ingredient: its chosen fill types (average of the
+// priced ones), else its category's. -> [price | null, fillType label]
+function afcIngredientPrice(ing, prices) {
+    const picks = (ing.fillTypes || []).filter(ft => prices[ft] != null);
+    if (picks.length) return [picks.reduce((s, ft) => s + prices[ft], 0) / picks.length, picks.join('+')];
+    const ft = AFC_FEED_PRICE_FILLTYPE[ing.category] || ing.category;
+    return [prices[ft] != null ? prices[ft] : null, ft];
+}
+
+// What a herd eats and gives over its next month and year, and what that's
+// worth. groups: [{ id, subType, numAnimals, age, efficiency (1 = full),
+// ingredients: [{ category, pct, fillTypes? }] | null, absolute? }];
+// curvesOf(subType) -> afcBreedCurves shape or null; prices: { FILLTYPE: money
+// per 1000 l } (missing = no price); scale: AFC's factor. The year counts each
+// group one month older every month. Water is free; feed is priced by its
+// ration's ingredients, straw as STRAW.
+// -> { month, year, groups: [{ id, year }], skipped: [subType], unpriced: [FILLTYPE] }
+//    month / year: { food, water, straw, out: { FILLTYPE: l }, revenue, feedCost, profit }
+function afcHerdEconomics(groups, curvesOf, prices, scale = 1) {
+    prices = prices || {};
+    const unpriced = new Set(), skipped = new Set();
+    const empty = () => ({ food: 0, water: 0, straw: 0, out: {}, revenue: 0, feedCost: 0, profit: 0 });
+    const add = (into, from) => {
+        ['food', 'water', 'straw', 'revenue', 'feedCost', 'profit'].forEach(k => { into[k] += from[k]; });
+        Object.keys(from.out).forEach(ft => { into.out[ft] = (into.out[ft] || 0) + from.out[ft]; });
+    };
+    const total = { month: empty(), year: empty() };
+    const perGroup = [];
+    groups.forEach(g => {
+        const cv = curvesOf(g.subType);
+        if (!cv || !(g.numAnimals > 0)) { if (!cv) skipped.add(g.subType); return; }
+        const eff = g.efficiency == null ? 1 : g.efficiency;
+        const span = months => {
+            const r = empty();
+            for (let m = 0; m < months; m++) {
+                const age = (g.age || 0) + m;
+                ['food', 'water', 'straw'].forEach(k => { r[k] += afcCurveAt(cv[k], age) * g.numAnimals * scale; });
+                Object.keys(cv.production || {}).forEach(ft => {
+                    const l = afcCurveAt(cv.production[ft], age) * g.numAnimals * scale * (AFC_RATION_FREE_OUTPUT.includes(ft) ? 1 : eff);
+                    if (l > 0) r.out[ft] = (r.out[ft] || 0) + l;
+                });
+            }
+            Object.keys(r.out).forEach(ft => {
+                if (prices[ft] != null) r.revenue += r.out[ft] * prices[ft] / 1000;
+                else unpriced.add(ft);
+            });
+            if (r.food > 0) {
+                const ings = g.ingredients || [];
+                const sum = g.absolute ? 100 : (ings.reduce((s, i) => s + (parseFloat(i.pct) || 0), 0) || 100);
+                if (!ings.length) unpriced.add('FOOD');
+                ings.forEach(i => {
+                    const [price, ft] = afcIngredientPrice(i, prices);
+                    const l = r.food * (parseFloat(i.pct) || 0) / sum;
+                    if (price != null) r.feedCost += l * price / 1000;
+                    else if (l > 0) unpriced.add(ft);
+                });
+            }
+            if (r.straw > 0) {
+                if (prices.STRAW != null) r.feedCost += r.straw * prices.STRAW / 1000;
+                else unpriced.add('STRAW');
+            }
+            r.profit = r.revenue - r.feedCost;
+            return r;
+        };
+        const month = span(1), year = span(AFC_YEAR_MONTHS);
+        add(total.month, month);
+        add(total.year, year);
+        perGroup.push({ id: g.id, year });
+    });
+    return { ...total, groups: perGroup, skipped: [...skipped], unpriced: [...unpriced] };
+}
+
 // ---------- the zip ----------
 function afcZipEntry(zipPath) {
     const entries = readZipDirectory(zipPath);
@@ -270,5 +382,6 @@ function afcRestoreZip(zipPath, backupPath, backupDir) {
 module.exports = {
     AFC_EDITOR_MOD, AFC_EDITOR_ENTRY, AFC_EDITOR_INPUTS,
     afcParseAnimals, afcApplyEdits, afcCleanKeys, afcSameKeys,
+    afcCurveFillType, afcCurveAt, afcBreedCurves, afcHerdEconomics,
     afcReadZip, afcSaveZip, afcRestoreZip, afcBackupList
 };

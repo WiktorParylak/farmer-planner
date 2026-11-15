@@ -367,7 +367,10 @@ function devSaveFields() {
 // demands — one running, one for a crop of the farm, one for something else.
 function devMarket() {
     const base = { WHEAT: 330, BARLEY: 300, CANOLA: 640, MAIZE: 290, SOYBEAN: 720, POTATO: 260, SUGARBEET: 180,
-        SUNFLOWER: 600, OAT: 380, GRASS: 45, RICE: 1100, OILSEEDRADISH: 250, SEEDS: 900, FERTILIZER: 1600, LIME: 230 };
+        SUNFLOWER: 600, OAT: 380, GRASS: 45, RICE: 1100, OILSEEDRADISH: 250, SEEDS: 900, FERTILIZER: 1600, LIME: 230,
+        // Animal products and feed, for the AFC editor's herd profit.
+        MILK: 700, GOATMILK: 2800, WOOL: 940, EGG: 1100, STRAW: 40, SILAGE: 120, GRASS_WINDROW: 45,
+        DRYGRASS_WINDROW: 56, MINERAL_FEED: 1200, MANURE: 33, LIQUIDMANURE: 33 };
     // Harvest month of each curve (period index from March): the price is lowest there.
     const low = { WHEAT: 4, BARLEY: 3, CANOLA: 4, MAIZE: 7, SOYBEAN: 6, POTATO: 6, SUGARBEET: 7, SUNFLOWER: 6, OAT: 4, RICE: 6 };
     const prices = {};

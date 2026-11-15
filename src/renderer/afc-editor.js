@@ -16,7 +16,17 @@ const afcEd = {
     filter: '',
     edits: {},          // curveId -> keys, only curves changed and not saved
     busy: false,
-    message: null       // { text, error }
+    message: null,      // { text, error }
+    // Herd comparison: which farm's prices, AFC scale and barns; one breed or
+    // the farm's whole herd; the breed's head count and age.
+    farmId: null,
+    farmCtx: null,      // afcEdFarmContext() of farmId
+    scope: 'breed',
+    period: 'year',     // the comparison per 'month' or per 'year'
+    count: 10,
+    age: 24,
+    open: new Set(),    // curve ids whose point table is open
+    closedGroups: new Set()
 };
 
 function afcEdDataPath(...parts) {
@@ -78,7 +88,109 @@ function afcEdOpen() {
     view.hidden = false;
     afcEd.message = null;
     afcEdLoad(afcEdFindZip());
+    afcEdPickFarm(getSetting('afcEditorFarm'));
+    afcEdHerdDefaults();
     afcEdRender();
+}
+
+// ---------- the farm to compare with ----------
+function afcEdFarms() {
+    return getAllFarms().filter(f => f.saveGamePath || f.devMarket);
+}
+
+// Prices (year average per 1000 l), AFC's scale and curve source, feed plan and barns of a farm.
+function afcEdFarmContext(farm) {
+    if (!farm) return null;
+    const market = getFarmMarket(farm);
+    const prices = {};
+    Object.keys((market && market.prices) || {}).forEach(ft => {
+        const vals = market.prices[ft].filter(v => v != null);
+        if (vals.length) prices[ft] = vals.reduce((s, v) => s + v, 0) / vals.length;
+    });
+    let afc = null;
+    try { afc = farm.saveGamePath ? readAnimalMods(farm.saveGamePath, disabledModsOf(farm)).afc : null; }
+    catch (e) { console.warn('AFC editor: animal mods of the farm unreadable', e); }
+    return { farm, prices, hasPrices: Object.keys(prices).length > 0, afc, scale: afc ? afc.scale : 1, plan: getFeedPlan(farm) };
+}
+
+function afcEdPickFarm(id) {
+    const farms = afcEdFarms();
+    const farm = farms.find(f => String(f.id) === String(id)) || null;
+    afcEd.farmId = farm ? farm.id : null;
+    afcEd.farmCtx = afcEdFarmContext(farm);
+    if (!farm && afcEd.scope === 'farm') afcEd.scope = 'breed';
+}
+
+// Head count and age of the breed: the farm's herd of it when it has one.
+function afcEdHerdDefaults() {
+    const farm = afcEd.farmCtx && afcEd.farmCtx.farm;
+    let heads = 0, ageSum = 0;
+    ((farm && farm.animalBuildings) || []).forEach(b => (b.clusters || []).forEach(c => {
+        if (c.subType !== afcEd.sel) return;
+        heads += c.numAnimals;
+        ageSum += c.age * c.numAnimals;
+    }));
+    afcEd.count = heads || 10;
+    afcEd.age = heads ? Math.round(ageSum / heads) : 24;
+}
+
+// The species of a breed: the mod's <animal type>, else the planner's guess.
+function afcEdTypeOf(subType) {
+    const b = afcEd.breeds.find(x => x.subType === subType);
+    return (b && b.type) || animalTypeOf(subType);
+}
+
+// The ration a group eats on the farm (default ration of the species without a farm).
+// A mixer ration can only be read for the farm open in the planner.
+function afcEdRation(subType, barnId) {
+    const ctx = afcEd.farmCtx;
+    const type = afcEdTypeOf(subType);
+    const plan = ctx ? ctx.plan : getFeedPlan(null);
+    const r = type ? resolveRation(type, plan, barnId) : null;
+    const asked = barnId != null && plan.barnRations && plan.barnRations[barnId] ? plan.barnRations[barnId][type] : plan.rations[type];
+    const mixerLost = !!(asked && String(asked).startsWith('mixer:') && (!ctx || ctx.farm.id !== currentFarmId));
+    return { ration: r, mixerLost };
+}
+
+// The groups the comparison counts: the breed typed in, or every group of the farm's barns.
+function afcEdHerdGroups() {
+    const out = { groups: [], mixerLost: false, barns: [] };
+    const push = (id, c, barnId) => {
+        const { ration, mixerLost } = afcEdRation(c.subType, barnId);
+        if (mixerLost) out.mixerLost = true;
+        out.groups.push({
+            id, subType: c.subType, numAnimals: c.numAnimals, age: c.age,
+            efficiency: ration ? ration.efficiency / 100 : 1,
+            ingredients: ration ? ration.ingredients : null, absolute: !!(ration && ration.absolute)
+        });
+    };
+    if (afcEd.scope === 'farm' && afcEd.farmCtx) {
+        const farm = afcEd.farmCtx.farm;
+        (farm.animalBuildings || []).forEach(b => {
+            out.barns.push({ id: String(b.id), name: buildingDisplayName(farm, b) });
+            (b.clusters || []).forEach((c, i) => push(b.id + '#' + i, c, b.id));
+        });
+    } else if (afcEd.sel) {
+        const farm = afcEd.farmCtx && afcEd.farmCtx.farm;
+        const barn = ((farm && farm.animalBuildings) || []).find(b => (b.clusters || []).some(c => c.subType === afcEd.sel));
+        push('breed', { subType: afcEd.sel, numAnimals: afcEd.count, age: afcEd.age }, barn ? barn.id : null);
+    }
+    return out;
+}
+
+// One comparison: the mod's curves, the editor's, and the base game's.
+function afcEdHerdResult() {
+    const { groups, mixerLost, barns } = afcEdHerdGroups();
+    const byType = new Map(afcEd.breeds.map(b => [b.subType, b]));
+    const prices = afcEd.farmCtx ? afcEd.farmCtx.prices : {};
+    const scale = afcEd.farmCtx ? afcEd.farmCtx.scale : 1;
+    const of = keysOf => st => byType.has(st) ? afcCore.afcBreedCurves(byType.get(st), keysOf) : null;
+    return {
+        mod: afcCore.afcHerdEconomics(groups, of(c => c.keys), prices, scale),
+        now: afcCore.afcHerdEconomics(groups, of(afcEdKeys), prices, scale),
+        base: afcCore.afcHerdEconomics(groups, st => DEFAULT_ANIMALS[st] || null, prices, scale),
+        mixerLost, barns, groups
+    };
 }
 
 async function afcEdClose() {
@@ -113,9 +225,8 @@ function afcEdSetKeys(curve, keys) {
 }
 
 // The base game's curve for the same breed and fill type, to compare with.
-const AFC_ED_OUTPUT_TAGS = { milk: 'MILK', manure: 'MANURE', liquidmanure: 'LIQUIDMANURE' };
 function afcEdFillType(curve) {
-    return curve.fillType || AFC_ED_OUTPUT_TAGS[curve.tag.toLowerCase()] || curve.tag.toUpperCase();
+    return afcCore.afcCurveFillType(curve);
 }
 function afcEdBaseKeys(subType, curve) {
     const d = DEFAULT_ANIMALS[subType];
@@ -192,7 +303,7 @@ function afcEdNum(v) {
 }
 
 // The curve now (line), as in the mod (dashed) and in the base game (dotted).
-function afcEdChartHtml(now, file, base) {
+function afcEdChartHtml(now, file, base, age) {
     const all = [now, file, base || []].flat();
     if (!all.length) return '';
     const W = 420, H = 120, P = 6;
@@ -207,6 +318,7 @@ function afcEdChartHtml(now, file, base) {
         ${base ? `<polyline class="afced-line-base" points="${pts(base)}"/>` : ''}
         <polyline class="afced-line-file" points="${pts(file)}"/>
         <polyline class="afced-line-now" points="${pts(now)}"/>
+        ${age != null && age <= maxA ? `<line class="afced-age-line" x1="${(P + age / maxA * (W - 2 * P)).toFixed(1)}" x2="${(P + age / maxA * (W - 2 * P)).toFixed(1)}" y1="0" y2="${H}"/>` : ''}
     </svg>`;
 }
 
@@ -217,6 +329,9 @@ function afcEdCurveHtml(subType, curve) {
     const baseAt = age => base && base.length ? afcEdNum(interpolateNeedCurve(base, age)) : '–';
     const edited = !!afcEd.edits[curve.id];
     const id = escapeHtml(curve.id);
+    const age = afcEd.age;
+    const at = k => k && k.length ? afcEdNum(afcCore.afcCurveAt(k, age)) : '–';
+    const summary = t('afcEdPoints').replace('{n}', keys.length).replace('{age}', age).replace('{mod}', at(curve.keys)).replace('{now}', at(keys));
     return `<section class="afced-curve ${edited ? 'is-edited' : ''}" data-curve="${id}">
         <header class="afced-curve-head">
             <h3>${escapeHtml(afcEdCurveLabel(curve))}${curve.fillType ? ` <small>${escapeHtml(curve.tag)} · ${escapeHtml(curve.fillType)}</small>` : ` <small>${escapeHtml(curve.tag)}</small>`}</h3>
@@ -225,7 +340,9 @@ function afcEdCurveHtml(subType, curve) {
                 <button type="button" class="settings-btn" data-act="mult">${escapeHtml(t('afcEdApply'))}</button></span>
             <button type="button" class="settings-btn" data-act="reset" ${edited ? '' : 'disabled'}>${escapeHtml(t('afcEdResetCurve'))}</button>
         </header>
-        ${afcEdChartHtml(keys, curve.keys, base)}
+        ${afcEdChartHtml(keys, curve.keys, base, age)}
+        <details class="afced-points" data-points="${id}" ${edited || afcEd.open.has(curve.id) ? 'open' : ''}>
+        <summary>${escapeHtml(summary)}</summary>
         <table class="data-table afced-table"><thead><tr>
             <th>${escapeHtml(t('afcEdAge'))}</th><th>${escapeHtml(t('afcEdValue'))}</th>
             <th>${escapeHtml(t('afcEdInFile'))}</th><th>${escapeHtml(t('afcEdBase'))}</th><th></th>
@@ -239,6 +356,7 @@ function afcEdCurveHtml(subType, curve) {
             </tr>`).join('')}
         </tbody></table>
         <button type="button" class="settings-btn" data-act="add">${escapeHtml(t('afcEdAddPoint'))}</button>
+        </details>
     </section>`;
 }
 
@@ -251,19 +369,132 @@ function afcEdRenderMain() {
         main.innerHTML = `<p class="hub-panel-note">${escapeHtml(afcEd.zip ? t('afcEdNoBreeds') : t('afcEdNoZip'))}</p>`;
         return;
     }
-    const group = g => breed.curves.filter(c => c.group === g).map(c => afcEdCurveHtml(breed.subType, c)).join('');
+    const group = (g, label) => breed.curves.some(c => c.group === g)
+        ? `<details class="afced-group-box" data-group="${g}" ${afcEd.closedGroups.has(g) ? '' : 'open'}>
+            <summary class="afced-group">${escapeHtml(t(label))}</summary>
+            <div class="afced-grid">${breed.curves.filter(c => c.group === g).map(c => afcEdCurveHtml(breed.subType, c)).join('')}</div>
+        </details>` : '';
     main.innerHTML = `<h2 class="afced-title">${escapeHtml(formatAnimalName(breed.subType))} <small>${escapeHtml(breed.subType)}</small></h2>
+        ${afcEdHerdHtml()}
         <p class="settings-hint">${escapeHtml(t('afcEdLegend'))}</p>
-        ${breed.curves.some(c => c.group === 'input') ? `<h3 class="afced-group">${escapeHtml(t('afcEdIntake'))}</h3><div class="afced-grid">${group('input')}</div>` : ''}
-        ${breed.curves.some(c => c.group === 'output') ? `<h3 class="afced-group">${escapeHtml(t('afcEdOutput'))}</h3><div class="afced-grid">${group('output')}</div>` : ''}`;
+        ${group('input', 'afcEdIntake')}
+        ${group('output', 'afcEdOutput')}`;
     if (focused) {
         const el = [...main.querySelectorAll('[data-k]')].find(e => e.dataset.k === focused);
         if (el) el.focus();
     }
 }
 
+// ---------- herd comparison ----------
+function afcEdQty(v) {
+    return Math.round(v).toLocaleString(FIN_LOCALE()) + ' l';
+}
+
+// "+12 %" / "−3 400 l": the change from the mod's value to the edited one.
+function afcEdDiffHtml(mod, now, money) {
+    const d = now - mod;
+    if (Math.abs(d) < 0.5) return '<span class="afced-diff">–</span>';
+    const sign = d > 0 ? '+' : '−';
+    const abs = money ? finMoney(Math.abs(d)) : afcEdQty(Math.abs(d));
+    const pct = Math.abs(mod) >= 0.5 ? ` (${sign}${Math.round(Math.abs(d / mod) * 100)} %)` : '';
+    return `<span class="afced-diff ${d > 0 ? 'is-up' : 'is-down'}">${sign}${abs}${pct}</span>`;
+}
+
+function afcEdHerdHtml() {
+    const ctx = afcEd.farmCtx;
+    const farms = afcEdFarms();
+    const r = afcEdHerdResult();
+    const per = afcEd.period;
+    const [mod, now, base] = [r.mod[per], r.now[per], r.base[per]];
+    const money = !!(ctx && ctx.hasPrices);
+    const noBase = r.base.skipped.length > 0 && afcEd.scope === 'breed';
+    const row = (label, get, opts = {}) => {
+        const m = get(mod), n = get(now), b = get(base);
+        const fmt = v => opts.money ? finMoney(v) : afcEdQty(v);
+        return `<tr class="${opts.cls || ''}"><th scope="row">${escapeHtml(label)}</th>
+            <td>${fmt(m)}</td><td>${fmt(n)}</td><td>${afcEdDiffHtml(m, n, opts.money)}</td>
+            <td class="afced-ref">${noBase ? '–' : fmt(b)}</td></tr>`;
+    };
+    const outs = [...new Set([mod, now, base].flatMap(x => Object.keys(x.out)))].sort();
+    const notes = [];
+    const scale = ctx ? ctx.scale : 1;
+    notes.push(t('afcEdYearNote').replace('{x}', scale.toLocaleString(FIN_LOCALE(), { maximumFractionDigits: 2 })));
+    if (ctx && ctx.afc && ctx.afc.enabled && ctx.afc.referenceSource !== 'custom') {
+        notes.push(t('afcEdSourceNote').replace('{src}', t('afcSource_' + ctx.afc.referenceSource) || ctx.afc.referenceSource));
+    }
+    if (r.mod.skipped.length) notes.push(t('afcEdSkipped').replace('{list}', r.mod.skipped.map(st => formatAnimalName(st)).join(', ')));
+    if (money) {
+        notes.push(t('afcEdPricesNote'));
+        const unpriced = [...new Set([...r.mod.unpriced, ...r.now.unpriced])];
+        if (unpriced.length) notes.push(t('afcEdUnpriced').replace('{list}', unpriced.map(ft => ft === 'FOOD' ? t('afcEdUnpricedFeed') : formatFillType(ft)).join(', ')));
+    } else notes.push(t('afcEdNoPrices'));
+    if (r.mixerLost) notes.push(t('afcEdMixerLost'));
+
+    // Per building: the groups' year totals added up per barn.
+    let byBarn = '';
+    if (afcEd.scope === 'farm' && r.barns.length) {
+        const sum = (res, barnId, k) => res.groups.filter(g => g.id.split('#')[0] === barnId).reduce((s, g) => s + g.year[k], 0);
+        byBarn = `<details class="afced-barns" data-group="barns" ${afcEd.closedGroups.has('barns') ? '' : 'open'}>
+            <summary>${escapeHtml(t('afcEdByBarn'))}</summary>
+            <table class="data-table afced-herd-table"><thead><tr>
+                <th>${escapeHtml(t('afcEdBarnCol'))}</th><th>${escapeHtml(t('breedNorm_food'))}</th>
+                ${money ? `<th>${escapeHtml(t('afcEdRevenue'))}</th><th>${escapeHtml(t('afcEdProfit'))}</th>` : ''}
+            </tr></thead><tbody>
+            ${r.barns.map(b => `<tr><th scope="row">${escapeHtml(b.name)}</th>
+                <td>${afcEdQty(sum(r.mod, b.id, 'food'))} → ${afcEdQty(sum(r.now, b.id, 'food'))}</td>
+                ${money ? `<td>${finMoney(sum(r.mod, b.id, 'revenue'))} → ${finMoney(sum(r.now, b.id, 'revenue'))}</td>
+                <td>${finMoney(sum(r.mod, b.id, 'profit'))} → ${finMoney(sum(r.now, b.id, 'profit'))} ${afcEdDiffHtml(sum(r.mod, b.id, 'profit'), sum(r.now, b.id, 'profit'), true)}</td>` : ''}
+            </tr>`).join('')}
+            </tbody></table></details>`;
+    }
+
+    const seg = (act, val, cur, label) => `<button type="button" class="settings-btn ${val === cur ? 'is-active' : ''}" data-herd="${act}" data-val="${val}" aria-pressed="${val === cur}">${escapeHtml(t(label))}</button>`;
+    return `<details class="afced-herd" data-group="herd" ${afcEd.closedGroups.has('herd') ? '' : 'open'}>
+        <summary class="afced-group">${escapeHtml(t('afcEdHerd'))}</summary>
+        <div class="afced-herd-controls">
+            <label>${escapeHtml(t('afcEdHerdFarm'))}
+                <select class="afced-farm" data-k="herd|farm">
+                    <option value="">${escapeHtml(t('afcEdHerdNoFarm'))}</option>
+                    ${farms.map(f => `<option value="${escapeHtml(String(f.id))}" ${String(f.id) === String(afcEd.farmId) ? 'selected' : ''}>${escapeHtml(f.name || String(f.id))}</option>`).join('')}
+                </select></label>
+            <span class="tl-row">${seg('scope', 'breed', afcEd.scope, 'afcEdScopeBreed')}${ctx ? seg('scope', 'farm', afcEd.scope, 'afcEdScopeFarm') : ''}</span>
+            ${afcEd.scope === 'breed' ? `
+                <label>${escapeHtml(t('afcEdHeads'))} <input type="number" min="0" step="1" class="afced-herd-in" data-field="count" data-k="herd|count" value="${afcEd.count}"></label>
+                <label>${escapeHtml(t('afcEdAgeMonths'))} <input type="number" min="0" step="1" class="afced-herd-in" data-field="age" data-k="herd|age" value="${afcEd.age}"></label>` : ''}
+            <span class="tl-row">${seg('period', 'month', per, 'afcEdPerMonth')}${seg('period', 'year', per, 'afcEdPerYear')}</span>
+        </div>
+        ${r.groups.length ? `<table class="data-table afced-herd-table"><thead><tr>
+            <th></th><th>${escapeHtml(t('afcEdColMod'))}</th><th>${escapeHtml(t('afcEdColNow'))}</th>
+            <th>${escapeHtml(t('afcEdColDiff'))}</th><th>${escapeHtml(t('afcEdColBase'))}</th>
+        </tr></thead><tbody>
+            ${row(t('breedNorm_food'), x => x.food)}
+            ${row(t('breedNorm_water'), x => x.water)}
+            ${row(t('breedNorm_straw'), x => x.straw)}
+            ${outs.map((ft, i) => row(formatFillType(ft), x => x.out[ft] || 0, { cls: i === 0 ? 'afced-sep' : '' })).join('')}
+            ${money ? row(t('afcEdRevenue'), x => x.revenue, { money: true, cls: 'afced-sep' })
+                + row(t('afcEdFeedCost'), x => x.feedCost, { money: true })
+                + row(t('afcEdProfit'), x => x.profit, { money: true, cls: 'afced-total' }) : ''}
+        </tbody></table>` : `<p class="settings-hint">${escapeHtml(t('afcEdNoHerd'))}</p>`}
+        ${byBarn}
+        <ul class="afced-notes">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
+    </details>`;
+}
+
 // ---------- actions ----------
 function afcEdOnMainChange(e) {
+    if (e.target.classList.contains('afced-farm')) {
+        setSetting('afcEditorFarm', e.target.value || null);
+        afcEdPickFarm(e.target.value);
+        afcEdHerdDefaults();
+        afcEdRenderMain();
+        return;
+    }
+    if (e.target.classList.contains('afced-herd-in')) {
+        const v = parseInt(e.target.value, 10);
+        if (v >= 0) afcEd[e.target.dataset.field] = v;
+        afcEdRenderMain();
+        return;
+    }
     const input = e.target.closest('.afced-in');
     if (!input) return;
     const curve = afcEdCurve(input.closest('[data-curve]').dataset.curve);
@@ -278,6 +509,12 @@ function afcEdOnMainChange(e) {
 }
 
 function afcEdOnMainClick(e) {
+    const herd = e.target.closest('[data-herd]');
+    if (herd) {
+        afcEd[herd.dataset.herd] = herd.dataset.val;
+        afcEdRenderMain();
+        return;
+    }
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const curve = afcEdCurve(btn.closest('[data-curve]').dataset.curve);
@@ -299,10 +536,22 @@ function afcEdOnMainClick(e) {
     afcEdRender();
 }
 
+// Which point tables and groups are open survives a new render.
+function afcEdOnToggle(e) {
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement)) return;
+    if (d.dataset.points) {
+        if (d.open) afcEd.open.add(d.dataset.points); else afcEd.open.delete(d.dataset.points);
+    } else if (d.dataset.group) {
+        if (d.open) afcEd.closedGroups.delete(d.dataset.group); else afcEd.closedGroups.add(d.dataset.group);
+    }
+}
+
 async function afcEdOnSideClick(e) {
     const breedBtn = e.target.closest('.afced-breed');
     if (breedBtn) {
         afcEd.sel = breedBtn.dataset.sub;
+        afcEdHerdDefaults();
         afcEdRender();
         document.getElementById('afced-main').scrollTop = 0;
         return;
@@ -453,5 +702,6 @@ async function afcEdRestore(backup) {
     if (main) {
         main.addEventListener('change', afcEdOnMainChange);
         main.addEventListener('click', afcEdOnMainClick);
+        main.addEventListener('toggle', afcEdOnToggle, true);
     }
 })();

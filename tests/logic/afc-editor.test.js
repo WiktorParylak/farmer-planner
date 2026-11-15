@@ -112,3 +112,82 @@ test('AFC editor: a curve edited in the view counts as a change until it\'s back
     }
     assert.ok(document.getElementById('afced-view').hidden);
 });
+
+test('AFC editor: a herd\'s month and year, revenue, feed cost and profit', () => {
+    const curves = {
+        COW_X: { food: [{ ageMonth: 0, value: 100 }, { ageMonth: 12, value: 220 }], water: [{ ageMonth: 0, value: 50 }], straw: [{ ageMonth: 0, value: 10 }],
+            production: { MILK: [{ ageMonth: 0, value: 0 }, { ageMonth: 12, value: 1200 }], MANURE: [{ ageMonth: 0, value: 30 }] } }
+    };
+    const prices = { MILK: 1000, MANURE: 100, STRAW: 50, DRYGRASS_WINDROW: 200 };
+    const groups = [
+        { id: 'a', subType: 'COW_X', numAnimals: 2, age: 0, efficiency: 0.5, ingredients: [{ category: 'HAY', pct: 50 }, { category: 'GRAIN', pct: 50 }] },
+        { id: 'b', subType: 'NOT_IN_MOD', numAnimals: 4, age: 0, efficiency: 1, ingredients: [] }
+    ];
+    const r = afcCore.afcHerdEconomics(groups, st => curves[st] || null, prices, 3);
+    // Month: age 0, two animals, × scale 3; milk × the ration's 50 %, manure not.
+    assert.strictEqual(r.month.food, 600);
+    assert.strictEqual(r.month.water, 300);
+    assert.strictEqual(r.month.out.MANURE, 180);
+    assert.ok(!r.month.out.MILK, 'no milk at age 0');
+    assert.strictEqual(r.month.revenue, 18);
+    // Half the feed is hay (200 per 1000 l), wheat has no price; straw 60 l at 50.
+    assert.strictEqual(r.month.feedCost, 300 * 200 / 1000 + 60 * 50 / 1000);
+    assert.strictEqual(r.month.profit, r.month.revenue - r.month.feedCost);
+    // Year: the herd ages 0..11, food 100 + 10/month.
+    assert.strictEqual(r.year.food, (100 * 12 + 10 * 66) * 2 * 3);
+    assert.strictEqual(r.year.out.MILK, 100 * 66 * 2 * 3 * 0.5);
+    assert.deepStrictEqual(r.skipped, ['NOT_IN_MOD']);
+    assert.ok(r.unpriced.includes('WHEAT'));
+    assert.deepStrictEqual(r.groups.map(g => g.id), ['a']);
+});
+
+test('AFC editor: the herd panel compares the mod with the edits, for a breed and the whole farm', async () => {
+    const farm = await freshFarm();
+    const zip = await FT.fakeAfcZip();
+    setSetting('afcEditorFarm', farm.id);
+    afcEdOpen();
+    try {
+        afcEd.sel = 'COW_HOLSTEIN';
+        afcEdHerdDefaults();
+        afcEdRender();
+        const main = document.getElementById('afced-main');
+        assert.strictEqual(String(afcEd.farmId), String(farm.id));
+        assert.ok(main.querySelector('.afced-herd-table'), 'the comparison table is there');
+        const milk = 'COW_HOLSTEIN|output|pallets|MILK';
+        const points = () => main.querySelector(`.afced-points[data-points="${milk}"]`);
+        assert.ok(points() && !points().open, 'point tables start closed');
+        const before = afcEdHerdResult();
+        assert.ok(before.mod.year.revenue > 0, 'milk earns money at the dev market');
+        assert.strictEqual(before.mod.year.profit, before.now.year.profit);
+        const card = main.querySelector(`[data-curve="${milk}"]`);
+        card.querySelector('.afced-mult-x').value = '2';
+        card.querySelector('[data-act="mult"]').click();
+        assert.ok(points().open, 'an edited curve shows its points');
+        const after = afcEdHerdResult();
+        assert.ok(after.now.year.out.MILK > before.mod.year.out.MILK * 1.9, 'twice the milk');
+        assert.ok(after.now.year.profit > after.mod.year.profit, 'more profit after the edit');
+        assert.ok(main.querySelector('.afced-diff.is-up'), 'the difference is shown');
+        // The whole farm: every barn, per building in its own table.
+        main.querySelector('[data-herd="scope"][data-val="farm"]').click();
+        const all = afcEdHerdResult();
+        assert.strictEqual(all.barns.length, farm.animalBuildings.length);
+        assert.strictEqual(all.groups.length, farm.animalBuildings.reduce((s, b) => s + (b.clusters || []).length, 0));
+        assert.ok(all.mod.year.food > before.mod.year.food);
+        assert.ok(main.querySelector('.afced-barns'), 'per building breakdown');
+        // A closed group stays closed after a render.
+        const box = main.querySelector('.afced-group-box[data-group="input"]');
+        box.open = false;
+        await wait(20);
+        afcEdRenderMain();
+        assert.ok(!main.querySelector('.afced-group-box[data-group="input"]').open);
+    } finally {
+        afcEd.edits = {};
+        afcEd.scope = 'breed';
+        afcEd.closedGroups.clear();
+        afcEd.open.clear();
+        await afcEdClose();
+        setSetting('afcEditorZip', null);
+        setSetting('afcEditorFarm', null);
+        fs.rmSync(zip, { force: true });   // the mod manager's test counts the mods folder
+    }
+});

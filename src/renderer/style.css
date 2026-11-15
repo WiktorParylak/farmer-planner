@@ -11930,3 +11930,97 @@ button.mm-badge {
 .afced-del:hover {
   color: var(--color-rust);
 }
+
+/* AFC editor: herd comparison and collapsible groups / point tables */
+.afced-herd,
+.afced-group-box {
+  margin-bottom: 12px;
+}
+
+.afced-herd {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background-color: var(--color-surface);
+}
+
+.afced-view summary.afced-group {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.afced-herd > summary.afced-group {
+  margin-top: 0;
+}
+
+.afced-herd-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.afced-herd-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.afced-view .afced-herd-controls input.afced-herd-in {
+  width: 90px;
+}
+
+.afced-view .afced-herd-table {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.afced-view .afced-herd-table :is(td, th) {
+  padding: 4px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.afced-view .afced-herd-table :is(th[scope="row"], thead th:first-child) {
+  text-align: left;
+}
+
+.afced-herd-table tr.afced-sep > * {
+  border-top: 2px solid var(--color-border-strong);
+}
+
+.afced-herd-table tr.afced-total > * {
+  font-weight: 700;
+}
+
+.afced-diff.is-up { color: var(--color-primary); }
+.afced-diff.is-down { color: var(--color-danger); }
+
+.afced-barns {
+  margin-top: 10px;
+}
+
+.afced-barns > summary,
+.afced-points > summary {
+  cursor: pointer;
+  color: var(--color-ink-muted, inherit);
+}
+
+.afced-points[open] > summary {
+  margin-bottom: 6px;
+}
+
+.afced-notes {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.85em;
+  color: var(--color-ink-faint);
+}
+
+.afced-age-line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
