@@ -850,5 +850,7 @@ module.exports = {
     copyMod, moveMod, renameMod, packMod, unpackMod,
     readModIcon, iconCacheName,
     loadModHub, compareVersions, modHubInfo,
-    findDownloadedZip, replaceModWithZip
+    findDownloadedZip, replaceModWithZip,
+    // zip helpers for the AFC editor (afc-editor-core.js)
+    writeFolderZip, readZipEntryChecked, zipEntryTarget, backupStamp
 };

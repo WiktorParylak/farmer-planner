@@ -74,6 +74,40 @@ window.FT = (() => {
         fs.writeFileSync(path.join(dir, 'careerSavegame.xml'), '<careerSavegame><settings><savegameName>Green Valley</savegameName></settings><mod modName="FS25_FrontLoader" title="Front loader" version="1.2.0.0"/><mod modName="FS25_Sprayer" title="Sprayer" version="1.0.0.0"/></careerSavegame>');
     }
 
+    // An AnimalFoodCalculator zip in the test game folder for the AFC editor,
+    // its animals.xml made from the base game's curves.
+    async function fakeAfcZip() {
+        const src = path.join(tlGameDir(), 'fake-afc');
+        fs.rmSync(src, { recursive: true, force: true });
+        fs.mkdirSync(path.join(src, 'xmls'), { recursive: true });
+        const lines = ['<animals>'];
+        const curve = (open, close, c) => { lines.push(open); (c || []).forEach(k => lines.push(`                    <key ageMonth="${k.ageMonth}" value="${k.value}" />`)); lines.push(close); };
+        const types = {};
+        Object.keys(DEFAULT_ANIMALS).forEach(st => { const tp = animalTypeOf(st) || 'COW'; (types[tp] = types[tp] || []).push(st); });
+        Object.keys(types).forEach(type => {
+            lines.push(`    <animal type="${type}">`);
+            types[type].forEach(st => {
+                const d = DEFAULT_ANIMALS[st];
+                lines.push(`        <subType subType="${st}">`, '            <input>');
+                ['food', 'water', 'straw'].filter(k => d[k] && d[k].length).forEach(k => curve(`                <${k}>`, `                </${k}>`, d[k]));
+                lines.push('            </input>', '            <output>');
+                Object.keys(d.production || {}).forEach(ft => curve(`                <pallets fillType="${ft}">`, '                </pallets>', d.production[ft]));
+                lines.push('            </output>', '        </subType>');
+            });
+            lines.push('    </animal>');
+        });
+        lines.push('</animals>', '');
+        const xml = lines.join('\n');
+        fs.writeFileSync(path.join(src, 'xmls', 'animals.xml'), xml);
+        fs.writeFileSync(path.join(src, 'modDesc.xml'), '<modDesc><version>1.2.0.1</version></modDesc>');
+        const zip = path.join(tlGameDir(), 'mods', 'FS25_AnimalFoodCalculator.zip');
+        fs.mkdirSync(path.dirname(zip), { recursive: true });
+        fs.rmSync(zip, { force: true });
+        await mmCore.writeFolderZip(src, ['modDesc.xml', 'xmls/animals.xml'], zip, () => {});
+        setSetting('afcEditorZip', zip);
+        return zip;
+    }
+
     const newsVotesSent = [];
     function fakeNews() {
         newsNet.request = newsDevRequest(newsVotesSent);
@@ -109,6 +143,10 @@ window.FT = (() => {
 
     async function backToPlan() {
         if (!document.getElementById('modmanager-view').hidden) mmClose();
+        if (!document.getElementById('afced-view').hidden) {
+            afcEd.edits = {};
+            await afcEdClose();
+        }
         document.querySelectorAll('.modal').forEach(m => { m.style.display = 'none'; });
         if (isEditMode) {
             document.getElementById('cancel-edit-btn').click();
@@ -128,5 +166,5 @@ window.FT = (() => {
         await wait(100);
     }
 
-    return { fakeNews, newsVotesSent, fakeMods, fakeSave, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
+    return { fakeAfcZip, fakeNews, newsVotesSent, fakeMods, fakeSave, freshView, backToPlan, test, runAll, wait, waitFor, dialogOpen, answerDialog, freshFarm, field, setInput, copy };
 })();

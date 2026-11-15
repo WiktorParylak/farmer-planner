@@ -103,6 +103,16 @@
                 <div id="mm-main" class="mm-main"></div>
             </div>
         </div>
+        <div id="afced-view" class="tramlines-view afced-view" hidden>
+            <header class="tl-header">
+                <button type="button" id="afced-back" class="edit-season-btn"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> <span data-i18n="tlBack">Back</span></button>
+                <h1 class="tl-title" data-i18n="afcEdTitle">AnimalFoodCalculator editor</h1>
+            </header>
+            <div class="tl-body">
+                <aside id="afced-side" class="tl-side"></aside>
+                <div id="afced-main" class="afced-main"></div>
+            </div>
+        </div>
         <div class="planner-view" id="planner-view">
             <div class="planner-header">
                 <h1 id="planner-farm-name" class="save-name"></h1>
@@ -456,6 +466,7 @@
                     </label>
                     <button type="button" id="dev-farm-rebuild-btn" class="replay-tutorial-btn" data-i18n="devFarmRebuild" style="margin-top:6px;">Rebuild test farm</button>
                     <button type="button" id="news-dev-btn" class="replay-tutorial-btn" data-i18n="newsDevShow" style="margin-top:6px;">Show test news</button>
+                    <button type="button" id="afced-open-btn" class="replay-tutorial-btn" data-i18n="afcEdOpen" style="margin-top:6px;" hidden>AFC editor</button>
                 </div>
                 <div class="modal-buttons">
                     <button id="close-app-settings-btn" data-i18n="close">Close</button>
@@ -695,6 +706,7 @@
     <script src="tramlines.js"></script>
     <script src="map-scale.js"></script>
     <script src="mod-manager.js"></script>
+    <script src="afc-editor.js"></script>
     <script src="news.js"></script>
     <script src="tutorial.js"></script>
 </body>

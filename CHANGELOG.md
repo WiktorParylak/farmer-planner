@@ -6,6 +6,7 @@ All notable changes to Farmer Planner. Installers for every version are on the [
 
 **New**
 - **AnimalFoodCalculator 1.2 seasonal wool**: when *Seasonal Wool* is on in the mod, Breed norms says the wool is a monthly average that comes out only when the sheep are sheared (June, or May and October, depending on the breed; from 8 months of age), and the mod's line in the farm settings shows it's on.
+- **AFC editor (developer tool)**: with the app run from the code (`npm start`), Settings → Developer → *AFC editor* changes what each breed eats (food, water, straw) and gives (milk, eggs, wool, manure…) in AnimalFoodCalculator's animals.xml, inside the mod's zip in the mods folder: a table and a chart per curve next to the mod's and the base game's values, a multiplier for a whole curve. Saving needs the game closed, copies the zip first (the last 5 are kept, with *Restore*) and replaces it only after reading the new one back. Saved curves are remembered, to put back on a new version of the mod. Not in the installed app.
 
 **Fixed**
 - **AnimalFoodCalculator also scales what the animals give**: milk, eggs, wool, manure and slurry are now multiplied by the mod's scale (e.g. × days per month in auto mode) the way the game does, and follow the curves of the mod's reference source, not just food, water and straw.
