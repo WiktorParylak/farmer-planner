@@ -1900,6 +1900,7 @@ function renderFieldsTable(fields) {
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
                     <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay, farm ? getFarmCurrentMonth(farm) : null)}</td>
                     <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
+                    <td class="plan-next-cell">${isPastSeason || !farm ? '' : fieldPlanBadgeHtml(fieldPlanStatus(farm, field), true)}</td>
                     <td class="treatments-cell">
                         ${(() => {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
@@ -1919,7 +1920,7 @@ function renderFieldsTable(fields) {
     }
     const searching = !!fieldSearchQuery() && fields && fields.length > 0;
     if (searching && !shownCount) {
-        htmlString = `<tr class="fields-search-empty"><td colspan="7">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
     renderFieldsTimeline(fields);
@@ -2075,7 +2076,7 @@ function buildFieldEditCard(field, opts) {
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}"
             data-state="${field.state === 'Planted' ? 'Planted' : 'To Plant'}" data-tillage="${field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : ''}" data-lime-season="${limeSeason}" data-lime-ph="${limePh != null ? limePh : ''}">
-            <td colspan="7">
+            <td colspan="8">
                 <div class="field-card">
                     <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -2157,7 +2158,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="7" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
+            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>

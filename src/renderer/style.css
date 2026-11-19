@@ -12056,6 +12056,15 @@ button.mm-badge {
 
 .field-plan-badge i { font-size: var(--fs-xs); }
 
+/* In the plan table: smaller, one line. */
+.field-plan-badge.is-compact {
+  padding: 3px 9px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.field-plan-badge.is-compact i { font-size: var(--fs-2xs); }
+
 .field-plan-badge--ready {
   background-color: var(--color-accent-soft);
   border-color: rgba(201, 122, 43, 0.4);

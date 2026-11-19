@@ -165,6 +165,7 @@ const UI = {
     thSowingMth: "Saatmonat",
     thState: "Zustand",
     thTillage: "Bodenbearb.",
+    thPlanNext: "Weiter",
     tillagePlowed: "Gepflügt",
     tillageNoTill: "Direktsaat",
     thSoil: "Maßnahmen",

@@ -513,7 +513,8 @@ const FIELD_PLAN_BADGE = {
     newSeason: { icon: 'fa-rotate', tone: 'wait' }
 };
 
-function fieldPlanBadgeHtml(status) {
+// compact: the smaller one in the plan table.
+function fieldPlanBadgeHtml(status, compact) {
     const look = status && FIELD_PLAN_BADGE[status.kind];
     if (!look) return '';
     const key = status.kind.charAt(0).toUpperCase() + status.kind.slice(1);
@@ -521,7 +522,7 @@ function fieldPlanBadgeHtml(status) {
         .replace('{month}', status.from ? translateMonth(status.from).toLowerCase() : '?')
         .replace('{crop}', translateCropName(status.crop || status.nextCrop || '') || t('rotFallow'));
     const text = status.kind === 'growing' && !status.from ? t('fieldPlanGrowingNoMonth') : fill(t('fieldPlan' + key));
-    return `<span class="field-plan-badge field-plan-badge--${look.tone}" title="${escapeHtml(fill(t('fieldPlan' + key + 'Hint')))}"><i class="fa-solid ${look.icon}" aria-hidden="true"></i>${escapeHtml(text)}</span>`;
+    return `<span class="field-plan-badge field-plan-badge--${look.tone}${compact ? ' is-compact' : ''}" title="${escapeHtml(fill(t('fieldPlan' + key + 'Hint')))}"><i class="fa-solid ${look.icon}" aria-hidden="true"></i>${escapeHtml(text)}</span>`;
 }
 
 // Field view: move this field on, once its crop can be off, and take that back.
