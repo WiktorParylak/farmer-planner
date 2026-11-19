@@ -12083,3 +12083,6 @@ button.mm-badge {
   border-color: rgba(62, 112, 137, 0.35);
   color: var(--color-sky);
 }
+
+/* Next column: the job pill and the plan badge stacked, the same width. */
+.plan-next-cell .state-pills > .field-plan-badge { justify-content: center; }

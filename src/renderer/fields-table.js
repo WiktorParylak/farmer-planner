@@ -1027,20 +1027,26 @@ function nextWorkStep(field, idx, farm) {
     return { next, done: list.filter(w => w.done).length, total: list.length, own: !!fieldWork(field) };
 }
 
-// State column of a field with a crop (current season): two pills. The state,
-// sown or to sow (click toggles it), coloured by how urgent the sowing is
-// (badgeCls: planted / plant now / overdue / to plant; stateLabel in the
-// tooltip), and the job at hand: click ticks it off, right-click steps back,
-// the list itself is edited in the field view. All jobs done: no second pill.
+// State column of a field with a crop (current season): the state, sown or to
+// sow (click toggles it), coloured by how urgent the sowing is (badgeCls:
+// planted / plant now / overdue / to plant; stateLabel in the tooltip). The job
+// at hand (click ticks it off, right-click steps back) is in the Next column:
+// workNextChipHtml.
 function workCellHtml(field, idx, farm, badgeCls, stateLabel) {
-    const { next, done, total } = nextWorkStep(field, idx, farm);
     const label = t(field.state === 'Planted' ? 'planted' : 'toPlant');
     const state = `<button type="button" class="state-toggle" data-idx="${idx}" title="${escapeHtml(stateLabel + ' · ' + t('stateToggleHint'))}"><span class="badge ${badgeCls}">${escapeHtml(label)}</span></button>`;
-    if (!next) return `<div class="state-pills">${state}</div>`;
+    return `<div class="state-pills">${state}</div>`;
+}
+
+// The field's next job, in the table's Next column next to its plan badge ('' when none is left).
+function workNextChipHtml(field, idx, farm) {
+    if (!field.crop || isCutCrop(field.crop)) return '';
+    const { next, done, total } = nextWorkStep(field, idx, farm);
+    if (!next) return '';
     const count = done ? ` <span class="work-count">${done}/${total}</span>` : '';
     const due = fieldJobDue(field, next.step, getFarmCurrentMonth(farm), next.part);
     const hint = t('workBadgeHint') + (due ? '' : ' ' + t('workLaterHint'));
-    return `<div class="state-pills">${state}<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(workStepLabel(field, next))}${count}</span></button></div>`;
+    return `<button type="button" class="work-open work-open--badge" data-idx="${idx}" title="${escapeHtml(hint)}"><span class="badge badge--job${due ? '' : ' badge--job-later'}">${escapeHtml(workStepLabel(field, next))}${count}</span></button>`;
 }
 
 // A small tag after a step the game itself asks for (ploughing required), or
@@ -1490,7 +1496,7 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         else openWorkModal(parseInt(workBtn.dataset.idx, 10));
         return;
     }
-    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle, .tillage-toggle');
+    const btn = e.target.closest('.state-toggle, .rolling-toggle, .lime-toggle, .weeds-toggle');
     if (!btn || isEditMode) return;
     const allFarms = getAllFarms();
     const farm = allFarms.find(f => f.id === currentFarmId);
@@ -1510,8 +1516,6 @@ if (fieldsBody) fieldsBody.addEventListener('click', async e => {
         // none -> to do -> sprayed -> weeded mechanically -> none
         field.weeds = field.weeds === 'needed' ? 'done' : (field.weeds === 'done' ? 'hoed' : (field.weeds === 'hoed' ? null : 'needed'));
         markWeedsManual(farm, field);
-    } else if (btn.classList.contains('tillage-toggle')) {
-        field.tillage = field.tillage === 'plowed' ? 'noTill' : (field.tillage === 'noTill' ? null : 'plowed');
     } else {
         const label = [(field.number || '').toString().trim(), field.crop ? translateCropName(field.crop) : ''].filter(Boolean).join(' · ') || '–';
         const { ph, status } = getLimeStatus(field, idx, farm.currentSeason || 1, getSupplyRates());
@@ -1637,17 +1641,6 @@ function soilMixBarHtml(key) {
     if (!total) return '';
     const parts = Object.entries(mix).map(([id, v]) => `<span style="flex:${v}; background:${SOIL_BAR_COLORS[id] || '#999'}"></span>`).join('');
     return `<span class="soil-mix-bar" title="${escapeHtml(soilMixLabel(mix))}">${parts}</span>`;
-}
-
-// Tillage: a real switch in the current season (click again to clear).
-// Tillage: one chip — click cycles nothing -> plowed -> no-till.
-function tillageCellHtml(field, idx, isPastSeason) {
-    const value = field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : '';
-    const label = value === 'plowed' ? t('tillagePlowed') : (value === 'noTill' ? t('tillageNoTill') : '–');
-    const cls = `tillage-chip${value ? ' tillage-chip--' + value : ''}`;
-    return isPastSeason
-        ? `<span class="${cls}">${label}</span>`
-        : `<button type="button" class="${cls} tillage-toggle" data-idx="${idx}" title="${t('tillageClickHint')}">${label}</button>`;
 }
 
 // Rolling: nothing / to roll (field.rolling) / rolled (field.rollingDone) —
@@ -1899,8 +1892,7 @@ function renderFieldsTable(fields) {
                     <td class="crop-cell">${field.crop ? translateCropName(field.crop) : '-'}${grassAge ? '' : rotationBadge}${grassAge ? grassAgeCaption(grassAge, rotationBadge) : ''}${catchCropCaption(field)}${isPastSeason ? '' : rotationCaptionHtml(farm, field, seasonHistory)}</td>
                     <td>${field.sowingMonth ? translateMonth(field.sowingMonth) : '-'}</td>
                     <td>${!isPastSeason && field.crop && !isCutCrop(field.crop) ? workCellHtml(field, origIdx, farm, stateBadge, stateLabel) : stateCellHtml(field, origIdx, isPastSeason, stateDisplay, farm ? getFarmCurrentMonth(farm) : null)}</td>
-                    <td>${tillageCellHtml(field, origIdx, isPastSeason)}</td>
-                    <td class="plan-next-cell">${isPastSeason || !farm ? '' : fieldPlanBadgeHtml(fieldPlanStatus(farm, field), true)}</td>
+                    <td class="plan-next-cell">${isPastSeason || !farm ? '' : `<div class="state-pills">${workNextChipHtml(field, origIdx, farm)}${fieldPlanBadgeHtml(fieldPlanStatus(farm, field), true)}</div>`}</td>
                     <td class="treatments-cell">
                         ${(() => {
                             // Current season: chips are buttons (lime asks first, rolling toggles).
@@ -1920,7 +1912,7 @@ function renderFieldsTable(fields) {
     }
     const searching = !!fieldSearchQuery() && fields && fields.length > 0;
     if (searching && !shownCount) {
-        htmlString = `<tr class="fields-search-empty"><td colspan="8">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
+        htmlString = `<tr class="fields-search-empty"><td colspan="7">${escapeHtml(t('fieldsSearchNone'))}</td></tr>`;
     }
     fieldsBody.innerHTML = htmlString;
     renderFieldsTimeline(fields);
@@ -2076,7 +2068,7 @@ function buildFieldEditCard(field, opts) {
     return `
         <tr class="field-edit-tr${isSplit ? ' field-split-row' : ''}${field.lease ? ' field-lease-row' : ''}" data-extra="${escapeHtml(JSON.stringify(fieldExtras(field)))}" data-manure="${field.manure ? '1' : '0'}" data-fertilizer="${field.fertilizer ? '1' : '0'}" data-cuts="${escapeHtml(JSON.stringify(Array.isArray(field.cuts) ? field.cuts : []))}"
             data-state="${field.state === 'Planted' ? 'Planted' : 'To Plant'}" data-tillage="${field.tillage === 'plowed' || field.tillage === 'noTill' ? field.tillage : ''}" data-lime-season="${limeSeason}" data-lime-ph="${limePh != null ? limePh : ''}">
-            <td colspan="8">
+            <td colspan="7">
                 <div class="field-card">
                     <label class="field-card-select" title="${t('bulkSelectCard')}"><input type="checkbox" class="edit-bulk-check fp-check" aria-label="${t('bulkSelectCard')}"></label>
                     <button type="button" class="delete-row-btn field-card-delete" onclick="deleteFieldRow(this)" title="${t('delete')}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -2158,7 +2150,7 @@ function renderEditTableWithDropdowns(fields) {
 
     htmlString += `
         <tr class="add-field-tr">
-            <td colspan="8" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
+            <td colspan="7" class="add-row-trigger" onclick="addNewFieldRow()" title="${t('addRowSplitHint')}">
                 ${t('addNewField')}
             </td>
         </tr>
