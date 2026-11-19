@@ -256,3 +256,26 @@ test('rotation: a cycle for a field with another crop asks whether to adjust it'
     assert.ok(!dialogOpen(), 'no question');
     assert.strictEqual(farm.fields[idx].crop, 'Potato');
 });
+
+test('rotation: the field view badge says why a field on a cycle can or can not move on yet', () => {
+    const onCycle = extra => field({ rotation: { id: 'r', step: 1 }, ...extra });
+    const kind = (f, month) => fieldPlanStatus(farmWith({ month }), f).kind;
+    // Wheat sown in October comes off from August.
+    const growing = fieldPlanStatus(farmWith({ month: 'MARCH' }), onCycle({ state: 'Planted' }));
+    assert.strictEqual(growing.kind, 'growing');
+    assert.strictEqual(growing.from, 'AUGUST');
+    assert.strictEqual(kind(onCycle({ state: 'Planted' }), 'AUGUST'), 'ready');
+    assert.strictEqual(kind(onCycle({ state: 'To Plant' }), 'AUGUST'), 'unsown');
+    // Grass to grass in the cycle: nothing to move on to.
+    assert.strictEqual(kind(field({ crop: 'Grass', state: 'Planted', rotation: { id: 'r', step: 2, stepSeason: 1 } }), 'MAY'), 'grass');
+    assert.strictEqual(kind(field({ crop: 'Grass', state: 'Planted', rotation: { id: 'r', step: 2, stepSeason: 2 } }), 'MAY'), 'ready');
+    // Empty: the cycle's crop waits for its sowing month.
+    const waiting = fieldPlanStatus(farmWith({ month: 'MAY' }), onCycle({ crop: '', sowingMonth: '' }));
+    assert.strictEqual(waiting.kind, 'waiting');
+    assert.strictEqual(waiting.crop, 'Wheat');
+    assert.ok(CROP_CALENDAR.Wheat[waiting.from], waiting.from + ' is a wheat sowing month');
+    // No cycle and no plan: no badge.
+    assert.strictEqual(kind(field({ state: 'Planted' }), 'MARCH'), null);
+    assert.ok(fieldPlanBadgeHtml(growing).includes('field-plan-badge--grow'));
+    assert.strictEqual(fieldPlanBadgeHtml({ kind: null }), '');
+});

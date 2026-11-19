@@ -475,22 +475,67 @@ function seasonEndFinishIndexes(farm) {
     return out;
 }
 
-// Field view: move this field on, once its crop can be off, and take that back.
-function fieldFinishHtml(farm, field, idx) {
+// Where a field on a plan stands on its way to the next crop, for the field
+// view: 'ready' (it can move on now), 'growing' (from: first harvest month),
+// 'unsown', 'grass' (its cycle keeps the same crop), 'waiting' (empty, the
+// cycle's crop goes on in its sowing month: from) or 'newSeason' (empty, moves
+// on with the new season). Null for a field with no cycle and no generator plan.
+function fieldPlanStatus(farm, field) {
     const info = fieldRotationInfo(farm, field);
     const nextCrop = field.nextCrop ? field.nextCrop.crop || '' : (info ? rotationSlotAt(info.rot, info.index + 1).crop || '' : '');
     const grass = field.crop && (isCutCrop(field.crop) || isPerennialCrop(field.crop));
     const month = getFarmCurrentMonth(farm);
     const ctx = seasonHarvestContext(farm, true);
-    const ready = field.crop && (grass
+    const ready = !!field.crop && (grass
         ? !!nextCrop && cropOrderKey(nextCrop) !== cropOrderKey(field.crop)
         : field.state === 'Planted' && (fieldInHarvestWindow(field, month) || fieldHarvestState(field, ctx.month, ctx.saveById, ctx.yearPassed) === 'harvested'));
+    const base = { ready, nextCrop };
+    if (!info && !field.nextCrop) return { ...base, kind: ready ? 'ready' : null };
+    if (ready) return { ...base, kind: 'ready' };
+    if (!field.crop) {
+        if (!field.nextCrop && info.slot.crop) return { ...base, kind: 'waiting', crop: info.slot.crop, from: rotationSowMonth(info.slot) };
+        return { ...base, kind: 'newSeason', crop: field.nextCrop ? field.nextCrop.crop || '' : '' };
+    }
+    if (grass) return { ...base, kind: 'grass' };
+    if (field.state !== 'Planted') return { ...base, kind: 'unsown' };
+    const s = ALL_MONTHS.indexOf((field.sowingMonth || '').toUpperCase());
+    const w = fieldHarvestWindow(field);
+    return { ...base, kind: 'growing', from: s >= 0 && w ? ALL_MONTHS[(s + w.first) % 12] : '' };
+}
+
+// The badge above the field view's finish buttons: why the field can or can't move on yet.
+const FIELD_PLAN_BADGE = {
+    ready: { icon: 'fa-wheat-awn', tone: 'ready' },
+    growing: { icon: 'fa-seedling', tone: 'grow' },
+    unsown: { icon: 'fa-tractor', tone: 'wait' },
+    grass: { icon: 'fa-leaf', tone: 'grass' },
+    waiting: { icon: 'fa-calendar-day', tone: 'wait' },
+    newSeason: { icon: 'fa-rotate', tone: 'wait' }
+};
+
+function fieldPlanBadgeHtml(status) {
+    const look = status && FIELD_PLAN_BADGE[status.kind];
+    if (!look) return '';
+    const key = status.kind.charAt(0).toUpperCase() + status.kind.slice(1);
+    const fill = s => s
+        .replace('{month}', status.from ? translateMonth(status.from).toLowerCase() : '?')
+        .replace('{crop}', translateCropName(status.crop || status.nextCrop || '') || t('rotFallow'));
+    const text = status.kind === 'growing' && !status.from ? t('fieldPlanGrowingNoMonth') : fill(t('fieldPlan' + key));
+    return `<span class="field-plan-badge field-plan-badge--${look.tone}" title="${escapeHtml(fill(t('fieldPlan' + key + 'Hint')))}"><i class="fa-solid ${look.icon}" aria-hidden="true"></i>${escapeHtml(text)}</span>`;
+}
+
+// Field view: move this field on, once its crop can be off, and take that back.
+function fieldFinishHtml(farm, field, idx) {
+    const status = fieldPlanStatus(farm, field);
+    const { ready, nextCrop } = status;
     const row = fieldFinishedRow(farm, field);
-    if (!ready && !row) return '';
+    const badge = fieldPlanBadgeHtml(status);
+    if (!ready && !row) return badge ? `<div class="rotation-field-actions">${badge}</div>` : '';
     const label = nextCrop && rotationFillMode(farm) !== 'off' || field.nextCrop
         ? t('fieldFinishTo').replace('{crop}', translateCropName(nextCrop))
         : t('fieldFinish');
     return `<div class="rotation-field-actions">
+        ${badge}
         ${ready ? `<button type="button" class="settings-btn field-view-finish">${escapeHtml(label)}</button>` : ''}
         ${row ? `<button type="button" class="settings-btn field-view-finish-undo">${escapeHtml(t('fieldFinishUndo').replace('{crop}', translateCropName(row.crop)))}</button>` : ''}
     </div>${ready ? `<p class="settings-hint">${t('fieldFinishHint')}</p>` : ''}`;
